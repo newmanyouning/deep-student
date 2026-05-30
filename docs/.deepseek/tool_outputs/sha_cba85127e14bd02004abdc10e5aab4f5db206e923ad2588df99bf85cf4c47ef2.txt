@@ -1,0 +1,540 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 7,
+      "line": "| 13英寸等于3302厘米.md | 数学与自然科学 |",
+      "context_before": [
+        "| 对话文件名 | 领域标签 |",
+        "|-----------|---------|"
+      ],
+      "context_after": [
+        "| 1500A铜导线粗细.md | 硬件与工程 |",
+        "| 2026年TTS模型推荐.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 10,
+      "line": "| 20磅转换为千克计算.md | 数学与自然科学 |",
+      "context_before": [
+        "| 1500A铜导线粗细.md | 硬件与工程 |",
+        "| 2026年TTS模型推荐.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 3DS和NDS农场经营游戏推荐.md | 游戏与娱乐 |",
+        "| 3DS和NDS游戏推荐及双屏掌机体验建议.md | 游戏与娱乐 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 126,
+      "line": "| ex在x1泰勒展开式.md | 数学与自然科学 |",
+      "context_before": [
+        "| chat_ff27521e.md | 人文与知识 |",
+        "| clash机场推荐.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| iOS解压RAR格式软件推荐.md | 苹果生态与设备 |",
+        "| iOS设备HDR青蛙图片异常亮度解析.md | 苹果生态与设备 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 134,
+      "line": "| markdown 概率统计核心概念回顾重点覆.md | 数学与自然科学 |",
+      "context_before": [
+        "| imax和普通厅的区别.md | 游戏与娱乐 |",
+        "| macOS 12 2 1 后续版本.md | 计算机与操作系统 |"
+      ],
+      "context_after": [
+        "| secx三次方积分计算方法.md | 数学与自然科学 |",
+        "| 上海高校自然语言处理硕士项目对比.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 135,
+      "line": "| secx三次方积分计算方法.md | 数学与自然科学 |",
+      "context_before": [
+        "| macOS 12 2 1 后续版本.md | 计算机与操作系统 |",
+        "| markdown 概率统计核心概念回顾重点覆.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 上海高校自然语言处理硕士项目对比.md | AI与编程开发 |",
+        "| 与低共情者沟通技巧与分析.md | 职业与职场 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 164,
+      "line": "| 做题是为了学会还是目的呢我数学题写得很痛苦但是我为了通过考试.md | 数学与自然科学 |",
+      "context_before": [
+        "| 依赖更新调研后续AI提示词.md | AI与编程开发 |",
+        "| 修复PyInstaller打包命令.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 傅里叶级数展开系数计算方法.md | 数学与自然科学 |",
+        "| 充电宝电池能量与额定容量区别解析.md | 生活与消费 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 165,
+      "line": "| 傅里叶级数展开系数计算方法.md | 数学与自然科学 |",
+      "context_before": [
+        "| 修复PyInstaller打包命令.md | AI与编程开发 |",
+        "| 做题是为了学会还是目的呢我数学题写得很痛苦但是我为了通过考试.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 充电宝电池能量与额定容量区别解析.md | 生活与消费 |",
+        "| 光流场定义及机器视觉应用解析.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 167,
+      "line": "| 光流场定义及机器视觉应用解析.md | 数学与自然科学 |",
+      "context_before": [
+        "| 傅里叶级数展开系数计算方法.md | 数学与自然科学 |",
+        "| 充电宝电池能量与额定容量区别解析.md | 生活与消费 |"
+      ],
+      "context_after": [
+        "| 光纤中光信号与振动波传输机制.md | 数学与自然科学 |",
+        "| 光线追踪技术及其游戏应用效果.md | 游戏与娱乐 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 168,
+      "line": "| 光纤中光信号与振动波传输机制.md | 数学与自然科学 |",
+      "context_before": [
+        "| 充电宝电池能量与额定容量区别解析.md | 生活与消费 |",
+        "| 光流场定义及机器视觉应用解析.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 光线追踪技术及其游戏应用效果.md | 游戏与娱乐 |",
+        "| 光轴键盘原理及优缺点详解.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 173,
+      "line": "| 八道马赫环的形成与特性解析.md | 数学与自然科学 |",
+      "context_before": [
+        "| 党员谈心谈话查摆问题对话稿.md | 职业与职场 |",
+        "| 党风廉政教育中一桌餐的定义.md | 职业与职场 |"
+      ],
+      "context_after": [
+        "| 公司技术管理中针对提升公司体系运行效率公司现阶段没有一个成熟.md | 职业与职场 |",
+        "| 养成习惯减少精神内耗.md | 职业与职场 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 182,
+      "line": "| 初等变换对矩阵特征值和迹的影响.md | 数学与自然科学 |",
+      "context_before": [
+        "| 分配与匹配认知背景分析.md | 人文与知识 |",
+        "| 创建激活Python虚拟环境命令.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 制造业硬件工程师需求及技能解析.md | 职业与职场 |",
+        "| 加速度传感器雷莫头接头介绍.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 191,
+      "line": "| 单位mvms-2转换为mvg的数值需要怎么计算.md | 数学与自然科学 |",
+      "context_before": [
+        "| 华为GaussDB数据库介绍与应用场景.md | AI与编程开发 |",
+        "| 华强北二手苹果手机购买风险分析.md | 苹果生态与设备 |"
+      ],
+      "context_after": [
+        "| 南孚电池外膜撕开后果.md | 生活与消费 |",
+        "| 南极仙翁的师傅是谁.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 202,
+      "line": "| 向量垂直内积为零.md | 数学与自然科学 |",
+      "context_before": [
+        "| 吃水果时间消耗与价值分析.md | 生活与消费 |",
+        "| 合并md文件脚本编写.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 向量数据库与Redis区别.md | AI与编程开发 |",
+        "| 吞咽鱼油不适处理建议.md | 健康与医学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 255,
+      "line": "| 带权二叉树WPL计算方式解析.md | 数学与自然科学 |",
+      "context_before": [
+        "| 工地安全帽颜色含义.md | 生活与消费 |",
+        "| 工程与产品思维在产品设计中的差异.md | 职业与职场 |"
+      ],
+      "context_after": [
+        "| 平衡二叉树旋转过程详解.md | 数学与自然科学 |",
+        "| 应用迁移方案指南.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 256,
+      "line": "| 平衡二叉树旋转过程详解.md | 数学与自然科学 |",
+      "context_before": [
+        "| 工程与产品思维在产品设计中的差异.md | 职业与职场 |",
+        "| 带权二叉树WPL计算方式解析.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 应用迁移方案指南.md | AI与编程开发 |",
+        "| 康复期精神力悬置与应对策略.md | 健康与医学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 261,
+      "line": "| 循环冗余校验码计算方法详解.md | 数学与自然科学 |",
+      "context_before": [
+        "| 开源项目编译版本信息解析.md | AI与编程开发 |",
+        "| 形式化语言与自动机理论书籍推荐.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 微笑曲线理论及应用解析.md | 人文与知识 |",
+        "| 快捷键分析报告生成.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 274,
+      "line": "| 扫描投射显微镜的工作原理.md | 数学与自然科学 |",
+      "context_before": [
+        "| 手机电池最佳电量区间建议.md | 苹果生态与设备 |",
+        "| 手机电池老化屏幕发热原因及应对建议.md | 苹果生态与设备 |"
+      ],
+      "context_after": [
+        "| 批量复制WPS宏代码方法.md | AI与编程开发 |",
+        "| 技术讨论健康但情感共鸣不足.md | 职业与职场 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 286,
+      "line": "| 数学分析初等数学复习资料.md | 数学与自然科学 |",
+      "context_before": [
+        "| 政治经济学视角下的极限概念分析.md | 人文与知识 |",
+        "| 教育学的学术领域与研究领域概述.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 数学证明中错误与无意义的区别.md | 数学与自然科学 |",
+        "| 数独APP推荐.md | 游戏与娱乐 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 287,
+      "line": "| 数学证明中错误与无意义的区别.md | 数学与自然科学 |",
+      "context_before": [
+        "| 教育学的学术领域与研究领域概述.md | 人文与知识 |",
+        "| 数学分析初等数学复习资料.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 数独APP推荐.md | 游戏与娱乐 |",
+        "| 数独题目生成算法.md | 游戏与娱乐 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 292,
+      "line": "| 无线电波传播无需介质.md | 数学与自然科学 |",
+      "context_before": [
+        "| 文件写入工具代码分析.md | AI与编程开发 |",
+        "| 新西兰乳制品产量及中国进口分析.md | 职业与职场 |"
+      ],
+      "context_after": [
+        "| 无需器械的腰部减脂运动方案.md | 健康与医学 |",
+        "| 日语夫目前犯含义解析.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 328,
+      "line": "| 氢气在高压下可转变为金属氢.md | 数学与自然科学 |",
+      "context_before": [
+        "| 检查登录态逻辑提示词.md | AI与编程开发 |",
+        "| 欧盟目击测试实验室授权解释.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 水冷液成分及使用建议.md | 硬件与工程 |",
+        "| 汽车ABS防抱死系统工作原理.md | 计算机与操作系统 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 336,
+      "line": "| 浮点数阶码偏置值设计解析.md | 数学与自然科学 |",
+      "context_before": [
+        "| 法院判决书生成与审判流程详解.md | 职业与职场 |",
+        "| 泳池尿液污染检测与管理方法.md | 职业与职场 |"
+      ],
+      "context_after": [
+        "| 深入理解概念切入角度.md | 人文与知识 |",
+        "| 清华MAIC硬件配置建议.md | 职业与职场 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 368,
+      "line": "| 相对扩展不确定度计算说明.md | 数学与自然科学 |",
+      "context_before": [
+        "| 电路板调试基础仪器推荐.md | 硬件与工程 |",
+        "| 痛经机制及缓解原因解析.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| 睡眠耳机推荐及选购指南.md | 生活与消费 |",
+        "| 矩阵病态概念解释.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 370,
+      "line": "| 矩阵病态概念解释.md | 数学与自然科学 |",
+      "context_before": [
+        "| 相对扩展不确定度计算说明.md | 数学与自然科学 |",
+        "| 睡眠耳机推荐及选购指南.md | 生活与消费 |"
+      ],
+      "context_after": [
+        "| 矩阵行列式变换规则与应用.md | 数学与自然科学 |",
+        "| 矩阵迹的定义与性质解析.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 371,
+      "line": "| 矩阵行列式变换规则与应用.md | 数学与自然科学 |",
+      "context_before": [
+        "| 睡眠耳机推荐及选购指南.md | 生活与消费 |",
+        "| 矩阵病态概念解释.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 矩阵迹的定义与性质解析.md | 数学与自然科学 |",
+        "| 硬盘序列号不同非同一块.md | 计算机与操作系统 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 372,
+      "line": "| 矩阵迹的定义与性质解析.md | 数学与自然科学 |",
+      "context_before": [
+        "| 矩阵病态概念解释.md | 数学与自然科学 |",
+        "| 矩阵行列式变换规则与应用.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 硬盘序列号不同非同一块.md | 计算机与操作系统 |",
+        "| 磁盘分区与健康检测工具推荐.md | 计算机与操作系统 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 390,
+      "line": "| 纸张密度与书堆高度计算.md | 数学与自然科学 |",
+      "context_before": [
+        "| 系统迁移后无法开机解决.md | 计算机与操作系统 |",
+        "| 纯藕粉品牌选择方案.md | 生活与消费 |"
+      ],
+      "context_after": [
+        "| 线缆接口定义及推测分析.md | 硬件与工程 |",
+        "| 线香使用后嗓子不适应对建议.md | 健康与医学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 408,
+      "line": "| 考研数学心态调节与解题策略.md | 数学与自然科学 |",
+      "context_before": [
+        "| 美国床高历史与文化原因解析.md | 人文与知识 |",
+        "| 翻译what could be more resonable.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 考研资料上传AI知识库.md | AI与编程开发 |",
+        "| 职业意识定义与要素.md | 职业与职场 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 434,
+      "line": "| 规格化数偏置值的作用解析.md | 数学与自然科学 |",
+      "context_before": [
+        "| 血液制品分类及制备工艺概述.md | 人文与知识 |",
+        "| 规则引擎变更引发逻辑漏洞解析.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 解决Git克隆HTTP2错误.md | AI与编程开发 |",
+        "| 解决Redis安装问题.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 441,
+      "line": "| 计量不确定度的精确定义解析.md | 数学与自然科学 |",
+      "context_before": [
+        "| 解析诗句彼阳晚意初生东曦.md | 人文与知识 |",
+        "| 计算机时钟信号来源与作用解析.md | 硬件与工程 |"
+      ],
+      "context_after": [
+        "| 计量员党性分析.md | 职业与职场 |",
+        "| 计量所劳保用品采购建议.md | 职业与职场 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 450,
+      "line": "| 超声波手术刀原理及压电陶瓷作用.md | 数学与自然科学 |",
+      "context_before": [
+        "| 请问什么是元认知能力AI模型如何判断用户的元认知能力请给我一.md | 人文与知识 |",
+        "| 购买定制玻璃试管指南.md | 硬件与工程 |"
+      ],
+      "context_after": [
+        "| 超频指提升CPU频率.md | 硬件与工程 |",
+        "| 跨国游戏公司年后工作重点.md | 职业与职场 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 457,
+      "line": "| 这道题解题过程中矩阵转换为行列式的过程依据的是什么原理.md | 数学与自然科学 |",
+      "context_before": [
+        "| 运动后酸痛恢复建议.md | 健康与医学 |",
+        "| 运行bat和sh文件命令.md | 计算机与操作系统 |"
+      ],
+      "context_after": [
+        "| 连乘积排除特定数的写法.md | 数学与自然科学 |",
+        "| 连续性随机变量与联合分布解析.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 458,
+      "line": "| 连乘积排除特定数的写法.md | 数学与自然科学 |",
+      "context_before": [
+        "| 运行bat和sh文件命令.md | 计算机与操作系统 |",
+        "| 这道题解题过程中矩阵转换为行列式的过程依据的是什么原理.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 连续性随机变量与联合分布解析.md | 数学与自然科学 |",
+        "| 通信与电子线路数学需求分析.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 459,
+      "line": "| 连续性随机变量与联合分布解析.md | 数学与自然科学 |",
+      "context_before": [
+        "| 这道题解题过程中矩阵转换为行列式的过程依据的是什么原理.md | 数学与自然科学 |",
+        "| 连乘积排除特定数的写法.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 通信与电子线路数学需求分析.md | 数学与自然科学 |",
+        "| 配置锁不阻碍系统升级.md | 计算机与操作系统 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 460,
+      "line": "| 通信与电子线路数学需求分析.md | 数学与自然科学 |",
+      "context_before": [
+        "| 连乘积排除特定数的写法.md | 数学与自然科学 |",
+        "| 连续性随机变量与联合分布解析.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 配置锁不阻碍系统升级.md | 计算机与操作系统 |",
+        "| 酒店吹风机使用安全与卫生指南.md | 生活与消费 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 464,
+      "line": "| 量子力学中的态矢与波函数表象.md | 数学与自然科学 |",
+      "context_before": [
+        "| 酒店吹风机使用安全与卫生指南.md | 生活与消费 |",
+        "| 量化投资起源时间.md | 职业与职场 |"
+      ],
+      "context_after": [
+        "| 量子力学研究范围及应用概述.md | 数学与自然科学 |",
+        "| 量子计算的原理和应用领域是什么.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 465,
+      "line": "| 量子力学研究范围及应用概述.md | 数学与自然科学 |",
+      "context_before": [
+        "| 量化投资起源时间.md | 职业与职场 |",
+        "| 量子力学中的态矢与波函数表象.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 量子计算的原理和应用领域是什么.md | 数学与自然科学 |",
+        "| 金属蒸气导电与灯发光原理.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 466,
+      "line": "| 量子计算的原理和应用领域是什么.md | 数学与自然科学 |",
+      "context_before": [
+        "| 量子力学中的态矢与波函数表象.md | 数学与自然科学 |",
+        "| 量子力学研究范围及应用概述.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 金属蒸气导电与灯发光原理.md | 硬件与工程 |",
+        "| 钛合金筷子使用寿命及保养指南.md | 生活与消费 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 483,
+      "line": "| 顾樵教授的物理学贡献与著作.md | 数学与自然科学 |",
+      "context_before": [
+        "| 项目提示词生成请求.md | AI与编程开发 |",
+        "| 项目重构方案.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 领导说话说实话的潜台词解析.md | 人文与知识 |",
+        "| 风险投资定义及运作流程详解.md | 职业与职场 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 486,
+      "line": "| 食品检测中千分位的单位解析.md | 数学与自然科学 |",
+      "context_before": [
+        "| 领导说话说实话的潜台词解析.md | 人文与知识 |",
+        "| 风险投资定义及运作流程详解.md | 职业与职场 |"
+      ],
+      "context_after": [
+        "| 马尔可夫链的定义与应用场景.md | 数学与自然科学 |",
+        "| 骁龙8s与8 Gen2性能对比分析.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 487,
+      "line": "| 马尔可夫链的定义与应用场景.md | 数学与自然科学 |",
+      "context_before": [
+        "| 风险投资定义及运作流程详解.md | 职业与职场 |",
+        "| 食品检测中千分位的单位解析.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 骁龙8s与8 Gen2性能对比分析.md | 硬件与工程 |",
+        "| 高功能回避型伴侣的优缺点分析.md | 职业与职场 |"
+      ]
+    }
+  ],
+  "total_matches": 41,
+  "files_searched": 1,
+  "truncated": false
+}

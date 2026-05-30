@@ -1,0 +1,38 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_agent_output_4.md
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_agent_output_4.md
+@@ -0,0 +1,33 @@
++## AI与编程开发（新增条目 #25-32）
++
++- **[国内编程模型上下文窗口对比表]** — 第一梯队Qwen3.6-Plus和DeepSeek达1M Token，豆包Seed-Code和Kimi K2为256K。
++  - 来源文件：国内编程模型上下文窗口对比.md
++  - 核心解释：智谱GLM系列128K-200K，百度文心快码128K-200K，CodeGeeX 128K。API错误码400提示"maximum context length is 131072 tokens"即128K（128×1024=131072）。completion指模型输出token数，缩短可降低延迟和避免超限，但可能截断回答；对模型本身能力无永久影响。
++
++- **[Git克隆HTTP2帧层错误与curl 18 EOF解决方案]** — 核心命令 git config --global http.version HTTP/1.1 临时禁用HTTP2。
++  - 来源文件：解决Git克隆HTTP2错误.md
++  - 核心解释：对于大仓库克隆中断（curl 18 transfer closed / early EOF）：增加 git config --global http.postBuffer 524288000（500MB），配合 --depth 1 浅克隆减少数据量。其他方案：brew upgrade git更新版本、取消代理设置 git config --global --unset http.proxy、改用SSH协议 git clone git@github.com:...。
++
++- **[MCP（模型上下文协议）架构与调用方式]** — 基于客户端-服务器模型的开放标准，使用JSON-RPC通信。
++  - 来源文件：MCP含义解释.md
++  - 核心解释：三组件架构：Host（如Claude Desktop）管理客户端和安全策略、Client一对一连接服务器、Server提供工具/资源/提示词等原语。用户通过在应用中JSON配置mcpServers添加服务；开发者用FastMCP快速创建服务器（如@mcp.tool()注册工具函数）。相当于给AI大脑装上"USB接口"。
++
++- **[编译器（笔译）与解释器（口译）的区别联系]** — 编译器一次性翻译完生成独立可执行文件；解释器逐句翻译并立即执行。
++  - 来源文件：编译器和解释器区别联系.md
++  - 核心解释：编译器执行快但平台依赖强，解释器跨平台好但每次需解释器在场。现代语言界限模糊：Java先编译为字节码再由JVM解释+JIT即时编译；PyInstaller可打包Python为exe但底层仍含解释器。C程序编译后无需编译器运行，Python程序始终需解释器。
++
++- **[CrystalDiskInfo VS2026编译必备组件]** — 三个工作负载+两个关键单个组件。
++  - 来源文件：CrystalDiskInfo VS2026 编译组件指南.md
++  - 核心解释：①C++桌面开发（MSVC+Windows SDK）；②Windows应用程序开发（原UWP开发，VS17.10起改名，需在可选列表中勾选"通用Windows平台工具"）；③.NET桌面开发（C# UI项目）；④C++ ATL for latest v143和MFC for latest v143（x86与x64版本，最易遗漏/编译失败最常见原因）。
++
++- **[cc-mini ReadTimeout错误排查]** — 错误源于httpx/httpcore读取LLM API流式响应超时，6步解决法。
++  - 来源文件：处理cc-mini超时错误.md
++  - 核心解释：①curl -v测试API连通性；②增加--timeout参数或配置request_timeout；③减小prompt长度和max_tokens；④关闭流式响应改用一次性获取；⑤升级httpx和openai依赖；⑥检查HTTP_PROXY/HTTPS_PROXY环境变量和代理稳定性。偶发超时直接重试即可。
++
++- **[WPS加载项AI开发环境准备清单]** — 基础环境+AI集成四种方式+辅助工具。
++  - 来源文件：WPS加载项AI开发环境准备.md
++  - 核心解释：基础环境需Node.js v20 LTS+VS Code+wpsjs脚手架（npm install -g wpsjs，慢则用镜像源）。AI集成四种路径：调用云端API（如DeepSeek需API Key+代理解决跨域）、本地部署开源模型（RTX 3060+Docker/FastAPI暴露API）、WPS AI官方接口（需申请开发者权限）、COM加载项集成第三方。用wpsjs create创建项目+wpsjs debug启动调试。
++
++- **[树莓派Linux Java应用图标主题集成]** — 7种方法从系统级到源码级解决Java Swing图标显示问题。
++  - 来源文件：树莓派Logisim图标显示问题解决方案.md
++  - 核心解释：方法包括①gtk-update-icon-cache更新图标缓存；②设置GTK_ICON_THEME/Yaru环境变量；③创建gtkrc配置文件指定图标主题；④_JAVA_OPTIONS='-Dswing.defaultlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel'强制Swing使用GTK主题；⑤源码级替换图标资源后ant clean+ant重编译。多尺寸图标需覆盖16-256各尺寸的符号链接。
+
+Created \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_agent_output_4.md (4354 bytes)

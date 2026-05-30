@@ -1,0 +1,50 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_append_temp.py
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_append_temp.py
+@@ -1,32 +1,25 @@
+ #!/usr/bin/env python3
+ # -*- coding: utf-8 -*-
+-import sys
+-
+ content = r"""
+-- **[WPS加载项多路径体系]** — WPS加载项无单一固定目录，存放位置取决于加载项类型和操作系统
+-  - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+-  - 核心解释：WPS加载项分三大类路径：(1)JS加载项(新式插件)：Windows在%APPDATA%\kingsoft\wps\jsaddons\，macOS在~/Library/Containers/com.kingsoft.wpsoffice.mac/Data/.kingsoft/wps/jsaddons/，Linux在~/.local/share/Kingsoft/wps/jsaddons/；(2)COM加载项(传统插件)：Windows在%APPDATA%\kingsoft\wps\addons\或WPS安装目录下的addons文件夹；(3)配置文件目录：Windows在WPS安装目录\office6\cfgs\，Linux在/opt/kingsoft/wps-office/office6/cfgs/。快速定位可用Win+R输入%APPDATA%\kingsoft\wps直接跳转。
+-
+-- **[wpsjs命令行工具安装]** — wpsjs是WPS官方JS加载项管理工具，通过npm全局安装，无独立安装包
+-  - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+-  - 核心解释：前置依赖为Node.js（建议v20 LTS），安装命令为`npm install -g wpsjs`，国内网络慢可用`npm config set registry https://registry.npmmirror.com`切换淘宝镜像。验证安装用`wpsjs -h`，若提示命令无效需重启终端刷新环境变量。兼容性问题时可安装稳定旧版本`npm install -g wpsjs@2.1.6`。
++- **[Ollama下载connection reset报错]** — Ollama拉取模型时出现"max retries exceeded: connection reset by peer"是网络层TCP连接被远程服务器主动重置所致
++  - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
++  - 核心解释：错误通常发生在下载进度中途（如44%），原因包括：(1)WiFi信号弱或网络波动；(2)Ollama使用的Cloudflare R2存储瞬时故障或高负载；(3)IPv6连接不稳定（从报错地址可见使用了IPv6）；(4)本地防火墙/VPN/代理干扰；(5)DNS解析问题。解决方法：直接重试（Ollama支持断点续传）、禁用IPv6或设为首选IPv4（macOS: 系统设置→网络→TCP/IP→配置IPv6改为仅限本地链接）、切换网络、关闭代理。
+ 
+-- **[WPS本地加载项加载方法]** — 加载本地WPS加载项有两种方式：官方wpsjs命令行（适用于JS加载项开发调试）和手动复制模板文件（适用于传统.dotm/.xlam加载项）
+-  - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+-  - 核心解释：方法一(wpsjs)：在项目根目录运行`wpsjs debug`临时加载并支持热更新调试，运行`wpsjs publish`将加载项复制到jsaddons目录完成本地安装。方法二(手动)：将.dotm或.xlam模板文件复制到WPS启动目录(%APPDATA%\Kingsoft\wps\startup)后重启WPS自动加载，或在WPS的"开发工具"→"加载项"中手动添加。传统手动方式每次重启WPS可能不会自动加载，需重复操作。
++- **[Ollama模型下载网络排查完整方案]** — Ollama下载失败的网络排查包括：测速诊断、DNS优化、镜像加速、手动下载和日志排查五类方案
++  - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
++  - 核心解释：(1)用ping和curl测试到dd20bb8919...r2.cloudflarestorage.com的连通性；(2)设置OLLAMA_HOST和OLLAMA_ORIGINS环境变量解决内网访问限制；(3)有多篇教程提供Ollama镜像加速配置方法——GFW阻断了Cloudflare R2导致国内用户大模型下载困难是已知问题；(4)HTTP_PROXY/HTTPS_PROXY环境变量配置代理（如http://127.0.0.1:7890）；(5)从Ollama模型库页面手动下载gguf文件后用Modelfile本地导入。排查优先建议：先重试，再切网络/关代理，最后考虑镜像加速。
+ 
+-- **[wpsjs核心命令工作流]** — wpsjs提供完整的加载项开发生命周期：create(创建)→debug(调试)→build(打包)→publish(发布)
+-  - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+-  - 核心解释：`wpsjs create 项目名`创建新加载项项目并选择类型(文字/表格/演示)和框架；`wpsjs debug`自动启动WPS并加载加载项，修改代码后自动刷新，Ctrl+C停止；`wpsjs build`打包加载项用于分发；`wpsjs publish`将加载项安装到本地WPS中。启用加载项功能需在cfgs目录的oem.ini中添加[JsApiShowWebDebugger=true]，调试按Alt+F12或F12打开开发者工具。
++- **[ollama show命令查看模型信息]** — `ollama show`配合不同参数可查看模型的提示词模板(template)、系统提示(system)、Modelfile源文件、参数配置等完整信息
++  - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
++  - 核心解释：`ollama show --template 模型名`查看提示词模板（模型如何将对话历史组织为特定格式，包含[INST]等标签）；`ollama show --system 模型名`查看系统提示词（设定模型人设和行为准则）；`ollama show --modelfile 模型名`查看Modelfile源文件；`ollama show --parameters 模型名`查看参数配置（温度等）。在模型交互界面中也可输入/show命令查看相同信息（/show info、/show modelfile、/show system、/show template）。
+ 
+-- **[WPS加载项加载失败排查]** — 加载项无法加载的常见原因包括：功能开关未开启、路径被隐藏、版本兼容性和调试模式配置问题
+-  - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+-  - 核心解释：排查步骤：(1)检查WPS安装包是否带加载项功能，在cfgs目录下oem.ini的[support]节添加JsApiShowWebDebugger=true；(2)在文件管理器中勾选"隐藏的项目"以显示AppData等隐藏目录；(3)尝试更新或更换WPS版本来解决兼容性问题；(4)按F12打开开发者工具查看控制台错误信息。不建议直接删除文件夹来卸载插件，优先用WPS内置加载项管理器。
++- **[Ollama模型文件存储结构]** — Ollama下载的模型默认存储在~/.ollama/models/目录，包含blobs（模型数据层）和manifests（元数据）子目录
++  - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
++  - 核心解释：macOS/Linux默认路径为~/.ollama/models/（隐藏目录），可用`du -sh ~/.ollama/models`查看磁盘占用、`open ~/.ollama/models`在Finder中打开。通过设置OLLAMA_MODELS环境变量可修改存储路径：临时用`export OLLAMA_MODELS="/新路径"`，永久将export命令写入~/.zshrc并执行source ~/.zshrc后重启Ollama服务生效。
+ """
+ 
+ target = r"C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md"
+ with open(target, "a", encoding="utf-8") as f:
+     f.write(content)
+-
+ count = content.count("- **[")
+-print(f"OK: appended {count} entries to knowledge_cache.md")
++print(f"OK: appended {count} entries")
+
+Wrote 3300 bytes to \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_append_temp.py

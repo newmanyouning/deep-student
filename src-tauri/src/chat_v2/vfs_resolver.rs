@@ -32,9 +32,6 @@ use crate::vfs::types::{
     VfsResourceRef, VfsResourceType,
 };
 
-// ★ 使用已有的 ContentBlock 类型，避免重复定义
-pub use super::resource_types::ContentBlock;
-
 /// 解析后的资源内容
 ///
 /// 用于历史消息加载场景，文本和图片分离

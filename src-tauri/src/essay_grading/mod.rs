@@ -11,18 +11,21 @@
 /// - 仅复用 LLMManager 的底层能力
 /// - ★ 使用 VFS 统一存储（2025-12-07）
 pub mod custom_modes;
+pub mod error;
 pub mod events;
 pub mod pipeline;
 pub mod text_stats;
 pub mod types;
 
+pub use error::{EssayGradingError, EssayGradingResult};
+
 use tauri::{State, Window};
 
-use crate::models::AppError;
 use crate::vfs::repos::VfsEssayRepo;
 use crate::vfs::types::{
     VfsCreateEssaySessionParams, VfsEssaySession, VfsUpdateEssaySessionParams,
 };
+use error::{EssayGradingError, EssayGradingResult};
 use events::GradingEventEmitter;
 use types::{GradingRequest, GradingResponse, GradingRoundResponse};
 
@@ -32,7 +35,7 @@ pub async fn essay_grading_stream(
     request: GradingRequest,
     window: Window,
     state: State<'_, crate::commands::AppState>,
-) -> Result<Option<GradingResponse>, AppError> {
+) -> EssayGradingResult<Option<GradingResponse>> {
     println!(
         "📝 [EssayGrading] 开始流式批改：session={}, round={}, 文本长度={}",
         request.session_id,
@@ -43,7 +46,7 @@ pub async fn essay_grading_stream(
     let vfs_db = state
         .vfs_db
         .as_ref()
-        .ok_or_else(|| AppError::database("VFS 数据库未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Database("VFS 数据库未初始化".to_string()))?;
 
     let custom_modes = state
         .custom_mode_manager
@@ -83,11 +86,11 @@ pub async fn essay_grading_create_session(
     grade_level: String,
     custom_prompt: Option<String>,
     state: State<'_, crate::commands::AppState>,
-) -> Result<VfsEssaySession, AppError> {
+) -> EssayGradingResult<VfsEssaySession> {
     let vfs_db = state
         .vfs_db
         .as_ref()
-        .ok_or_else(|| AppError::database("VFS 数据库未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Database("VFS 数据库未初始化".to_string()))?;
     let params = VfsCreateEssaySessionParams {
         title,
         essay_type: Some(essay_type),
@@ -96,7 +99,7 @@ pub async fn essay_grading_create_session(
     };
 
     let session = VfsEssayRepo::create_session(vfs_db, params)
-        .map_err(|e| AppError::database(e.to_string()))?;
+        ?;
 
     println!("📝 [EssayGrading] 创建会话：{}", session.id);
 
@@ -108,13 +111,13 @@ pub async fn essay_grading_create_session(
 pub async fn essay_grading_get_session(
     session_id: String,
     state: State<'_, crate::commands::AppState>,
-) -> Result<Option<VfsEssaySession>, AppError> {
+) -> EssayGradingResult<Option<VfsEssaySession>> {
     let vfs_db = state
         .vfs_db
         .as_ref()
-        .ok_or_else(|| AppError::database("VFS 数据库未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Database("VFS 数据库未初始化".to_string()))?;
 
-    VfsEssayRepo::get_session(vfs_db, &session_id).map_err(|e| AppError::database(e.to_string()))
+    Ok(VfsEssayRepo::get_session(vfs_db, &session_id)?)
 }
 
 /// 更新会话
@@ -125,11 +128,11 @@ pub async fn essay_grading_get_session(
 pub async fn essay_grading_update_session(
     session: VfsUpdateEssaySessionParams,
     state: State<'_, crate::commands::AppState>,
-) -> Result<(), AppError> {
+) -> EssayGradingResult<()> {
     let vfs_db = state
         .vfs_db
         .as_ref()
-        .ok_or_else(|| AppError::database("VFS 数据库未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Database("VFS 数据库未初始化".to_string()))?;
 
     VfsEssayRepo::update_session(
         vfs_db,
@@ -139,8 +142,7 @@ pub async fn essay_grading_update_session(
         session.essay_type.as_deref(),
         session.grade_level.as_deref(),
         session.custom_prompt.as_deref(),
-    )
-    .map_err(|e| AppError::database(e.to_string()))
+    )?
 }
 
 /// 永久删除会话
@@ -150,15 +152,15 @@ pub async fn essay_grading_update_session(
 pub async fn essay_grading_delete_session(
     session_id: String,
     state: State<'_, crate::commands::AppState>,
-) -> Result<usize, AppError> {
+) -> EssayGradingResult<usize> {
     let vfs_db = state
         .vfs_db
         .as_ref()
-        .ok_or_else(|| AppError::database("VFS 数据库未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Database("VFS 数据库未初始化".to_string()))?;
 
     // ★ 2025-12-11: 使用 purge_session 永久删除（会话没有软删除机制）
     let deleted = VfsEssayRepo::purge_session(vfs_db, &session_id)
-        .map_err(|e| AppError::database(e.to_string()))?;
+        ?;
 
     println!("🗑️ [EssayGrading] 永久删除会话：{}", session_id);
 
@@ -172,14 +174,13 @@ pub async fn essay_grading_list_sessions(
     limit: Option<u32>,
     _query: Option<String>, // TODO: 添加搜索支持
     state: State<'_, crate::commands::AppState>,
-) -> Result<Vec<VfsEssaySession>, AppError> {
+) -> EssayGradingResult<Vec<VfsEssaySession>> {
     let vfs_db = state
         .vfs_db
         .as_ref()
-        .ok_or_else(|| AppError::database("VFS 数据库未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Database("VFS 数据库未初始化".to_string()))?;
 
-    VfsEssayRepo::list_sessions(vfs_db, limit.unwrap_or(20), offset.unwrap_or(0))
-        .map_err(|e| AppError::database(e.to_string()))
+    Ok(VfsEssayRepo::list_sessions(vfs_db, limit.unwrap_or(20), offset.unwrap_or(0))?)
 }
 
 /// 切换收藏状态
@@ -187,14 +188,13 @@ pub async fn essay_grading_list_sessions(
 pub async fn essay_grading_toggle_favorite(
     session_id: String,
     state: State<'_, crate::commands::AppState>,
-) -> Result<bool, AppError> {
+) -> EssayGradingResult<bool> {
     let vfs_db = state
         .vfs_db
         .as_ref()
-        .ok_or_else(|| AppError::database("VFS 数据库未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Database("VFS 数据库未初始化".to_string()))?;
 
-    VfsEssayRepo::toggle_session_favorite(vfs_db, &session_id)
-        .map_err(|e| AppError::database(e.to_string()))
+    Ok(VfsEssayRepo::toggle_session_favorite(vfs_db, &session_id)?)
 }
 
 /// 获取会话的所有轮次（含内容）
@@ -204,20 +204,20 @@ pub async fn essay_grading_toggle_favorite(
 pub async fn essay_grading_get_rounds(
     session_id: String,
     state: State<'_, crate::commands::AppState>,
-) -> Result<Vec<GradingRoundResponse>, AppError> {
+) -> EssayGradingResult<Vec<GradingRoundResponse>> {
     let vfs_db = state
         .vfs_db
         .as_ref()
-        .ok_or_else(|| AppError::database("VFS 数据库未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Database("VFS 数据库未初始化".to_string()))?;
 
     let essays = VfsEssayRepo::get_rounds_by_session(vfs_db, &session_id)
-        .map_err(|e| AppError::database(e.to_string()))?;
+        ?;
 
     let mut rounds = Vec::with_capacity(essays.len());
     for essay in essays {
         // 获取作文内容（input_text）
         let input_text = VfsEssayRepo::get_essay_content(vfs_db, &essay.id)
-            .map_err(|e| AppError::database(e.to_string()))?
+            ?
             .unwrap_or_default();
 
         // 从 grading_result JSON 提取批改文本
@@ -267,19 +267,19 @@ pub async fn essay_grading_get_round(
     session_id: String,
     round_number: i32,
     state: State<'_, crate::commands::AppState>,
-) -> Result<Option<GradingRoundResponse>, AppError> {
+) -> EssayGradingResult<Option<GradingRoundResponse>> {
     let vfs_db = state
         .vfs_db
         .as_ref()
-        .ok_or_else(|| AppError::database("VFS 数据库未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Database("VFS 数据库未初始化".to_string()))?;
 
     let essay = VfsEssayRepo::get_round(vfs_db, &session_id, round_number)
-        .map_err(|e| AppError::database(e.to_string()))?;
+        ?;
 
     match essay {
         Some(essay) => {
             let input_text = VfsEssayRepo::get_essay_content(vfs_db, &essay.id)
-                .map_err(|e| AppError::database(e.to_string()))?
+                ?
                 .unwrap_or_default();
 
             let grading_result = essay
@@ -323,21 +323,20 @@ pub async fn essay_grading_get_round(
 pub async fn essay_grading_get_latest_round_number(
     session_id: String,
     state: State<'_, crate::commands::AppState>,
-) -> Result<i32, AppError> {
+) -> EssayGradingResult<i32> {
     let vfs_db = state
         .vfs_db
         .as_ref()
-        .ok_or_else(|| AppError::database("VFS 数据库未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Database("VFS 数据库未初始化".to_string()))?;
 
-    VfsEssayRepo::get_latest_round_number(vfs_db, &session_id)
-        .map_err(|e| AppError::database(e.to_string()))
+    Ok(VfsEssayRepo::get_latest_round_number(vfs_db, &session_id)?)
 }
 
 /// 获取所有批阅模式（内置 + 自定义，自定义覆盖优先）
 #[tauri::command]
 pub async fn essay_grading_get_modes(
     state: State<'_, crate::commands::AppState>,
-) -> Result<Vec<types::GradingMode>, AppError> {
+) -> EssayGradingResult<Vec<types::GradingMode>> {
     let builtin_modes = types::get_builtin_grading_modes();
 
     if let Some(ref manager) = state.custom_mode_manager {
@@ -382,7 +381,7 @@ pub async fn essay_grading_get_modes(
 pub async fn essay_grading_get_mode(
     mode_id: String,
     state: State<'_, crate::commands::AppState>,
-) -> Result<Option<types::GradingMode>, AppError> {
+) -> EssayGradingResult<Option<types::GradingMode>> {
     let canonical_mode_id = types::canonical_mode_id(&mode_id).to_string();
 
     // 先检查自定义覆盖
@@ -422,15 +421,15 @@ pub async fn essay_grading_get_mode(
 pub async fn essay_grading_create_custom_mode(
     input: custom_modes::CreateModeInput,
     state: State<'_, crate::commands::AppState>,
-) -> Result<types::GradingMode, AppError> {
+) -> EssayGradingResult<types::GradingMode> {
     let manager = state
         .custom_mode_manager
         .as_ref()
-        .ok_or_else(|| AppError::internal("自定义模式管理器未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Internal("自定义模式管理器未初始化".to_string()))?;
 
     manager
         .create_mode(input)
-        .map_err(|e| AppError::internal(e))
+        .map_err(|e| EssayGradingError::Internal(e.to_string()))
 }
 
 /// 更新自定义批阅模式
@@ -438,15 +437,15 @@ pub async fn essay_grading_create_custom_mode(
 pub async fn essay_grading_update_custom_mode(
     input: custom_modes::UpdateModeInput,
     state: State<'_, crate::commands::AppState>,
-) -> Result<types::GradingMode, AppError> {
+) -> EssayGradingResult<types::GradingMode> {
     let manager = state
         .custom_mode_manager
         .as_ref()
-        .ok_or_else(|| AppError::internal("自定义模式管理器未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Internal("自定义模式管理器未初始化".to_string()))?;
 
     manager
         .update_mode(input)
-        .map_err(|e| AppError::internal(e))
+        .map_err(|e| EssayGradingError::Internal(e.to_string()))
 }
 
 /// 删除自定义批阅模式
@@ -454,26 +453,26 @@ pub async fn essay_grading_update_custom_mode(
 pub async fn essay_grading_delete_custom_mode(
     mode_id: String,
     state: State<'_, crate::commands::AppState>,
-) -> Result<(), AppError> {
+) -> EssayGradingResult<()> {
     let manager = state
         .custom_mode_manager
         .as_ref()
-        .ok_or_else(|| AppError::internal("自定义模式管理器未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Internal("自定义模式管理器未初始化".to_string()))?;
 
     manager
         .delete_mode(&mode_id)
-        .map_err(|e| AppError::internal(e))
+        .map_err(|e| EssayGradingError::Internal(e.to_string()))
 }
 
 /// 获取所有自定义批阅模式
 #[tauri::command]
 pub async fn essay_grading_list_custom_modes(
     state: State<'_, crate::commands::AppState>,
-) -> Result<Vec<types::GradingMode>, AppError> {
+) -> EssayGradingResult<Vec<types::GradingMode>> {
     let manager = state
         .custom_mode_manager
         .as_ref()
-        .ok_or_else(|| AppError::internal("自定义模式管理器未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Internal("自定义模式管理器未初始化".to_string()))?;
 
     Ok(manager.list_modes())
 }
@@ -483,15 +482,15 @@ pub async fn essay_grading_list_custom_modes(
 pub async fn essay_grading_save_builtin_override(
     input: custom_modes::SaveBuiltinOverrideInput,
     state: State<'_, crate::commands::AppState>,
-) -> Result<types::GradingMode, AppError> {
+) -> EssayGradingResult<types::GradingMode> {
     let manager = state
         .custom_mode_manager
         .as_ref()
-        .ok_or_else(|| AppError::internal("自定义模式管理器未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Internal("自定义模式管理器未初始化".to_string()))?;
 
     let mut mode = manager
         .save_builtin_override(input)
-        .map_err(|e| AppError::internal(e))?;
+        .map_err(|e| EssayGradingError::Internal(e.to_string()))?;
 
     // 返回时保持 is_builtin 标记
     mode.is_builtin = true;
@@ -503,21 +502,21 @@ pub async fn essay_grading_save_builtin_override(
 pub async fn essay_grading_reset_builtin_mode(
     builtin_id: String,
     state: State<'_, crate::commands::AppState>,
-) -> Result<types::GradingMode, AppError> {
+) -> EssayGradingResult<types::GradingMode> {
     let manager = state
         .custom_mode_manager
         .as_ref()
-        .ok_or_else(|| AppError::internal("自定义模式管理器未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Internal("自定义模式管理器未初始化".to_string()))?;
 
     manager
         .reset_builtin_mode(&builtin_id)
-        .map_err(|e| AppError::internal(e))?;
+        .map_err(|e| EssayGradingError::Internal(e.to_string()))?;
 
     // 返回原始预置模式
     types::get_builtin_grading_modes()
         .into_iter()
         .find(|m| m.id == builtin_id)
-        .ok_or_else(|| AppError::internal(format!("预置模式不存在: {}", builtin_id)))
+        .ok_or_else(|| EssayGradingError::NotFound(format!("预置模式不存在: {}", builtin_id)))
 }
 
 /// 检查预置模式是否有自定义覆盖
@@ -525,11 +524,11 @@ pub async fn essay_grading_reset_builtin_mode(
 pub async fn essay_grading_has_builtin_override(
     builtin_id: String,
     state: State<'_, crate::commands::AppState>,
-) -> Result<bool, AppError> {
+) -> EssayGradingResult<bool> {
     let manager = state
         .custom_mode_manager
         .as_ref()
-        .ok_or_else(|| AppError::internal("自定义模式管理器未初始化".to_string()))?;
+        .ok_or_else(|| EssayGradingError::Internal("自定义模式管理器未初始化".to_string()))?;
 
     Ok(manager.has_builtin_override(&builtin_id))
 }
@@ -552,7 +551,7 @@ pub struct ModelInfo {
 #[tauri::command]
 pub async fn essay_grading_get_models(
     state: tauri::State<'_, crate::commands::AppState>,
-) -> Result<Vec<ModelInfo>, AppError> {
+) -> EssayGradingResult<Vec<ModelInfo>> {
     let configs = state.llm_manager.get_api_configs().await?;
     let assignments = state.llm_manager.get_model_assignments().await?;
 

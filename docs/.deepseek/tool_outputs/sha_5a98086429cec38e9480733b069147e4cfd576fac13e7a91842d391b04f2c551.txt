@@ -1,0 +1,118 @@
+1587921   1550.7KB [BIG   ] 依赖更新调研后续AI提示词.md
+    721701    704.8KB [BIG   ] AI判断与社交行为分析.md
+    632497    617.7KB [BIG   ] 考研资料上传AI知识库.md
+    548848    536.0KB [BIG   ] 服务器PaddleOCR PDF识别方法.md
+    492138    480.6KB [BIG   ] Claude Code使用指南.md
+    433926    423.8KB [BIG   ] 树莓派安装Java项目打包与运行问题解决方案.md
+    420208    410.4KB [BIG   ] 处理PaddleOCR安装警告.md
+    419409    409.6KB [BIG   ] 项目重构方案.md
+    418001    408.2KB [BIG   ] 树莓派5安装Java项目打包指南.md
+    303179    296.1KB [BIG   ] 中文分词技术深度解析与工程性能分析.md
+    282903    276.3KB [BIG   ] 学习人工智能模型基础知识指南.md
+    222158    217.0KB [BIG   ] 项目提示词生成请求.md
+    220542    215.4KB [BIG   ] 提示词工程完全指南生成.md
+    199269    194.6KB [BIG   ] 解决模型下载Python版本问题.md
+    192859    188.3KB [BIG   ] 快捷键完全指南生成.md
+    171451    167.4KB [BIG   ] WPS加载项公式依赖可视化开发.md
+    127865    124.9KB [BIG   ] 智谱Coding Plan抢购页面结构解析.md
+    126813    123.8KB [BIG   ] Excel工具开发提示词生成.md
+    123621    120.7KB [BIG   ] PowerShell脚本打包错误修复.md
+    102191     99.8KB [BIG   ] DeepSeek V4 API 联网搜索与 MCP 工具调用.md
+     92816     90.6KB [BIG   ] 检查登录态逻辑提示词.md
+     84391     82.4KB [BIG   ] 7B内图像生成模型推荐.md
+     74826     73.1KB [BIG   ] Nano Banana是谷歌Gemini模型昵称.md
+     68041     66.4KB [BIG   ] HuggingFace模型下载方法.md
+     65421     63.9KB [BIG   ] PaddleOCR API调用方式.md
+     58494     57.1KB [BIG   ] 容器内pip包列表不一致原因.md
+     57005     55.7KB [BIG   ] Git本地文件夹版本控制教程.md
+     54922     53.6KB [BIG   ] clash机场推荐.md
+     54640     53.4KB [BIG   ] OCR一页A4文档token消耗.md
+     54471     53.2KB [BIG   ] AI项目token消耗估算.md
+     52657     51.4KB [BIG   ] Java项目构建工具及基本结构介绍.md
+     50821     49.6KB [BIG   ] 标准爬虫缓存增量更新提示词.md
+     49054     47.9KB [MEDIUM] 本地模型输出错误信息排查.md
+     42919     41.9KB [MEDIUM] 快捷键分析报告生成.md
+     40143     39.2KB [MEDIUM] OffVis搜索解析结果名称问题排查.md
+     40002     39.1KB [MEDIUM] Docker部署模型优势解析.md
+     37898     37.0KB [MEDIUM] 合并md文件脚本编写.md
+     37661     36.8KB [MEDIUM] WPS VBA语法兼容性分析.md
+     37350     36.5KB [MEDIUM] WPS插件开发与加载指南.md
+     36889     36.0KB [MEDIUM] Python操作WPS写入执行VBA代码.md
+     33225     32.4KB [MEDIUM] 阿里云服务器PaddleOCR使用指南.md
+     29810     29.1KB [MEDIUM] Excel工具开发与打包.md
+     29639     28.9KB [MEDIUM] 修复PyInstaller打包命令.md
+     28226     27.6KB [MEDIUM] 容器内PaddleOCR转PDF为MD.md
+     28090     27.4KB [MEDIUM] 树莓派5安装Ubuntu的Java版本选择指南.md
+     27125     26.5KB [MEDIUM] 拉取GitHub项目更新方法.md
+     25100     24.5KB [MEDIUM] DeepSeek对话批量导出方法.md
+     24969     24.4KB [MEDIUM] cc-mini参数错误排查.md
+     24909     24.3KB [MEDIUM] GitHub SSH配置与项目克隆指南.md
+     24829     24.2KB [MEDIUM] 应用迁移方案指南.md
+     24465     23.9KB [MEDIUM] 中文版Claude Code网页入口.md
+     23914     23.4KB [MEDIUM] VBA代码问题分析.md
+     23658     23.1KB [MEDIUM] 2026年TTS模型推荐.md
+     23626     23.1KB [MEDIUM] 云服务器GPU占用查看命令.md
+     23201     22.7KB [MEDIUM] 训练方式与分词关系.md
+     22958     22.4KB [MEDIUM] 解决Redis安装问题.md
+     20941     20.5KB [MEDIUM] 中文分词技术方案深度解析.md
+     20789     20.3KB [MEDIUM] 规则引擎变更引发逻辑漏洞解析.md
+     20458     20.0KB [MEDIUM] 容器与虚拟机区别解析.md
+     20118     19.6KB [MEDIUM] 查询Intel格式汇编指令的资源推荐.md
+     19885     19.4KB [MEDIUM] 树莓派5 Ubuntu Fcitx输入法问题解决.md
+     19579     19.1KB [MEDIUM] 芯片设计前置课程学习路径.md
+     18988     18.5KB [MEDIUM] 大语言模型token与关键词区别解析.md
+     18471     18.0KB [MEDIUM] Claude Desktop 与配置管理解析.md
+     18316     17.9KB [MEDIUM] WPS加载项目录位置.md
+     17671     17.3KB [MEDIUM] Ollama模型下载报错解析.md
+     17314     16.9KB [MEDIUM] 上海高校自然语言处理硕士项目对比.md
+     17304     16.9KB [MEDIUM] VBA数据类型种类.md
+     17153     16.8KB [MEDIUM] 查看云服务器模型版本方法.md
+     16777     16.4KB [MEDIUM] 本地模型不遵守云端限制.md
+     16402     16.0KB [MEDIUM] 开源项目编译版本信息解析.md
+     15836     15.5KB [MEDIUM] 大模型带宽与token限制解析.md
+     14106     13.8KB [MEDIUM] Excel分析工具重构方案设计.md
+     13716     13.4KB [MEDIUM] DuckDuckGo MCP 配置方法.md
+     12539     12.2KB [MEDIUM] 对话总结提示词功能详解.md
+     11888     11.6KB [MEDIUM] 向量数据库与Redis区别.md
+     11829     11.6KB [MEDIUM] 华为GaussDB数据库介绍与应用场景.md
+     11411     11.1KB [MEDIUM] API缓存命中未命中解释.md
+     11162     10.9KB [MEDIUM] Excel VBA代码存储位置与编辑工具.md
+     10193     10.0KB [MEDIUM] C语言程序求两数和.md
+      9511      9.3KB [SMALL ] 树莓派Logisim图标显示问题解决方案.md
+      9260      9.0KB [SMALL ] WPS加载项AI开发环境准备.md
+      8348      8.2KB [SMALL ] 处理cc-mini超时错误.md
+      7990      7.8KB [SMALL ] CrystalDiskInfo VS2026 编译组件指南.md
+      7819      7.6KB [SMALL ] 编译器和解释器区别联系.md
+      7685      7.5KB [SMALL ] MCP含义解释.md
+      7677      7.5KB [SMALL ] 解决Git克隆HTTP2错误.md
+      7216      7.0KB [SMALL ] 国内编程模型上下文窗口对比.md
+      6980      6.8KB [SMALL ] 更换PaddleOCR模型指导.md
+      6574      6.4KB [SMALL ] 大模型API中转站概念与管理解析.md
+      6299      6.2KB [SMALL ] cc-mini工具调用错误解决.md
+      6214      6.1KB [SMALL ] Claude Code版本对比表格.md
+      6004      5.9KB [SMALL ] 稀疏与稠密模型区别及应用场景.md
+      5907      5.8KB [SMALL ] 批量复制WPS宏代码方法.md
+      5826      5.7KB [SMALL ] Codex工具介绍.md
+      5707      5.6KB [SMALL ] VBA代码重构提示词生成.md
+      5486      5.4KB [SMALL ] Claude自动放行命令.md
+      5478      5.3KB [SMALL ] Ghostty开源终端模拟器介绍.md
+      5308      5.2KB [SMALL ] cc-mini写文件源码问题分析.md
+      5288      5.2KB [SMALL ] 需求文档问题分析.md
+      5049      4.9KB [SMALL ] Claude Code技能市场指南.md
+      4977      4.9KB [SMALL ] Claude Code国内源切换与升级指南.md
+      4847      4.7KB [SMALL ] WPS加载项启用配置指南.md
+      4332      4.2KB [SMALL ] AI对色情图片的反应机制.md
+      3928      3.8KB [SMALL ] AI回复谨慎甄别标签情况说明.md
+      3919      3.8KB [SMALL ] WPS加载项查找与添加指南.md
+      3847      3.8KB [SMALL ] 社区上传模型名称解释.md
+      3416      3.3KB [SMALL ] DeepSeekV4论文国内下载渠道.md
+      2508      2.4KB [SMALL ] DeepSeek API模型版本.md
+      1576      1.5KB [SMALL ] 创建激活Python虚拟环境命令.md
+      1436      1.4KB [SMALL ] 实时调试错误翻译.md
+      1035      1.0KB [SMALL ] 文件写入工具代码分析.md
+
+---
+Total: 112 files
+BIG (>50KB): 32
+MEDIUM (10-50KB): 48
+SMALL (<=10KB): 32

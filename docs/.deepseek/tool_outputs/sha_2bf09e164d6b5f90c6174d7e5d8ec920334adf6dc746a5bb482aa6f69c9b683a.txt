@@ -1,0 +1,71 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_aa1f2fbd (explore) status=Completed
+  objective: 你是知识提取子代理。请读取文件 `01_AI与编程开发/Git本地文件夹版本控制教程.md` 的 **第1-800行**，提取其中所有的技术知识点。
+
+要求：
+- 每条知识点包含：标题（简洁概括）、核心要点（3-5句话，用中文）、关键代码/命令（如有）
+- 忽略对话中的闲聊、重复内容、无意义交互
+- 合并相似主题，避免知识点碎片化
+- 每条知识点以 `### 知识点标题` 开头
+- 添加 `**标签**:` 行标注领域标签
+- 输...
+  result: 我已完整阅读了第1-800行，以下是提取的技术知识点：
+
+---
+
+### Git 三大工具的区别与选择
+**标签**: Git, 工具链
+
+Git 安装后提供三个工具：**Git Bash**（基于 MSYS2/MinGW 的 Linux 风格命令行，支持完整 Git + Linux 命令，最推荐）；**Git CMD**（Windows 原生 CMD，仅支持 Git 命令）；**Git GUI**（图形界面，适合入门，功能有限）。日常开发应优先使用 Git Bash，因其功能最完整且支持 shell 脚本编程。右键文件夹可选择"Git Bash Here"快速在指定目录打开。
+
+关键命令：
+```bash
+cd /d/my-project   # Git Bash 中盘符用 /d 表示 D 盘
+```
+
+### Git 三区域模型与基本提交流程
+**标签**: Git, 核心概念
+
+Git 管理文件的三个逻辑区域：**工作目录**（你正在编辑的文件）、**暂存区**（`git add` 后待提交的文件）、**本地仓库**（`git commit` 后持久化的历史快照）。修改不会自动同步——每次修改后必须手动执行 `git add` 将变更加入暂存区，再执行 `git commit` 正式入库。使用 `git status` 随时查看各区域状态是最高频的操作习惯。
+
+关键命令：
+```bash
+git init                    # 在当前目录初始化仓库（创建 .git）
+git add .                   # 添加所有变更到暂存区
+git commit -m "说明"        # 提交并附信息
+git status                  # 查看工作目录与暂存区状态
+```
+
+### Git 仓库初始化与用户配置
+**标签**: Git, 配置
+
+`git init` 在当前目录创建隐藏文件夹 `.git`，存储所有版本控制数据。**Git 强制要求设置用户名和邮箱**才能提交，分为两个级别：`git config user.name/user.email`（当前项目）与 `git config --global`（全局生效）。可使用任意值，无需真实身份，仅用于提交记录标注。配置后即可进行本地版本控制，无需关联远程仓库。
+
+关键命令：
+```bash
+git init
+git config user.name "任意名字"
+git config user.email "任意@example.com"
+git config --global user.name "全局名"
+git config --global user.email "全局@example.com"
+```
+
+### 多样化暂存与提交策略
+**标签**: Git, 工作流
+
+除了全量 `git add .`，Git 提供灵活的暂存策略：`git add <file>` 指定单文件；`git add -p` 交互式分块暂存（按 y/n/s/q 选择代码段）；`git commit -am "msg"` 跳过暂存区直接提交所有已跟踪文件的修改（新文件仍需先 add）；`git commit --amend` 修正最后一次提交（补充遗漏文件或修改提交信息）。
+
+关键命令：
+```bash
+git add -p           # 交互式选择暂存片段
+git commit -am "快速提交"   # 仅对已跟踪文件生效
+git commit --amend -m "修正信息"  # 覆盖最近一次提交
+```
+
+### 版本历史查看与追溯
+**标签**: Git, 调试
+
+`git log` 查看提交历史，加 `-...
+  stats: steps=3, duration_ms=252412

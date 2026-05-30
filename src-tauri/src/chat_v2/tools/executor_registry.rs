@@ -8,7 +8,7 @@
 use std::sync::Arc;
 use tokio::time::{timeout, Duration};
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
 
 // ============================================================================
@@ -154,7 +154,7 @@ impl ToolExecutorRegistry {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
             log::info!(
@@ -162,13 +162,13 @@ impl ToolExecutorRegistry {
                 call.name,
                 call.id
             );
-            return Err("Tool execution cancelled".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 查找能处理的执行器
         let executor = self
             .get_executor(&call.name)
-            .ok_or_else(|| format!("No executor found for tool: {}", call.name))?;
+            .ok_or_else(|| ToolError::NotFound(format!("No executor found for tool: {}", call.name)))?;
 
         log::debug!(
             "[ToolExecutorRegistry] Executing tool '{}' with executor '{}'",
@@ -197,7 +197,7 @@ impl ToolExecutorRegistry {
                             call.name,
                             call.id
                         );
-                        Err("Tool execution cancelled".to_string())
+                        Err(ToolError::Cancelled)
                     }
                 }
             } else {
@@ -226,10 +226,10 @@ impl ToolExecutorRegistry {
                                     call.name,
                                     call.id
                                 );
-                                Err(format!(
+                                Err(ToolError::Timeout(format!(
                                     "Tool '{}' execution timed out after {}s",
                                     call.name, timeout_secs
-                                ))
+                                )))
                             }
                         }
                     }
@@ -239,7 +239,7 @@ impl ToolExecutorRegistry {
                             call.name,
                             call.id
                         );
-                        Err("Tool execution cancelled".to_string())
+                        Err(ToolError::Cancelled)
                     }
                 }
             } else {
@@ -252,10 +252,10 @@ impl ToolExecutorRegistry {
                             call.name,
                             call.id
                         );
-                        Err(format!(
+                        Err(ToolError::Timeout(format!(
                             "Tool '{}' execution timed out after {}s",
                             call.name, timeout_secs
-                        ))
+                        )))
                     }
                 }
             }
@@ -327,7 +327,7 @@ mod tests {
             &self,
             call: &ToolCall,
             _ctx: &ExecutionContext,
-        ) -> Result<ToolResultInfo, String> {
+        ) -> ToolResult<ToolResultInfo> {
             Ok(ToolResultInfo::success(
                 Some(call.id.clone()),
                 Some("test_block".to_string()),

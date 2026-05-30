@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -51,32 +51,32 @@ impl MemoryToolExecutor {
     fn parse_memory_type(
         raw: Option<&str>,
         default_type: MemoryType,
-    ) -> Result<MemoryType, String> {
+    ) -> ToolResult<MemoryType> {
         match raw {
             Some("fact") => Ok(MemoryType::Fact),
             Some("study") => Ok(MemoryType::Study),
             Some("note") => Ok(MemoryType::Note),
-            Some(other) => Err(format!(
+            Some(other) => Err(ToolError::InvalidArgs(format!(
                 "Invalid memory_type '{}': expected fact, study, or note",
                 other
-            )),
+            ))),
             None => Ok(default_type),
         }
     }
 
-    fn get_service(&self, ctx: &ExecutionContext) -> Result<MemoryService, String> {
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+    fn get_service(&self, ctx: &ExecutionContext) -> ToolResult<MemoryService> {
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let llm_manager = ctx
             .llm_manager
             .as_ref()
-            .ok_or("LLM manager not available")?;
+            .ok_or_else(|| ToolError::Execution("LLM manager not available".to_string()))?;
 
         let lance_store = ctx
             .vfs_lance_store
             .clone()
             .map(Ok)
             .unwrap_or_else(|| VfsLanceStore::new(vfs_db.clone()).map(Arc::new))
-            .map_err(|e| format!("Failed to create lance store: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to create lance store: {}", e)))?;
 
         Ok(MemoryService::new(
             vfs_db.clone(),
@@ -114,10 +114,10 @@ impl MemoryToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
-            return Err("Memory search cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         let service = self.get_service(ctx)?;
@@ -130,7 +130,7 @@ impl MemoryToolExecutor {
             .arguments
             .get("query")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'query' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'query' parameter".to_string()))?;
 
         let top_k = call
             .arguments
@@ -141,17 +141,17 @@ impl MemoryToolExecutor {
 
         let results = if let Some(cancel_token) = ctx.cancellation_token() {
             tokio::select! {
-                res = service.search_with_rerank(query, top_k, false) => res.map_err(|e| e.to_string())?,
+                res = service.search_with_rerank(query, top_k, false) => res.map_err(|e| ToolError::Execution(e.to_string()))?,
                 _ = cancel_token.cancelled() => {
                     log::info!("[MemoryToolExecutor] Memory search cancelled");
-                    return Err("Memory search cancelled during execution".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
             service
                 .search_with_rerank(query, top_k, false)
                 .await
-                .map_err(|e| e.to_string())?
+                .map_err(|e| ToolError::Execution(e.to_string()))?
         };
 
         // 兼容检索块与来源面板：输出统一的 sources 结构，
@@ -181,10 +181,10 @@ impl MemoryToolExecutor {
         }))
     }
 
-    async fn execute_read(&self, call: &ToolCall, ctx: &ExecutionContext) -> Result<Value, String> {
+    async fn execute_read(&self, call: &ToolCall, ctx: &ExecutionContext) -> ToolResult<Value> {
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
-            return Err("Memory read cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         let service = self.get_service(ctx)?;
@@ -197,7 +197,7 @@ impl MemoryToolExecutor {
             .arguments
             .get("note_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'note_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'note_id' parameter".to_string()))?;
 
         let note_id_owned = note_id.to_string();
 
@@ -209,17 +209,17 @@ impl MemoryToolExecutor {
 
         let result = if let Some(cancel_token) = ctx.cancellation_token() {
             tokio::select! {
-                res = read_task => res.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?,
+                res = read_task => res.map_err(|e| ToolError::Internal(e.to_string()))?.map_err(|e| ToolError::Execution(e.to_string()))?,
                 _ = cancel_token.cancelled() => {
                     log::info!("[MemoryToolExecutor] Memory read cancelled");
-                    return Err("Memory read cancelled during execution".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
             read_task
                 .await
-                .map_err(|e| e.to_string())?
-                .map_err(|e| e.to_string())?
+                .map_err(|e| ToolError::Internal(e.to_string()))?
+                .map_err(|e| ToolError::Execution(e.to_string()))?
         };
 
         match result {
@@ -241,9 +241,9 @@ impl MemoryToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         if ctx.is_cancelled() {
-            return Err("Memory write cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         let service = self.get_service(ctx)?;
@@ -327,17 +327,17 @@ impl MemoryToolExecutor {
             let title = title.clone();
             let content = content.clone();
             let folder = folder.clone();
-            tokio::task::spawn_blocking(move || -> Result<_, String> {
+            tokio::task::spawn_blocking(move || -> ToolResult<_> {
                 if let Some(ref note_id) = note_id {
                     match mode {
                         WriteMode::Append => {
                             let current = service
                                 .read(note_id)
-                                .map_err(|e| e.to_string())?
+                                .map_err(|e| ToolError::Execution(e.to_string()))?
                                 .map(|(_, c)| c)
                                 .unwrap_or_default();
                             let append_content =
-                                content.as_ref().ok_or("Missing 'content' parameter")?;
+                                content.as_ref().ok_or_else(|| ToolError::InvalidArgs("Missing 'content' parameter".to_string()))?;
                             let final_content = format!("{}\n\n{}", current, append_content);
                             service
                                 .update_by_id_with_source(
@@ -347,11 +347,11 @@ impl MemoryToolExecutor {
                                     MemoryOpSource::ToolCall,
                                     None,
                                 )
-                                .map_err(|e| e.to_string())
+                                .map_err(|e| ToolError::Execution(e.to_string()))
                         }
                         _ => {
                             if title.is_none() && content.is_none() {
-                                return Err("Missing 'title' or 'content' parameter".to_string());
+                                return Err(ToolError::InvalidArgs("Missing 'title' or 'content' parameter".to_string()));
                             }
                             service
                                 .update_by_id_with_source(
@@ -361,29 +361,29 @@ impl MemoryToolExecutor {
                                     MemoryOpSource::ToolCall,
                                     None,
                                 )
-                                .map_err(|e| e.to_string())
+                                .map_err(|e| ToolError::Execution(e.to_string()))
                         }
                     }
                 } else {
-                    let title = title.as_ref().ok_or("Missing 'title' parameter")?;
-                    let content = content.as_ref().ok_or("Missing 'content' parameter")?;
+                    let title = title.as_ref().ok_or_else(|| ToolError::InvalidArgs("Missing 'title' parameter".to_string()))?;
+                    let content = content.as_ref().ok_or_else(|| ToolError::InvalidArgs("Missing 'content' parameter".to_string()))?;
                     service
                         .write(folder.as_deref(), title, content, mode)
-                        .map_err(|e| e.to_string())
+                        .map_err(|e| ToolError::Execution(e.to_string()))
                 }
             })
         };
 
         let result = if let Some(cancel_token) = ctx.cancellation_token() {
             tokio::select! {
-                res = write_task => res.map_err(|e| e.to_string())??,
+                res = write_task => res.map_err(|e| ToolError::Internal(e.to_string()))??,
                 _ = cancel_token.cancelled() => {
                     log::info!("[MemoryToolExecutor] Memory write cancelled");
-                    return Err("Memory write cancelled during execution".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
-            write_task.await.map_err(|e| e.to_string())??
+            write_task.await.map_err(|e| ToolError::Internal(e.to_string()))??
         };
 
         if note_id.is_none() {
@@ -422,10 +422,10 @@ impl MemoryToolExecutor {
         }))
     }
 
-    async fn execute_list(&self, call: &ToolCall, ctx: &ExecutionContext) -> Result<Value, String> {
+    async fn execute_list(&self, call: &ToolCall, ctx: &ExecutionContext) -> ToolResult<Value> {
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
-            return Err("Memory list cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         let service = self.get_service(ctx)?;
@@ -461,17 +461,17 @@ impl MemoryToolExecutor {
 
         let items = if let Some(cancel_token) = ctx.cancellation_token() {
             tokio::select! {
-                res = list_task => res.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?,
+                res = list_task => res.map_err(|e| ToolError::Internal(e.to_string()))?.map_err(|e| ToolError::Execution(e.to_string()))?,
                 _ = cancel_token.cancelled() => {
                     log::info!("[MemoryToolExecutor] Memory list cancelled");
-                    return Err("Memory list cancelled during execution".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
             list_task
                 .await
-                .map_err(|e| e.to_string())?
-                .map_err(|e| e.to_string())?
+                .map_err(|e| ToolError::Internal(e.to_string()))?
+                .map_err(|e| ToolError::Execution(e.to_string()))?
         };
 
         Ok(json!({
@@ -484,10 +484,10 @@ impl MemoryToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
-            return Err("Memory update cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         let service = self.get_service(ctx)?;
@@ -500,7 +500,7 @@ impl MemoryToolExecutor {
             .arguments
             .get("note_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'note_id' parameter")?
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'note_id' parameter".to_string()))?
             .to_string();
         let title = call
             .arguments
@@ -513,7 +513,7 @@ impl MemoryToolExecutor {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
         if title.is_none() && content.is_none() {
-            return Err("Missing 'title' or 'content' parameter".to_string());
+            return Err(ToolError::InvalidArgs("Missing 'title' or 'content' parameter".to_string()));
         }
 
         // 🆕 取消支持：使用 spawn_blocking + tokio::select! 监听取消信号
@@ -532,17 +532,17 @@ impl MemoryToolExecutor {
 
         let result = if let Some(cancel_token) = ctx.cancellation_token() {
             tokio::select! {
-                res = update_task => res.map_err(|e| e.to_string())?.map_err(|e| e.to_string())?,
+                res = update_task => res.map_err(|e| ToolError::Internal(e.to_string()))?.map_err(|e| ToolError::Execution(e.to_string()))?,
                 _ = cancel_token.cancelled() => {
                     log::info!("[MemoryToolExecutor] Memory update cancelled");
-                    return Err("Memory update cancelled during execution".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
             update_task
                 .await
-                .map_err(|e| e.to_string())?
-                .map_err(|e| e.to_string())?
+                .map_err(|e| ToolError::Internal(e.to_string()))?
+                .map_err(|e| ToolError::Execution(e.to_string()))?
         };
 
         // 更新后即时索引，保证 write-then-search SLA（与 handler 路径对齐）
@@ -566,10 +566,10 @@ impl MemoryToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
-            return Err("Memory delete cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         let service = self.get_service(ctx)?;
@@ -582,22 +582,22 @@ impl MemoryToolExecutor {
             .arguments
             .get("note_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'note_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'note_id' parameter".to_string()))?;
 
         // 🆕 取消支持：使用 tokio::select! 监听取消信号
         if let Some(cancel_token) = ctx.cancellation_token() {
             tokio::select! {
-                res = service.delete_with_source(note_id, MemoryOpSource::ToolCall, None) => res.map_err(|e| e.to_string())?,
+                res = service.delete_with_source(note_id, MemoryOpSource::ToolCall, None) => res.map_err(|e| ToolError::Execution(e.to_string()))?,
                 _ = cancel_token.cancelled() => {
                     log::info!("[MemoryToolExecutor] Memory delete cancelled");
-                    return Err("Memory delete cancelled during execution".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
             service
                 .delete_with_source(note_id, MemoryOpSource::ToolCall, None)
                 .await
-                .map_err(|e| e.to_string())?
+                .map_err(|e| ToolError::Execution(e.to_string()))?
         };
         service.spawn_post_write_maintenance();
         Ok(json!({ "success": true, "note_id": note_id }))
@@ -607,9 +607,9 @@ impl MemoryToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         if ctx.is_cancelled() {
-            return Err("Memory write_smart cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         let service = self.get_service(ctx)?;
@@ -622,12 +622,12 @@ impl MemoryToolExecutor {
             .arguments
             .get("title")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'title' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'title' parameter".to_string()))?;
         let content = call
             .arguments
             .get("content")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'content' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'content' parameter".to_string()))?;
         let folder = call.arguments.get("folder").and_then(|v| v.as_str());
         let memory_type = Self::parse_memory_type(
             call.arguments.get("memory_type").and_then(|v| v.as_str()),
@@ -717,10 +717,10 @@ impl MemoryToolExecutor {
                     memory_type,
                     memory_purpose,
                     Some(idempotency_key.as_str()),
-                ) => res.map_err(|e| e.to_string())?,
+                ) => res.map_err(|e| ToolError::Execution(e.to_string()))?,
                 _ = cancel_token.cancelled() => {
                     log::info!("[MemoryToolExecutor] Memory write_smart cancelled");
-                    return Err("Memory write_smart cancelled during execution".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
@@ -746,7 +746,7 @@ impl MemoryToolExecutor {
                     Some(idempotency_key.as_str()),
                 )
                 .await
-                .map_err(|e| e.to_string())?
+                .map_err(|e| ToolError::Execution(e.to_string()))?
         };
 
         if result.event != "NONE" && result.event != "FILTERED" {
@@ -767,9 +767,9 @@ impl MemoryToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         if ctx.is_cancelled() {
-            return Err("Memory write_batch cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         let service = self.get_service(ctx)?;
@@ -781,7 +781,7 @@ impl MemoryToolExecutor {
             .arguments
             .get("items")
             .and_then(|v| v.as_array())
-            .ok_or("Missing 'items' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'items' parameter".to_string()))?;
         let default_folder = call.arguments.get("folder").and_then(|v| v.as_str());
         let default_memory_type = Self::parse_memory_type(
             call.arguments.get("memory_type").and_then(|v| v.as_str()),
@@ -804,11 +804,11 @@ impl MemoryToolExecutor {
             let title = item
                 .get("title")
                 .and_then(|v| v.as_str())
-                .ok_or("Each batch item requires 'title'")?;
+                .ok_or_else(|| ToolError::InvalidArgs("Each batch item requires 'title'".to_string()))?;
             let content = item
                 .get("content")
                 .and_then(|v| v.as_str())
-                .ok_or("Each batch item requires 'content'")?;
+                .ok_or_else(|| ToolError::InvalidArgs("Each batch item requires 'content'".to_string()))?;
             let folder = item
                 .get("folder")
                 .or_else(|| item.get("folder_path"))
@@ -858,10 +858,10 @@ impl MemoryToolExecutor {
                         Some(idempotency_key.as_str()),
                     )
                     .await
-                    .map_err(|e| e.to_string())?,
+                    .map_err(|e| ToolError::Execution(e.to_string()))?,
                 _ => service
                     .write_explicit_memory(folder, title, content, memory_type, memory_purpose)
-                    .map_err(|e| e.to_string())?,
+                    .map_err(|e| ToolError::Execution(e.to_string()))?,
             };
 
             match output.event.as_str() {
@@ -955,7 +955,7 @@ impl ToolExecutor for MemoryToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
 
         ctx.emit_tool_call_start(&call.name, call.arguments.clone(), Some(&call.id));
@@ -971,7 +971,7 @@ impl ToolExecutor for MemoryToolExecutor {
             "memory_delete" => self.execute_delete(call, ctx).await,
             "memory_write_smart" => self.execute_write_smart(call, ctx).await,
             "memory_write_batch" => self.execute_write_batch(call, ctx).await,
-            _ => Err(format!("Unknown memory tool: {}", call.name)),
+            _ => Err(ToolError::Execution(format!("Unknown memory tool: {}", call.name))),
         };
 
         let duration_ms = start_time.elapsed().as_millis() as u32;

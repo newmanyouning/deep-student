@@ -1,0 +1,41 @@
+{
+  "schema_version": 2,
+  "id": "turn_22261275",
+  "thread_id": "thr_fab6c21e",
+  "status": "completed",
+  "input_summary": "你是知识提取子代理。请从以下文件片段中提取知识点，以严格的Markdown格式输出到文件 `_chunk2_output.md`。\n\n**文件**: `01_AI与编程开发/查看云服务器模型版本方法.md`\n**行范围**: 44-195（第2个问答章节：在Docker中部署的模型如何一步步查看版本）\n\n**提取规则**:\n1. 忽略 `## ❓ unknown` 标记行、`{'type': 'TOOL_SEARCH'}` 等工具调用元数据、以及模型的内部思考文字\n2....",
+  "created_at": "2026-05-17T09:39:29.286856600Z",
+  "started_at": "2026-05-17T09:39:29.286856600Z",
+  "ended_at": "2026-05-17T09:53:11.665533700Z",
+  "duration_ms": 822378,
+  "usage": {
+    "input_tokens": 214465,
+    "output_tokens": 6251,
+    "prompt_cache_hit_tokens": 153088,
+    "prompt_cache_miss_tokens": 61377,
+    "reasoning_tokens": 708
+  },
+  "item_ids": [
+    "item_6add9810",
+    "item_4383a093",
+    "item_ade8fec0",
+    "item_9bcc36d6",
+    "item_24c5e6f0",
+    "item_3446f078",
+    "item_dcca2a15",
+    "item_9fc93a7a",
+    "item_334479de",
+    "item_a9deb3a4",
+    "item_fa66e9bc",
+    "item_8bf41f1f",
+    "item_f90455f2",
+    "item_da9b6bf9",
+    "item_a339d432",
+    "item_513570e7",
+    "item_86111453",
+    "item_eeac45fe",
+    "item_64012924",
+    "item_7104baaa"
+  ],
+  "steer_count": 0
+}

@@ -1,0 +1,102 @@
+<file path="01_AI与编程开发\考研资料上传AI知识库.md" total_lines="9481" shown_lines="9382-9481" truncated="false">
+  9382│ # 获取所有 PDF 文件，按文件名排序（确保顺序）
+  9383│ pdf_files = sorted(glob.glob(os.path.join(INPUT_DIR, "*.pdf")))
+  9384│ total = len(pdf_files)
+  9385│ print(f"找到 {total} 个 PDF 文件")
+  9386│ 
+  9387│ # 初始化 OCR pipeline（使用标准 OCR，对 PDF 支持更好）
+  9388│ print("初始化 OCR pipeline...")
+  9389│ pipeline = create_pipeline(pipeline="OCR")
+  9390│ print("初始化完成！")
+  9391│ 
+  9392│ start_time = time.time()
+  9393│ processed = 0
+  9394│ skipped = 0
+  9395│ 
+  9396│ for idx, pdf_path in enumerate(pdf_files, 1):
+  9397│     # 生成输出文件名：将输入文件名后缀改为 .md
+  9398│     base = os.path.basename(pdf_path)
+  9399│     name_without_ext = os.path.splitext(base)[0]
+  9400│     out_file = os.path.join(OUTPUT_DIR, name_without_ext + ".md")
+  9401│ 
+  9402│     # 如果输出文件已存在，则跳过（断点续传）
+  9403│     if os.path.exists(out_file):
+  9404│         print(f"[{idx}/{total}] 跳过 {base}（已处理）")
+  9405│         skipped += 1
+  9406│         continue
+  9407│ 
+  9408│     print(f"[{idx}/{total}] 正在处理 {base}...")
+  9409│     try:
+  9410│         # 执行预测，返回生成器
+  9411│         gen = pipeline.predict(pdf_path)
+  9412│         results = list(gen)  # 消费所有结果
+  9413│         # 提取文本（假设文本在 'text' 字段）
+  9414│         text_content = ""
+  9415│         for res in results:
+  9416│             if 'text' in res:
+  9417│                 text_content += res['text'] + "\n"
+  9418│             else:
+  9419│                 # 如果没有 'text' 字段，则将整个结果转为字符串（备用）
+  9420│                 text_content += str(res) + "\n"
+  9421│ 
+  9422│         # 写入文件
+  9423│         with open(out_file, "w", encoding="utf-8") as f:
+  9424│             f.write(text_content)
+  9425│ 
+  9426│         processed += 1
+  9427│         elapsed = time.time() - start_time
+  9428│         avg_time = elapsed / idx
+  9429│         remaining = avg_time * (total - idx)
+  9430│         print(f"   ✅ 完成，文本长度 {len(text_content)}，剩余约 {timedelta(seconds=int(remaining))}")
+  9431│     except Exception as e:
+  9432│         print(f"   ❌ 处理失败：{e}")
+  9433│         # 可记录错误日志，这里简单跳过
+  9434│ 
+  9435│ print("\n========== 处理完成 ==========")
+  9436│ print(f"总计：{total} 页")
+  9437│ print(f"成功：{processed} 页")
+  9438│ print(f"跳过：{skipped} 页")
+  9439│ print(f"失败：{total - processed - skipped} 页")
+  9440│ print(f"结果保存在：{OUTPUT_DIR}")
+  9441│ ```
+  9442│ 
+  9443│ ### 🚀 如何使用
+  9444│ 
+  9445│ #### 1️⃣ 确保拆分文件存在
+  9446│ 在容器内执行以下命令，确认你的拆分页面在 `/data/split_pages` 下：
+  9447│ ```bash
+  9448│ ls -lh /data/split_pages/ | head
+  9449│ ```
+  9450│ 如果文件不在那里，请先上传或移动到该目录。
+  9451│ 
+  9452│ #### 2️⃣ 将脚本写入容器
+  9453│ 如果你还在容器内，直接用 `cat` 创建脚本：
+  9454│ ```bash
+  9455│ cat > /data/ocr_pages.py << 'EOF'
+  9456│ （将上面的脚本内容粘贴到这里）
+  9457│ EOF
+  9458│ ```
+  9459│ 或者如果你在宿主机有该脚本文件，可以用 `docker cp` 复制进去。
+  9460│ 
+  9461│ #### 3️⃣ 运行脚本
+  9462│ ```bash
+  9463│ python /data/ocr_pages.py
+  9464│ ```
+  9465│ 脚本会自动处理所有 PDF，生成对应的 `.md` 文件到 `/data/output`。处理过程中会显示进度和剩余时间。
+  9466│ 
+  9467│ #### 4️⃣ 下载结果
+  9468│ 处理完成后，在本地电脑执行：
+  9469│ ```powershell
+  9470│ scp -i "C:\Users\国检中心\Downloads\考研资料.pem" -r ecs-user@8.135.25.246:/home/ecs-user/output ./ocr_results
+  9471│ ```
+  9472│ （如果挂载了宿主机的 `/home/ecs-user/output`，也可以直接在宿主机访问该目录）
+  9473│ 
+  9474│ ### ⚠️ 注意事项
+  9475│ - 确保 `paddlex` 已正确安装且无冲突（建议卸载 `paddleocr`，只保留 `paddlex[ocr]`）。
+  9476│ - 如果脚本运行中因某页失败而中断，重新运行会自动跳过已生成 `.md` 的页面，从断点继续。
+  9477│ - 输出文件为纯文本格式（Markdown 内容），你可以直接导入 AI 知识库。
+  9478│ 
+  9479│ 这个脚本简单直接，应该能帮你顺利完成 OCR 识别。如果有任何问题，请把错误信息贴出来，我会立即帮你调整。
+  9480│ 
+  9481│ ---
+</file>

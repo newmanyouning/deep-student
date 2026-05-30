@@ -22,7 +22,7 @@ use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, ACCEPT_LANGUAGE, USER_AGEN
 use serde_json::{json, Value};
 use std::sync::LazyLock;
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity, ToolError, ToolResult};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -381,10 +381,10 @@ impl FetchExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
-            return Err("Fetch cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 解析参数
@@ -392,7 +392,7 @@ impl FetchExecutor {
             .arguments
             .get("url")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'url' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'url' parameter".to_string()))?;
 
         let max_length = call
             .arguments
@@ -422,18 +422,18 @@ impl FetchExecutor {
 
         // 验证 URL
         let parsed_url =
-            reqwest::Url::parse(url).map_err(|e| format!("Invalid URL '{}': {}", url, e))?;
+            reqwest::Url::parse(url).map_err(|e| ToolError::InvalidArgs(format!("Invalid URL '{}': {}", url, e)))?;
 
         // 只允许 http/https
         if parsed_url.scheme() != "http" && parsed_url.scheme() != "https" {
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "Only HTTP and HTTPS URLs are supported, got: {}",
                 parsed_url.scheme()
-            ));
+            )));
         }
 
         // P0-02 安全修复：SSRF 防护 - 检查目标 IP 是否为内网地址
-        let host = parsed_url.host_str().ok_or("Invalid URL: no host")?;
+        let host = parsed_url.host_str().ok_or(ToolError::InvalidArgs("Invalid URL: no host".to_string()))?;
         let port = parsed_url
             .port()
             .unwrap_or(if parsed_url.scheme() == "https" {
@@ -445,20 +445,20 @@ impl FetchExecutor {
         // DNS 解析 - 失败时阻止请求（防止 DNS 解析失败静默通过）
         let addrs: Vec<_> = (host, port)
             .to_socket_addrs()
-            .map_err(|e| format!("DNS resolution failed for '{}': {}", host, e))?
+            .map_err(|e| ToolError::Execution(format!("DNS resolution failed for '{}': {}", host, e)))?
             .collect();
 
         if addrs.is_empty() {
-            return Err(format!(
+            return Err(ToolError::Execution(format!(
                 "DNS resolution returned no addresses for '{}'",
                 host
-            ));
+            )));
         }
 
         // 检查所有解析的 IP 是否为内网地址
         for addr in &addrs {
             if is_internal_ip(&addr.ip()) {
-                return Err("Blocked: URL resolves to internal IP address".to_string());
+                return Err(ToolError::Execution("Blocked: URL resolves to internal IP address".to_string()));
             }
         }
 
@@ -469,7 +469,7 @@ impl FetchExecutor {
         // 第二次返回内网 IP（reqwest 重新解析时），从而绕过 SSRF 防护
         let resolved_addr = addrs
             .first()
-            .ok_or("DNS resolution succeeded but returned no addresses")?;
+            .ok_or(ToolError::Execution("DNS resolution succeeded but returned no addresses".to_string()))?;
 
         // 构建请求 URL
         // 对于 HTTPS，我们仍然使用原始 URL 发送请求，因为使用 IP 会导致 TLS 证书验证失败
@@ -500,7 +500,7 @@ impl FetchExecutor {
 
         // 🆕 取消检查：在发送请求前再次检查
         if ctx.is_cancelled() {
-            return Err("Fetch cancelled before HTTP request".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 发送 HTTP 请求
@@ -517,18 +517,18 @@ impl FetchExecutor {
         let response = if let Some(cancel_token) = ctx.cancellation_token() {
             tokio::select! {
                 result = request_builder.send() => {
-                    result.map_err(|e| format!("Failed to fetch URL '{}': {}", url, e))?
+                    result.map_err(|e| ToolError::Execution(format!("Failed to fetch URL '{}': {}", url, e)))?
                 }
                 _ = cancel_token.cancelled() => {
                     log::info!("[FetchExecutor] HTTP request cancelled for URL: {}", url);
-                    return Err("Fetch cancelled during HTTP request".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
             request_builder
                 .send()
                 .await
-                .map_err(|e| format!("Failed to fetch URL '{}': {}", url, e))?
+                .map_err(|e| ToolError::Execution(format!("Failed to fetch URL '{}': {}", url, e)))?
         };
 
         let status = response.status();
@@ -541,16 +541,16 @@ impl FetchExecutor {
             .to_string();
 
         if !status.is_success() {
-            return Err(format!(
+            return Err(ToolError::Execution(format!(
                 "HTTP request failed with status {}: {}",
                 status.as_u16(),
                 status.canonical_reason().unwrap_or("Unknown")
-            ));
+            )));
         }
 
         // 🆕 取消检查：在读取响应前检查
         if ctx.is_cancelled() {
-            return Err("Fetch cancelled before reading response".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 读取响应内容（限制大小）
@@ -558,26 +558,26 @@ impl FetchExecutor {
         let bytes = if let Some(cancel_token) = ctx.cancellation_token() {
             tokio::select! {
                 result = response.bytes() => {
-                    result.map_err(|e| format!("Failed to read response body: {}", e))?
+                    result.map_err(|e| ToolError::Execution(format!("Failed to read response body: {}", e)))?
                 }
                 _ = cancel_token.cancelled() => {
                     log::info!("[FetchExecutor] Response body read cancelled for URL: {}", url);
-                    return Err("Fetch cancelled while reading response".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
             response
                 .bytes()
                 .await
-                .map_err(|e| format!("Failed to read response body: {}", e))?
+                .map_err(|e| ToolError::Execution(format!("Failed to read response body: {}", e)))?
         };
 
         if bytes.len() > MAX_CONTENT_LENGTH {
-            return Err(format!(
+            return Err(ToolError::Execution(format!(
                 "Response too large: {} bytes (max {} bytes)",
                 bytes.len(),
                 MAX_CONTENT_LENGTH
-            ));
+            )));
         }
 
         // 使用编码检测解码响应内容（支持 GBK/GB18030 等非 UTF-8 编码）
@@ -784,7 +784,7 @@ impl ToolExecutor for FetchExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let tool_name = strip_tool_namespace(&call.name);
 
@@ -799,7 +799,7 @@ impl ToolExecutor for FetchExecutor {
 
         let result = match tool_name {
             "web_fetch" => self.execute_fetch(call, ctx).await,
-            _ => Err(format!("Unknown fetch tool: {}", tool_name)),
+            _ => Err(ToolError::InvalidArgs(format!("Unknown fetch tool: {}", tool_name))),
         };
 
         let duration = start_time.elapsed().as_millis() as u64;

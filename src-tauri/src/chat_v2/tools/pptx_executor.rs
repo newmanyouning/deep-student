@@ -16,7 +16,7 @@ use std::time::Instant;
 use async_trait::async_trait;
 use serde_json::{json, Value};
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity, ToolError, ToolResult};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -39,21 +39,21 @@ impl PptxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_file_bytes(ctx, resource_id)?;
 
         // 文件大小安全检查（50MB 上限）
         if bytes.len() > 50 * 1024 * 1024 {
-            return Err(format!(
+            return Err(ToolError::Execution(format!(
                 "PPTX 文件过大: {}MB (上限 50MB)",
                 bytes.len() / 1024 / 1024
-            ));
+            )));
         }
 
         // 🔧 2026-02-16: spawn_blocking 防止同步解析阻塞 tokio 线程
@@ -62,8 +62,8 @@ impl PptxToolExecutor {
             parser.extract_text_from_bytes("presentation.pptx", bytes)
         })
         .await
-        .map_err(|e| format!("PPTX 解析任务异常: {}", e))?
-        .map_err(|e| format!("PPTX 结构化提取失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("PPTX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("PPTX 结构化提取失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -79,12 +79,12 @@ impl PptxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_file_bytes(ctx, resource_id)?;
 
@@ -94,8 +94,8 @@ impl PptxToolExecutor {
             parser.extract_pptx_metadata(&bytes)
         })
         .await
-        .map_err(|e| format!("PPTX 解析任务异常: {}", e))?
-        .map_err(|e| format!("PPTX 元数据读取失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("PPTX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("PPTX 元数据读取失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -109,12 +109,12 @@ impl PptxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_file_bytes(ctx, resource_id)?;
 
@@ -124,8 +124,8 @@ impl PptxToolExecutor {
             parser.extract_pptx_tables(&bytes)
         })
         .await
-        .map_err(|e| format!("PPTX 解析任务异常: {}", e))?
-        .map_err(|e| format!("PPTX 表格提取失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("PPTX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("PPTX 表格提取失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -140,12 +140,12 @@ impl PptxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_file_bytes(ctx, resource_id)?;
 
@@ -155,8 +155,8 @@ impl PptxToolExecutor {
             parser.extract_pptx_as_spec(&bytes)
         })
         .await
-        .map_err(|e| format!("PPTX 解析任务异常: {}", e))?
-        .map_err(|e| format!("PPTX → spec 转换失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("PPTX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("PPTX → spec 转换失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -171,17 +171,17 @@ impl PptxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
         let replacements_val = call
             .arguments
             .get("replacements")
             .and_then(|v| v.as_array())
-            .ok_or("Missing 'replacements' parameter (array of {find, replace})")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'replacements' parameter (array of {find, replace})".into()))?;
         let file_name = call
             .arguments
             .get("file_name")
@@ -194,11 +194,11 @@ impl PptxToolExecutor {
             let find = r
                 .get("find")
                 .and_then(|v| v.as_str())
-                .ok_or("Each replacement must have a 'find' field")?;
+                .ok_or(ToolError::InvalidArgs("Each replacement must have a 'find' field".into()))?;
             let replace = r
                 .get("replace")
                 .and_then(|v| v.as_str())
-                .ok_or("Each replacement must have a 'replace' field")?;
+                .ok_or(ToolError::InvalidArgs("Each replacement must have a 'replace' field".into()))?;
             replacements.push((find.to_string(), replace.to_string()));
         }
 
@@ -211,8 +211,8 @@ impl PptxToolExecutor {
             parser.extract_pptx_as_spec(&bytes)
         })
         .await
-        .map_err(|e| format!("PPTX 解析任务异常: {}", e))?
-        .map_err(|e| format!("PPTX 读取失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("PPTX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("PPTX 读取失败: {}", e)))?;
 
         let mut total_count = 0usize;
 
@@ -324,11 +324,11 @@ impl PptxToolExecutor {
         let new_bytes =
             tokio::task::spawn_blocking(move || DocumentParser::generate_pptx_from_spec(&spec))
                 .await
-                .map_err(|e| format!("PPTX 生成任务异常: {}", e))?
-                .map_err(|e| format!("PPTX 重新生成失败: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("PPTX 生成任务异常: {}", e)))?
+                .map_err(|e| ToolError::Execution(format!("PPTX 重新生成失败: {}", e)))?;
 
         // 保存到 VFS
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Internal("VFS database not available".into()))?;
         use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
 
         let blob = VfsBlobRepo::store_blob(
@@ -337,7 +337,7 @@ impl PptxToolExecutor {
             Some("application/vnd.openxmlformats-officedocument.presentationml.presentation"),
             Some("pptx"),
         )
-        .map_err(|e| format!("VFS Blob 存储失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS Blob 存储失败: {}", e)))?;
 
         let vfs_file = VfsFileRepo::create_file_in_folder(
             vfs_db,
@@ -350,7 +350,7 @@ impl PptxToolExecutor {
             None,
             None,
         )
-        .map_err(|e| format!("VFS 文件创建失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS 文件创建失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -368,11 +368,11 @@ impl PptxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let spec = call
             .arguments
             .get("spec")
-            .ok_or("Missing 'spec' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'spec' parameter".into()))?;
         let file_name = call
             .arguments
             .get("file_name")
@@ -386,13 +386,13 @@ impl PptxToolExecutor {
         let pptx_bytes =
             tokio::task::spawn_blocking(move || DocumentParser::generate_pptx_from_spec(&spec))
                 .await
-                .map_err(|e| format!("PPTX 生成任务异常: {}", e))?
-                .map_err(|e| format!("PPTX 生成失败: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("PPTX 生成任务异常: {}", e)))?
+                .map_err(|e| ToolError::Execution(format!("PPTX 生成失败: {}", e)))?;
 
         let file_size = pptx_bytes.len();
 
         // 保存到 VFS
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Internal("VFS database not available".into()))?;
         use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
 
         let blob = VfsBlobRepo::store_blob(
@@ -401,7 +401,7 @@ impl PptxToolExecutor {
             Some("application/vnd.openxmlformats-officedocument.presentationml.presentation"),
             Some("pptx"),
         )
-        .map_err(|e| format!("VFS Blob 存储失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS Blob 存储失败: {}", e)))?;
 
         let vfs_file = VfsFileRepo::create_file_in_folder(
             vfs_db,
@@ -414,7 +414,7 @@ impl PptxToolExecutor {
             None,
             folder_id,
         )
-        .map_err(|e| format!("VFS 文件创建失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS 文件创建失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -431,14 +431,14 @@ impl PptxToolExecutor {
         &self,
         ctx: &ExecutionContext,
         resource_id: &str,
-    ) -> Result<Vec<u8>, String> {
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+    ) -> ToolResult<Vec<u8>> {
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Internal("VFS database not available".into()))?;
 
         use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
 
         let file = VfsFileRepo::get_file(vfs_db, resource_id)
-            .map_err(|e| format!("VFS 查询失败: {}", e))?
-            .ok_or_else(|| format!("文件不存在: {}", resource_id))?;
+            .map_err(|e| ToolError::Execution(format!("VFS 查询失败: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound(format!("文件不存在: {}", resource_id)))?;
 
         if let Some(ref path) = file.original_path {
             if crate::unified_file_manager::is_virtual_uri(path) {
@@ -455,28 +455,28 @@ impl PptxToolExecutor {
                         path
                     );
                 } else if p.exists() {
-                    return std::fs::read(p).map_err(|e| format!("文件读取失败: {}", e));
+                    return std::fs::read(p).map_err(|e| ToolError::Execution(format!("文件读取失败: {}", e)));
                 }
             }
         }
 
         if let Some(ref blob_hash) = file.blob_hash {
             if let Ok(Some(blob_path)) = VfsBlobRepo::get_blob_path(vfs_db, blob_hash) {
-                return std::fs::read(&blob_path).map_err(|e| format!("Blob 读取失败: {}", e));
+                return std::fs::read(&blob_path).map_err(|e| ToolError::Execution(format!("Blob 读取失败: {}", e)));
             }
         }
 
         if !file.sha256.is_empty() {
             if let Ok(Some(blob_path)) = VfsBlobRepo::get_blob_path(vfs_db, &file.sha256) {
                 return std::fs::read(&blob_path)
-                    .map_err(|e| format!("Blob 读取失败 (sha256): {}", e));
+                    .map_err(|e| ToolError::Execution(format!("Blob 读取失败 (sha256): {}", e)));
             }
         }
 
-        Err(format!(
+        Err(ToolError::NotFound(format!(
             "无法加载文件内容: {} (无可用 blob_hash 或 original_path)",
             resource_id
-        ))
+        )))
     }
 }
 
@@ -505,7 +505,7 @@ impl ToolExecutor for PptxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let tool_name = strip_tool_namespace(&call.name);
 
@@ -524,7 +524,7 @@ impl ToolExecutor for PptxToolExecutor {
             "pptx_create" => self.execute_create(call, ctx).await,
             "pptx_to_spec" => self.execute_to_spec(call, ctx).await,
             "pptx_replace_text" => self.execute_replace_text(call, ctx).await,
-            _ => Err(format!("Unknown pptx tool: {}", tool_name)),
+            _ => Err(ToolError::Execution(format!("Unknown pptx tool: {}", tool_name))),
         };
 
         let duration = start_time.elapsed().as_millis() as u64;
@@ -552,14 +552,14 @@ impl ToolExecutor for PptxToolExecutor {
                 Ok(result)
             }
             Err(e) => {
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
 
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    e,
+                    e.to_string(),
                     duration,
                 );
 

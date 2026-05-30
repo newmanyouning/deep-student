@@ -1,0 +1,38 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_efeace8a (explore) status=Completed
+  objective: 读取文件提取知识点。输出格式：- **[概念名称]** — [简介] | 来源：文件名 | 核心解释：一句话。文件：C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\创建激活Python虚拟环境命令.md
+  result: ### SUMMARY
+读取了文件 `创建激活Python虚拟环境命令.md`，提取出关于 Python 虚拟环境创建与激活的核心知识点。文件内容以问答形式呈现，覆盖了跨平台（Windows/Linux/macOS）的命令行操作。
+
+### EVIDENCE
+- `创建激活Python虚拟环境命令.md:1-5` — 文件标题、对话元数据
+- `创建激活Python虚拟环境命令.md:7-9` — 用户提问：创建并激活虚拟环境需要什么命令
+- `创建激活Python虚拟环境命令.md:11-36` — 回答：使用内置 `venv` 模块创建、跨平台激活命令、补充说明
+
+### CHANGES
+None.
+
+### RISKS
+None observed.
+
+### BLOCKERS
+None.
+
+---
+
+### 提取的知识点
+
+- **Python venv 模块** — Python 内置的虚拟环境创建工具 | 来源：创建激活Python虚拟环境命令.md | 核心解释：使用 `python -m venv <文件夹名称>` 即可在当前目录下创建一个隔离的 Python 虚拟环境。
+
+- **激活虚拟环境（Windows CMD）** — 在 Windows 命令提示符中激活 Python 虚拟环境 | 来源：创建激活Python虚拟环境命令.md | 核心解释：运行 `<venv文件夹>\Scripts\activate` 即可激活，激活后提示符前会出现 `(myenv)` 字样。
+
+- **激活虚拟环境（Windows PowerShell）** — 在 Windows PowerShell 中激活 Python 虚拟环境 | 来源：创建激活Python虚拟环境命令.md | 核心解释：运行 `<venv文件夹>\Scripts\Activate.ps1` 完成激活。
+
+- **激活虚拟环境（Linux / macOS）** — 在 Linux 或 macOS 终端中激活 Python 虚拟环境 | 来源：创建激活Python虚拟环境命令.md | 核心解释：运行 `source <venv文件夹>/bin/activate` 或 `./bin/activate` 即可激活。
+
+- **deactivate 命令** — 退出当前 Python 虚拟环境 | 来源：创建激活Python虚拟环境命令.md | 核心解释：在任何被激活的虚拟环境中执行 `deactivate` 即可返回系统全局 Python 环境。
+
+- **跨平台 Python 版本兼容** — 多 Python 版本共存时的虚拟环境创建注意点 | 来源：创建激活Python虚拟环境命令.md | 核心解释：若系统同时有 Python 2 和 3，可能需要使用 `python3 -m venv` 而非 `python -m venv`。
+  stats: steps=2, duration_ms=15773

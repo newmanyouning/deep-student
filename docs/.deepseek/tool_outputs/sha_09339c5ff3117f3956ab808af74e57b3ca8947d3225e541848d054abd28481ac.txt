@@ -1,0 +1,47 @@
+--- a/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_progress.py
++++ b/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_progress.py
+@@ -0,0 +1,42 @@
++#!/usr/bin/env python3
++"""Update project_progress.md for batch 5 completion"""
++import re
++
++path = 'project_progress.md'
++with open(path, 'r', encoding='utf-8') as f:
++    content = f.read()
++
++# Add batch 5 to "已缓存文件" section
++old = '- 阿里云服务器PaddleOCR使用指南.md（5条知识点）\n\n## 缓存文件路径'
++new = '- 阿里云服务器PaddleOCR使用指南.md（5条知识点）\n\n### 第5批 (本轮新增 2026-05-17，4个中文件):\n- Excel工具开发与打包.md（4条知识点）\n- 修复PyInstaller打包命令.md（4条知识点）\n- 容器内PaddleOCR转PDF为MD.md（5条知识点）\n- 树莓派5安装Ubuntu的Java版本选择指南.md（4条知识点）\n\n## 缓存文件路径'
++content = content.replace(old, new)
++
++# Update AI领域已处理 count
++content = content.replace('| AI与编程开发 | 46/112 | ~77 |', '| AI与编程开发 | 50/112 | ~81 |')
++
++# Update knowledge_cache.md line reference
++content = re.sub(r'knowledge_cache\.md \(当前\d+行', 'knowledge_cache.md (当前1766行', content)
++
++# Update next batch to batch 6
++old_batch = '''### Step 3: 启动4个子代理处理下一批中文件
++```markdown
++下一批待处理的中文件（第5批）：
++1. 01_AI与编程开发/Excel工具开发与打包.md (29810B)
++2. 01_AI与编程开发/修复PyInstaller打包命令.md (29639B)
++3. 01_AI与编程开发/容器内PaddleOCR转PDF为MD.md (28226B)
++4. 01_AI与编程开发/树莓派5安装Ubuntu的Java版本选择指南.md (28090B)
++```'''
++new_batch = '''### Step 3: 启动4个子代理处理下一批中文件
++```markdown
++下一批待处理的中文件（第6批）：
++1. 01_AI与编程开发/拉取GitHub项目更新方法.md (27125B)
++2. 01_AI与编程开发/cc-mini参数错误排查.md (24969B)
++3. 01_AI与编程开发/GitHub SSH配置与项目克隆指南.md (24909B)
++4. 01_AI与编程开发/应用迁移方案指南.md (24829B)
++```'''
++content = content.replace(old_batch, new_batch)
++
++with open(path, 'w', encoding='utf-8') as f:
++    f.write(content)
++
++print('OK - project_progress.md updated')
+
+Created C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_progress.py (2047 bytes)

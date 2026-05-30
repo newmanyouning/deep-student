@@ -1,0 +1,24 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\06_苹果生态与设备\Mac终端切换代理方法.md" total_lines="627" shown_lines="1-20" truncated="true" next_start_line="21">
+     1│ # Mac终端切换代理方法
+     2│ 对话ID: 143c8923-5472-4767-94c7-a56d53ce16ce
+     3│ 创建时间: 2026-04-03T15:41:31.719000+08:00
+     4│ 更新时间: 2026-04-03T23:50:05.287000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ mac终端如何切换代理到特定地址？
+     9│ 
+    10│ ---
+    11│ 
+    12│ ## ❓ unknown
+    13│ 
+    14│ 用户想知道如何在Mac终端切换代理到特定地址。这涉及到设置环境变量（如http_proxy、https_proxy、all_proxy）或使用网络设置工具。我需要提供清晰的步骤。为了全面获取信息，我需要同时进行多项搜索，涵盖不同方面的内容：基础的环境变量设置方法、使用networksetup命令的方法、可能存在的第三方工具、针对特定协议（如SOCKS5）的配置、以及可能遇到的常见问题。
+    15│ {'type': 'TOOL_SEARCH'}
+    16│ {'type': 'TOOL_SEARCH'}
+    17│ {'type': 'TOOL_SEARCH'}
+    18│ {'type': 'TOOL_SEARCH'}
+    19│ {'type': 'TOOL_SEARCH'}
+    20│ 搜索结果显示了一些相关页面。为了全面了解Mac终端切换代理的方法，我们需要同时打开这些页面。
+
+[TRUNCATED] Showing lines 1-20 of 627. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\06_苹果生态与设备\Mac终端切换代理方法.md" start_line=21 max_lines=20
+</file>

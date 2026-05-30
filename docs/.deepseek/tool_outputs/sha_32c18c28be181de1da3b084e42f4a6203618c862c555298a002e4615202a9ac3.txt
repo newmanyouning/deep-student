@@ -1,0 +1,83 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_21940c11 (explore) status=Completed
+  objective: 你是知识提取子代理。请读取文件 `01_AI与编程开发/Git本地文件夹版本控制教程.md` 的 **第1576-1899行**，提取其中所有的技术知识点。
+
+要求：
+- 每条知识点包含：标题（简洁概括）、核心要点（3-5句话，用中文）、关键代码/命令（如有）
+- 忽略对话中的闲聊、重复内容、无意义交互
+- 合并相似主题，避免知识点碎片化
+- 每条知识点以 `### 知识点标题` 开头
+- 添加 `**标签**:` 行标注领域标签...
+  result: ### Git Bash 项目初始化与基本配置
+**标签**: Git, 版本控制, 命令行
+**要点**: 
+1. 使用 `git init` 在项目根目录初始化一个本地 Git 仓库，生成 `.git/` 隐藏目录。
+2. 必须配置 `user.name` 和 `user.email`，否则后续提交会失败，可使用 `git config` 命令设置本地仓库级别的用户信息。
+3. 在 Windows 环境下可通过右键文件夹选择「Git Bash Here」快速打开 Git Bash 终端并自动进入该目录。
+4. `git config` 不加 `--global` 参数时仅对当前仓库生效，适合为不同项目设定不同身份。
+
+**关键命令/代码**:
+```bash
+cd /d/your-project-folder   # 或右键文件夹 → Git Bash Here
+git init
+git config user.name "自动提交"
+git config user.email "auto@local"
+```
+
+---
+
+### .gitignore 文件的编写与最佳实践
+**标签**: Git, 版本控制, 项目配置
+**要点**: 
+1. `.gitignore` 文件放在项目根目录，用于指定 Git 不应追踪的文件和目录，避免将临时文件、日志、依赖包等纳入版本控制。
+2. 支持通配符模式匹配：`*.log` 匹配所有日志文件，`node_modules/` 匹配整个目录，`.vscode/` 忽略编辑器配置。
+3. `.DS_Store`（macOS）和 `Thumbs.db`（Windows）是常见的系统生成文件，应列入忽略列表以防止跨平台协作时的噪音。
+4. 运行中动态生成的文件（如 `.auto-commit.log`、`.pid` 文件）也应在 `.gitignore` 中声明，保持仓库干净。
+
+**关键命令/代码**:
+```
+# 忽略自动提交相关的文件
+.auto-commit.log
+.git-auto-commit.pid
+*.tmp
+*.log
+
+# 忽略编辑器文件
+.vscode/
+.idea/
+*.swp
+
+# 忽略系统文件
+.DS_Store
+Thumbs.db
+
+# 忽略依赖文件
+node_modules/
+__pycache__/
+```
+
+---
+
+### Bash 循环监控与自动提交脚本
+**标签**: Bash, Shell脚本, Git自动化
+**要点**: 
+1. 使用 `while true; do ... done` 构建无限循环，配合 `sleep 30` 实现每30秒轮询一次文件变更。
+2. `git status --porcelain` 以简洁格式输出仓库状态，适合脚本解析；管道到 `grep -q .` 检测是否有任何输出（即是否存在变更）。
+3. `git add .` 暂存所有修改，`git commit -m "message" --quiet` 静默提交，`2>/dev/null` 将错误输出重定向到空设备以抑制终端噪音。
+4. PID 文件（`.git-auto-commit.pid`）用于防止脚本重复运行：启动前检查 PID 文件是否存在，若存在则 `exit 1` 退出。
+
+**关键命令/代码**:
+```bash
+#!/bin/bash
+PID_FILE=".git-auto-commit.pid"
+if [ -f "$PID_FILE" ]; then
+    echo "⚠️  系统已在运行 (PID: $(cat $PID_FILE))"
+    exit 1
+fi
+echo $$ > "$PID_FILE"
+
+while true; do
+    i...
+  stats: steps=2, duration_ms=470053

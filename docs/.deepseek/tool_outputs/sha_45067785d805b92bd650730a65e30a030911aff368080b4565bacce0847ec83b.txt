@@ -1,0 +1,40 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_6276f5cd (explore) status=Completed
+  objective: 你是知识点提取器。读取以下文件并提取 3-8 条知识条目。
+
+文件路径: C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Ollama模型下载报错解析.md
+
+对每条知识点，按以下格式输出：
+```
+- **[主题标签]** — 一句话概括
+  - 来源文件：文件名.md
+  - 核心解释：2-4句话详细解释核心概念/原理/步骤
+```
+
+要求:...
+  result: - **[Ollama下载报错解析]** — 使用 Ollama 拉取模型时出现 `max retries exceeded` 错误，核心原因是 TCP 连接被远程服务器重置。
+  - 来源文件：Ollama模型下载报错解析.md
+  - 核心解释：错误发生在模型下载到 44% 左右时中断，提示 "max retries exceeded" 表示多次重试同一数据块均失败。具体底层原因是 `read tcp ... connection reset by peer`，即服务器端主动关闭了 TCP 连接，可能源于网络不稳定、服务器负载高、IPv6 路由问题或防火墙干扰。
+
+- **[IPv6引起的连接问题]** — 使用 IPv6 地址连接 Ollama 下载服务器时，可能因 IPv6 路由不稳定导致连接被重置。
+  - 来源文件：Ollama模型下载报错解析.md
+  - 核心解释：错误日志显示客户端使用 IPv6 地址（`[2409:...]`）连接服务器的 IPv6 地址（`[2606:...]`），某些网络环境下 IPv6 链路不稳定或被阻断。解决方法是在 macOS 系统设置中将当前网络的 "配置 IPv6" 改为 "仅限本地链接" 或 "关闭"，或使用终端命令 `sudo networksetup -setv6off Wi-Fi` 临时禁用 IPv6。
+
+- **[Ollama模型断点续传]** — Ollama 支持断点续传，直接重试下载命令可从中断处继续，无需重新下载整个模型。
+  - 来源文件：Ollama模型下载报错解析.md
+  - 核心解释：遇到下载中断错误后，直接再次运行 `ollama run <模型名>` 即可从断点处继续下载，因为 Ollama 会保留已下载的数据块，只重新拉取失败的部分。这是应对临时网络故障的首选方法。
+
+- **[ollama show查看模型信息]** — 使用 `ollama show` 命令配合不同参数，可查看模型的提示词模板、系统提示词、参数配置和 Modelfile 等详细信息。
+  - 来源文件：Ollama模型下载报错解析.md
+  - 核心解释：`ollama show --template <模型名>` 查看提示词模板（定义对话格式）；`ollama show --system <模型名>` 查看系统提示词（设定模型人设）；`ollama show --modelfile <模型名>` 查看模型制作源文件；`ollama show --parameters <模型名>` 查看参数配置。在运行模型后的交互界面中输入 `/show` 也可获得同等信息。`template` 和 `system` 是两个不同概念：template 是对话格式模板，system 是模板中的可替换变量。
+
+- **[Ollama模型存储位置]** — 在 macOS 上，Ollama 下载的模型文件默认存储在隐藏目录 `~/.ollama/models/` 中。
+  - 来源文件：Ollama模型下载报错解析.md
+  - 核心解释：该目录下主要包含 `blobs`（存放模型的实际数据层）和 `manifests`（存放模型的元数据）等子目录。可通过 `du -sh ~/.ollama/models` 查看占用的磁盘空间，或用 `open ~/.ollama/models` 在 Finder 中打开。
+
+- **[OLLAMA_MODELS自定义路径]** — 通过设置 `OLLAMA_MODELS` 环境变量可更改 Ollama 模型下载的存储路径，解决磁盘空间不足问题。
+  - 来源文件：Ollama模型下载报错解析.md
+  - 核心解释：临时修改可在终端执行 `export OLLAMA_M...
+  stats: steps=3, duration_ms=15637

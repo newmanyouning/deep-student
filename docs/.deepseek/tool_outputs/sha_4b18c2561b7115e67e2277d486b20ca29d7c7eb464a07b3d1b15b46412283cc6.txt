@@ -1,0 +1,89 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" total_lines="8287" shown_lines="1-150" truncated="true" next_start_line="151">
+     1│ # Claude Code使用指南
+     2│ 对话ID: 7a9f0996-b1df-4273-b4fa-7f2423760c03
+     3│ 创建时间: 2026-04-01T12:17:52.106000+08:00
+     4│ 更新时间: 2026-04-03T17:22:04.400000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ Claude Code 是什么AI工具？需要怎样使用？
+     9│ 
+    10│ ---
+    11│ 
+    12│ ## ❓ unknown
+    13│ 
+    14│ {'type': 'SEARCH', 'results': [{'url': 'https://ai.cnmo.com/news/806515.html', 'title': 'Claude Code“被动开源” AI行业将迎来春天？ - CNMO科技', 'snippet': 'Claude Code在很多地方都做了上下文优化，比如动态注入信息、共享缓存、按需加载技能、压缩历史、总结工具结果。它不会把很多废话带进下一轮，而是尽量保留关键事实，丢掉没用噪音。', 'cite_index': 1, 'published_at': 1774972800.0, 'site_name': 'CNMO', 'site_icon': 'https://cdn.deepseek.com/site-icons/cnmo.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://help.aliyun.com/zh/model-studio/claude-code-coding-plan', 'title': 'Claude Code', 'snippet': '1. 前置条件：需要先安装 Node.js（v18.0 或更高版本）。2. 若已安装 Node.js，执行命令：npm install -g @anthropic-ai/claude-code，安装完成后执行 claude --version 验证安装是否成功。请帮我安装 Claude Code。', 'cite_index': 2, 'published_at': 1771948800.0, 'site_name': '阿里云文档中心', 'site_icon': 'https://cdn.deepseek.com/site-icons/aliyun.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.eet-china.com/mp/a484854.html', 'title': '来了来了，Claude Code 全架构解析 ！！！', 'snippet': 'Claude Code 是用 TypeScript/Node.js 写的 CLI 工具。在 Node.js 生态里，最主流的发布方式就是打成 npm 包，然后用户通过npm install -g @anthropic-ai/claude-code 全局安装。', 'cite_index': 3, 'published_at': 1774972800.0, 'site_name': '电子工程专辑', 'site_icon': 'https://cdn.deepseek.com/site-icons/eet-china.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://developer.aliyun.com/article/1710394', 'title': 'Claude Code 安装指南', 'snippet': 'Mac 也可以使用 Homebrew 的方式安装： brew install --cask claude-code Windows CMD 安装方式： REM 安装稳定版本（默认） curl -fsSL https://claude.ai/install.cmd', 'cite_index': 4, 'published_at': 1770134400.0, 'site_name': '阿里云开发者社区', 'site_icon': 'https://cdn.deepseek.com/site-icons/aliyun.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://zeabur.com/zh-TW/templates/5LDAVF', 'title': 'Claude Code 部署教學', 'snippet': 'Claude Code 是 Anthropic 官方的 AI 程式設計代理 CLI。它能理解您的程式碼庫、生成和編輯程式碼、執行命令，並協助完成複雜的開發任務——全部透過命令列完成。 此模板將 Claude Code 部署為 Zeabur 上的持久化開發者工作站...', 'cite_index': 5, 'published_at': 1774800000.0, 'site_name': 'Zeabur', 'site_icon': 'https://cdn.deepseek.com/site-icons/zeabur.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://cloud.tencent.cn/developer/article/2556434?from=15425&frompage=seopage', 'title': '一份全面的Claude Code高级技巧指南：命令使用以及工具API Key环境配置', 'snippet': '在安装 Claude Code 之前，请确保您的电脑已经安装了 Node.js。您可以在终端（命令行工具）中通过一个简单的命令来检查 ... - "在终端中运行npm install -g claude-code 命令。-g 参数表示进行全局安装，安装完成后，您就可以在任何项目中使用 Claude Code 了。"', 'cite_index': 6, 'published_at': 1755532800.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/tencent.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.pconline.com.cn/ai/1941/19419063.html?ad=9348', 'title': 'claude code如何使用', 'snippet': 'Claude Code支持跨文件编辑，能自动修复代码中的错误。开发者可通过自然语言指令请求代码建议、修改建议或自动修复。同时，它还能执行测试、进行代码质量检查，确保代码质量 ... Claude Code能搜索Git历史记录、解决合并冲突、创建提交和Pull Request。', 'cite_index': 7, 'published_at': 1751126400.0, 'site_name': '太平洋科技', 'site_icon': 'https://cdn.deepseek.com/site-icons/pconline.com.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://cloud.tencent.cn/developer/article/2583914?from=15425&frompage=seopage', 'title': 'Windows 装 Claude Code：我踩过的坑和实用操作心得', 'snippet': '打开 VS Code，按Ctrl+Shift+X调出扩展面板，搜 “Claude AI”—— 我选的是那个蓝色机器人图标的 “Claude by Anthropic”，官方合作的应该靠谱。点 “安装” 的时候，我家 WiFi 信号不好，进度条卡了三次，后来切了手机热点才装上，前后花了快 20 秒。', 'cite_index': 8, 'published_at': 1762185600.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/tencent.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://developer.aliyun.com/article/1708403', 'title': 'Claude Code 插件登陆 VS Code：开发者迎来 AI 编程新利器', 'snippet': '简介： Anthropic正式发布Claude Code——VS Code官方插件，支持多语言智能补全、代码解释、错误诊断与安全重构。隐私优先、长上下文（200K tokens）处理能力强，显著优于Copilot的可解释性与代码质量，已获开发者广泛好评。（239字）', 'cite_index': 9, 'published_at': 1769184000.0, 'site_name': '阿里云开发者社区', 'site_icon': 'https://cdn.deepseek.com/site-icons/aliyun.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://developer.qiniu.io/aitokenapi/13085/claude-code-configuration-instructions', 'title': 'Anthropic API 兼容和 Claude Code 配置', 'snippet': '第二步：安装 Claude Code # 通过 npm 全局安装（官方推荐） npm install -g @anthropic-ai/claude-code ## 第三步：配置认证信息 Claude Code 支持两种配置方式：settings.json 文件配置（推荐）和环境变量配置。', 'cite_index': 10, 'published_at': 1764518400.0, 'site_name': 'qiniu.io', 'site_icon': 'https://cdn.deepseek.com/site-icons/qiniu.io', 'query_indexes': [1], 'is_hidden': False}]}
+    15│ 嗯，用户想了解Claude Code是什么AI工具以及如何使用。这是一个关于AI编程工具的实用性问题，用户可能是开发者，想尝试使用这个工具来辅助编程。
+    16│ 
+    17│ 我需要从两个层面回答：先解释这个工具是什么、有什么特点，然后给出具体的使用方法。如果搜索结果足够充分，我会按安装配置、使用方式、高级功能这几个方面来组织信息。
+    18│ 
+    19│ 看搜索结果，信息相当丰富。有个搜索结果对Claude Code的架构剖析非常透彻[citation:1]，解释了它不是简单的聊天机器人，而是有动态提示词组装、多Agent协作、工具调用链等完整机制，这能很好地回答"是什么"的问题。另一个技术解析也很详细[citation:3]，提到系统有六层架构、53个工具、87个斜杠命令，还提到一个有趣的Buddy宠物系统，这些都能帮助用户理解工具的独特之处。
+    20│ 
+    21│ 关于使用方法，有好几个搜索结果提供了安装指南[citation:2][citation:4]。阿里云文档[citation:2]给出了npm安装命令、settings.json配置方法，还提到了Claude Code IDE插件的使用。有个博客文章[citation:8]提供了很实用的Windows使用经验，包括VS Code插件的安装步骤、API密钥的安全管理建议，这些都是实战经验。
+    22│ 
+    23│ 还有几个结果涉及MCP扩展[citation:2][citation:6]和Claude.md文件配置[citation:2][citation:7]，可以用来补充高级功能介绍。七牛云的文档[citation:10]提供了完整的配置示例，权威性也不错。
+    24│ 
+    25│ 考虑到用户可能在手机端阅读，我会用简洁的结构呈现：先用一句话点明工具本质，再分核心特点、基本使用步骤、高级功能三个板块。关键的命令和代码会突出显示，方便用户复制使用。关于模型选择和成本控制的建议来自多个搜索结果[citation:3][citation:8]，是实用的补充信息。
+    26│ Claude Code是Anthropic推出的**AI编程助手**，最大特点是不只聊天，更像一个能帮你干活的**数字同事**。它通过命令行运行，能理解整个项目、改代码、跑命令、修bug，甚至自动提交Git[citation:1][citation:3][citation:7]。
+    27│ 
+    28│ ### ✨ 核心特点
+    29│ 它厉害的地方不是“模型更聪明”，而是**工程化**做得很好[citation:1]：
+    30│ - **团队协作**：内部有不同角色分工，有的负责研究，有的负责执行[citation:1]。
+    31│ - **自动规划**：执行复杂任务（如重构）时会先生成计划给你确认，避免乱改[citation:2][citation:3]。
+    32│ - **上下文管理**：自动压缩对话历史，防止聊着聊着就“失忆”了，能省不少Token[citation:1]。
+    33│ - **权限控制**：改文件前会问你要权限，安全感拉满[citation:1][citation:3]。
+    34│ - **萌宠彩蛋**：内置“Buddy”系统，可以养一只电子宠物陪你写代码，还能提升用户粘性[citation:3]。
+    35│ 
+    36│ ### 🛠️ 使用步骤（Windows/Mac/Linux）
+    37│ 使用前需要准备**Anthropic API Key**，或者购买Pro/Max订阅[citation:8]。如果没有，也可以配置三方代理[citation:2][citation:10]。
+    38│ 
+    39│ 1. **安装Node.js**
+    40│    需要18.0或更高版本，终端输入`node -v`检查[citation:2][citation:4]。
+    41│ 2. **全局安装**
+    42│    ```bash
+    43│    npm install -g @anthropic-ai/claude-code
+    44│    ```
+    45│    Mac用户也可以用Homebrew：`brew install --cask claude-code`[citation:4]。
+    46│ 3. **配置密钥（最关键）**
+    47│    **千万不要把Key写死在代码里！**
+    48│    建议用配置文件（`~/.claude/settings.json`）：
+    49│    ```json
+    50│    {
+    51│      "env": {
+    52│        "ANTHROPIC_AUTH_TOKEN": "sk-your-key-here",
+    53│        "ANTHROPIC_BASE_URL": "https://api.anthropic.com"
+    54│      }
+    55│    }
+    56│    ```
+    57│    *注意：如果使用三方代理，记得修改`ANTHROPIC_BASE_URL`*[citation:10]。
+    58│ 4. **启动使用**
+    59│    进入项目目录，输入`claude`回车即可[citation:4][citation:8]。
+    60│ 
+    61│ ### 🚀 三种使用方式
+    62│ - **终端直接问**：`claude "修复这个bug"`，也可以加`-p`参数一次性执行[citation:4][citation:6]。
+    63│ - **VS Code插件**：搜索“Claude Code”安装，装好后可以直接右键选中代码，让Claude帮你解释或修改，改完还能用**Diff视图**直观看到变化，比纯命令行好用很多[citation:2][citation:8][citation:9]。
+    64│ - **高级集成**：支持MCP协议，可以给它联网搜索、连接数据库等新能力[citation:2][citation:6]。
+    65│ 
+    66│ ### 💡 给新手的建议
+    67│ - **先开Plan模式**：执行命令前输入`/plan`，让它只出方案不改代码，确认了再动手，避免翻车[citation:2]。
+    68│ - **用好`/init`**：在新项目跑一下这个命令，生成`CLAUDE.md`文件，让它记住项目规则[citation:6][citation:7]。
+    69│ - **巧用快捷键**：在IDE里把生成代码设成快捷键（如`Ctrl+Alt+C`），效率直接起飞[citation:8]。
+    70│ - **选对模型**：简单任务用**Haiku**，日常用**Sonnet**（性价比高），特别复杂再请**Opus**，别一上来就用最强的，费钱[citation:8]。
+    71│ 
+    72│ > 2026年3月底，Claude Code发生过一次源码意外泄露，虽然是不小心，但也让开发者看到了它强大的内部设计，甚至出现了很多模仿它的开源项目[citation:1][citation:3]。
+    73│ 
+    74│ ---
+    75│ 
+    76│ ## ❓ unknown
+    77│ 
+    78│ 这个AI工具可以接入其他的大模型吗？源码泄露之后有没有人修改模型接口为Deepseek
+    79│ 
+    80│ ---
+    81│ 
+    82│ ## ❓ unknown
+    83│ 
+    84│ {'type': 'SEARCH', 'results': [{'url': 'https://cloud.tencent.cn/developer/article/2636037?policyId=1004', 'title': 'Claude Code+GLM 5 安装配置与10个快速上手技巧！', 'snippet': '接下来，就以GLM-5 (智谱AI) 为例，分享一下，在国内如何在Claude Code接入国产AI大模型。 如果你想接入Kimi K2.5、MiniMax-M2.5等大模型，方法也是一样的', 'cite_index': 1, 'published_at': 1773072000.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/tencent.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://blog.csdn.net/liuruiaaa/article/details/159694848', 'title': 'DeepSeek 揭秘：拿到 Claude Code 源码，换个低配模型也能复刻Claude Code？', 'snippet': '系统提示词是“说明书”：泄露的源码中必然包含了驱动整个AI Agent工作的核心系统提示词。这些提示词详细规定了模型应该如何思考、规划、调用工具以及格式化回复。这是引导模型行为的“操作手册”...', 'cite_index': 2, 'published_at': 1774886400.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/csdn.net', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.163.com/dy/article/KPE895LS05119FMA.html', 'title': '中国 AI 公司，该怎么「抄 Claude Code 的作业」？', 'snippet': '很多人第一反应是：Claude Code 不就是一个套了模型 API 的命令行工具吗？源代码泄露了又怎样，没有模型权重，这些代码不过是个「壳子」。 这个判断对了一半。Claude Code 确实是个壳子...', 'cite_index': 3, 'published_at': 1774972800.0, 'site_name': '网易', 'site_icon': 'https://cdn.deepseek.com/site-icons/163.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://docs.infini-ai.com/posts/use-claude-code.html', 'title': '使用 Claude Code 集成 GenStudio API | 无问芯穹文档', 'snippet': '通过 GenStudio，您可以在 Claude Code 中使用智谱 GLM 系列等多种大语言模型，享受灵活的模型选择和稳定的 API 服务。 重要 已知问题 1：Claude Code v2.0.7x 版本中，~/.claude/settings.json', 'cite_index': 4, 'published_at': 1774368000.0, 'site_name': '无问芯穹', 'site_icon': 'https://cdn.deepseek.com/site-icons/infini-ai.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://promptfoo.dev/lm-security-db/vuln/implicit-prompt-code-jailbreak-c44c4e65', 'title': 'Implicit Prompt Code Jailbreak', 'snippet': 'Implicit Prompt Code Jailbreak Affected Models:Claude 3.5 Sonnet, Code Llama 13B Instruct, DeepSeek Coder 7B, DeepSeek V3, Gemini 2.0, GPT-4, Qwen Plus', 'cite_index': 5, 'published_at': 1740758400.0, 'site_name': 'Promptfoo', 'site_icon': 'https://cdn.deepseek.com/site-icons/promptfoo.dev', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.ccidnet.com/news/1101145.jhtml', 'title': '愚人节大瓜？51万行代码裸奔，Anthropic 亲手“开源”-赛迪网', 'snippet': '泄露之前，外界普遍认为Claude Code不过是一个围绕LLM API的命令行"套壳"工具。但51.2万行源码彻底打破了这种认知。 这是一个具有工业级复杂度的生产系统：QueryEngine.ts文件长达46...', 'cite_index': 6, 'published_at': 1774972800.0, 'site_name': '赛迪网', 'site_icon': 'https://cdn.deepseek.com/site-icons/ccidnet.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://help.aliyun.com/zh/api-gateway/ai-gateway/use-cases/migrate-the-official-claude-code-model-to-any-model-using-ai-gateway', 'title': '使用AI网关迁移Claude Code官方模型至任意模型', 'snippet': '当用户使用Claude Code进行开发辅助，但无法使用官方模型时，可通过AI网关将Claude Code使用的模型从官方模型迁移到其他模型服务。 通过AI网关，可实现： 统一接入：统一入口屏蔽各家模型协议差异。', 'cite_index': 7, 'publish
+[TRUNCATED] Showing lines 1-150 of 8287. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" start_line=151 max_lines=150
+
+[TRUNCATED] The selected range exceeded 16KB. Continue with a smaller max_lines value.
+</file>

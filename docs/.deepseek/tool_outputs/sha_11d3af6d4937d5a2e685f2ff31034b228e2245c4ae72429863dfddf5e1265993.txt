@@ -1,0 +1,30 @@
+--- a/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_list_files.py
++++ b/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_list_files.py
+@@ -0,0 +1,25 @@
++import os
++import sys
++
++# Force UTF-8 output
++sys.stdout.reconfigure(encoding='utf-8', errors='replace')
++
++d = r'C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发'
++files = []
++for f in os.listdir(d):
++    fp = os.path.join(d, f)
++    if os.path.isfile(fp):
++        sz = os.path.getsize(fp)
++        files.append((sz, f))
++
++files.sort(reverse=True)
++for sz, name in files:
++    kb = sz / 1024
++    tag = "BIG" if sz > 50000 else ("MEDIUM" if sz > 10000 else "SMALL")
++    print(f'{sz:>10} {kb:>8.1f}KB [{tag:6s}] {name}')
++
++print(f'\n---')
++print(f'Total: {len(files)} files')
++print(f'BIG (>50KB): {sum(1 for s,n in files if s > 50000)}')
++print(f'MEDIUM (10-50KB): {sum(1 for s,n in files if 10000 < s <= 50000)}')
++print(f'SMALL (<=10KB): {sum(1 for s,n in files if s <= 10000)}')
+
+Created C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_list_files.py (792 bytes)

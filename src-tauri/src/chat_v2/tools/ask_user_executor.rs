@@ -24,7 +24,7 @@ use serde_json::json;
 use tokio::sync::oneshot;
 
 use super::arg_utils::get_json_array_arg;
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolExecutor, ToolError, ToolResult, ToolSensitivity};
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -160,7 +160,7 @@ impl ToolExecutor for AskUserExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start = Instant::now();
 
         // 1. 解析参数

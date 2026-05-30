@@ -1,0 +1,82 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\云服务器GPU占用查看命令.md" total_lines="160" shown_lines="81-160" truncated="false">
+    81│     ```
+    82│ 
+    83│ ### ⚠️ 重要前提
+    84│ 
+    85│ 请务必确保你的云服务器已经安装了 **NVIDIA 驱动**，否则系统会提示 `command not found` [citation:1][citation:7][citation:9]。如果还没有安装驱动，可以先执行 `lspci | grep -i nvidia` 来确认系统是否识别到了NVIDIA的硬件 [citation:7]。
+    86│ 
+    87│ ---
+    88│ 
+    89│ ## ❓ unknown
+    90│ 
+    91│ 在ubuntu22.04上面查看nvidia显卡的占用情况的命令是什么
+    92│ 
+    93│ ---
+    94│ 
+    95│ ## ❓ unknown
+    96│ 
+    97│ {'type': 'SEARCH', 'results': [{'url': 'https://www.e-com-net.com/article/1748194883920740352.htm', 'title': 'Ubuntu查看Intel&AMD&NVIDIA显卡使用情况', 'snippet': '像上面的情况并不是显卡被占用，而是空闲的状态，因为显卡要维持一个最低待机功耗。想看占用只需要用独显启动你的程序就行了，Ubuntu桌面鼠标放在程序图标上右键选择以独立显卡启动，比如Chrome浏览器就支持这个特性（需Chrome里打开硬件加速）。', 'cite_index': 1, 'published_at': None, 'site_name': 'CSDN文库', 'site_icon': 'https://cdn.deepseek.com/site-icons/e-com-net.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.yisu.com/ask/89196676.html', 'title': 'ubuntu stream8如何安装驱动', 'snippet': '检查GPU驱动 首先，你可以使用nvidia-smi命令来检查NVIDIA显卡驱动是否已经安装。如果命令执行成功，说明驱动已经安装。如果报错，则说明驱动未安装。 ### 2. 禁用Nouveau驱动', 'cite_index': 2, 'published_at': 1742227200.0, 'site_name': '亿速云', 'site_icon': 'https://cdn.deepseek.com/site-icons/yisu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://staging.snapcraft.io/nvtop', 'title': 'Install nvtop on Linux | Snap Store', 'snippet': 'Nvtop stands for Neat Videocard TOP, a (h)top like task monitor for AMD, Intel and NVIDIA GPUs. It can handle multiple GPUs and print information about them in a htop familiar way. ... Ubuntu 22.04', 'cite_index': 3, 'published_at': 1770480000.0, 'site_name': 'Snapcraft', 'site_icon': 'https://cdn.deepseek.com/site-icons/snapcraft.io', 'query_indexes': [3], 'is_hidden': False}, {'url': 'https://discourse.ubuntu.com/t/accessing-gpu-functionality/78335/7', 'title': 'Accessing GPU functionality - Support and Help - Ubuntu Community Hub', 'snippet': 'To get Plex to see the GPU I have to run two commands: sudo usermod -aG video plex sudo usermod -aG render plex after restarting Plex I can now see the GPU and use hardware trans-coding. However once the computer reboots...', 'cite_index': 4, 'published_at': 1773417600.0, 'site_name': 'Ubuntu Community Hub', 'site_icon': 'https://cdn.deepseek.com/site-icons/ubuntu.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://blog.csdn.net/q5r6s7/article/details/154589196', 'title': 'Ubuntu 22.04下NVIDIA驱动安装避坑指南：从GT1030到nvidia-smi完整流程', 'snippet': '为了更全面地了解系统推荐的驱动，我们可以使用Ubuntu内置的工具： sudo ubuntu-drivers devices 这个命令会扫描所有硬件，并给出适用于你NVIDIA显卡的驱动列表，通常会有一个标记为“recommended”的推荐版本。例如...', 'cite_index': 5, 'published_at': 1771430400.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/csdn.net', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.linuxlinks.com/excellent-utilities-nvitop/', 'title': 'Excellent Utilities: nvitop - GPU process management - LinuxLinks', 'snippet': 'We strongly recommend installing nvitop in a virtual environment. ... Using a fresh installation of Ubuntu 22.04 LTS, we first need to install pipx. $ sudo apt install pipx We can now proceed and install nvitop in an isolated virtual environment. Issue the command...', 'cite_index': 6, 'published_at': 1678982400.0, 'site_name': 'LinuxLinks', 'site_icon': 'https://cdn.deepseek.com/site-icons/linuxlinks.com', 'query_indexes': [3], 'is_hidden': False}, {'url': 'https://linuxhint.com/update-nvidia-drivers-ubuntu-22-04-lts/', 'title': 'How to Update the NVIDIA Drivers on Ubuntu 22.04 LTS', 'snippet': 'In this article, we will show you how to check if the newer ... To find the version number of the currently installed NVIDIA GPU drivers of your Ubuntu machine, run the following command: $ nvidia-smi ... You can confirm that the latest version of the NVIDIA drivers is installed successfully using the nvidia-smi command. As you can see...', 'cite_index': 7, 'published_at': None, 'site_name': 'Linux Hint', 'site_icon': 'https://cdn.deepseek.com/site-icons/linuxhint.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://ossmalta.eu/how-to-check-gpu-intel-amd-nvidia-usage-in-ubuntu-22-04-20-04/?amp=1', 'title': 'How to Check GPU (Intel/AMD/NVIDIA) Usage in Ubuntu 22.04 | 20.04', 'snippet': 'Install nvtop in Ubuntu ... 1. First, press Ctrl+Alt+T on keyboard to open terminal. ... Type user password (no asterisk feedback) when it asks and hit Enter to continue. 2. Then, run command to install the tool: sudo apt install nvtop', 'cite_index': 8, 'published_at': 1670342400.0, 'site_name': 'Open Source Society Malta', 'site_icon': 'https://cdn.deepseek.com/site-icons/ossmalta.eu', 'query_indexes': [3], 'is_hidden': False}, {'url': 'https://muckrack.com/link/zz1hqk/ubuntu2204nvidia_ubuntu2204-nvidia-csdn', 'title': 'Muck Rack | For journalists and public relations', 'snippet': '前言 ubuntu22.04操作系统安装NVIDIA驱动，使用nvidia-smi查看加速卡使用情况。 一、环境 操作系统版本：Ubuntu 22.04.3 LTS (GNU/Linux 5.15.0-119-generic x86_64) nvidia-driver版本：nvidia-driver-535 二、安装步骤 2.1', 'cite_index': 9, 'published_at': 1742140800.0, 'site_name': 'Muck Rack', 'site_icon': 'https://cdn.deepseek.com/site-icons/muckrack.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://ubuntuhandbook.org/index.php/2022/12/gpu-usage-ubuntu-22-04/?share=reddit', 'title': 'How to Monitor GPU Usage in Ubuntu 24.04 | 22.04', 'snippet': 'Install nvtop in Ubuntu: The tool is available in Ubuntu system repository, but old for Ubuntu 22.04 and Ubuntu 20.04. For the latest version, it has an official PPA contains the most recent package.', 'cite_index': 10, 'published_at': 1714924800.0, 'site_name': 'UbuntuHandbook', 'site_icon': 'https://cdn.deepseek.com/site-icons/ubuntuhandbook.org', 'query_indexes': [3], 'is_hidden': False}]}
+    98│ 嗯，用户之前问的是云服务器查看GPU占用的命令，我详细介绍了nvidia-smi及其变种。现在用户明确指定了Ubuntu 22.04系统，想知道查看NVIDIA显卡占用情况的命令。这说明用户可能已经在Ubuntu 22.04上配置好了环境，需要确认具体怎么操作。
+    99│ 
+   100│ 我需要围绕Ubuntu 22.04这个具体场景，提供实用的监控命令方案。如果搜索结果充分，我打算先介绍最基础必备的nvidia-smi命令，再介绍几个更友好的工具如nvtop、nvitop和gpustat，让用户可以根据需求选择。
+   101│ 
+   102│ 看搜索结果，有几个直接相关的技术博客和教程非常有价值。一个CSDN博客详细介绍了Ubuntu 22.04下nvidia-smi的基础用法和pmon命令[citation:1]，另一个博客讲述了nvidia-smi用于验证驱动安装[citation:2]。关于nvtop，Snapcraft页面提供了snap安装方式[citation:3]，两个Ubuntu教程网站详细介绍了通过PPA安装nvtop的方法[citation:8][citation:10]，对Ubuntu 22.04用户非常实用。
+   103│ 
+   104│ LinuxLinks上有一篇专门介绍nvitop的文章[citation:6]，详细说明了通过pipx安装的方式。关于gpustat，虽然搜索结果中没有专门介绍，但据我所知这也是一个常用的GPU监控工具，可以作为补充推荐。
+   105│ 
+   106│ 还有几个搜索结果相关性不高：一个Ubuntu社区讨论是关于Plex服务器GPU权限问题的[citation:4]，另一个Muck Rack页面内容不完整[citation:9]，都无法采用。关于驱动更新的教程[citation:7]虽然涉及nvidia-smi，但重点不在监控命令本身。
+   107│ 
+   108│ 我准备用表格对比四种命令的特点，让用户一目了然。表格放在前面，后面详细展开每个命令的安装和使用方法。对于nvtop，Ubuntu 22.04推荐通过PPA安装[citation:8][citation:10]，nvitop推荐通过pipx安装[citation:6]，nvidia-smi作为基础工具必须提到[citation:1][citation:2]。
+   109│ 
+   110│ 最后可以提醒用户如果遇到command not found，需要先安装NVIDIA驱动，这个建议来自搜索结果中对驱动验证的说明[citation:2]。
+   111│ 在 Ubuntu 22.04 系统上，查看 NVIDIA 显卡占用情况最核心的命令依然是 **`nvidia-smi`** [citation:1][citation:2]。不过，除了这个基础命令，还有一些更友好、功能更强大的工具也完美支持 Ubuntu 22.04。
+   112│ 
+   113│ 我为你整理了四种常用的查看方式，你可以根据需求选择：
+   114│ 
+   115│ | 命令/工具 | 主要特点 | 适用场景 | Ubuntu 22.04 安装方法 |
+   116│ | :--- | :--- | :--- | :--- |
+   117│ | **`nvidia-smi`** | NVIDIA 官方工具，信息全面，系统自带（安装驱动后）[citation:1][citation:7]。 | 快速查看显存、GPU利用率、温度等核心状态。 | 安装 NVIDIA 驱动后即可使用[citation:2]。 |
+   118│ | **`nvtop`** | 类 `htop` 的交互式界面，实时显示进程、历史图表[citation:8][citation:10]。 | 希望直观、动态地监控多卡和进程。 | `sudo apt install nvtop` [citation:10] 或 `sudo snap install nvtop` [citation:3] |
+   119│ | **`nvitop`** | 交互式界面，资源占用率低，可直接操作进程[citation:6]。 | 需要像系统 `top` 命令一样管理 GPU 进程。 | `pip install nvitop` (推荐在虚拟环境中安装)[citation:6] |
+   120│ | **`gpustat`** | 对 `nvidia-smi` 输出的美化，简洁彩色显示[citation:1]。 | 只想在终端快速、美观地看一眼概要。 | `pip install gpustat` |
+   121│ 
+   122│ ### 💻 命令详解
+   123│ 
+   124│ 1.  **基础必杀技：`nvidia-smi`**
+   125│     这是最根本的命令，只要你的 NVIDIA 驱动安装正确，在终端直接输入 `nvidia-smi` 即可。你可以清晰地看到驱动版本、GPU 利用率 (`GPU-Util`)、显存占用 (`Memory-Usage`) 等核心指标 [citation:1][citation:2]。如果想持续监控，可以加上 `-l` 参数，例如每 2 秒刷新一次：`nvidia-smi -l 2`。
+   126│ 
+   127│ 2.  **交互式监控利器：`nvtop`**
+   128│     如果你觉得 `nvidia-smi` 的输出不够直观，那么 `nvtop` (Neat Video Card TOP) 会是一个绝佳选择。它提供了一个类似任务管理器的交互界面，不仅能实时显示 GPU 和显存的总体占用率，还能以进度条和图表的形式展示历史负载，并且可以按进程查看具体占用情况 [citation:8][citation:10]。
+   129│     *   **安装方法**：在 Ubuntu 22.04 上，可以直接从系统仓库安装，但版本可能较旧。推荐通过官方 PPA 安装最新版 [citation:8][citation:10]：
+   130│         ```bash
+   131│         sudo add-apt-repository ppa:flexiondotorg/nvtop
+   132│         sudo apt update
+   133│         sudo apt install nvtop
+   134│         ```
+   135│         安装后，直接在终端输入 `nvtop` 即可启动。
+   136│ 
+   137│ 3.  **Python 生态的交互神器：`nvitop`**
+   138│     如果你是一个 Python 开发者，或者喜欢更现代化的终端界面，`nvitop` 会很对胃口。它被誉为“GPU 进程管理的一站式解决方案”，界面比 `nvtop` 更紧凑，信息密度高，并且可以直接在界面中杀死进程，非常方便 [citation:6]。
+   139│     *   **安装方法**：推荐使用 `pipx` 安装，以避免依赖冲突 [citation:6]：
+   140│         ```bash
+   141│         sudo apt install pipx
+   142│         pipx install nvitop
+   143│         pipx ensurepath
+   144│         ```
+   145│         之后在终端运行 `nvitop` 即可。
+   146│ 
+   147│ 4.  **简洁之美：`gpustat`**
+   148│     如果你只想在命令行快速看一眼概况，不喜欢交互式界面，那 `gpustat` 就很适合。它本质上是美化版的 `nvidia-smi`，用不同颜色高亮显示关键信息，并可以显示使用 GPU 的进程用户名和命令 [citation:1]。
+   149│     *   **安装方法**：它是一个 Python 工具，通过 pip 安装：
+   150│         ```bash
+   151│         pip install gpustat
+   152│         ```
+   153│         使用时，直接输入 `gpustat`，或者用 `watch --color -n1 gpustat --color` 实现持续彩色监控。
+   154│ 
+   155│ ### ⚠️ 重要前提
+   156│ 在执行上述任何命令之前，请确保你的 Ubuntu 22.04 系统已经正确安装了 **NVIDIA 显卡驱动**。如果输入 `nvidia-smi` 后提示 `command not found`，说明驱动尚未安装或未正确配置 [citation:2][citation:5]。
+   157│ 
+   158│ 希望这些方法能帮你更好地监控你的 NVIDIA 显卡。如果你在安装或使用过程中遇到问题，比如驱动安装失败，可以随时再问我。
+   159│ 
+   160│ ---
+</file>

@@ -1,0 +1,66 @@
+<file path="01_AI与编程开发/Ollama模型下载报错解析.md" total_lines="183" shown_lines="120-183" truncated="false">
+   120│ > **请注意**：`template` 和 `system` 是两个不同的概念。`template` 定义了模型如何将对话历史组织成特定的格式（如包含 `[INST]` 标签），而 `system` 是 `template` 中一个可替换的变量，用于设定模型的“人设”或“行为准则”[citation:10]。
+   121│ 
+   122│ 你还可以在运行模型后，在交互界面中输入 `/show` 命令来查看相同的信息[citation:3]。
+   123│ 
+   124│ ```bash
+   125│ ollama run deepseek-coder:6.7b
+   126│ >>> /show
+   127│ Available Commands:
+   128│   /show info        查看模型的基本信息
+   129│   /show modelfile   查看模型的制作源文件Modelfile
+   130│   /show parameters  查看模型的内置参数信息
+   131│   /show system      查看模型的内置System信息
+   132│   /show template    查看模型的提示词模版
+   133│ ```
+   134│ 
+   135│ ### 📂 模型文件的存储位置
+   136│ 
+   137│ 在 macOS 系统上，Ollama 下载的模型文件默认存储在：
+   138│ 
+   139│ ```bash
+   140│ ~/.ollama/models/
+   141│ ```
+   142│ 
+   143│ 这是一个隐藏目录。你可以通过以下命令来查看它的大小或直接打开它[citation:2]：
+   144│ 
+   145│ ```bash
+   146│ # 查看模型文件夹占用的磁盘空间
+   147│ du -sh ~/.ollama/models
+   148│ 
+   149│ # 在 Finder 中打开该文件夹
+   150│ open ~/.ollama/models
+   151│ ```
+   152│ 
+   153│ 该目录下主要包含 `blobs`（存放模型的实际数据层）和 `manifests`（存放模型的元数据）等子目录[citation:7]。
+   154│ 
+   155│ ### 💡 管理与自定义模型路径
+   156│ 
+   157│ **1. 查看当前存储路径**
+   158│ 
+   159│ 如果不确定模型是否保存在默认位置，可以直接检查该目录[citation:2][citation:3]：
+   160│ 
+   161│ ```bash
+   162│ ls -la ~/.ollama/models
+   163│ ```
+   164│ 
+   165│ **2. 修改模型下载路径（推荐）**
+   166│ 
+   167│ 如果默认的 `~/.ollama/models` 目录磁盘空间不足，可以通过设置 `OLLAMA_MODELS` 环境变量来更改存储位置[citation:2][citation:4][citation:7]。
+   168│ 
+   169│ *   **临时修改（当前终端会话有效）**：
+   170│     ```bash
+   171│     export OLLAMA_MODELS="/path/to/your/new/models/directory"
+   172│     ```
+   173│ 
+   174│ *   **永久修改（推荐）**：
+   175│     将上面的命令添加到你的 shell 配置文件中（例如 `~/.zshrc`，因为 macOS 默认使用 zsh），然后重新加载配置[citation:4]：
+   176│     ```bash
+   177│     echo 'export OLLAMA_MODELS="/path/to/your/new/models/directory"' >> ~/.zshrc
+   178│     source ~/.zshrc
+   179│     ```
+   180│ 
+   181│ 配置完成后，需要重启 Ollama 服务（可以简单地重启终端或通过 `ollama serve` 重新启动），之后再下载的模型就会保存到新路径了。
+   182│ 
+   183│ ---
+</file>

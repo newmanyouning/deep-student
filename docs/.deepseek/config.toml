@@ -1,0 +1,39 @@
+api_key = "sk-b87db3f3474f42e9a2ba241b254444ed"
+auth_mode = "api_key"
+default_text_model = "deepseek-v4-pro"
+provider = "deepseek"
+reasoning_effort = "auto"
+
+[http_headers]
+
+[projects.'\\?\C:\Users\1']
+trust_level = "trusted"
+
+[projects.'\\?\C:\Users\1\Desktop']
+trust_level = "trusted"
+
+[projects.'\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md']
+trust_level = "trusted"
+
+[providers.atlascloud.http_headers]
+
+[providers.deepseek]
+api_key = "sk-b87db3f3474f42e9a2ba241b254444ed"
+
+[providers.deepseek.http_headers]
+
+[providers.fireworks.http_headers]
+
+[providers.novita.http_headers]
+
+[providers.nvidia_nim.http_headers]
+
+[providers.ollama.http_headers]
+
+[providers.openai.http_headers]
+
+[providers.openrouter.http_headers]
+
+[providers.sglang.http_headers]
+
+[providers.vllm.http_headers]

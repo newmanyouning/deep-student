@@ -1,0 +1,54 @@
+<file path="project_progress.md" total_lines="167" shown_lines="86-135" truncated="true" next_start_line="136">
+    86│ - 树莓派5 Ubuntu Fcitx输入法问题解决.md (19885B)
+    87│ - 芯片设计前置课程学习路径.md (19579B)
+    88│ - 大语言模型token与关键词区别解析.md (18988B)
+    89│ - WPS加载项目录位置.md (18316B)
+    90│ - Ollama模型下载报错解析.md (17671B)
+    91│ - 上海高校自然语言处理硕士项目对比.md (17314B)
+    92│ - VBA数据类型种类.md (17304B)
+    93│ - 查看云服务器模型版本方法.md (17153B)
+    94│ - 本地模型不遵守云端限制.md (16777B)
+    95│ - 开源项目编译版本信息解析.md (16402B)
+    96│ - 大模型带宽与token限制解析.md (15836B)
+    97│ - Excel分析工具重构方案设计.md (14106B)
+    98│ - DuckDuckGo MCP 配置方法.md (13716B)
+    99│ - 对话总结提示词功能详解.md (12539B)
+   100│ - 向量数据库与Redis区别.md (11888B)
+   101│ - 华为GaussDB数据库介绍与应用场景.md (11829B)
+   102│ - Excel VBA代码存储位置与编辑工具.md (11162B)
+   103│ - C语言程序求两数和.md (10193B)
+   104│ 
+   105│ ### 小文件 (<=10KB): 0 个（已全部处理）
+   106│ 
+   107│ ## 已缓存文件 (AI领域已处理: 38个)
+   108│ 
+   109│ ### 第1批 (已缓存):
+   110│ - API缓存命中未命中解释.md
+   111│ - Claude Desktop 与配置管理解析.md
+   112│ - 2026年TTS模型推荐.md
+   113│ - DeepSeek对话批量导出方法.md
+   114│ - Docker部署模型优势解析.md
+   115│ - AI项目token消耗估算.md
+   116│ 
+   117│ ### 第2批 (本轮新增 2026-05-17，32个小文件):
+   118│ - 实时调试错误翻译.md
+   119│ - 创建激活Python虚拟环境命令.md
+   120│ - DeepSeek API模型版本.md
+   121│ - DeepSeekV4论文国内下载渠道.md
+   122│ - 社区上传模型名称解释.md
+   123│ - WPS加载项查找与添加指南.md
+   124│ - AI回复谨慎甄别标签情况说明.md
+   125│ - AI对色情图片的反应机制.md
+   126│ - WPS加载项启用配置指南.md
+   127│ - Claude Code国内源切换与升级指南.md
+   128│ - Claude Code技能市场指南.md
+   129│ - 需求文档问题分析.md
+   130│ - cc-mini写文件源码问题分析.md
+   131│ - Ghostty开源终端模拟器介绍.md
+   132│ - Claude自动放行命令.md
+   133│ - VBA代码重构提示词生成.md
+   134│ - Codex工具介绍.md
+   135│ - 批量复制WPS宏代码方法.md
+
+[TRUNCATED] Showing lines 86-135 of 167. To continue, call read_file with path="project_progress.md" start_line=136 max_lines=50
+</file>

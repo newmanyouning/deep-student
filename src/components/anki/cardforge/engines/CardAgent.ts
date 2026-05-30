@@ -395,7 +395,7 @@ export class CardAgent {
         // 旧版 generate_anki_cards_from_document 是同步 API，不发射事件，导致前端永久等待
         // 新版使用 EnhancedAnkiService，支持流式事件发射
         // 注意：Tauri 默认使用 camelCase 参数名
-        const documentId = await invoke<string>('start_enhanced_document_processing', {
+        const documentId = await invoke<string>('enhanced_anki_start_document_processing', {
           documentContent: input.content,
           originalDocumentName: input.options?.deckName || 'Default',
           options: backendOptions,
@@ -446,14 +446,14 @@ export class CardAgent {
     try {
       switch (input.action) {
         case 'pause':
-          await invoke('pause_document_processing', { documentId: input.documentId });
+          await invoke('enhanced_anki_pause_document_processing', { documentId: input.documentId });
           return {
             ok: true,
             message: '已暂停文档处理',
           };
 
         case 'resume':
-          await invoke('resume_document_processing', { documentId: input.documentId });
+          await invoke('enhanced_anki_resume_document_processing', { documentId: input.documentId });
           const tasks = await this.getTaskStatus(input.documentId);
           return {
             ok: true,
@@ -468,7 +468,7 @@ export class CardAgent {
               message: '重试操作需要提供 taskId',
             };
           }
-          await invoke('trigger_task_processing', {
+          await invoke('enhanced_anki_trigger_task_processing', {
             task_id: input.taskId,
           });
           return {
@@ -477,7 +477,7 @@ export class CardAgent {
           };
 
         case 'cancel':
-          await invoke('delete_document_session', { documentId: input.documentId });
+          await invoke('enhanced_anki_delete_document_session', { documentId: input.documentId });
           return {
             ok: true,
             message: '已取消文档处理',
@@ -565,7 +565,7 @@ export class CardAgent {
 
           try {
             const noteType = input.noteType || 'Basic';
-            const noteIds = await invoke<(number | null)[]>('add_cards_to_anki_connect', {
+            const noteIds = await invoke<(number | null)[]>('anki_connect_add_cards', {
               selected_cards: selectedCards,
               selectedCards,
               deck_name: input.deckName,
@@ -1448,7 +1448,7 @@ export class CardAgent {
    */
   private async getSegmentCount(documentId: string): Promise<number> {
     try {
-      const tasks = await invoke<BackendDocumentTask[]>('get_document_tasks', { documentId });
+      const tasks = await invoke<BackendDocumentTask[]>('enhanced_anki_get_document_tasks', { documentId });
       return tasks.length;
     } catch {
       return 1;
@@ -1460,7 +1460,7 @@ export class CardAgent {
    */
   private async getTaskStatus(documentId: string): Promise<TaskInfo[]> {
     try {
-      const tasks = await invoke<BackendDocumentTask[]>('get_document_tasks', { documentId });
+      const tasks = await invoke<BackendDocumentTask[]>('enhanced_anki_get_document_tasks', { documentId });
       return tasks.map((t) => ({
         taskId: t.id,
         segmentIndex: t.segment_index,

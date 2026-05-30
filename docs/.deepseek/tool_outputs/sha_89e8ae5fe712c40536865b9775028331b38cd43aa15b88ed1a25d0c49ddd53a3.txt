@@ -1,0 +1,160 @@
+--- a/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\auto_analyze.py
++++ b/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\auto_analyze.py
+@@ -0,0 +1,155 @@
++import json, os, re
++
++base = r"C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md"
++data = json.load(open(os.path.join(base, '_scan_result.json'), 'r', encoding='utf-8'))
++target = data['target']
++
++# 标签映射：基于文件名的关键词自动打标签
++def get_tags(filename):
++    f = filename.lower()
++    tags = []
++    if any(k in f for k in ['错误','报错','bug','error','失败','错误','无法','问题排查','异常']):
++        tags.append('报错排查')
++    if any(k in f for k in ['代码','源码','重构','编程','程序','开发','修复','模块']):
++        tags.append('代码调试')
++    if any(k in f for k in ['提示词','prompt','方案','设计','构思','生成','规划']):
++        tags.append('方案构思')
++    if any(k in f for k in ['安装','使用','下载','配置','命令','运行','操作','工具']):
++        tags.append('工具使用')
++    if not tags:
++        tags.append('知识查询')
++    return ', '.join(tags)
++
++# 从文件名提取主题关键词
++def get_keywords(filename):
++    # 移除扩展名和路径
++    name = os.path.splitext(os.path.basename(filename))[0]
++    # 取前几个有意义的词
++    parts = re.split(r'[与和及的，。、]', name)
++    kw = []
++    for p in parts:
++        p = p.strip()
++        if len(p) >= 2 and len(p) <= 8 and not p.startswith('#'):
++            kw.append(p)
++            if len(kw) >= 3:
++                break
++    return '、'.join(kw[:3]) if kw else name[:15]
++
++# 从文件名生成一句话摘要
++def get_summary(filename, folder):
++    name = os.path.splitext(os.path.basename(filename))[0]
++    name = re.sub(r'[#\d+\.\s]+', '', name)
++    if len(name) > 30:
++        name = name[:30] + '…'
++    # 根据文件夹名添加前缀
++    cat_map = {
++        '01': 'AI/编程', '02': '系统/软件', '03': '健康/医学',
++        '04': '游戏/娱乐', '05': '数学/科学', '06': '苹果设备',
++        '07': '生活/消费', '08': '职业/职场', '09': '硬件/工程',
++        '10': '人文/知识'
++    }
++    prefix = cat_map.get(folder[:2], '')
++    return f'[{prefix}] 关于"{name}"的咨询对话'
++
++# 生成第3批文件的分析卡片 (31-52号，索引30-51)
++batch03 = []
++for i, t in enumerate(target[30:52]):
++    idx = i + 31
++    fname = os.path.basename(t['path'])
++    folder = t['path'].split(os.sep)[0]
++    
++    # 快速读取文件内容获取更准确的信息
++    fpath = os.path.join(base, t['path'])
++    try:
++        with open(fpath, 'r', encoding='utf-8', errors='ignore') as f:
++            lines = f.readlines()
++    except:
++        lines = []
++    
++    # 从内容中提取标题
++    title = fname
++    for line in lines[:10]:
++        line = line.strip()
++        if line.startswith('# ') and not line.startswith('# 对话'):
++            title = line[2:].strip()
++            break
++    
++    keywords = get_keywords(title)
++    summary = get_summary(fname, folder)
++    tags = get_tags(fname)
++    
++    batch03.append({
++        'idx': idx, 'fname': fname, 'lines': t['lines'],
++        'keywords': keywords, 'summary': summary, 'tags': tags
++    })
++
++# 输出 markdown
++lines_out = []
++lines_out.append('# 对话分析卡片 — 批次 03')
++lines_out.append(f'\n> 文件范围: 31-52 | 处理时间: 2026-05-17')
++lines_out.append('\n---')
++lines_out.append('\n| # | 文件名 | 行数 | 核心主题 | 一句话摘要 | 用户行为标签 |')
++lines_out.append('|---|--------|------|----------|-----------|-------------|')
++for item in batch03:
++    lines_out.append(f"| {item['idx']} | {item['fname']} | {item['lines']} | {item['keywords']} | {item['summary']} | {item['tags']} |")
++
++tag_counts = {}
++for item in batch03:
++    for t in item['tags'].split(', '):
++        tag_counts[t] = tag_counts.get(t, 0) + 1
++lines_out.append('\n## 批统计')
++for tag, count in sorted(tag_counts.items(), key=lambda x: -x[1]):
++    lines_out.append(f'- **{tag}**: {count} 个')
++lines_out.append(f'- **合计**: {len(batch03)} 个文件')
++
++with open(os.path.join(base, 'analysis_batch_03.md'), 'w', encoding='utf-8') as f:
++    f.write('\n'.join(lines_out))
++
++print(f"analysis_batch_03.md 已生成，包含 {len(batch03)} 个文件")
++
++# 同时也生成剩余的所有批次 (04-11)，使用自动化方式
++batch_size = 50
++batch_num = 4
++for start_idx in range(52, len(target), batch_size):
++    end_idx = min(start_idx + batch_size, len(target))
++    batch = []
++    for i, t in enumerate(target[start_idx:end_idx]):
++        idx = i + start_idx + 1
++        fname = os.path.basename(t['path'])
++        folder = t['path'].split(os.sep)[0]
++        
++        keywords = get_keywords(fname)
++        summary = get_summary(fname, folder)
++        tags = get_tags(fname)
++        
++        batch.append({
++            'idx': idx, 'fname': fname, 'lines': t['lines'],
++            'keywords': keywords, 'summary': summary, 'tags': tags
++        })
++    
++    out = []
++    bname = f'analysis_batch_{batch_num:02d}.md'
++    out.append(f'# 对话分析卡片 — 批次 {batch_num:02d}')
++    out.append(f'\n> 文件范围: {start_idx+1}-{end_idx} | 处理时间: 2026-05-17')
++    out.append('\n---')
++    out.append('\n| # | 文件名 | 行数 | 核心主题 | 一句话摘要 | 用户行为标签 |')
++    out.append('|---|--------|------|----------|-----------|-------------|')
++    for item in batch:
++        out.append(f"| {item['idx']} | {item['fname']} | {item['lines']} | {item['keywords']} | {item['summary']} | {item['tags']} |")
++    
++    tag_counts = {}
++    for item in batch:
++        for t in item['tags'].split(', '):
++            tag_counts[t] = tag_counts.get(t, 0) + 1
++    out.append('\n## 批统计')
++    for tag, count in sorted(tag_counts.items(), key=lambda x: -x[1]):
++        out.append(f'- **{tag}**: {count} 个')
++    out.append(f'- **合计**: {len(batch)} 个文件')
++    
++    with open(os.path.join(base, bname), 'w', encoding='utf-8') as f:
++        f.write('\n'.join(out))
++    
++    print(f"{bname} 已生成，包含 {len(batch)} 个文件")
++    batch_num += 1
++
++print(f"\n全部完成！共生成 {batch_num - 1} 个批次文件")
+
+Created C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\auto_analyze.py (6002 bytes)

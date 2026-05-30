@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "id": "item_a9a4339a",
+  "turn_id": "turn_17bb1203",
+  "kind": "agent_reasoning",
+  "status": "completed",
+  "summary": "读取文件并提取知识点。",
+  "detail": "读取文件并提取知识点。",
+  "artifact_refs": [],
+  "started_at": "2026-05-17T09:39:40.942917900Z",
+  "ended_at": "2026-05-17T09:39:41.888937500Z"
+}

@@ -8,7 +8,7 @@ use std::fmt;
 pub type VfsResult<T> = Result<T, VfsError>;
 
 /// VFS 错误类型
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub enum VfsError {
     /// 数据库错误
     Database(String),
@@ -193,6 +193,12 @@ impl From<rusqlite::Error> for VfsError {
 impl From<VfsError> for String {
     fn from(err: VfsError) -> Self {
         err.to_string()
+    }
+}
+
+impl From<String> for VfsError {
+    fn from(s: String) -> Self {
+        VfsError::Other(s)
     }
 }
 

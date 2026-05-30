@@ -413,7 +413,7 @@ impl ChatV2Pipeline {
         // 通过前端 mcp_tool_schemas 传递，不再需要后端自动注入。
         // 执行器 WorkspaceToolExecutor 仍然保留，负责处理 builtin-workspace_* 工具调用。
         //
-        // 旧代码已移除：后端自动注入会导致工具重复（builtin-workspace_create vs workspace_create）
+        // 旧代码已移除：后端自动注入会导致工具重复（builtin-chat_v2_workspace_create vs chat_v2_workspace_create）
         if ctx.get_workspace_id().is_some() && self.workspace_coordinator.is_some() {
             log::debug!(
                 "[ChatV2::pipeline] Workspace session detected, tools should come from builtin MCP server"
@@ -2018,7 +2018,8 @@ impl ChatV2Pipeline {
         // 🆕 委托给 ExecutorRegistry 执行
         match self.executor_registry.execute(tool_call, &ctx).await {
             Ok(result) => Ok(result),
-            Err(error_msg) => {
+            Err(error) => {
+                let error_msg = error.to_string();
                 ctx.emitter.emit_error_with_meta(
                     event_types::TOOL_CALL,
                     &ctx.block_id,

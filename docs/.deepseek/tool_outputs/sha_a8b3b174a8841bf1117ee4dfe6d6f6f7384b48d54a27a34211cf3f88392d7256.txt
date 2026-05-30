@@ -1,0 +1,34 @@
+<file path="01_AI与编程开发/查询Intel格式汇编指令的资源推荐.md" total_lines="492" shown_lines="148-177" truncated="true" next_start_line="178">
+   148│ ## `dword` 的含义
+   149│ 
+   150│ **`dword`** 是 **"double word"（双字）** 的缩写，表示 **32位（4个字节）** 的数据。
+   151│ 
+   152│ ## 数据大小层次结构
+   153│ 
+   154│ 为了更好地理解，让我们看看完整的数据大小体系：
+   155│ 
+   156│ | 术语 | 全称 | 位数 | 字节数 | 示例（Intel汇编） |
+   157│ |------|------|------|---------|-------------------|
+   158│ | **byte** | byte | 8位 | 1字节 | `mov al, 10h` |
+   159│ | **word** | word | 16位 | 2字节 | `mov ax, 1234h` |
+   160│ | **dword** | double word | 32位 | 4字节 | `mov eax, 12345678h` |
+   161│ | **qword** | quad word | 64位 | 8字节 | `mov rax, 123456789ABCDEF0h` |
+   162│ 
+   163│ ## 在汇编中的具体表现
+   164│ 
+   165│ ### 1. 寄存器大小对应关系
+   166│ ```assembly
+   167│ ; 32位寄存器对应 dword 操作
+   168│ mov eax, 12345678h    ; eax 是32位寄存器，处理 dword 数据
+   169│ mov ebx, [esi]        ; 默认传输32位（dword）
+   170│ 
+   171│ ; 如果要明确指定大小
+   172│ mov dword ptr [ebp-4], 10  ; 明确声明写入32位数据
+   173│ ```
+   174│ 
+   175│ ### 2. 数据定义中的使用
+   176│ ```assembly
+   177│ .data
+
+[TRUNCATED] Showing lines 148-177 of 492. To continue, call read_file with path="01_AI与编程开发/查询Intel格式汇编指令的资源推荐.md" start_line=178 max_lines=30
+</file>

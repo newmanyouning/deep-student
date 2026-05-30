@@ -1,0 +1,33 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_fe635ef0 (explore) status=Completed
+  objective: 读取文件提取核心知识点，输出格式：- **[概念]** — [简介] | 来源：文件名 | 核心解释：一句话
+
+文件：C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\AI项目token消耗估算.md
+  result: 文件已全部读取完毕（共946行），以下是提取的核心知识点：
+
+---
+
+### 核心知识点提取
+
+- **[小型项目token消耗估算]** — AI生成小型项目并测试完毕的典型token消耗量 | 来源：AI项目token消耗估算.md | 核心解释：极简项目（单函数+3测试用例）约800-1500 token，常规小项目（2-3模块+10测试用例+1-2次修复）约3000-6000 token，含前端界面约5000-10000 token。
+
+- **[分阶段token消耗模型]** — 将AI开发项目的token消耗拆分为初始生成、测试生成、反馈修复三个阶段分别估算 | 来源：AI项目token消耗估算.md | 核心解释：初始代码生成输入200-500+输出500-1500 token，测试生成输入300-600+输出400-1000 token，单轮修复400-800+300-800 token，三轮合计约2100-5000 token。
+
+- **[Agent全自动开发token膨胀原因]** — 全自动Agent每次迭代发送整个项目文件树+完整测试日志导致token暴增 | 来源：AI项目token消耗估算.md | 核心解释：Agent每次迭代默认将项目所有文件（30文件×500行≈50k token）作为上下文发送，加上完整测试输出（10k-50k token），300次迭代即可达3600万token。
+
+- **[增量上下文策略]** — 使用Git diff替代全量项目快照以节省token | 来源：AI项目token消耗估算.md | 核心解释：每次只发送自上次成功构建以来的文件变更（git diff），将输入token从50k降至2k-5k，节省约90%。
+
+- **[测试输出过滤策略]** — 本地预处理测试反馈，只发送最小必要信息给AI | 来源：AI项目token消耗估算.md | 核心解释：用本地脚本提取失败断言的位置/行号/错误类型，忽略警告和DataFrame打印，将测试反馈从50k token降至1k-3k，节省95%。
+
+- **[diff编辑模式]** — 让Agent输出代码diff而非完整文件以减少输出token | 来源：AI项目token消耗估算.md | 核心解释：修复代码时只发送变更的diff补丁而非整个文件，单个文件从几千token降至几十到几百token。
+
+- **[AI辅助编码 vs AI驱动编码]** — 改变工作流范式：人为主、AI为顾问而非AI全权驱 | 来源：AI项目token消耗估算.md | 核心解释：本地写好基础框架，只让AI生成差异部分（函数/类/算法），使用IDE+Copilot插件只发送当前文件小片段，节省98% token。
+
+- **[规划与执行分离]** — 先让AI输出简短修复计划、人工审核后再生成具体代码 | 来源：AI项目token消耗估算.md | 核心解释：Agent输出[PLAN]（100-300 token）和[CODE]两部分，本地脚本先判断计划合理性，避免无效重写，减少80%无效代码生成。
+
+- **[终止条件与最大重试次数]** — 为Agent设置硬性迭代上限防止无限循环 | 来源：AI项目token消耗估算.md | 核心解释：对同一错误最多尝试3次不同修复，连续3次失败输出[UNSOLVABLE]并停止；设置max_iterations=20和max_input_tokens_per_request=8000。
+
+- **[文件拆分重构优化]** — 让AI只生成拆分策略映射、由本地脚本执行实际文件移动 | 来源：AI项目token消耗估算.md | 核心解释：当文件超过300行时本地脚本触发重构，AI只输出"函数A→mo...
+  stats: steps=6, duration_ms=114047

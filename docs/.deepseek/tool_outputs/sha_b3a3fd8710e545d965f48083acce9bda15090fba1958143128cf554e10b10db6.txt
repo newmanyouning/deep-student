@@ -1,0 +1,128 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md
+@@ -1836,4 +1836,122 @@
+ 
+ - **[迁移失败后的回滚恢复流程]** — 符号链接方案可无损恢复，删除链接并将备份文件移回原位即可复原。
+   - 来源文件：应用迁移方案指南.md
+-  - 核心解释：如果迁移后程序无法启动，符号链接方案的恢复步骤为：`rmdir "C:\原程序路径"` 删除符号链接（注意是 `rmdir` 而非 `del`，因为目录交接点是目录而非文件），然后将之前重命名的备份文件夹改回原名：`ren "C:\原路径_backup" "原文件夹名"`。此操作可完全恢复原始状态，对原文件无任何损伤。若使用了系统还原点，也可直接通过系统还原回滚。对于普通复制迁移，只需将目标盘文件复制回原位置即可。
++  - 核心解释：如果迁移后程序无法启动，符号链接方案的恢复步骤为：`rmdir "C:\原程序路径"` 删除符号链接（注意是 `rmdir` 而非 `del`，因为目录交接点是目录而非文件），然后将之前重命名的备份文件夹改回原名：`ren "C:\原路径_backup" "原文件夹名"`。此操作可完全恢复原始状态，对原文件无任何损伤。若使用了系统还原点，也可直接通过系统还原回滚。对于普通复制迁移，只需将目标盘文件复制回原位置即可。
++
++### 第7批 (2026-05-17，4个中文件):
++
++- **[Claude Code 官方中文文档入口]** — Claude Code 官方中文资源的访问地址
++  - 来源文件：中文版Claude Code网页入口.md
++  - 核心解释：Claude Code 没有独立的中文版网页，但官方提供了完整的中文文档。两个主要入口：① 官方中文文档 `https://docs.anthropic.com/zh-CN/docs/claude-code/overview`；② 中文概览页 `https://code.claude.com/docs/zh-CN/overview`。此外，网页版（研究预览）地址为 `https://claude.com/product/claude-code` 或 `https://claude.com/code`，目前仅向 Claude Pro 和 Max 订阅用户开放。
++
++- **[Claude Code macOS 原生安装方法（官方推荐）]** — macOS 上一键安装 Claude Code 命令行工具
++  - 来源文件：中文版Claude Code网页入口.md
++  - 核心解释：官方推荐的一键脚本安装命令为 `curl -fsSL https://claude.ai/install.sh | bash`，无需额外安装 Node.js，支持自动更新。安装后通过 `claude --version` 验证。使用前提：macOS 10.15 以上、至少 4GB 内存（推荐 8GB）、需付费账户（Pro/Max 等）或拥有 API 用量的 Anthropic 账户。
++
++- **[Claude Code Homebrew 安装方法]** — 通过 Homebrew 包管理器安装 Claude Code
++  - 来源文件：中文版Claude Code网页入口.md
++  - 核心解释：命令为 `brew install --cask claude-code`，适合习惯用 Homebrew 管理应用的 macOS 用户。注意：通过 Homebrew 安装的版本不支持自动更新，需要手动升级。
++
++- **[Claude Code npm 安装方法]** — 通过 npm 安装 Claude Code
++  - 来源文件：中文版Claude Code网页入口.md
++  - 核心解释：命令为 `npm install -g @anthropic-ai/claude-code`，要求 Node.js 版本不低于 18。重要：不要在命令前加 `sudo`，否则可能引发权限问题。
++
++- **[Claude Code 中国 NPM 镜像加速]** — 通过 NPM 镜像加速 Claude Code 安装
++  - 来源文件：中文版Claude Code网页入口.md
++  - 核心解释：淘宝 NPM 镜像地址为 `https://registry.npmmirror.com`，安装时添加参数 `--registry=https://registry.npmmirror.com` 可加速下载。此方法仅加速安装过程，后续使用仍需被 Claude 官方支持地区的账号或合法 API 中转服务。
++
++- **[Claude Code 第三方镜像站]** — 一站式国内 Claude Code 服务入口
++  - 来源文件：中文版Claude Code网页入口.md
++  - 核心解释：国内镜像站如 `https://claude.leocoder.cn/` 或 `gaccode.com` 提供集成了账户、网络中转和环境配置的完整服务，使用门槛最低，适合国内用户在特殊网络环境下快速体验 Claude Code 功能。
++
++- **[VBA 中禁止函数嵌套定义]** — VBA 语法规则：函数必须平级定义在模块级别
++  - 来源文件：VBA代码问题分析.md
++  - 核心解释：在 VBA 中，不允许在一个函数或过程的体内再定义另一个函数或过程。每个 `Private Function` / `Public Function` / `Public Sub` 必须是模块级别的独立定义，用 `End Function` 或 `End Sub` 明确分隔。如果嵌套定义，VBA 编译器会直接报编译错误。正确做法是将所有函数按逻辑顺序平铺在同一个模块中。
++
++- **[VBA 数组重定义顺序：先赋值尺寸变量再 ReDim]** — 动态数组的正确初始化流程
++  - 来源文件：VBA代码问题分析.md
++  - 核心解释：在使用 `ReDim` 为动态数组分配空间时，如果数组的边界依赖于某个变量（如 `ReDim result.Sheets(1 To result.SheetCount)`），必须先确保该变量已经被正确赋值。若在 `SheetCount` 仍为默认值（0）时执行 `ReDim`，将创建一个空数组或触发错误。正确顺序：① 获取并赋值尺寸变量，② 再用该变量执行 `ReDim`。
++
++- **[VBA 中使用 AscW 而非 Asc 处理 Unicode 字符]** — JSON 序列化时的字符编码安全
++  - 来源文件：VBA代码问题分析.md
++  - 核心解释：VBA 中 `Asc()` 函数返回的是 ANSI 字符码（对中文等 Unicode 字符只返回首字节，结果不可靠），而 `AscW()` 返回的是真正的 Unicode 码点（宽字符）。在需要判断或转义字符（如 JSON 转义、文本清洗）时，应使用 `AscW` 以正确处理中文、日文等非 ANSI 字符。此外，JSON 规范原生支持 UTF-8，中文等 Unicode 字符可以直接输出，不一定需要转义为 `\uXXXX` 形式。
++
++- **[VBA 中判断单元格数据类型的标准方法链]** — Excel 单元格值的类型识别顺序
++  - 来源文件：VBA代码问题分析.md
++  - 核心解释：在 VBA 中处理 Excel 单元格值时，推荐按以下顺序判断类型：① `IsError()` —— 检测错误值（如 `#N/A`、`#VALUE!`）；② `IsEmpty()` 或 `IsNull()` —— 检测空值；③ `IsNumeric()` —— 检测数字；④ `IsDate()` —— 检测日期；⑤ `TypeName() = "Boolean"` —— 检测布尔值；⑥ 其余归为字符串。此顺序可避免误判（如日期被 `IsNumeric` 匹配为数字），且每种类型需要不同的 JSON 序列化方式。
++
++- **[VBA 中检测和处理合并单元格]** — MergeCells 与 MergeArea 属性的使用
++  - 来源文件：VBA代码问题分析.md
++  - 核心解释：在 VBA 中，`Range.MergeCells` 属性返回 `Boolean`，指示单元格是否属于合并区域。若为 `True`，可通过 `Range.MergeArea.Address` 获取合并区域的完整地址（如 `"A1:C3"`）。遍历工作表时，合并区域内的每个单元格 `MergeCells` 都是 `True`，且 `MergeArea` 返回相同的区域地址，需注意序列化时避免重复数据。
++
++- **[VBA 手动构建 JSON 字符串的字符转义]** — 逐字符构建 JSON 时需转义的特殊字符
++  - 来源文件：VBA代码问题分析.md
++  - 核心解释：VBA 中手动构建 JSON 字符串时，需要对以下字符进行转义：双引号 `"` 转义为 `\"`、反斜杠 `\` 转义为 `\\`、换行符 `vbCrLf` 或 `vbLf` 转义为 `\n`、回车符 `vbCr` 转义为 `\r`、制表符 `vbTab` 转义为 `\t`。使用 `Mid` 函数逐个字符遍历字符串，通过 `Select Case` 或 `If` 判断每个字符的 ASCII 码或 Unicode 码点来决定是否转义，可以提高 JSON 序列化的可靠性。
++
++- **[nvidia-smi — NVIDIA GPU 监控的核心命令]** — 云服务器查看 GPU 占用最通用的命令
++  - 来源文件：云服务器GPU占用查看命令.md
++  - 核心解释：`nvidia-smi`（NVIDIA System Management Interface）是 NVIDIA 官方提供的命令行工具，安装驱动后自带。执行该命令可查看 GPU 实时状态，包括驱动版本、显存使用率（Memory-Usage）、GPU 计算单元利用率（GPU-Util）、温度、功耗等关键信息。适用于 Linux、Windows 等各平台，终端直接输入 `nvidia-smi` 即可使用。
++
++- **[GPU-Util 与 Memory-Usage — 两个核心监控指标]** — 解读 nvidia-smi 输出中最关键的两项数据
++  - 来源文件：云服务器GPU占用查看命令.md
++  - 核心解释：`GPU-Util` 表示 GPU 计算核心的利用率，接近 100% 说明计算单元正在全力工作；`Memory-Usage` 表示显存使用情况（已用/总量），用于判断显存是否充足或已耗尽。这两项指标是判断 GPU 工作负载和资源瓶颈的核心依据。
++
++- **[nvidia-smi -l — 实时刷新监控]** — 实现 GPU 占用情况的持续动态监控
++  - 来源文件：云服务器GPU占用查看命令.md
++  - 核心解释：在 `nvidia-smi` 后添加 `-l`（小写 L）参数并指定秒数，可设置自动刷新间隔。例如 `nvidia-smi -l 1` 表示每 1 秒刷新一次，适合在运行 AI 训练任务时实时观察 GPU 资源变化。在 Linux 系统中，也可结合 `watch -n 1 nvidia-smi` 达到类似效果。
++
++- **[nvidia-smi --query-gpu — 自定义查询与 CSV 输出]** — 按需提取关键字段简化输出
++  - 来源文件：云服务器GPU占用查看命令.md
++  - 核心解释：当默认输出信息过于繁杂时，使用 `--query-gpu` 参数配合 `--format=csv` 可自定义查询字段并以逗号分隔格式输出。示例命令：`nvidia-smi --query-gpu=index,name,utilization.gpu,memory.used,memory.total --format=csv`。此用法特别适合日志记录和脚本化监控。
++
++- **[nvidia-smi pmon / --query-compute-apps — 定位 GPU 占用进程]** — 找出具体是哪个进程正在使用 GPU
++  - 来源文件：云服务器GPU占用查看命令.md
++  - 核心解释：`nvidia-smi pmon` 可监控 GPU 上正在运行的进程；`nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv` 则提供更详细的计算进程信息（PID、进程名、已用显存）。这在多用户共享 GPU 服务器时尤为重要，可帮助定位和避免误杀他人进程。
++
++- **[gpustat — 美化版 GPU 监控工具]** — 对 nvidia-smi 输出进行友好化显示
++  - 来源文件：云服务器GPU占用查看命令.md
++  - 核心解释：`gpustat` 是 Python 工具，通过 `pip install gpustat` 安装。它以更紧凑、彩色的方式展示 GPU 信息，支持显示进程名和 PID，并可配合 `watch --color -n1 gpustat --color` 实现持续彩色监控。
++
++- **[nvitop — 交互式 GPU 进程管理工具]** — 堪称 GPU 界的 top 命令
++  - 来源文件：云服务器GPU占用查看命令.md
++  - 核心解释：`nvitop` 提供交互式界面，资源占用率低，可直接在界面中管理 GPU 进程。推荐通过 `pipx install nvitop` 安装以避免依赖冲突。适合需要像系统 `top` 命令一样管理 GPU 进程的场景。
++
++- **[nvtop — Ubuntu 上的交互式 GPU 监控]** — 类 htop 的 GPU 监控工具
++  - 来源文件：云服务器GPU占用查看命令.md
++  - 核心解释：`nvtop`（Neat Video Card TOP）提供类似任务管理器的交互界面，能实时显示 GPU 和显存的总体占用率，以进度条和图表展示历史负载。Ubuntu 22.04 上推荐通过 PPA 安装最新版：`sudo add-apt-repository ppa:flexiondotorg/nvtop && sudo apt update && sudo apt install nvtop`。
++
++- **[Ubuntu 22.04 GPU 监控工具对比]** — 四种主流 GPU 监控方式的特点对比
++  - 来源文件：云服务器GPU占用查看命令.md
++  - 核心解释：Ubuntu 22.04 上查看 NVIDIA 显卡占用的四种方式：① `nvidia-smi` — 官方工具，信息全面，安装驱动后自带；② `nvtop` — 类 htop 交互界面，`sudo apt install nvtop`；③ `nvitop` — Python 交互工具，`pip install nvitop`；④ `gpustat` — 美化版简洁输出，`pip install gpustat`。前提是已正确安装 NVIDIA 驱动。
++
++- **[AI 的三大核心训练阶段]** — 现代大语言模型的三个训练阶段
++  - 来源文件：训练方式与分词关系.md
++  - 核心解释：现代 LLM 训练分为三个阶段：① 预训练——在海量无标注文本上进行自监督学习，核心任务是"预测下一个词"，目标是让模型学习语法、知识、推理能力；② 监督微调（SFT）——使用高质量"指令-回答"对进行有监督训练，将基座模型对齐到人类意图；③ 强化学习（RLHF）——通过人类或 AI 反馈训练奖励模型，优化模型的"偏好"，使其回答更符合人类价值观。
++
++- **[分词器的"冻结"特性]** — 分词器在预训练前确定，后续训练无法更改
++  - 来源文件：训练方式与分词关系.md
++  - 核心解释：分词器（Tokenizer）通常在预训练之前就训练好，并且在后续所有训练阶段中保持不变。一旦预训练确立，分词器就被"冻结"。如果事后想通过微调让模型精通一门新语言，原有分词器对新语言的拆分效率可能极低（一个单词被拆成 7-8 个 Token），且无法直接添加新词——因为预训练阶段的 Embedding 层完全没有这些新 Token 的向量表示。
++
++- **[预训练决定分词的基础粒度与多语言覆盖]** — 预训练数据构成和分词器算法直接决定分词质量
++  - 来源文件：训练方式与分词关系.md
++  - 核心解释：预训练的数据构成和分词器训练算法（如 BPE）决定了分词的质量。英文为主的预训练数据会使分词器高效拆分英文单词，但对中文可能退化为逐字 Token 或 UTF-8 字节回退。若预训练包含大量代码，分词器会保留空格和缩进敏感性，结构化数据的权重倒逼分词器保留更多空白符和特殊符号作为独立 Token。
++
++- **[监督微调赋予特殊 Token 强烈的语义含义]** — 微调不改变词表，但固化特定 Token 的行为含义
++  - 来源文件：训练方式与分词关系.md
++  - 核心解释：微调阶段虽不改变分词器词表，但会赋予特定 Token 极其强烈的语义含义。例如：① 模板与角色扮演——引入特殊控制 Token 如 `<|user|>`、`<|assistant|>`、`<|end|>`，通过定向训练让模型学会"看到 `<|assistant|>` 必须开始生成答案，看到 `<|end|>` 必须停止"；② 思维链的固化——当微调数据使用 `\n\n` 或 `Step 1:` 等特定格式时，模型学习到在特定分词序列之后必须进行深度推理。
++
++- **[强化学习隐性调控分词选择偏好]** — RLHF 通过奖励机制间接塑造模型对分词边界的选择
++  - 来源文件：训练方式与分词关系.md
++  - 核心解释：强化学习对分词的影响最为隐性，通过奖励机制间接塑造模型行为：① Token 经济学偏见——由于训练和推理成本按 Token 数计算，RLHF 存在隐性的"简洁性偏见"，奖励模型对冗长、重复的分词序列给予较低分数，使模型倾向于输出更紧凑的词汇组合；② 安全与拒绝——在 RLHF 中，模型学习在特定"拒绝前缀"（如 `I am sorry,`）之后固化特定分词路径，某些分词组合路径被强化成了"安全阀门"。
++
++- **[训练与推理的分词不一致痛点]** — 训练后修改词表的困难
++  - 来源文件：训练方式与分词关系.md
++  - 核心解释：在已预训练模型上通过微调学习新语言时，原有分词器对新语言的拆分效率极低（一个单词可能被拆成 7-8 个 Token），导致推理速度变慢；且无法直接添加新词，因为预训练阶段的 Embedding 层完全没有新 Token 的向量表示。这也解释了为什么顶级模型（如 Llama 3、GPT-4）极其重视预训练阶段的数据配比——分词器的性能上限在训练开始前就已经被锁定。
++
++- **[大模型 5 种常用训练方式]** — 大模型训练的完整分类
++  - 来源文件：训练方式与分词关系.md
++  - 核心解释：大模型按训练阶段和核心机制分为 5 类：① 预训练——自监督学习，成本最高，决定模型知识上限；② 监督微调——有监督学习，让模型学会指令跟随；③ 基于人类反馈的强化学习（RLHF）——对齐人类价值观；④ 继续预训练——针对垂直领域的轻量级预训练，注入专业领域知识；⑤ 知识蒸馏与模型剪枝——模型压缩，用小模型保留大模型大部分能力。
++
++- **[多模态模型的概念与训练差异]** — 多模态模型的定义和训练方式的核心不同
++  - 来源文件：训练方式与分词关系.md
++  - 核心解释：多模态模型能够同时理解和处理多种类型的数据（文本、图像、音频、视频等）。其训练方式相比纯文本模型的核心差异：① 需要配对数据（如图文对、音视频文本对）进行跨模态对齐；② 引入对比学习等新的训练目标，让模型理解不同模态之间的对应关系；③ 模型架构上需要设计模态融合层（如投影层、Q-Former 等）将不同模态的信息映射到统一语义空间。
+
+Replaced 1 occurrence in \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md

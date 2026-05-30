@@ -11,7 +11,7 @@ use chrono::{Duration, Utc};
 use serde_json::{json, Value};
 
 use super::arg_utils::get_string_array_arg;
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
 use crate::chat_v2::workspace::{SleepBlockData, WakeCondition, WorkspaceCoordinator};
 
@@ -48,7 +48,7 @@ impl CoordinatorSleepExecutor {
         session_id: &str,
         message_id: &str,
         block_id: &str,
-    ) -> Result<(), String> {
+    ) -> ToolResult<()> {
         // 1. 尝试读取现有的 block_ids
         // 🔧 P22 修复：列名是 block_ids_json 不是 block_ids
         let existing_block_ids: Result<Option<String>, _> = conn.query_row(
@@ -72,20 +72,20 @@ impl CoordinatorSleepExecutor {
                 }
 
                 let block_ids_json = serde_json::to_string(&block_ids)
-                    .map_err(|e| format!("Failed to serialize block_ids: {}", e))?;
+                    .map_err(|e| ToolError::Execution(format!("Failed to serialize block_ids: {}", e)))?;
 
                 // 🔧 P22 修复：列名是 block_ids_json 不是 block_ids
                 conn.execute(
                     "UPDATE chat_v2_messages SET block_ids_json = ?1 WHERE id = ?2",
                     rusqlite::params![block_ids_json, message_id],
                 )
-                .map_err(|e| format!("Failed to update message block_ids: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("Failed to update message block_ids: {}", e)))?;
             }
             Err(rusqlite::Error::QueryReturnedNoRows) => {
                 // 消息不存在，创建消息
                 let block_ids = vec![block_id.to_string()];
                 let block_ids_json = serde_json::to_string(&block_ids)
-                    .map_err(|e| format!("Failed to serialize block_ids: {}", e))?;
+                    .map_err(|e| ToolError::Execution(format!("Failed to serialize block_ids: {}", e)))?;
 
                 // 🔧 P22 修复：列名是 block_ids_json 不是 block_ids
                 conn.execute(
@@ -93,7 +93,7 @@ impl CoordinatorSleepExecutor {
                        VALUES (?1, ?2, 'assistant', ?3, ?4)"#,
                     rusqlite::params![message_id, session_id, block_ids_json, now_ms],
                 )
-                .map_err(|e| format!("Failed to create message: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("Failed to create message: {}", e)))?;
 
                 log::info!(
                     "[CoordinatorSleepExecutor] Created message with sleep block: msg={}, block={}",
@@ -102,7 +102,7 @@ impl CoordinatorSleepExecutor {
                 );
             }
             Err(e) => {
-                return Err(format!("Failed to read message: {}", e));
+                return Err(ToolError::Execution(format!("Failed to read message: {}", e)));
             }
         }
 
@@ -110,14 +110,14 @@ impl CoordinatorSleepExecutor {
     }
 
     /// 执行睡眠
-    async fn execute_sleep(&self, args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    async fn execute_sleep(&self, args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let start = Instant::now();
 
         // 解析参数
         let workspace_id = args
             .get("workspace_id")
             .and_then(|v| v.as_str())
-            .ok_or("workspace_id is required")?;
+            .ok_or_else(|| ToolError::InvalidArgs("workspace_id is required".to_string()))?;
 
         // 🔧 P14 修复：如果 awaiting_agents 为空，从 workspace 查询实际的子代理
         let mut awaiting_agents: Vec<String> =
@@ -274,7 +274,7 @@ impl CoordinatorSleepExecutor {
                     );
                     // 取消睡眠，清理状态
                     let _ = sleep_manager.cancel(&sleep_id);
-                    return Err("Coordinator sleep cancelled".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
@@ -318,7 +318,7 @@ impl CoordinatorSleepExecutor {
                     e
                 );
 
-                Err(format!("Sleep failed: {:?}", e))
+                Err(ToolError::Execution(format!("Sleep failed: {:?}", e)))
             }
         }
     }
@@ -348,7 +348,7 @@ impl ToolExecutor for CoordinatorSleepExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start = Instant::now();
 
         // 🔧 P19 修复：先填充 awaiting_agents，再发射事件
@@ -412,7 +412,7 @@ impl ToolExecutor for CoordinatorSleepExecutor {
                 input: call.arguments.clone(),
                 output: json!(null),
                 success: false,
-                error: Some(e),
+                error: Some(e.to_string()),
                 duration_ms: Some(duration_ms),
                 reasoning_content: None,
                 thought_signature: None,

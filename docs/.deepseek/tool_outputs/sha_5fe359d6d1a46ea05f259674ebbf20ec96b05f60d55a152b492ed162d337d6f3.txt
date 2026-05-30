@@ -1,0 +1,34 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\07_生活与消费\大车遮挡视线闯红灯判定.md" total_lines="53" shown_lines="1-30" truncated="true" next_start_line="31">
+     1│ # 大车遮挡视线闯红灯判定
+     2│ 对话ID: 8df9eb6a-c837-48be-ba4b-3eaf9881b9d6
+     3│ 创建时间: 2026-02-13T20:27:23.289000+08:00
+     4│ 更新时间: 2026-02-13T20:27:43.930000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ 过红绿灯路口的时候跟随在大货车后面看不见红绿灯，等到可以看见红绿灯的时候已经是红灯了，怎么判断自己有没有闯红灯？
+     9│ 
+    10│ ---
+    11│ 
+    12│ ## ❓ unknown
+    13│ 
+    14│ {'type': 'SEARCH', 'results': [{'url': 'http://www.sishui.gov.cn/art/2024/7/31/art_76124_2774745.html', 'title': '行政复议决定书（泗政复决字〔2024〕61号）', 'snippet': '申请人称：申请人是因前方两辆大货车遮挡视线导致看不到红绿灯才误闯红灯 ... 申请人身份证复印件 ... 申请人称因前方有大货车遮挡，无法看到红绿灯，造成误闯红灯。为此...', 'cite_index': 1, 'published_at': 1722355200.0, 'site_name': '泗水县人民政府', 'site_icon': 'https://cdn.deepseek.com/site-icons/sishui.gov.cn', 'query_indexes': [0, 1], 'is_hidden': False}, {'url': 'https://ftp.taixing.gov.cn/zwgk/bmxxgk/sfj/xzfyjds/art/2025/art_c867794ef8d44de6a0dde6c6991ca9ca.html', 'title': '潘某不服泰兴市公安局交通警察大队行政处罚决定案〔2025〕泰行复第28号', 'snippet': '其驾驶苏MXXXXXX新能源车经过泰兴市宣堡镇古宣线（古高线）与银杏路路口，由于前方大货车遮挡视线，无法准确判断交通信号，从而产生误闯红灯的行为。其前去交警大队视频中队申诉未成功，为取得处罚决定书及编号，被迫去窗口处理违章，但尚未缴纳罚款。', 'cite_index': 2, 'published_at': 1744128000.0, 'site_name': '泰兴市人民政府', 'site_icon': 'https://cdn.deepseek.com/site-icons/taixing.gov.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://wenz.jxnews.com.cn/ms/viewpage/202504/view_454559.html', 'title': '【九江市】在九江濂溪区交通违规被误判-问政江西', 'snippet': '经核查，根据我国道路交通安全法规和电子警察执法标准《道路交通安全违法行为图像取证技术规范》（GA/T 832-2014），认定机动车“违反信号灯指示通行”（闯红灯）需通过电子监控设备抓拍以下三张连续照片作为证据链。', 'cite_index': 3, 'published_at': 1744214400.0, 'site_name': '大江网', 'site_icon': 'https://cdn.deepseek.com/site-icons/jxnews.com.cn', 'query_indexes': [2], 'is_hidden': False}, {'url': 'http://www.cixi.gov.cn/art/2019/9/4/art_1229036945_46616336.html', 'title': '视线遮挡是否闯红灯', 'snippet': '答：通过路口遇停止信号时，应停在停止线以外。若车身部分进入停止线内，部分仍在停止线外，立即停止，不属于闯红灯。若车辆已全部驶过停车线，甚至驶到路口中间，影响到正常车辆通行，属于闯红灯行为。', 'cite_index': 4, 'published_at': 1567526400.0, 'site_name': '慈溪市人民政府', 'site_icon': 'https://cdn.deepseek.com/site-icons/cixi.gov.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://jtgl.beijing.gov.cn/jgj/lszt/659722/10936724/10936727/10937105/index.html?eqid=bd0b354a00040d56000000066484615c', 'title': '交通违法消除申请 （对非现场交通违法认定有异议）', 'snippet': '登录＂交管12123＂APP后，点击【违法处理】，选择机动车，进入违法处理界面后，点击下方“申请陈述和申辩”开始申请流程。 提交审核 选择申诉原因，填写具体申诉原因，上传相关证据照片，点击“提交”即可完成申诉。', 'cite_index': 5, 'published_at': 1748275200.0, 'site_name': '北京市公安局公安交通管理局', 'site_icon': 'https://cdn.deepseek.com/site-icons/beijing.gov.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://liuyan.cjn.cn/threads/content?tid=3793980', 'title': '市公安交管局-政府部门-武汉城市留言板', 'snippet': '尊敬的市民：您好，您向市民热线·城市留言板反映的问题武汉市公安局开发区交通大队已收到，现将办理情况回复如下：您反映的车辆于2026年01月17日16时18分，在武汉经济技术开发区（汉南区）经开大道小军东路路口，被电子眼抓拍驾驶机动车违反道路交通信号灯通行的违法行为...', 'cite_index': 6, 'published_at': 1769702400.0, 'site_name': '武汉城市留言板', 'site_icon': 'https://cdn.deepseek.com/site-icons/cjn.cn', 'query_indexes': [2], 'is_hidden': False}, {'url': 'http://sf.binzhou.gov.cn/art/2019/1/18/art_187392_10282722.html', 'title': '滨州市人民政府 行政复议决定书 滨政复决字〔2018〕236号', 'snippet': '申请人称：其通过该路口时因前方大货车遮挡视线，且左转灯不亮，造成闯红灯。 被申请人答复称：一、违法事实清楚，证据确凿充分。2018年12月01日11时00分...', 'cite_index': 7, 'published_at': 1547740800.0, 'site_name': '滨州市司法局', 'site_icon': 'https://cdn.deepseek.com/site-icons/binzhou.gov.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.ningguo.gov.cn/OpennessContent/show/3595099.html?branch=0', 'title': '【主动回应】关于启用电子监控设备的通告', 'snippet': '闯红灯设备抓拍时间：全天24小时。 敬请广大机动车驾驶人严格遵守道路交通安全法律法规，自觉维护道路交通秩序，共同营造安全、文明、畅通、有序的道路交通环境。', 'cite_index': 8, 'published_at': 1757692800.0, 'site_name': '宁国市人民政府', 'site_icon': 'https://cdn.deepseek.com/site-icons/ningguo.gov.cn', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://wenz.jxnews.com.cn/ms/viewpage/202506/view_464127.html', 'title': '【赣州市】赣州章贡区：大货车阻挡视野，根本看不到红绿灯-问政江西', 'snippet': '因此，跟在大货车后未看见红灯不是免除处罚的理由，驾驶人驾驶车辆在道路上行驶，应当与前车保持足够的安全距离，以确保能够清楚观察前方道路及交通标志、标线、交通信号灯以及安全刹车距离为标准，避免出现交通违法行为和交通事故。', 'cite_index': 9, 'published_at': 1748880000.0, 'site_name': '大江网', 'site_icon': 'https://cdn.deepseek.com/site-icons/jxnews.com.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.lawtime.cn/wenda/q_54742726.html', 'title': '被货车挡住视线闯红灯去哪里申诉', 'snippet': '1. 如果是通过电子监控记录的闯红灯行为，可在收到处罚决定书之日起60日内，向作出处罚决定机关的上一级公安机关交通管理部门申请行政复议，或在6个月内依法向人民法院提起行政诉讼。2.', 'cite_index': 10, 'published_at': 1762272000.0, 'site_name': '法律快车', 'site_icon': 'https://cdn.deepseek.com/site-icons/lawtime.cn', 'query_indexes': [1], 'is_hidden': False}]}
+    15│ 嗯，用户在开车时遇到大货车挡住视线看不到红绿灯，等能看到时已经是红灯了，想知道这种情况算不算闯红灯。这是个很实际的驾驶困惑，用户可能刚遇到这种情况或者担心被处罚。
+    16│ 
+    17│ 我需要从几个方面来回答：首先明确这种行为在法律上的定性，然后说明如何判断是否真的闯了红灯，最后给出如果收到罚单可以采取的行动。
+    18│ 
+    19│ 看搜索结果，有几个政府行政复议案例非常关键。泗水县政府的复议决定书明确指出，视线被遮挡非法定不予处罚的理由，后车应与前车保持足够安全距离[citation:1]。泰兴市的复议案例也支持这一观点，认为驾驶人有保持足够车距以确保观察信号灯的义务[citation:2]。滨州市和赣州市的案例同样印证了这一点[citation:7][citation:9]。
+    20│ 
+    21│ 关于闯红灯的判定标准，有个问政江西的回复详细说明了三张照片的要求[citation:3]，慈溪市政府网站也解释了如果停在路口中间仍算闯红灯[citation:4]。武汉城市留言板的案例说明即使过线后停下，如果红灯时越过停止线仍算违法[citation:6]。
+    22│ 
+    23│ 北京市交管局官网提供了通过12123APP申诉的具体流程[citation:5]，法律快车网站也介绍了申诉渠道和证据收集建议[citation:10]，虽然权威性稍弱但内容与官方渠道一致可以参考。
+    24│ 
+    25│ 宁国市公安局的通告主要是设备启用公告[citation:8]，与用户问题不直接相关。
+    26│ 
+    27│ 我准备按三个层次组织回答：先明确法律责任定性，引用多个复议案例说明"跟车太近"不属于免责理由；然后解释闯红灯的三张照片判定标准，告诉用户如何自查；最后提供如果被误判可以采取的两条申诉路径。这样既解答了用户的核心疑问，也给出了实用建议。
+    28│ 跟在大车后不小心“误闯”红灯，确实让人心里一紧。从法律规定和众多实际案例来看，如果因此被罚，**“视线被挡”通常很难作为免除处罚的理由**[citation:1][citation:2][citation:7]。
+    29│ 
+    30│ 你可以按照以下步骤，来判断自己是否真的闯了红灯，以及下一步该怎么办：
+
+[TRUNCATED] Showing lines 1-30 of 53. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\07_生活与消费\大车遮挡视线闯红灯判定.md" start_line=31 max_lines=30
+</file>

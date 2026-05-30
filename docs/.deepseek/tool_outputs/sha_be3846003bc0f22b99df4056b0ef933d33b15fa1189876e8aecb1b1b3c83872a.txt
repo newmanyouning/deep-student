@@ -1,0 +1,154 @@
+# 处理cc-mini超时错误
+对话ID: 5881b23c-f87d-414d-8898-7a3ee370ff6b
+创建时间: 2026-04-07T15:52:22.509000+08:00
+更新时间: 2026-04-07T16:50:33.711000+08:00
+
+## ❓ unknown
+
+这是在调用cc-mini工具的时候报错，应该怎么处理？
+Traceback (most recent call last):
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 127, in __iter__
+    for part in self._httpcore_stream:
+                ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 407, in __iter__
+    raise exc from None
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpcore/_sync/connection_pool.py", line 403, in __iter__
+    for part in self._stream:
+                ^^^^^^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 342, in __iter__
+    raise exc
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 334, in __iter__
+    for chunk in self._connection._receive_response_body(**kwargs):
+                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 203, in _receive_response_body
+    event = self._receive_event(timeout=timeout)
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+        self.READ_NUM_BYTES, timeout=timeout
+    )
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpcore/_backends/sync.py", line 126, in read
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ReadTimeout: The read operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/mac/.cc-mini/.venv/bin/cc-mini", line 6, in <module>
+    sys.exit(main())
+             ~~~~^^
+  File "/Users/mac/.cc-mini/src/core/main.py", line 849, in main
+    run_query(engine, _parse_input(prompt_text), print_mode=args.print, permissions=permissions)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/.cc-mini/src/core/main.py", line 530, in run_query
+    for event in engine.submit(user_input):
+                 ~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/Users/mac/.cc-mini/src/core/engine.py", line 279, in submit
+    for text in stream.text_stream:
+                ^^^^^^^^^^^^^^^^^^
+  File "/Users/mac/.cc-mini/src/core/llm.py", line 326, in _iter_text
+    for chunk in self._stream:
+                 ^^^^^^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/openai/_streaming.py", line 49, in __iter__
+    for item in self._iterator:
+                ^^^^^^^^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/openai/_streaming.py", line 62, in __stream__
+    for sse in iterator:
+               ^^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/openai/_streaming.py", line 53, in _iter_events
+    yield from self._decoder.iter_bytes(self.response.iter_bytes())
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/openai/_streaming.py", line 297, in iter_bytes
+    for chunk in self._iter_chunks(iterator):
+                 ~~~~~~~~~~~~~~~~~^^^^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/openai/_streaming.py", line 308, in _iter_chunks
+    for chunk in iterator:
+                 ^^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpx/_models.py", line 897, in iter_bytes
+    for raw_bytes in self.iter_raw():
+                     ~~~~~~~~~~~~~^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpx/_models.py", line 951, in iter_raw
+    for raw_stream_bytes in self.stream:
+                            ^^^^^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpx/_client.py", line 153, in __iter__
+    for chunk in self._stream:
+                 ^^^^^^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 126, in __iter__
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ReadTimeout: The read operation timed out
+
+---
+
+## ❓ unknown
+
+我们遇到了一个ReadTimeout错误，发生在调用cc-mini工具时。错误堆栈显示是从HTTP请求读取超时，最终来自httpcore.ReadTimeout。这意味着与某个API端点（可能是OpenAI API或其他LLM API）的通信超时了。
+
+用户的问题是“应该怎么处理？”。需要给出解决建议。常见原因：网络连接慢、API服务响应慢、设置的超时时间太短、或者请求内容太大导致处理时间长。
+
+作为助手，应该提供诊断步骤和可能的解决方案：
+1. 检查网络连接和代理设置。
+2. 增加超时时间（如果cc-mini允许配置timeout）。
+3. 检查API密钥和服务状态。
+4. 尝试减少请求大小（例如减少上下文长度）。
+5. 如果是本地部署的模型，检查后端服务是否正常运行。
+
+由于用户是使用cc-mini工具，可以建议查看其配置文件或命令行参数来调整超时设置。还可以建议重试操作。
+
+我将给出一个清晰的回答，解释错误原因并提供处理步骤。
+这个错误是因为 `cc-mini` 在调用 LLM API（很可能是 OpenAI 接口）时，网络读取操作超时了。从堆栈看，客户端在等待服务器返回流式响应时，超过了底层 HTTP 库（`httpx`/`httpcore`）的默认读取超时时间。
+
+## 可能的原因
+- 网络连接慢或不稳定（如代理、防火墙、VPN 问题）
+- 请求的 prompt 太长，模型处理时间超过客户端等待时间
+- 模型服务端负载高或响应慢
+- 客户端配置的超时阈值过短
+
+## 解决方案
+
+### 1. 检查网络与代理
+```bash
+# 测试与 API 端点的连通性（以 OpenAI 为例）
+curl -v https://api.openai.com/v1/models
+```
+如果有代理，确认 `HTTP_PROXY`/`HTTPS_PROXY` 环境变量正确设置，且代理稳定。
+
+### 2. 增加 `cc-mini` 的超时设置
+查阅 `cc-mini` 文档，看是否支持通过配置文件或命令行参数调整超时。例如：
+- 命令行添加 `--timeout 120`（假设支持）
+- 或在配置文件中设置 `request_timeout = 120`（单位秒）
+
+如果你不确定配置项，可以查看 `cc-mini --help` 或检查项目根目录下的 `config.yaml` / `.env` 文件。
+
+### 3. 减小请求复杂度
+- 缩短输入 prompt 的长度
+- 降低 `max_tokens` 等生成参数
+- 关闭流式响应（如果支持），改为一次性获取完整结果
+
+### 4. 临时重试机制
+超时可能是偶发的网络抖动，直接重新运行命令即可。如果经常出现，考虑增加超时时间。
+
+### 5. 检查 API 服务状态
+- 确认 API 密钥有效且未过期
+- 访问对应服务商的状态页面（如 [status.openai.com](https://status.openai.com)）确认没有大规模故障
+
+### 6. 更新或重装依赖
+有时依赖库版本问题也会导致超时处理异常，可以尝试：
+```bash
+pip install --upgrade httpx openai
+```
+
+如果以上方法都无法解决，建议提供 `cc-mini` 的版本号、使用的模型名称（如 `gpt-3.5-turbo`）、以及你的网络环境（是否使用代理），以便进一步排查。
+
+---

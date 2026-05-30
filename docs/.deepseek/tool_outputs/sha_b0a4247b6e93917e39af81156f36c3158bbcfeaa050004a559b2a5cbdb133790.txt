@@ -1,0 +1,82 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5 Ubuntu Fcitx输入法问题解决.md",
+      "line_number": 135,
+      "line": "killall fcitx5",
+      "context_before": [
+        "```bash",
+        "# 1. 先关闭所有fcitx进程",
+        "killall fcitx"
+      ],
+      "context_after": [
+        "",
+        "# 2. 启动fcitx",
+        "fcitx-autostart"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5 Ubuntu Fcitx输入法问题解决.md",
+      "line_number": 188,
+      "line": "## 8. **备选方案：安装Fcitx5**",
+      "context_before": [
+        "./check_fcitx.sh",
+        "```",
+        ""
+      ],
+      "context_after": [
+        "",
+        "如果Fcitx4问题持续存在，可以考虑安装Fcitx5：",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5 Ubuntu Fcitx输入法问题解决.md",
+      "line_number": 190,
+      "line": "如果Fcitx4问题持续存在，可以考虑安装Fcitx5：",
+      "context_before": [
+        "",
+        "## 8. **备选方案：安装Fcitx5**",
+        ""
+      ],
+      "context_after": [
+        "",
+        "```bash",
+        "# 添加Fcitx5 PPA并安装"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5 Ubuntu Fcitx输入法问题解决.md",
+      "line_number": 193,
+      "line": "# 添加Fcitx5 PPA并安装",
+      "context_before": [
+        "如果Fcitx4问题持续存在，可以考虑安装Fcitx5：",
+        "",
+        "```bash"
+      ],
+      "context_after": [
+        "sudo add-apt-repository ppa:fcitx-team/fcitx5",
+        "sudo apt update",
+        "sudo apt install fcitx5 fcitx5-chinese-addons fcitx5-frontend-gtk4 fcitx5-frontend-qt6 -y"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5 Ubuntu Fcitx输入法问题解决.md",
+      "line_number": 194,
+      "line": "sudo add-apt-repository ppa:fcitx-team/fcitx5",
+      "context_before": [
+        "",
+        "```bash",
+        "# 添加Fcitx5 PPA并安装"
+      ],
+      "context_after": [
+        "sudo apt update",
+        "sudo apt install fcitx5 fcitx5-chinese-addons fcitx5-frontend-gtk4 fcitx5-frontend-qt6 -y",
+        ""
+      ]
+    }
+  ],
+  "total_matches": 5,
+  "files_searched": 1,
+  "truncated": false
+}

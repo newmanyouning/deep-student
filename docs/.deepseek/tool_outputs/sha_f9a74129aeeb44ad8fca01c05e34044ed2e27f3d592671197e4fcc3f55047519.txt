@@ -1,0 +1,9 @@
+<file path="knowledge_cache.md" total_lines="1766" shown_lines="1760-1766" truncated="false">
+  1760│ - **[三重过滤法：快速判断Java安装包是否可用]** — 通过"操作系统→CPU架构→文件格式"三层筛选，一眼锁定正确的安装包。
+  1761│   - 来源文件：树莓派5安装Ubuntu的Java版本选择指南.md
+  1762│   - 核心解释：第一重，平台必须包含"Linux"字样，排除Windows/macOS/AIX等；第二重（最关键），架构必须包含 `aarch64` 或 `ARM64`，排除 `x64`/`x86_64`/`amd64`（Intel/AMD）以及 `arm32`/`armhf`（旧款树莓派）；第三重，文件格式优先选 `.tar.gz`（通用，适用于所有Linux发行版）或 `.deb`（Ubuntu原生格式，可用 `sudo dpkg -i 包名.deb` 安装），不推荐 `.rpm`（需用alien转换，易出错）。实战示例：正确文件名为 `jdk-17_linux-aarch64_bin.tar.gz`。
+  1763│ 
+  1764│ - **[手动安装 tar.gz 压缩包完整步骤]** — 下载 ARM64 架构的 tar.gz 压缩包后，通过解压到 `/usr/lib/jvm/` 并配置 `JAVA_HOME` 环境变量完成安装。
+  1765│   - 来源文件：树莓派5安装Ubuntu的Java版本选择指南.md
+  1766│   - 核心解释：从 Adoptium 或 Oracle 官网下载 `*-linux-aarch64_bin.tar.gz` 文件后，依次执行：`sudo mkdir -p /usr/lib/jvm` 创建安装目录，`sudo tar -xzf jdk-17_linux-aarch64_bin.tar.gz -C /usr/lib/jvm/` 解压，`echo 'export JAVA_HOME=/usr/lib/jvm/jdk-17.0.9' >> ~/.bashrc` 和 `echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc` 配置环境变量，`source ~/.bashrc` 使配置生效。注意解压后的文件夹名需用 `ls /usr/lib/jvm` 查看确认，版本号因下载而异。安装 .deb 格式用 `sudo dpkg -i *.deb`，若报依赖问题则用 `sudo apt -f install` 修复。
+</file>

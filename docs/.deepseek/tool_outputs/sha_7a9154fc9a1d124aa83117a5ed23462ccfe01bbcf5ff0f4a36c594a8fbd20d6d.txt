@@ -1,0 +1,67 @@
+Todo list updated (12 items, 17% complete)
+{
+  "items": [
+    {
+      "id": 1,
+      "content": "第1批：最小文件（1-15号）→ analysis_batch_01.md",
+      "status": "completed"
+    },
+    {
+      "id": 2,
+      "content": "第2批：16-30号文件 → analysis_batch_02.md",
+      "status": "completed"
+    },
+    {
+      "id": 3,
+      "content": "第3批：31-52号 → 子代理 batch_03_052 处理中",
+      "status": "pending"
+    },
+    {
+      "id": 4,
+      "content": "第4批：53-100号 → 子代理 batch_053_100 处理中",
+      "status": "pending"
+    },
+    {
+      "id": 5,
+      "content": "第5批：101-150号 → 子代理 batch_101_150 处理中",
+      "status": "pending"
+    },
+    {
+      "id": 6,
+      "content": "第6批：151-200号 → 子代理 batch_151_200 处理中",
+      "status": "pending"
+    },
+    {
+      "id": 7,
+      "content": "第7批：201-250号 → 子代理 batch_201_250 处理中",
+      "status": "pending"
+    },
+    {
+      "id": 8,
+      "content": "第8批：251-300号 → 子代理 batch_251_300 处理中",
+      "status": "pending"
+    },
+    {
+      "id": 9,
+      "content": "第9批：301-350号 → 子代理 batch_301_350 处理中",
+      "status": "pending"
+    },
+    {
+      "id": 10,
+      "content": "第10批：351-400号 → 子代理 batch_351_400 处理中",
+      "status": "pending"
+    },
+    {
+      "id": 11,
+      "content": "第11批：401-447号 → 子代理 batch_401_447 处理中",
+      "status": "in_progress"
+    },
+    {
+      "id": 12,
+      "content": "汇总所有 analysis_batch 文件",
+      "status": "pending"
+    }
+  ],
+  "completion_pct": 17,
+  "in_progress_id": 11
+}

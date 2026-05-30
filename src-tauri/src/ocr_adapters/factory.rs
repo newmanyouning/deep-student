@@ -27,6 +27,9 @@ impl OcrAdapterFactory {
             OcrEngineType::PaddleOcrVlV1 => Arc::new(PaddleOcrVlAdapter::with_engine(
                 OcrEngineType::PaddleOcrVlV1,
             )),
+            OcrEngineType::PaddleOcrApi => Arc::new(PaddleOcrVlAdapter::with_engine(
+                OcrEngineType::PaddleOcrApi,
+            )),
             OcrEngineType::Glm4vOcr => Arc::new(Glm4vOcrAdapter::new()),
             OcrEngineType::GenericVlm => Arc::new(GenericVlmAdapter::new()),
             OcrEngineType::SystemOcr => Arc::new(SystemOcrAdapter::new()),
@@ -45,6 +48,7 @@ impl OcrAdapterFactory {
             OcrEngineType::DeepSeekOcr,
             OcrEngineType::PaddleOcrVl,
             OcrEngineType::PaddleOcrVlV1,
+            OcrEngineType::PaddleOcrApi,
             OcrEngineType::GenericVlm,
         ];
         // 仅在支持的平台上展示系统 OCR 选项
@@ -83,6 +87,15 @@ impl OcrAdapterFactory {
                     "百度开源 OCR 视觉语言模型旧版，支持坐标输出，完全免费，作为 1.5 版的备用",
                 recommended_model: "PaddlePaddle/PaddleOCR-VL",
                 supports_grounding: true,
+                is_free: true,
+                is_dedicated_ocr: true,
+            },
+            OcrEngineInfo {
+                engine_type: OcrEngineType::PaddleOcrApi,
+                name: "PaddleOCR API (直连)",
+                description: "百度 AI Studio PaddleOCR REST API，支持 VL-1.6/1.5/PP-OCRv5/PP-StructureV3，异步 job 模式，输出 Markdown + 图片",
+                recommended_model: "PaddleOCR-VL-1.6",
+                supports_grounding: false,
                 is_free: true,
                 is_dedicated_ocr: true,
             },
@@ -129,8 +142,10 @@ impl OcrAdapterFactory {
                 model_lower.contains("deepseek") && model_lower.contains("ocr")
             }
             OcrEngineType::PaddleOcrVl | OcrEngineType::PaddleOcrVlV1 => {
-                // 收紧匹配：要求包含 "paddleocr" 或 "paddlepaddle" 而非单独的 "paddle"
                 model_lower.contains("paddleocr") || model_lower.contains("paddlepaddle")
+            }
+            OcrEngineType::PaddleOcrApi => {
+                model_lower.contains("paddleocr-vl") || model_lower.contains("pp-ocrv5") || model_lower.contains("pp-structurev3")
             }
             OcrEngineType::Glm4vOcr => GLM_VISION_RE.is_match(model),
             OcrEngineType::GenericVlm => true,
@@ -153,8 +168,9 @@ impl OcrAdapterFactory {
             OcrEngineType::DeepSeekOcr
         } else if model_lower.contains("paddleocr-vl-1") || model_lower.contains("paddleocr_vl_1") {
             OcrEngineType::PaddleOcrVl
+        } else if model_lower.contains("pp-ocrv5") || model_lower.contains("pp-structurev3") || model_lower.contains("pp_structurev3") {
+            OcrEngineType::PaddleOcrApi
         } else if model_lower.contains("paddle") || model_lower.contains("paddleocr") {
-            // 无版本后缀的 PaddleOCR 默认推断为旧版
             OcrEngineType::PaddleOcrVlV1
         } else {
             OcrEngineType::GenericVlm

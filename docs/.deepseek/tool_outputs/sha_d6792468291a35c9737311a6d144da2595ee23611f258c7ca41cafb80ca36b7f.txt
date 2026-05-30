@@ -1,0 +1,173 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Excel工具开发提示词生成.md" total_lines="1497" shown_lines="1298-1497" truncated="true">
+  1298│ - 保留唯一的复杂测试模板文件 template.xls
+  1299│ - 保留测试图片 test_image.png
+  1300│ - 保留所有核心 Python 源文件、打包脚本 build-windows.ps1、requirements.txt
+  1301│ 
+  1302│ 清理完成后，请探索所有可能实现所需功能的技术路线，功能需要完整实现，技术架构无限制。必须基于真实可用的技术方案进行开发，并在后续步骤中落地。
+  1303│ 
+  1304│ 然后，严格按照以下要求进行 WPS 兼容性测试和文档更新：
+  1305│ 
+  1306│ 1. 重点测试所有功能在 WPS Office 环境下的表现：
+  1307│    - 测试环境：Windows 系统上安装 WPS Office（个人版或专业版），不安装 Microsoft Excel
+  1308│    - 测试功能列表：
+  1309│      * 打开 template.xls 文件并完整展示所有内容（单元格数据、合并单元格、格式、页眉页脚、图片、形状等）
+  1310│      * 保存选中内容为模板
+  1311│      * 单个图片设置为页眉页脚并调整大小
+  1312│      * 批量设置图片页眉页脚（复制多份 template.xls 进行测试）
+  1313│      * 公式依赖分析：提取所有公式的完整依赖链条，指出根节点
+  1314│      * 数据转移功能：导入清单文件，将清单中的单元格值映射到依赖树的根节点，更新报告
+  1315│      * 导出更新后的报告
+  1316│    - 对于每个功能，记录在 WPS 下是否正常工作，如不正常则说明具体现象和错误信息
+  1317│ 
+  1318│ 2. 基于可行技术方案实现功能，确保与 WPS 的兼容性：
+  1319│    - 如果使用 VBA，WPS 需要额外安装 VBA 插件，请在测试报告中说明前提条件
+  1320│    - 如果某些 VBA 功能在 WPS 中不可用，尝试使用 WPS 的 JS 宏作为备选方案，或使用 Python 直接调用 WPS COM 接口（通过 win32com 连接 Ket.Application 对象）
+  1321│    - 记录所有不兼容的功能点，并在代码中添加注释或禁用相关功能
+  1322│ 
+  1323│ 3. 更新所有 Markdown 文档，要求：
+  1324│    - 在文档开头明确说明：本工具完全由 AI 开发，开发起始时间为 2026年4月4日，无人工编写代码
+  1325│    - 删除所有虚构的日期和版本记录（如 2026.03.15 等），只保留真实开发时间线
+  1326│    - 详细记录每次迭代的真实变更：包括第一次基础功能开发、第二次新增页眉页脚图片和增强依赖分析、第三次新增批量设置和数据转移、第四次技术方案重构（说明探索过的技术路线及最终选择）、本次 WPS 兼容性测试
+  1327│    - 在 测试报告.md 中，单独列出 WPS 兼容性测试结果，对比与 Excel 环境的差异
+  1328│    - 在 用户操作手册.md 中，增加 WPS 环境下的特殊配置说明（如需要安装 VBA 插件）
+  1329│    - 在 项目完成总结.md 中，如实说明已知问题（如某些格式在 WPS 下可能丢失）和后续改进方向
+  1330│ 
+  1331│ 4. 最终交付以下文件：
+  1332│    - 所有修改后的 Python 源文件（如有针对 WPS 的调整）
+  1333│    - 更新后的 build-windows.ps1
+  1334│    - 更新后的 requirements.txt
+  1335│    - 更新的测试报告.md
+  1336│    - 更新的用户操作手册.md
+  1337│    - 更新的项目完成总结.md
+  1338│ 
+  1339│ 请直接输出上述所有文件的完整内容，不要输出多余对话。输出中不要包含反引号、美元符号、单引号等特殊字符。
+  1340│ 
+  1341│ ---
+  1342│ 
+  1343│ ## ❓ unknown
+  1344│ 
+  1345│ 将以上提示词仅去掉换行等让终端误会的特殊符号后重新输出
+  1346│ 
+  1347│ ---
+  1348│ 
+  1349│ ## ❓ unknown
+  1350│ 
+  1351│ 我们要求去掉换行和特殊符号，但保持文本内容。提示词中原本有换行，需要将所有换行符替换为空格或直接删除？注意要求“去掉换行等让终端误会的特殊符号”，通常是指删除换行符、反引号、$、'、"等。但保持可读性，通常将换行替换为空格。输出纯文本。
+  1352│ 请执行以下任务： 首先，清理项目目录中的过时和无用文件： - 删除所有名称中包含 backup、old、tmp、test、debug、copy、duplicate 的文件 - 删除所有 .log、.pyc、.pyo、.bak、.swp 文件 - 删除所有重复的 Markdown 文档，仅保留最新的 测试报告.md、用户操作手册.md、项目完成总结.md - 删除所有由 Python 转换脚本生成的临时文件（如 template.xlsx、转换后的中间文件） - 删除所有 AI 自行生成的简单测试文件（如 test_*.xlsx、sample_*.xlsx、dummy_*.xls） - 保留唯一的复杂测试模板文件 template.xls - 保留测试图片 test_image.png - 保留所有核心 Python 源文件、打包脚本 build-windows.ps1、requirements.txt 清理完成后，请探索所有可能实现所需功能的技术路线，功能需要完整实现，技术架构无限制。必须基于真实可用的技术方案进行开发，并在后续步骤中落地。 然后，严格按照以下要求进行 WPS 兼容性测试和文档更新： 1. 重点测试所有功能在 WPS Office 环境下的表现： - 测试环境：Windows 系统上安装 WPS Office（个人版或专业版），不安装 Microsoft Excel - 测试功能列表： * 打开 template.xls 文件并完整展示所有内容（单元格数据、合并单元格、格式、页眉页脚、图片、形状等） * 保存选中内容为模板 * 单个图片设置为页眉页脚并调整大小 * 批量设置图片页眉页脚（复制多份 template.xls 进行测试） * 公式依赖分析：提取所有公式的完整依赖链条，指出根节点 * 数据转移功能：导入清单文件，将清单中的单元格值映射到依赖树的根节点，更新报告 * 导出更新后的报告 - 对于每个功能，记录在 WPS 下是否正常工作，如不正常则说明具体现象和错误信息 2. 基于可行技术方案实现功能，确保与 WPS 的兼容性： - 如果使用 VBA，WPS 需要额外安装 VBA 插件，请在测试报告中说明前提条件 - 如果某些 VBA 功能在 WPS 中不可用，尝试使用 WPS 的 JS 宏作为备选方案，或使用 Python 直接调用 WPS COM 接口（通过 win32com 连接 Ket.Application 对象） - 记录所有不兼容的功能点，并在代码中添加注释或禁用相关功能 3. 更新所有 Markdown 文档，要求： - 在文档开头明确说明：本工具完全由 AI 开发，开发起始时间为 2026年4月4日，无人工编写代码 - 删除所有虚构的日期和版本记录（如 2026.03.15 等），只保留真实开发时间线 - 详细记录每次迭代的真实变更：包括第一次基础功能开发、第二次新增页眉页脚图片和增强依赖分析、第三次新增批量设置和数据转移、第四次技术方案重构（说明探索过的技术路线及最终选择）、本次 WPS 兼容性测试 - 在 测试报告.md 中，单独列出 WPS 兼容性测试结果，对比与 Excel 环境的差异 - 在 用户操作手册.md 中，增加 WPS 环境下的特殊配置说明（如需要安装 VBA 插件） - 在 项目完成总结.md 中，如实说明已知问题（如某些格式在 WPS 下可能丢失）和后续改进方向 4. 最终交付以下文件： - 所有修改后的 Python 源文件（如有针对 WPS 的调整） - 更新后的 build-windows.ps1 - 更新后的 requirements.txt - 更新的测试报告.md - 更新的用户操作手册.md - 更新的项目完成总结.md 请直接输出上述所有文件的完整内容，不要输出多余对话。输出中不要包含反引号、美元符号、单引号等特殊字符。
+  1353│ 
+  1354│ ---
+  1355│ 
+  1356│ ## ❓ unknown
+  1357│ 
+  1358│ 基于以上测试结果，需要更新打包文件。仅输出一段不含让终端误会的任何字符的要求AI更新打包文件的提示词文本。
+  1359│ 
+  1360│ ---
+  1361│ 
+  1362│ ## ❓ unknown
+  1363│ 
+  1364│ 我们要求输出一段提示词，让AI更新打包文件。基于以上测试结果，需要更新打包文件。提示词要简洁，不含特殊字符。
+  1365│ 请基于最新的测试结果（包括 WPS 兼容性测试和 VBA 重构后的功能验证），更新打包脚本 build-windows.ps1。确保打包后的 exe 能正确处理 template.xls 中的复杂格式（合并单元格、图片、页眉页脚等），并在 Windows 和 WPS 环境下稳定运行。输出更新后的完整脚本内容，不要包含反引号、美元符号、单引号等特殊字符。
+  1366│ 
+  1367│ ---
+  1368│ 
+  1369│ ## ❓ unknown
+  1370│ 
+  1371│ 更新打包脚本和打包说明。将前一句话补充进入上一段提示词文本中。
+  1372│ 
+  1373│ ---
+  1374│ 
+  1375│ ## ❓ unknown
+  1376│ 
+  1377│ 我们要求输出一段提示词，内容为：请基于最新的测试结果（包括 WPS 兼容性测试和 VBA 重构后的功能验证），更新打包脚本 build-windows.ps1 和打包说明文档。确保打包后的 exe 能正确处理 template.xls 中的复杂格式（合并单元格、图片、页眉页脚等），并在 Windows 和 WPS 环境下稳定运行。输出更新后的完整脚本和说明文档内容，不要包含反引号、美元符号、单引号等特殊字符。
+  1378│ 请基于最新的测试结果（包括 WPS 兼容性测试和 VBA 重构后的功能验证），更新打包脚本 build-windows.ps1 和打包说明文档。确保打包后的 exe 能正确处理 template.xls 中的复杂格式（合并单元格、图片、页眉页脚等），并在 Windows 和 WPS 环境下稳定运行。输出更新后的完整脚本和说明文档内容，不要包含反引号、美元符号、单引号等特殊字符。
+  1379│ 
+  1380│ ---
+  1381│ 
+  1382│ ## ❓ unknown
+  1383│ 
+  1384│ 打包运行后的项目添加文件后报错内容为：Visual Studio Just-In-Time Debugger
+  1385│ 
+  1386│ An unhandled win32 exception occurred in [9660] ExcelAnalyzer.exe.
+  1387│ Just-In-Time debugging this exception failed with the following error:
+  1388│ No installed debugger has Just-In-Time debugging enabled. In Visual Studio, Just-In-Time debugging can be enabled from Tools/Options/Debugging/Just-In-Time.
+  1389│ 
+  1390│ Check the documentation index for 'Just-in-time debugging, errors' for more information.
+  1391│ 需要AI检查所有测试文件，并排查在windows11环境下打包的程序文件可能出现的问题，并开发一个windows平台下可用的调试工具集成在项目中。放弃使用ps打包脚本，改为生成如下格式的打包命令md文件：
+  1392│ # 激活虚拟环境（如果有）
+  1393│ if (Test-Path "venv\Scripts\activate.ps1") { & "venv\Scripts\activate.ps1" }
+  1394│ 
+  1395│ # 安装依赖（如果还没装全）
+  1396│ python -m pip install --upgrade pip
+  1397│ python -m pip install pyinstaller PyQt5 openpyxl pandas numpy xlwings xlrd pillow networkx pywin32
+  1398│ 
+  1399│ # 清理
+  1400│ Remove-Item -Path build, dist, *.spec -Recurse -Force -ErrorAction SilentlyContinue
+  1401│ 
+  1402│ # 打包
+  1403│ python -m PyInstaller --onefile --windowed --name ExcelAnalyzer --add-data "src;src" --add-data "config.json;." --add-data "template.xls;." --add-data "test_image.png;." --hidden-import=PyQt5 --hidden-import=openpyxl --hidden-import=pandas --hidden-import=numpy --hidden-import=xlwings --hidden-import=xlrd --hidden-import=PIL --hidden-import=networkx --collect-all PyQt5 --collect-all PIL --exclude-module matplotlib --exclude-module scipy main.py
+  1404│ 仅输出一段不含让终端误会的可以让AI agent执行以上工作的提示词文本。
+  1405│ 
+  1406│ ---
+  1407│ 
+  1408│ ## ❓ unknown
+  1409│ 
+  1410│ 我们需要的提示词：要求AI检查错误、开发调试工具、放弃ps脚本改为提供打包命令md文件。输出一段纯文本提示词，不含特殊字符。
+  1411│ 请执行以下任务：
+  1412│ 
+  1413│ 当前项目打包后的 exe 在 Windows 11 环境下运行时出现 Visual Studio Just-In-Time Debugger 错误，提示未处理的 win32 异常。需要排查问题并开发集成调试工具。
+  1414│ 
+  1415│ 请按顺序完成以下工作：
+  1416│ 
+  1417│ 1. 检查所有测试文件（包括 template.xls、test_image.png 以及项目中的所有 Python 源文件），分析可能导致 win32 异常的原因，例如：
+  1418│    - xlwings 或 win32com 在打包后无法正确初始化 COM 对象
+  1419│    - 缺少必要的 DLL 或依赖库
+  1420│    - PyInstaller 打包参数不正确，导致某些模块未被正确包含
+  1421│    - 文件路径处理在打包后失效
+  1422│ 
+  1423│ 2. 开发一个 Windows 平台可用的调试工具，集成在项目中：
+  1424│    - 该工具应能捕获未处理的异常，并显示详细的错误信息（包括异常类型、堆栈跟踪、出错模块）
+  1425│    - 将错误日志写入本地文件（如 error.log），方便用户反馈
+  1426│    - 在程序入口处添加全局异常捕获，避免出现 Just-In-Time 调试器弹窗
+  1427│    - 调试工具应能检测运行环境（是否在打包后的 exe 中，Python 路径等）
+  1428│ 
+  1429│ 3. 放弃使用 PowerShell 打包脚本（build-windows.ps1），改为生成一个打包命令说明文件（打包命令.md），内容格式如下（请直接输出该文件内容，不要输出多余解释）：
+  1430│ 
+  1431│ # 激活虚拟环境（如果有）
+  1432│ if (Test-Path "venv\Scripts\activate.ps1") { & "venv\Scripts\activate.ps1" }
+  1433│ 
+  1434│ # 安装依赖（如果还没装全）
+  1435│ python -m pip install --upgrade pip
+  1436│ python -m pip install pyinstaller PyQt5 openpyxl pandas numpy xlwings xlrd pillow networkx pywin32
+  1437│ 
+  1438│ # 清理
+  1439│ Remove-Item -Path build, dist, *.spec -Recurse -Force -ErrorAction SilentlyContinue
+  1440│ 
+  1441│ # 打包
+  1442│ python -m PyInstaller --onefile --windowed --name ExcelAnalyzer --add-data "src;src" --add-data "config.json;." --add-data "template.xls;." --add-data "test_image.png;." --hidden-import=PyQt5 --hidden-import=openpyxl --hidden-import=pandas --hidden-import=numpy --hidden-import=xlwings --hidden-import=xlrd --hidden-import=PIL --hidden-import=networkx --collect-all PyQt5 --collect-all PIL --exclude-module matplotlib --exclude-module scipy main.py
+  1443│ 
+  1444│ 4. 修改主程序入口（main.py），添加调试工具代码：
+  1445│    - 捕获所有未处理的异常，显示友好错误对话框并写入日志
+  1446│    - 确保在打包后的 exe 中能正常记录错误
+  1447│ 
+  1448│ 5. 更新以下文件：
+  1449│    - 所有修改后的 Python 源文件（尤其是添加了调试工具的 main.py 和其他可能引发异常的模块）
+  1450│    - 打包命令.md（上述格式的纯文本说明）
+  1451│    - 更新的测试报告.md：记录本次错误排查过程和解决方案
+  1452│    - 更新的用户操作手册.md：说明如果遇到错误如何查看 error.log 并反馈
+  1453│ 
+  1454│ 请直接输出上述所有修改后的文件完整内容，不要输出多余对话。输出中不要包含反引号、美元符号、单引号等特殊字符。
+  1455│ 
+  1456│ ---
+  1457│ 
+  1458│ ## ❓ unknown
+  1459│ 
+  1460│ 将以上输出去掉换行#号等特殊符号变成纯文本后重新输出
+  1461│ 
+  1462│ ---
+  1463│ 
+  1464│ ## ❓ unknown
+  1465│ 
+  1466│ 我们要求输出纯文本，去掉换行和#号等特殊符号。原提示词中有换行和#号，需要移除。但注意不要改变语义。输出应为一整段连续文本，不含#、换行、反引号等。
+  1467│ 请执行以下任务： 当前项目打包后的 exe 在 Windows 11 环境下运行时出现 Visual Studio Just-In-Time Debugger 错误，提示未处理的 win32 异常。需要排查问题并开发集成调试工具。 请按顺序完成以下工作： 1. 检查所有测试文件（包括 template.xls、test_image.png 以及项目中的所有 Python 源文件），分析可能导致 win32 异常的原因，
+[TRUNCATED] The selected range exceeded 16KB. Continue with a smaller max_lines value.
+</file>

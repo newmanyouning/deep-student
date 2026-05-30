@@ -1,0 +1,202 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\依赖更新调研后续AI提示词.md" total_lines="30535" shown_lines="30336-30535" truncated="false">
+ 30336│ 若当前数据库位置不在目标位置内，执行以下操作：
+ 30337│ 
+ 30338│ 1. **安全备份**：复制所有 `.db` / `.sqlite3` 文件到 `D:\manage\backend\data\` 目录。
+ 30339│ 2. **更新配置**：修改 `D:\manage\backend\.env` 中的 `DATABASE_URL`，例如：
+ 30340│    ```
+ 30341│    DATABASE_URL=sqlite+aiosqlite:///./data/manage.db
+ 30342│    ```
+ 30343│ 3. **验证完整性**：重启后端服务（`uvicorn app.main:app --port 8000`），执行几个 API 查询确认数据可正常读写。
+ 30344│ 4. **清理旧文件**：确认迁移成功后，删除原位置的数据库文件。
+ 30345│ 5. **更新 .gitignore**：确保 `data/` 目录下的 `.db` 文件被正确忽略，`data/` 目录下保留一个 `.gitkeep` 文件以便其被纳入版本控制。
+ 30346│ 
+ 30347│ ## 二、项目打包方案调研结论
+ 30348│ 
+ 30349│ 综合主流技术方案，可行的打包策略可分为两种路径：
+ 30350│ 
+ 30351│ | 方案 | 工具 | 优势 | 劣势 | 推荐度 |
+ 30352│ |------|------|------|------|--------|
+ 30353│ | **方案 A：7-Zip SFX 自解压包** | 7-Zip + SFX 模块 + 批处理脚本 | 用户双击即可运行；无需安装任何软件；保留项目原始结构；启动脚本逻辑完全不变 | 首次启动需等待依赖安装 | ★★★★☆ |
+ 30354│ | **方案 B：PyInstaller + Inno Setup** | PyInstaller + Inno Setup | 生成标准 Windows 安装程序；体验专业；可预编译后端为单一可执行文件 | 配置复杂；依赖打包体积较大；前端仍需单独处理 | ★★★☆☆ |
+ 30355│ | **混合方案（推荐）**：先使用 PyInstaller 编译 Python 部分，再结合 7-Zip SFX 自解压为单一的安装向导。 | | | | ★★★★★ |
+ 30356│ 
+ 30357│ ## 三、打包实施步骤
+ 30358│ 
+ 30359│ ### 3.1 准备打包目录结构
+ 30360│ 
+ 30361│ 在 `D:\manage\` 同级目录下创建 `dist\` 打包工作区：
+ 30362│ 
+ 30363│ ```
+ 30364│ dist/
+ 30365│ ├── app/                          # 主项目内容
+ 30366│ │   ├── backend/                  # 后端源码 + 数据目录
+ 30367│ │   │   ├── data/                 # 数据库文件存放目录
+ 30368│ │   │   ├── .env.example          # 环境变量模板
+ 30369│ │   │   └── requirements.txt      # Python 依赖清单
+ 30370│ │   ├── frontend/                 # 前端生产构建产物
+ 30371│ │   │   └── dist/                 # (执行 npm run build 后生成)
+ 30372│ │   ├── nodejs/                   # 便携版 Node.js 运行时
+ 30373│ │   ├── python/                   # 便携版 Python 运行时
+ 30374│ │   ├── start_all.bat             # 一键启动脚本（改编自 start_all.py）
+ 30375│ │   └── 安装依赖.bat              # 首次运行时的依赖安装脚本
+ 30376│ └── 7zr.exe                       # 独立的 7-Zip 解压工具
+ 30377│ ```
+ 30378│ 
+ 30379│ ### 3.2 生成前端生产包
+ 30380│ 
+ 30381│ 进入 `frontend/` 目录执行 `npm run build`，将生成的 `dist/` 目录内容复制到上述打包结构中。
+ 30382│ 
+ 30383│ ### 3.3 编写首次安装脚本 `安装依赖.bat`
+ 30384│ 
+ 30385│ 此脚本负责在用户首次运行时创建 Python 虚拟环境并安装所需依赖：
+ 30386│ 
+ 30387│ ```batch
+ 30388│ @echo off
+ 30389│ chcp 65001 >nul
+ 30390│ echo ========================================
+ 30391│ echo   管理体系数据流提取工具 - 首次环境配置
+ 30392│ echo ========================================
+ 30393│ echo.
+ 30394│ cd /d "%~dp0"
+ 30395│ 
+ 30396│ :: 检查 Python 是否已安装
+ 30397│ where python >nul 2>&1
+ 30398│ if %errorlevel% neq 0 (
+ 30399│     echo [ERROR] 未检测到 Python，请先安装 Python 3.12+
+ 30400│     pause
+ 30401│     exit /b 1
+ 30402│ )
+ 30403│ 
+ 30404│ :: 创建虚拟环境
+ 30405│ echo [INFO] 正在创建 Python 虚拟环境...
+ 30406│ python -m venv .venv
+ 30407│ echo [INFO] 虚拟环境创建完成。
+ 30408│ echo.
+ 30409│ 
+ 30410│ :: 激活虚拟环境并安装依赖
+ 30411│ call .venv\Scripts\activate.bat
+ 30412│ echo [INFO] 正在安装项目依赖，这可能需要几分钟...
+ 30413│ pip install -r backend\requirements.txt
+ 30414│ echo [INFO] 依赖安装完成！
+ 30415│ echo.
+ 30416│ :: 安装 Playwright Chromium 浏览器（测试用）
+ 30417│ playwright install chromium
+ 30418│ echo.
+ 30419│ echo [INFO] 环境配置全部完成，请双击 start_all.bat 启动应用。
+ 30420│ pause
+ 30421│ ```
+ 30422│ 
+ 30423│ ### 3.4 编写主启动脚本 `start_all.bat`
+ 30424│ 
+ 30425│ 改编自当前的 `start_all.py`，保持原有启动逻辑：
+ 30426│ 
+ 30427│ ```batch
+ 30428│ @echo off
+ 30429│ chcp 65001 >nul
+ 30430│ title 管理体系数据流提取工具
+ 30431│ cd /d "%~dp0"
+ 30432│ 
+ 30433│ :: 激活虚拟环境
+ 30434│ call .venv\Scripts\activate.bat
+ 30435│ if %errorlevel% neq 0 (
+ 30436│     echo [ERROR] 虚拟环境激活失败，请先运行 "安装依赖.bat" 进行首次配置。
+ 30437│     pause
+ 30438│     exit /b 1
+ 30439│ )
+ 30440│ 
+ 30441│ :: 检查 Redis 是否运行
+ 30442│ echo [INFO] 正在检查 Redis 服务...
+ 30443│ redis-cli ping >nul 2>&1
+ 30444│ if %errorlevel% neq 0 (
+ 30445│     echo [WARN] Redis 未运行，正在尝试启动...
+ 30446│     start /B redis-server.exe
+ 30447│     timeout /t 3 /nobreak >nul
+ 30448│ )
+ 30449│ 
+ 30450│ :: 启动 Celery Worker
+ 30451│ echo [INFO] 正在启动 Celery Worker...
+ 30452│ start "Celery Worker" /MIN cmd /c "cd /d %~dp0backend && celery -A app.tasks worker --loglevel=info -P threads"
+ 30453│ timeout /t 3 /nobreak >nul
+ 30454│ 
+ 30455│ :: 启动后端
+ 30456│ echo [INFO] 正在启动后端服务...
+ 30457│ start "uvicorn" /MIN cmd /c "cd /d %~dp0backend && uvicorn app.main:app --host 127.0.0.1 --port 8000"
+ 30458│ timeout /t 4 /nobreak >nul
+ 30459│ 
+ 30460│ :: 启动前端
+ 30461│ echo [INFO] 正在启动前端服务...
+ 30462│ start "Vite" /MIN cmd /c "cd /d %~dp0frontend && npx serve -s dist -l 3000"
+ 30463│ timeout /t 4 /nobreak >nul
+ 30464│ 
+ 30465│ :: 打开浏览器
+ 30466│ echo [INFO] 正在打开浏览器...
+ 30467│ start msedge --new-window http://localhost:3000
+ 30468│ 
+ 30469│ echo.
+ 30470│ echo ========================================
+ 30471│ echo   应用已启动！前端页面: http://localhost:3000
+ 30472│ echo   后端接口: http://localhost:8000/docs
+ 30473│ echo   按 Ctrl+C 将关闭所有服务
+ 30474│ echo ========================================
+ 30475│ echo.
+ 30476│ 
+ 30477│ :: 等待用户按 Ctrl+C
+ 30478│ :loop
+ 30479│ timeout /t 5 /nobreak >nul
+ 30480│ goto loop
+ 30481│ ```
+ 30482│ 
+ 30483│ ### 3.5 使用 7-Zip SFX 创建自解压安装包
+ 30484│ 
+ 30485│ **步骤 1：准备 SFX 模块**
+ 30486│ 从 7-Zip 官网下载并提取 `7zSD.sfx` 模块到打包工具目录。
+ 30487│ 
+ 30488│ **步骤 2：压缩应用文件**
+ 30489│ 使用 7-Zip 将整个 `app/` 目录压缩为 `app.7z`（格式必须为 7z）。
+ 30490│ 
+ 30491│ **步骤 3：编写自解压配置文件 `config.txt`**
+ 30492│ ```
+ 30493│ ;!@Install@!UTF-8!
+ 30494│ Title="管理体系数据流提取工具 - 安装向导"
+ 30495│ BeginPrompt="是否安装管理体系数据流提取工具？\n\n安装前请确保已安装 Python 3.12+。"
+ 30496│ ExtractPathText="请选择安装目录："
+ 30497│ ExtractPathTitle="选择安装位置"
+ 30498│ InstallPath="%USERPROFILE%\\manage_tool"
+ 30499│ RunProgram="start_all.bat"
+ 30500│ GUIMode="2"
+ 30501│ ;!@InstallEnd@!
+ 30502│ ```
+ 30503│ 
+ 30504│ **步骤 4：生成自解压 EXE**
+ 30505│ ```bash
+ 30506│ copy /b 7zSD.sfx + config.txt + app.7z manage_tool_setup.exe
+ 30507│ ```
+ 30508│ 
+ 30509│ ### 3.6 生成最终安装包 `manage_tool_setup.exe`
+ 30510│ 
+ 30511│ 用户双击安装包后，选择安装目录，文件自动解压，即可点击 `安装依赖.bat` 和 `start_all.bat` 开始使用。
+ 30512│ 
+ 30513│ ## 四、验证清单
+ 30514│ 
+ 30515│ | 序号 | 验证项 | 操作 | 预期结果 |
+ 30516│ |------|--------|------|---------|
+ 30517│ | 1 | 数据库文件在项目目录内 | 查看 `backend/data/` 目录 | 存在 `manage.db` 文件 |
+ 30518│ | 2 | .env 配置正确 | 查看 DATABASE_URL | 指向 `sqlite+aiosqlite:///./data/manage.db` |
+ 30519│ | 3 | 迁移后 API 正常 | 重启后端 → 调用任意 API | 返回 200 OK |
+ 30520│ | 4 | 旧数据库文件已清理 | 搜索项目目录 `*.db` | 仅在 `data/` 目录下有数据库文件 |
+ 30521│ | 5 | 打包后的自解压包可运行 | 双击 `manage_tool_setup.exe` | 自动解压到指定目录 |
+ 30522│ | 6 | 启动脚本工作正常 | 双击 `start_all.bat` | 依次启动 Celery → uvicorn → Vite → 打开浏览器 |
+ 30523│ | 7 | 安装依赖脚本工作正常 | 双击 `安装依赖.bat` | 自动创建虚拟环境并安装依赖 |
+ 30524│ 
+ 30525│ ## 五、执行优先级
+ 30526│ 
+ 30527│ 1. 🔴 **最高**：检查当前数据库位置并执行迁移（第一部分）
+ 30528│ 2. 🔴 **最高**：生成前端生产包
+ 30529│ 3. 🔴 **最高**：编写启动脚本和安装依赖脚本
+ 30530│ 4. 🟡 **其次**：使用 7-Zip SFX 创建自解压安装包
+ 30531│ 5. 🟢 **最后**：端到端验证（解压 → 安装依赖 → 启动 → 功能测试）
+ 30532│ 
+ 30533│ 请按以上步骤逐一实施。完成打包后，可以将 `manage_tool_setup.exe` 交付给用户使用。
+ 30534│ 
+ 30535│ ---
+</file>

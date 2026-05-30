@@ -1,0 +1,166 @@
+[
+  {
+    "name": "13英寸等于3302厘米.md",
+    "is_dir": false
+  },
+  {
+    "name": "20磅转换为千克计算.md",
+    "is_dir": false
+  },
+  {
+    "name": "ex在x1泰勒展开式.md",
+    "is_dir": false
+  },
+  {
+    "name": "markdown 概率统计核心概念回顾重点覆.md",
+    "is_dir": false
+  },
+  {
+    "name": "secx三次方积分计算方法.md",
+    "is_dir": false
+  },
+  {
+    "name": "做题是为了学会还是目的呢我数学题写得很痛苦但是我为了通过考试.md",
+    "is_dir": false
+  },
+  {
+    "name": "傅里叶级数展开系数计算方法.md",
+    "is_dir": false
+  },
+  {
+    "name": "光流场定义及机器视觉应用解析.md",
+    "is_dir": false
+  },
+  {
+    "name": "光纤中光信号与振动波传输机制.md",
+    "is_dir": false
+  },
+  {
+    "name": "八道马赫环的形成与特性解析.md",
+    "is_dir": false
+  },
+  {
+    "name": "初等变换对矩阵特征值和迹的影响.md",
+    "is_dir": false
+  },
+  {
+    "name": "单位mvms-2转换为mvg的数值需要怎么计算.md",
+    "is_dir": false
+  },
+  {
+    "name": "向量垂直内积为零.md",
+    "is_dir": false
+  },
+  {
+    "name": "带权二叉树WPL计算方式解析.md",
+    "is_dir": false
+  },
+  {
+    "name": "平衡二叉树旋转过程详解.md",
+    "is_dir": false
+  },
+  {
+    "name": "循环冗余校验码计算方法详解.md",
+    "is_dir": false
+  },
+  {
+    "name": "扫描投射显微镜的工作原理.md",
+    "is_dir": false
+  },
+  {
+    "name": "数学分析初等数学复习资料.md",
+    "is_dir": false
+  },
+  {
+    "name": "数学证明中错误与无意义的区别.md",
+    "is_dir": false
+  },
+  {
+    "name": "无线电波传播无需介质.md",
+    "is_dir": false
+  },
+  {
+    "name": "氢气在高压下可转变为金属氢.md",
+    "is_dir": false
+  },
+  {
+    "name": "浮点数阶码偏置值设计解析.md",
+    "is_dir": false
+  },
+  {
+    "name": "相对扩展不确定度计算说明.md",
+    "is_dir": false
+  },
+  {
+    "name": "矩阵病态概念解释.md",
+    "is_dir": false
+  },
+  {
+    "name": "矩阵行列式变换规则与应用.md",
+    "is_dir": false
+  },
+  {
+    "name": "矩阵迹的定义与性质解析.md",
+    "is_dir": false
+  },
+  {
+    "name": "纸张密度与书堆高度计算.md",
+    "is_dir": false
+  },
+  {
+    "name": "考研数学心态调节与解题策略.md",
+    "is_dir": false
+  },
+  {
+    "name": "规格化数偏置值的作用解析.md",
+    "is_dir": false
+  },
+  {
+    "name": "计量不确定度的精确定义解析.md",
+    "is_dir": false
+  },
+  {
+    "name": "超声波手术刀原理及压电陶瓷作用.md",
+    "is_dir": false
+  },
+  {
+    "name": "这道题解题过程中矩阵转换为行列式的过程依据的是什么原理.md",
+    "is_dir": false
+  },
+  {
+    "name": "连乘积排除特定数的写法.md",
+    "is_dir": false
+  },
+  {
+    "name": "连续性随机变量与联合分布解析.md",
+    "is_dir": false
+  },
+  {
+    "name": "通信与电子线路数学需求分析.md",
+    "is_dir": false
+  },
+  {
+    "name": "量子力学中的态矢与波函数表象.md",
+    "is_dir": false
+  },
+  {
+    "name": "量子力学研究范围及应用概述.md",
+    "is_dir": false
+  },
+  {
+    "name": "量子计算的原理和应用领域是什么.md",
+    "is_dir": false
+  },
+  {
+    "name": "顾樵教授的物理学贡献与著作.md",
+    "is_dir": false
+  },
+  {
+    "name": "食品检测中千分位的单位解析.md",
+    "is_dir": false
+  },
+  {
+    "name": "马尔可夫链的定义与应用场景.md",
+    "is_dir": false
+  }
+]

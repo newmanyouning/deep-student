@@ -1,0 +1,46 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\project_progress.md",
+      "line_number": 7,
+      "line": "- 已完成: 438",
+      "context_before": [
+        "## 总体统计",
+        "- 总文件数: 488"
+      ],
+      "context_after": [
+        "- 待处理: 50",
+        "- 覆盖率: 90%"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\project_progress.md",
+      "line_number": 8,
+      "line": "- 待处理: 50",
+      "context_before": [
+        "- 总文件数: 488",
+        "- 已完成: 438"
+      ],
+      "context_after": [
+        "- 覆盖率: 90%",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\project_progress.md",
+      "line_number": 9,
+      "line": "- 覆盖率: 90%",
+      "context_before": [
+        "- 已完成: 438",
+        "- 待处理: 50"
+      ],
+      "context_after": [
+        "",
+        "## 已完成领域"
+      ]
+    }
+  ],
+  "total_matches": 3,
+  "files_searched": 1,
+  "truncated": false
+}

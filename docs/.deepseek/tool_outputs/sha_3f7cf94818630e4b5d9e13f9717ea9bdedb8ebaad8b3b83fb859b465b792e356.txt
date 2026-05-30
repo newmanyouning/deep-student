@@ -1,0 +1,67 @@
+Todo list updated (12 items, 100% complete)
+{
+  "items": [
+    {
+      "id": 1,
+      "content": "第1批：1-15号 → analysis_batch_01.md",
+      "status": "completed"
+    },
+    {
+      "id": 2,
+      "content": "第2批：16-30号 → analysis_batch_02.md",
+      "status": "completed"
+    },
+    {
+      "id": 3,
+      "content": "第3批：31-52号 → analysis_batch_03.md",
+      "status": "completed"
+    },
+    {
+      "id": 4,
+      "content": "第4批：53-102号 → analysis_batch_04.md",
+      "status": "completed"
+    },
+    {
+      "id": 5,
+      "content": "第5批：103-152号 → analysis_batch_05.md",
+      "status": "completed"
+    },
+    {
+      "id": 6,
+      "content": "第6批：153-202号 → analysis_batch_06.md",
+      "status": "completed"
+    },
+    {
+      "id": 7,
+      "content": "第7批：203-252号 → analysis_batch_07.md",
+      "status": "completed"
+    },
+    {
+      "id": 8,
+      "content": "第8批：253-302号 → analysis_batch_08.md",
+      "status": "completed"
+    },
+    {
+      "id": 9,
+      "content": "第9批：303-352号 → analysis_batch_09.md",
+      "status": "completed"
+    },
+    {
+      "id": 10,
+      "content": "第10批：353-402号 → analysis_batch_10.md",
+      "status": "completed"
+    },
+    {
+      "id": 11,
+      "content": "第11批：403-447号 → analysis_batch_11.md",
+      "status": "completed"
+    },
+    {
+      "id": 12,
+      "content": "汇总所有 analysis_batch 文件",
+      "status": "completed"
+    }
+  ],
+  "completion_pct": 100,
+  "in_progress_id": null
+}

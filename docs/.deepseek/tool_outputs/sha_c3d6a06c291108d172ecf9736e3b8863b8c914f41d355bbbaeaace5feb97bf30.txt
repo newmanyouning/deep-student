@@ -1,0 +1,397 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 10,
+      "line": "---",
+      "context_before": [
+        "在安装ubuntu的树莓派5上如何打包一个java项目的源码成为一个安装包并安装，或者如何直接编译源码成为可执行程序？",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 395,
+      "line": "---",
+      "context_before": [
+        "- GraalVM需要ARM64特定版本",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 401,
+      "line": "---",
+      "context_before": [
+        "我已经有了项目的源码包，也安装了java环境，我需要在控制台输入什么进行源码的打包？一步一步告诉我需要的操作步骤",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 849,
+      "line": "---",
+      "context_before": [
+        "如果你告诉我具体是哪种类型的项目（Maven/Gradle/普通），我可以提供更精确的步骤。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 855,
+      "line": "---",
+      "context_before": [
+        "项目是下载的他人的源码，开发者说需要java环境运行，我下载了开发者其他的项目包发现无法安装在我的树莓派上，我该如何将源码编译成一个可以在树莓派安装了ubuntu系统的环境下运行的程序？",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 1405,
+      "line": "---",
+      "context_before": [
+        "3. Java源文件的结构",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 1411,
+      "line": "---",
+      "context_before": [
+        "在控制台输入什么内容查看源码的项目结构？",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 1784,
+      "line": "---",
+      "context_before": [
+        "告诉我你运行这些命令后的输出，我就能帮你确定下一步该怎么做。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 1790,
+      "line": "---",
+      "context_before": [
+        "显示特定文件夹的树状结构需要输入什么命令？",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 2083,
+      "line": "---",
+      "context_before": [
+        "然后就可以愉快地使用 `tree` 命令查看任何文件夹的结构了！",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 2089,
+      "line": "---",
+      "context_before": [
+        "使用tree命令打开树状结构之后如何通过源码判断一个java项目的结构？",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 2569,
+      "line": "---",
+      "context_before": [
+        "通过`tree`命令查看结构后，结合这些判断要点，你就能快速理解任何Java项目的组织结构了。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 2575,
+      "line": "---",
+      "context_before": [
+        "发现这个是一个gradle项目，有很明显的gradle项目特征，是一个开源的模拟电路程序的源码",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 2941,
+      "line": "---",
+      "context_before": [
+        "这样我就能提供更具体的帮助！对于模拟电路程序，它可能是一个图形界面应用，确保你的树莓派Ubuntu系统安装了图形环境。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 2947,
+      "line": "---",
+      "context_before": [
+        "在控制台我应该输入什么一步一步打包和编译呢？请告诉我详细过程",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 3307,
+      "line": "---",
+      "context_before": [
+        "请告诉我你运行到哪一步遇到了什么问题，我会给你具体的解决方案。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 3313,
+      "line": "---",
+      "context_before": [
+        "在给予执行权限的步骤，我应该在控制台完整的输入什么？",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 3473,
+      "line": "---",
+      "context_before": [
+        "这样我就能知道是否设置成功，然后指导你下一步。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 3488,
+      "line": "---",
+      "context_before": [
+        "OS:            Linux 6.8.0-1004-raspi aarch64",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 3708,
+      "line": "---",
+      "context_before": [
+        "3. 尝试运行JAR时的任何错误信息",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 3721,
+      "line": "---",
+      "context_before": [
+        "> Get more help at https://help.gradle.org.",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 4096,
+      "line": "---",
+      "context_before": [
+        "请告诉我你选择了哪种方案，以及执行后的结果。如果还有问题，请提供具体的错误信息。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 4102,
+      "line": "---",
+      "context_before": [
+        "在下载了java21并重新编译产生jar文件之后，运行jar文件显示这个jar文件中没有主清单属性，我需要怎么解决？",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 4505,
+      "line": "---",
+      "context_before": [
+        "这样我可以提供进一步的帮助。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 4521,
+      "line": "---",
+      "context_before": [
+        "主类在哪里？",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 4888,
+      "line": "---",
+      "context_before": [
+        "现在运行程序吧！",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 4901,
+      "line": "---",
+      "context_before": [
+        "我应该怎么做",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 5657,
+      "line": "---",
+      "context_before": [
+        "请告诉我你尝试了哪种方法以及结果如何。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 5663,
+      "line": "---",
+      "context_before": [
+        "我尝试了最简单的方法，用gradlew run 运行，发现控制台还没有跑完流程，目标项目程序已经自动跳出来一个窗口了，看起来是快要完成了，但是这个窗口有问题的是一些内部的字体显示方框，窗口打开后进度条不动了，我应该怎么做?",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+      "line_number": 6147,
+      "line": "---",
+      "context_before": [
+        "这样我可以提供进一步的帮助。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    }
+  ],
+  "total_matches": 30,
+  "files_searched": 1,
+  "truncated": false
+}

@@ -1,0 +1,87 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md" total_lines="2419" shown_lines="2300-2419" truncated="true">
+  2300│   - 核心解释：前置依赖为Node.js（建议v20 LTS），安装命令为`npm install -g wpsjs`，国内网络慢可用`npm config set registry https://registry.npmmirror.com`切换淘宝镜像。验证安装用`wpsjs -h`，若提示命令无效需重启终端刷新环境变量。兼容性问题时可安装稳定旧版本`npm install -g wpsjs@2.1.6`。
+  2301│ 
+  2302│ - **[WPS本地加载项加载方法]** — 加载本地WPS加载项有两种方式：官方wpsjs命令行（适用于JS加载项开发调试）和手动复制模板文件（适用于传统.dotm/.xlam加载项）
+  2303│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2304│   - 核心解释：方法一(wpsjs)：在项目根目录运行`wpsjs debug`临时加载并支持热更新调试，运行`wpsjs publish`将加载项复制到jsaddons目录完成本地安装。方法二(手动)：将.dotm或.xlam模板文件复制到WPS启动目录(%APPDATA%\Kingsoft\wps\startup)后重启WPS自动加载，或在WPS的"开发工具"→"加载项"中手动添加。传统手动方式每次重启WPS可能不会自动加载，需重复操作。
+  2305│ 
+  2306│ - **[wpsjs核心命令工作流]** — wpsjs提供完整的加载项开发生命周期：create(创建)→debug(调试)→build(打包)→publish(发布)
+  2307│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2308│   - 核心解释：`wpsjs create 项目名`创建新加载项项目并选择类型(文字/表格/演示)和框架；`wpsjs debug`自动启动WPS并加载加载项，修改代码后自动刷新，Ctrl+C停止；`wpsjs build`打包加载项用于分发；`wpsjs publish`将加载项安装到本地WPS中。启用加载项功能需在cfgs目录的oem.ini中添加[JsApiShowWebDebugger=true]，调试按Alt+F12或F12打开开发者工具。
+  2309│ 
+  2310│ - **[WPS加载项加载失败排查]** — 加载项无法加载的常见原因包括：功能开关未开启、路径被隐藏、版本兼容性和调试模式配置问题
+  2311│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2312│   - 核心解释：排查步骤：(1)检查WPS安装包是否带加载项功能，在cfgs目录下oem.ini的[support]节添加JsApiShowWebDebugger=true；(2)在文件管理器中勾选"隐藏的项目"以显示AppData等隐藏目录；(3)尝试更新或更换WPS版本来解决兼容性问题；(4)按F12打开开发者工具查看控制台错误信息。不建议直接删除文件夹来卸载插件，优先用WPS内置加载项管理器。
+  2313│ 
+  2314│ - **[Ollama下载connection reset报错]** — Ollama拉取模型时出现"max retries exceeded: connection reset by peer"是网络层TCP连接被远程服务器主动重置所致
+  2315│   - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
+  2316│   - 核心解释：错误通常发生在下载进度中途（如44%），原因包括：(1)WiFi信号弱或网络波动；(2)Ollama使用的Cloudflare R2存储瞬时故障或高负载；(3)IPv6连接不稳定（从报错地址可见使用了IPv6）；(4)本地防火墙/VPN/代理干扰；(5)DNS解析问题。解决方法：直接重试（Ollama支持断点续传）、禁用IPv6或设为首选IPv4（macOS: 系统设置→网络→TCP/IP→配置IPv6改为仅限本地链接）、切换网络、关闭代理。
+  2317│ 
+  2318│ - **[Ollama模型下载网络排查完整方案]** — Ollama下载失败的网络排查包括：测速诊断、DNS优化、镜像加速、手动下载和日志排查五类方案
+  2319│   - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
+  2320│   - 核心解释：(1)用ping和curl测试到dd20bb8919...r2.cloudflarestorage.com的连通性；(2)设置OLLAMA_HOST和OLLAMA_ORIGINS环境变量解决内网访问限制；(3)有多篇教程提供Ollama镜像加速配置方法——GFW阻断了Cloudflare R2导致国内用户大模型下载困难是已知问题；(4)HTTP_PROXY/HTTPS_PROXY环境变量配置代理（如http://127.0.0.1:7890）；(5)从Ollama模型库页面手动下载gguf文件后用Modelfile本地导入。排查优先建议：先重试，再切网络/关代理，最后考虑镜像加速。
+  2321│ 
+  2322│ - **[ollama show命令查看模型信息]** — `ollama show`配合不同参数可查看模型的提示词模板(template)、系统提示(system)、Modelfile源文件、参数配置等完整信息
+  2323│   - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
+  2324│   - 核心解释：`ollama show --template 模型名`查看提示词模板（模型如何将对话历史组织为特定格式，包含[INST]等标签）；`ollama show --system 模型名`查看系统提示词（设定模型人设和行为准则）；`ollama show --modelfile 模型名`查看Modelfile源文件；`ollama show --parameters 模型名`查看参数配置（温度等）。在模型交互界面中也可输入/show命令查看相同信息（/show info、/show modelfile、/show system、/show template）。
+  2325│ 
+  2326│ - **[Ollama模型文件存储结构]** — Ollama下载的模型默认存储在~/.ollama/models/目录，包含blobs（模型数据层）和manifests（元数据）子目录
+  2327│   - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
+  2328│   - 核心解释：macOS/Linux默认路径为~/.ollama/models/（隐藏目录），可用`du -sh ~/.ollama/models`查看磁盘占用、`open ~/.ollama/models`在Finder中打开。通过设置OLLAMA_MODELS环境变量可修改存储路径：临时用`export OLLAMA_MODELS="/新路径"`，永久将export命令写入~/.zshrc并执行source ~/.zshrc后重启Ollama服务生效。
+  2329│ 
+  2330│ 
+  2331│ - **[上海工程技术大学NLP导师制培养]** — 上海工程技术大学智能互联计算研究所通过导师制方式培养NLP方向研究生，研究覆盖NLP、知识图谱等领域
+  2332│   - 来源文件：`01_AI与编程开发/上海高校自然语言处理硕士项目对比.md`
+  2333│   - 核心解释：该所由杨淑群教授领衔，团队成员近50人，导师研究方向涵盖自然语言处理、知识图谱、云计算等。适合更看重具体导师和课题组方向匹配度的学生，报考前建议直接查阅导师（如廖薇、王海玲等）的研究方向并与导师联系。
+  2334│ 
+  2335│ - **[NLP方向的专业归属层次]** — 自然语言处理在本科阶段作为核心课/选修课存在，在硕士博士阶段作为研究方向存在于计算机/人工智能等一级学科下
+  2336│   - 来源文件：`01_AI与编程开发/上海高校自然语言处理硕士项目对比.md`
+  2337│   - 核心解释：本科阶段NLP归属于计算机科学与技术、人工智能、智能科学与技术、数据科学与大数据技术等专业，以课程形式出现；硕士博士阶段归属于计算机科学与技术、软件工程、电子信息、人工智能等一级学科，学生通过选择NLP方向导师和课题来深入学习。未独立设置一级专业的原因是NLP需要扎实的计算机科学、数学和语言学基础，先在大类下打好基础再专攻方向是更合理的培养路径。
+  2338│ 
+  2339│ 
+  2340│ - **[VBA图片传输六种技术方案对比]** — VBA可通过COM对象引用、字节数组、ADODB.Stream、WIA、PropertyBag和Base64编码六种方式向外部程序传输图片数据
+  2341│   - 来源文件：`01_AI与编程开发/VBA数据类型种类.md`
+  2342│   - 核心解释：(1)StdPicture COM对象引用：高效但要求调用方实现COM接口；(2)Byte()字节数组：最通用的跨语言方案；(3)ADODB.Stream二进制流：灵活强大，可读写文件、处理内存数据和Base64编码；(4)WIA ImageFile：相比LoadPicture支持PNG等更多格式；(5)PropertyBag：适合VBA内部组件间持久化传递；(6)Base64编码为String：适合JSON/XML等文本协议传输，数据量增加约33%。实际应用常组合使用，如接收方从COM得到字节数组后用ADODB.Stream保存或Base64编码嵌入JSON通过HTTP API发送。
+  2343│ 
+  2344│ - **[VBA函数与过程的返回值差异]** — VBA中Function过程返回指定类型数据，Sub过程不返回值（返回类型实质为Variant/Empty）
+  2345│   - 来源文件：`01_AI与编程开发/VBA数据类型种类.md`
+  2346│   - 核心解释：Function通过As子句声明返回类型（Byte/Integer/Long/Single/Double/Currency/String/Boolean/Date/Variant/Object等），共约11-14种显式可声明类型；Decimal只能作为Variant子类型存在，不能直接声明为返回类型；Sub过程不产生返回值，其"返回"可视为Variant/Empty。此外，Variant是默认返回类型，可容纳除定长字符串外的任何数据，包含vbEmpty、vbNull、vbArray等子类型。
+  2347│ 
+  2348│ 
+  2349│ - **[容器内版本查看的六类命令场景]** — 进入Docker容器后，按模型安装方式分六类命令：pip show/apt show/--version/env grep/ls模型目录/find版本文件
+  2350│   - 来源文件：`01_AI与编程开发/查看云服务器模型版本方法.md`
+  2351│   - 核心解释：容器内`root@...`提示符下六类场景：(1)pip包用`pip show 包名`或`python -c "import 包; print(包.__version__)"`，不确定包名先用`pip list | grep 关键词`；(2)apt包用`apt show 包名`或`dpkg -l | grep 关键词`；(3)可执行文件用`程序名 --version`或`-v`；(4)环境变量用`env | grep -i version`；(5)模型文件用`ls -l /path/to/model/`查看文件名中的版本号(如llama-2-7b.Q4_K_M.gguf)，HuggingFace缓存路径为`~/.cache/huggingface/hub/`含版本哈希的目录名；(6)容器内项目文件用`find / -name "*version*"`或`cat /app/README.md`。
+  2352│ 
+  2353│ - **[本地模型不继承云端安全限制]** — 本地部署的AI模型与云端模型在指令遵循上完全独立，不会自动遵守云端的安全限制和系统提示词
+  2354│   - 来源文件：`01_AI与编程开发/本地模型不遵守云端限制.md`
+  2355│   - 核心解释：云端模型通过服务商在模型前端添加安全护栏（系统提示词+输出审核过滤），而本地模型通过Ollama/LM Studio等工具运行时拥有完全控制权，模型处于裸奔状态。虽然开源模型（Llama/Qwen等）预训练时经过RLHF对齐有一定安全性，但本地没有云端的动态策略更新和二次审核，通过精心设计的提示词（越狱）容易让模型忽略内置道德约束。如需本地遵守云端规则，需手动在本地前端填入相应系统提示词。
+  2356│ 
+  2357│ - **[Ollama模型的CAS存储架构]** — Ollama采用内容寻址存储(CAS)架构，模型由多个不可变的blob组成，自定义模型仅创建引用清单而不复制权重文件
+  2358│   - 来源文件：`01_AI与编程开发/本地模型不遵守云端限制.md`
+  2359│   - 核心解释：模型组件（权重、系统提示词、对话模板、参数配置等）以SHA256哈希标识的不可变blob存储。通过Modelfile创建自定义模型时，FROM指令指向已有基础模型的权重blob（直接复用，不复制），仅新建一个几KB大小的清单文件（manifest）引用这些blob。这种设计使得同一基础模型创建多个角色（如deepseek-r1:7b和deepseek-r1:7b-法师）共享同一份权重文件，磁盘占用几乎不变。
+  2360│ 
+  2361│ - **[Ollama多角色模型创建方法]** — 在Ollama中为同一基础模型创建不同角色有两种方式：ollama cp快速复制和Modelfile从零创建
+  2362│   - 来源文件：`01_AI与编程开发/本地模型不遵守云端限制.md`
+  2363│   - 核心解释：方式一(ollama cp)：ollama cp deepseek-r1:7b deepseek-r1:7b-法师 瞬间复制模型清单，然后 ollama show --modelfile 导出配置修改SYSTEM提示词，再 ollama create -f ./Modelfile 重建。方式二(Modelfile)：新建文件写 FROM 基础模型名 + SYSTEM 新角色描述 + PARAMETER temperature 0.9，然后 ollama create 新模型名 -f ./Modelfile。运行时若同时运行两个角色，Ollama会共享内存中的权重部分，额外占用极少（主要是KV Cache上下文）。
+  2364│ 
+  2365│ - **[本地模型与云端模型的安全策略差异]** — 本地模型的安全约束来自模型基础权重的RLHF训练对齐，云端模型在此基础上叠加实时动态策略和审核过滤
+  2366│   - 来源文件：`01_AI与编程开发/本地模型不遵守云端限制.md`
+  2367│   - 核心解释：云端模型在系统提示词层写入禁止输出规则，服务商可对敏感事件临时加强屏蔽（实时更新策略）。本地模型的知识和规则停留在模型发布日，没有云端的第二道审核程序。两种安全层的区别：基础对齐层（模型训练时决定，制止武器/暴力等严重内容）由开源模型授权协议保障；动态策略层（云端实时更新）在本地完全不存在。用户需自行承担本地模型输出的安全责任。
+  2368│ 
+  2369│ - **[开源项目非官方编译提示原理]** — 开源程序自编译版本的About页面显示非官方编译提示、编译时间和平台，是项目通过条件编译宏（如OFFICIAL_BUILD）实现的版本区分机制
+  2370│   - 来源文件：`01_AI与编程开发/开源项目编译版本信息解析.md`
+  2371│   - 核心解释：源代码中用 #ifdef OFFICIAL_BUILD 条件判断：官方构建时传 -D OFFICIAL_BUILD 参数定义该宏则显示简洁版本信息；普通用户编译时不传该参数则执行 #else 分支，显示非官方编译提示 + __DATE__/__TIME__（编译器内置宏自动替换为编译时刻）+ 编译平台信息。贡献者信息作为代码仓库一部分始终显示。这样设计有四个目的：安全和信任（防止篡改识别）、故障排查（提供编译环境线索）、责任界定（维护者只对官方版本负责）、鼓励使用官方版本。
+  2372│ 
+  2373│ - **[JAR文件本质与跨平台原理]** — JAR(Java ARchive)本质是ZIP压缩包，包含编译后的.class字节码文件、资源文件和META-INF/MANIFEST.MF清单，通过JVM实现跨平台运行
+  2374│   - 来源文件：`01_AI与编程开发/开源项目编译版本信息解析.md`
+  2375│   - 核心解释：JAR文件不是直接在CPU上运行的机器码，需要Java运行时环境(JRE)作为中介。其跨平台性依赖于JVM——在不同操作系统上有不同实现但向上提供统一字节码执行环境。运行条件：目标计算机安装合适版本JRE且JAR使用兼容Java版本编译（如Java 17编译的JAR需要JRE 17+）。MANIFEST.MF中Main-Class属性指定入口类，若无则需用 java -cp 显式指定。
+  2376│ 
+  2377│ - **[JAR文件执行流程详解]** — 执行 java -jar app.jar 时，操作系统启动java.exe→JVM初始化→读取MANIFEST.MF找主类→类加载器加载字节码→解释执行+JIT编译→程序运行
+  2378│   - 来源文件：`01_AI与编程开发/开源项目编译版本信息解析.md`
+  2379│   - 核心解释：操作系统通过PATH找到java可执行文件启动JVM；JVM作为ZIP读取器打开JAR，解析META-INF/MANIFEST.MF找到Main-Class入口；ClassLoader动态加载主类和依赖类的.class文件；字节码验证器进行安全检查后，解释器逐条执行字节码指令，JIT编译器将热点代码编译为本地机器码加速；双击JAR时Windows用javaw.exe（无控制台窗口）启动，通过注册表文件关联。不同Java版本可能不兼容，表现为 UnsupportedClassVersionError。
+  2380│ 
+  2381│ - **[JAR与原生可执行文件对比]** — JAR依赖JVM但跨平台，EXE/ELF/Mach-O是原生机器码直接由OS执行但不可跨平台
+  2382│   - 来源文件：`01_AI与编程开发/开源项目编译版本信息解析.md`
+  2383│   - 核心解释：JAR格式为ZIP+字节码，需要JVM作为中间层；Windows EXE为PE格式+机器码直接CPU执行；Linux ELF和macOS Mach-O同理。JAR优势是跨平台和安全沙盒（可选），劣势是需要额外运行时环境和解释执行带来的性能开销。简单JAR所有类在单一文件中，复杂应用使用主JAR+ClassPath指定多个依赖JAR。JAR文件后缀
+[TRUNCATED] The selected range exceeded 16KB. Continue with a smaller max_lines value.
+</file>

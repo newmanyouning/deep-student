@@ -1,0 +1,154 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" total_lines="8287" shown_lines="2000-2149" truncated="true" next_start_line="2150">
+  2000│ {
+  2001│     // ... 你原有的其他配置 ...
+  2002│ 
+  2003│     // 选择要使用的模型（可以随便填）
+  2004│     "claudeCode.selectedModel": "cc-mini",
+  2005│ 
+  2006│     // 配置环境变量，将 Claude Code 指向本地 API 服务器
+  2007│     "claudeCode.environmentVariables": [
+  2008│         {
+  2009│             "name": "ANTHROPIC_BASE_URL",
+  2010│             "value": "http://127.0.0.1:8080"
+  2011│         },
+  2012│         {
+  2013│             "name": "ANTHROPIC_AUTH_TOKEN",
+  2014│             "value": "any-string-is-ok-here"
+  2015│         },
+  2016│         {
+  2017│             "name": "ANTHROPIC_API_KEY",
+  2018│             "value": "any-string-is-ok-here"
+  2019│         }
+  2020│     ]
+  2021│ }
+  2022│ ```
+  2023│ 
+  2024│ > **说明**：`ANTHROPIC_AUTH_TOKEN` 和 `ANTHROPIC_API_KEY` 必须填写**任意非空字符串**，否则插件会认为没有配置 API Key 而报错[reference:3][reference:4]。
+  2025│ 
+  2026│ ### 2.3 重启 VSCode
+  2027│ 
+  2028│ 保存 `settings.json` 文件后，**完全关闭 VSCode 再重新打开**，让配置生效。
+  2029│ 
+  2030│ ---
+  2031│ 
+  2032│ ## 可选方案：使用 Claude Code Router
+  2033│ 
+  2034│ 如果上面的 API 服务器方案遇到兼容性问题，可以使用 **Claude Code Router (CCR)** 作为更成熟的替代方案。它是一个专门用于将 Claude Code 连接到各种模型的协议转换代理[reference:5][reference:6]。
+  2035│ 
+  2036│ ### 安装 CCR
+  2037│ 
+  2038│ 在终端中执行：
+  2039│ 
+  2040│ ```bash
+  2041│ # 安装 CCR（需要 Node.js 环境）
+  2042│ npm install -g @musistudio/claude-code-router
+  2043│ ```
+  2044│ 
+  2045│ ### 配置 CCR
+  2046│ 
+  2047│ 创建配置文件 `~/.claude-code-router/config.json`：
+  2048│ 
+  2049│ ```json
+  2050│ {
+  2051│     "LOG": true,
+  2052│     "API_TIMEOUT_MS": 600000,
+  2053│     "Providers": [
+  2054│         {
+  2055│             "name": "cc-mini-local",
+  2056│             "api_base_url": "http://127.0.0.1:8080/v1/messages",
+  2057│             "api_key": "any-token",
+  2058│             "models": ["cc-mini"],
+  2059│             "transformer": { "use": ["anthropic"] }
+  2060│         }
+  2061│     ],
+  2062│     "Router": {
+  2063│         "default": "cc-mini-local,cc-mini",
+  2064│         "background": "cc-mini-local,cc-mini",
+  2065│         "think": "cc-mini-local,cc-mini"
+  2066│     }
+  2067│ }
+  2068│ ```
+  2069│ 
+  2070│ ### 启动 CCR
+  2071│ 
+  2072│ ```bash
+  2073│ # 先启动 cc-mini API 服务器
+  2074│ python api_server.py
+  2075│ 
+  2076│ # 在另一个终端中启动 CCR
+  2077│ ccr start
+  2078│ ```
+  2079│ 
+  2080│ ### 修改 VSCode 配置指向 CCR
+  2081│ 
+  2082│ 修改 VSCode 的 `settings.json`：
+  2083│ 
+  2084│ ```json
+  2085│ {
+  2086│     "claudeCode.environmentVariables": [
+  2087│         {
+  2088│             "name": "ANTHROPIC_BASE_URL",
+  2089│             "value": "http://127.0.0.1:3456"
+  2090│         },
+  2091│         {
+  2092│             "name": "ANTHROPIC_AUTH_TOKEN",
+  2093│             "value": "any-token"
+  2094│         }
+  2095│     ]
+  2096│ }
+  2097│ ```
+  2098│ 
+  2099│ > **CCR 的优势**：它内置了完整的协议转换功能，可以处理 Claude API 与 OpenAI 兼容格式之间的所有差异（请求结构、流式事件格式、错误格式等）[reference:7]。
+  2100│ 
+  2101│ ---
+  2102│ 
+  2103│ ## 测试方法
+  2104│ 
+  2105│ 完成所有配置后，按以下步骤测试：
+  2106│ 
+  2107│ 1. **启动 API 服务器**：在终端运行 `python api_server.py`（保持在运行状态）
+  2108│ 2. **打开 VSCode**：点击侧边栏的 Claude Code 图标
+  2109│ 3. **发送测试消息**：在对话框中输入 `用Python写一个读取Excel文件的基本函数`，看是否能正常返回响应
+  2110│ 4. **检查终端日志**：观察 API 服务器终端是否有请求日志输出
+  2111│ 
+  2112│ 如果出现错误：
+  2113│ - **连接错误**：检查 API 服务器是否正在运行，端口 8080 是否被占用
+  2114│ - **认证错误**：确认 `settings.json` 中的 `ANTHROPIC_AUTH_TOKEN` 不为空
+  2115│ - **无响应**：检查 cc-mini 的模型配置是否正确，尝试先在终端单独运行 `cc-mini "测试消息"` 看是否正常
+  2116│ 
+  2117│ ---
+  2118│ 
+  2119│ ## 注意事项
+  2120│ 
+  2121│ 1. **保持 API 服务器运行**：使用 VSCode 时，`api_server.py` 必须一直保持运行状态。建议打开一个专门的终端窗口来运行它。
+  2122│ 
+  2123│ 2. **cc-mini 版本兼容性**：如果 cc-mini 的模块结构与上面的导入代码不匹配，你可能需要根据实际的 `cc-mini/src/core/` 目录结构调整导入语句。
+  2124│ 
+  2125│ 3. **API 格式差异**：Claude Code 插件期望的是完整的 Anthropic API 兼容端点（`/v1/messages`），上面的 FastAPI 服务实现了基础的消息接口，但可能缺少某些高级特性（如工具调用）。如果遇到问题，建议优先使用 Claude Code Router 方案。
+  2126│ 
+  2127│ 4. **模型选择**：你可以随时修改 `~/.cc-mini/.cc-mini.toml` 或环境变量来切换不同的后端模型，无需修改 VSCode 配置。
+  2128│ 
+  2129│ 5. **安全建议**：API 服务器只监听本地地址 `127.0.0.1`，不会暴露到网络中，相对安全。
+  2130│ 
+  2131│ ---
+  2132│ 
+  2133│ ## ❓ unknown
+  2134│ 
+  2135│ 打开setting.json文件后发现是这样的
+  2136│ {
+  2137│     "files.associations": {
+  2138│         "*.md": "julia"
+  2139│     },
+  2140│     "claudeCode.preferredLocation": "panel",
+  2141│     "claudeCode.environmentVariables": [
+  2142│         
+  2143│     ]
+  2144│ }
+  2145│ 我应该在哪里加入修改设置的代码？
+  2146│ 
+  2147│ ---
+  2148│ 
+  2149│ ## ❓ unknown
+
+[TRUNCATED] Showing lines 2000-2149 of 8287. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" start_line=2150 max_lines=150
+</file>

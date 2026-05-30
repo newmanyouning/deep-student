@@ -9,6 +9,7 @@ import { Switch } from './ui/shad/Switch';
 import { Input } from './ui/shad/Input';
 import { AppSelect } from './ui/app-menu';
 import { Textarea } from './ui/shad/Textarea';
+import { settingsApi } from '@/api/settingsApi';
 
 // 内部组件：带开关的设置行 - Notion 风格
 const SwitchRow = ({
@@ -119,17 +120,14 @@ const WebSearchAdvancedConfigInner: React.FC<WebSearchAdvancedConfigProps> = ({
         invoke<{ default_sites: string[]; user_config: CnWhitelistConfig }>(
           'get_cn_whitelist_config'
         ),
-        invoke<string | null>('get_setting', {
-          key: 'web_search.tavily.search_depth',
-        }).catch(() => null),
+        settingsApi.get('web_search.tavily.search_depth',
+        ).catch(() => null),
       ]);
 
-      const rerankerEnabledOpt = await invoke<string | null>('get_setting', {
-        key: 'web_search.reranker.enabled',
-      }).catch(() => null);
-      const rerankerTopKOpt = await invoke<string | null>('get_setting', {
-        key: 'web_search.reranker.top_k',
-      }).catch(() => null);
+      const rerankerEnabledOpt = await settingsApi.get('web_search.reranker.enabled',
+      ).catch(() => null);
+      const rerankerTopKOpt = await settingsApi.get('web_search.reranker.top_k',
+      ).catch(() => null);
 
       const enabled = (rerankerEnabledOpt ?? 'false') === 'true';
       const topK = clampTopK(
@@ -236,10 +234,8 @@ const WebSearchAdvancedConfigInner: React.FC<WebSearchAdvancedConfigProps> = ({
     const previous = tavilySearchDepth;
     setTavilySearchDepth(next);
     try {
-      await invoke('save_setting', {
-        key: 'web_search.tavily.search_depth',
-        value: next,
-      });
+      await settingsApi.save('web_search.tavily.search_depth', next,
+      );
       showGlobalNotification(
         'success',
         t('settings:advanced_search.tavily_depth.saved', '已保存 Tavily 搜索深度设置')
@@ -257,14 +253,10 @@ const WebSearchAdvancedConfigInner: React.FC<WebSearchAdvancedConfigProps> = ({
 
   const saveRerankerConfig = async (config: RerankerConfig) => {
     await Promise.all([
-      invoke('save_setting', {
-        key: 'web_search.reranker.enabled',
-        value: String(config.enabled),
-      }),
-      invoke('save_setting', {
-        key: 'web_search.reranker.top_k',
-        value: String(config.top_k ?? 10),
-      }),
+      settingsApi.save('web_search.reranker.enabled', String(config.enabled),
+      ),
+      settingsApi.save('web_search.reranker.top_k', String(config.top_k ?? 10),
+      ),
     ]);
     setRerankerConfig(config);
     onConfigChange?.();
@@ -272,18 +264,12 @@ const WebSearchAdvancedConfigInner: React.FC<WebSearchAdvancedConfigProps> = ({
 
   const saveCnWhitelistConfig = async (config: CnWhitelistConfig) => {
     await Promise.all([
-      invoke('save_setting', {
-        key: 'web_search.cn_whitelist.enabled',
-        value: String(config.enabled),
-      }),
-      invoke('save_setting', {
-        key: 'web_search.cn_whitelist.use_default',
-        value: String(config.use_default_list),
-      }),
-      invoke('save_setting', {
-        key: 'web_search.cn_whitelist.custom_sites',
-        value: (config.custom_sites ?? []).join(','),
-      }),
+      settingsApi.save('web_search.cn_whitelist.enabled', String(config.enabled),
+      ),
+      settingsApi.save('web_search.cn_whitelist.use_default', String(config.use_default_list),
+      ),
+      settingsApi.save('web_search.cn_whitelist.custom_sites', (config.custom_sites ?? []).join(','),
+      ),
     ]);
     setCnWhitelistConfig(config);
     onConfigChange?.();

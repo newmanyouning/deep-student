@@ -1,0 +1,84 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\检查登录态逻辑提示词.md" total_lines="1383" shown_lines="1-80" truncated="true" next_start_line="81">
+     1│ # 检查登录态逻辑提示词
+     2│ 对话ID: ecceb6ec-9b81-4ad6-9cdb-de93e14757d2
+     3│ 创建时间: 2026-04-19T08:35:13.802000+08:00
+     4│ 更新时间: 2026-04-20T08:39:06.910000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ 我下载了一个抢定时发布的会员的项目，但是发现这个项目自动打开的网页总是没有登陆，帮忙生成一段AI提示词检查项目逻辑为什么不能打开登录后的网页。仅输出不包含换行和英文引号的提示词文本。
+     9│ 
+    10│ ---
+    11│ 
+    12│ ## ❓ unknown
+    13│ 
+    14│ 我们只需要生成一段AI提示词文本，内容是关于检查抢定时发布会员项目无法打开登录后网页的逻辑问题，要求输出纯文本不换行且不包含英文引号。因此要围绕项目可能未处理登录态、Cookie、Session、跳转、重定向、自动化工具配置等方面，给出提示词的连贯中文描述，一行到底。
+    15│ 请检查本项目抢定时发布会员功能中自动打开网页始终未登录状态的根本逻辑缺陷，重点分析自动化框架如Selenium或Puppeteer在启动浏览器时是否未正确加载用户数据目录如User Data或Profile路径导致每次均为全新访客会话，检查是否忽略了登录成功后保存的Cookies或LocalStorage持久化机制以及项目代码中是否有从持久化存储读取并设置登录凭据的步骤，排查登录流程本身是否因验证码、双因素认证、重定向跨域或服务端会话校验失败而未真正完成登录状态建立，确认代码是否在登录后等待页面跳转完毕并成功捕获了会话标识如Cookie中的SessionId或Token，检查后续请求是否携带了该会话标识并且网页打开时对应的域名路径Secure和HttpOnly属性是否与登录时一致，分析项目是否因为使用了无痕模式、每次新建临时浏览器实例或未关闭浏览器就重复执行导致Cookie未被复用，核查登录态维持逻辑中是否存在过期时间处理错误、竞争条件或异步时序问题造成打开网页时Cookie尚未写入或已被清除，还要查看项目是否依赖外部配置文件或环境变量传入登录凭证以及这些凭证是否失效或被错误覆盖，最后结合网络请求时间线判断打开会员页面前是否有预检请求或页面脚本清除了存储状态，确保浏览器启动参数中未加入禁用存储、禁用缓存或强制隔离会话的选项。
+    16│ 
+    17│ ---
+    18│ 
+    19│ ## ❓ unknown
+    20│ 
+    21│ 在这个部分超过128K模型上下文限制了，希望修改提示词避免超过单次对话模型上下文限制：
+    22│ 现在让我检查浏览器驱动中是否有Cookie管理功能：
+    23│ ↳ Grep(cookie|Cookie|session|Session|localStorage|LocalStorage in D:\外刊下载\经济学人\qiang\qiang) ✓
+    24│ 
+    25│ API error: Error code: 400 - {'error': {'message': "This model's maximum context length is 131072 tokens. However, you
+    26│ requested 268611 tokens (260419 in the messages, 8192 in the completion). Please reduce the length of the messages or
+    27│ completion.", 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}
+    28│ 仅输出提示词。
+    29│ 
+    30│ ---
+    31│ 
+    32│ ## ❓ unknown
+    33│ 
+    34│ 执行到检查浏览器驱动步骤的时候超过128K模型上下文限制了，希望拆分步骤避免超过单次对话模型上下文限制：
+    35│ 现在让我检查浏览器驱动中是否有Cookie管理功能：
+    36│ ↳ Grep(cookie|Cookie|session|Session|localStorage|LocalStorage in D:\外刊下载\经济学人\qiang\qiang) ✓
+    37│ 
+    38│ API error: Error code: 400 - {'error': {'message': "This model's maximum context length is 131072 tokens. However, you
+    39│ requested 268611 tokens (260419 in the messages, 8192 in the completion). Please reduce the length of the messages or
+    40│ completion.", 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}
+    41│ 仅输出提示词。
+    42│ 
+    43│ ---
+    44│ 
+    45│ ## ❓ unknown
+    46│ 
+    47│ 你是AI提示词专家，你输出AI提示词执行到检查浏览器驱动步骤的时候超过128K模型上下文限制了，希望你拆分步骤避免超过单次对话模型上下文限制：
+    48│ 现在让我检查浏览器驱动中是否有Cookie管理功能：
+    49│ ↳ Grep(cookie|Cookie|session|Session|localStorage|LocalStorage in D:\外刊下载\经济学人\qiang\qiang) ✓
+    50│ 
+    51│ API error: Error code: 400 - {'error': {'message': "This model's maximum context length is 131072 tokens. However, you
+    52│ requested 268611 tokens (260419 in the messages, 8192 in the completion). Please reduce the length of the messages or
+    53│ completion.", 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}
+    54│ 仅输出提示词。
+    55│ 
+    56│ ---
+    57│ 
+    58│ ## ❓ unknown
+    59│ 
+    60│ #你是AI提示词专家
+    61│ #之前你输出的一段AI提示词，AI在执行到检查浏览器驱动步骤的时候超过128K模型上下文限制了，希望你拆分步骤避免超过单次对话模型上下文限制：
+    62│ 现在让我检查浏览器驱动中是否有Cookie管理功能：
+    63│ ↳ Grep(cookie|Cookie|session|Session|localStorage|LocalStorage in D:\外刊下载\经济学人\qiang\qiang) ✓
+    64│ 
+    65│ API error: Error code: 400 - {'error': {'message': "This model's maximum context length is 131072 tokens. However, you
+    66│ requested 268611 tokens (260419 in the messages, 8192 in the completion). Please reduce the length of the messages or
+    67│ completion.", 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}
+    68│ 仅输出提示词。
+    69│ 
+    70│ ---
+    71│ 
+    72│ ## ❓ unknown
+    73│ 
+    74│ #你是AI提示词专家
+    75│ #之前你输出的一段AI提示词，AI在执行到检查浏览器驱动步骤的时候超过128K模型上下文限制了，希望你拆分步骤避免超过单次对话模型上下文限制：
+    76│ 现在让我检查浏览器驱动中是否有Cookie管理功能：
+    77│ ↳ Grep(cookie|Cookie|session|Session|localStorage|LocalStorage in D:\外刊下载\经济学人\qiang\qiang) ✓
+    78│ 
+    79│ API error: Error code: 400 - {'error': {'message': "This model's maximum context length is 131072 tokens. However, you
+    80│ requested 268611 tokens (260419 in the messages, 8192 in the completion). Please reduce the length of the messages or
+
+[TRUNCATED] Showing lines 1-80 of 1383. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\检查登录态逻辑提示词.md" start_line=81 max_lines=80
+</file>

@@ -1,0 +1,33 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_8bb684d0 (general) status=Completed
+  objective: 你是一个知识提取专家。请读取文件 `01_AI与编程开发/Python操作WPS写入执行VBA代码.md`，提取其中有价值的、可复用的知识点。
+
+要求：
+1. 先读取整个文件内容
+2. 提取3-8条知识点，每个知识点需要是独立、完整、有实用价值的
+3. 每条知识点的格式如下（输出纯文本，不要加额外的标记）：
+   - **[知识点标题]** — 一句话简介
+     - 来源文件：Python操作WPS写入执行VBA代码.md
+ ...
+  result: - **[Python通过win32com连接WPS应用的COM ProgID]** — WPS各组件对应的Dispatch字符串标识
+  - 来源文件：Python操作WPS写入执行VBA代码.md
+  - 核心解释：通过 `win32com.client.Dispatch("et.Application")` 创建WPS表格应用对象，其中 `"et.Application"` 是WPS表格的COM ProgID。对于WPS文字和WPS演示，分别使用 `"wps.Application"` 和 `"wpp.Application"`。这些ProgID与Microsoft Office的 `"Excel.Application"` 等不同，是WPS独立注册的COM标识。
+
+- **[通过VBComponents接口向WPS工作簿动态注入VBA代码]** — 使用 `CodeModule.AddFromString` 将Python字符串写入VBA工程模块
+  - 来源文件：Python操作WPS写入执行VBA代码.md
+  - 核心解释：通过 `workbook.VBProject.VBComponents.Add(1)` 创建标准模块（参数1代表 `vbext_ct_StdModule`），然后调用 `vb_comp.CodeModule.AddFromString(vba_code)` 将VBA代码字符串直接注入。COM接口会自动处理Python字符串到VBA编辑器内部UTF-16 LE编码的转换，无需手动编码转换。注入前应先检查是否已存在同类模块，避免重复创建。
+
+- **[模块内容替换策略：删除后重建而非追加]** — 每次调用AddFromString会追加代码，需用Remove+Add实现完全替换
+  - 来源文件：Python操作WPS写入执行VBA代码.md
+  - 核心解释：`AddFromString` 方法的行为是在模块末尾追加代码，多次调用会导致重复定义错误。正确的替换方式是先通过 `wb.VBProject.VBComponents.Remove(wb.VBProject.VBComponents(module_name))` 删除旧模块，再用 `Add(1)` 新建并设置 `Name` 属性，最后调用 `AddFromString`。删除不存在的模块会抛出异常，需要用 `try/except` 包裹。
+
+- **[Python与WPS VBA之间可靠的数据交换方式：工作表单元格读写]** — 捕获VBA执行结果优先通过单元格而非立即窗口
+  - 来源文件：Python操作WPS写入执行VBA代码.md
+  - 核心解释：捕获 `Debug.Print` 输出在WPS中极不稳定（需依赖SendKeys模拟复制，易受版本影响）。推荐在VBA代码中将结果写入工作表特定单元格（如 `ThisWorkbook.Sheets(1).Range("A1").Value = result`），Python再通过COM读取该单元格值，或直接使用 `Application.Run` 的返回值——若VBA函数返回String，Python可直接接收。文件交换（JSON/TXT）也是适合复杂结果的备选方案。
+
+- **[VBA代码文件的编码处理：UTF-8存储、COM自动转UTF-16 LE]** — 从文件读取VBA代码并注入WPS时的编码链路
+  - 来源文件：Python操作WPS写入执行VBA代码.md
+  - 核心解释：VBA编辑器内部使用UTF-16 LE编码存储代码，但Python端推荐使用UTF-8格式保存 `.bas` 文件，并用 `open(path, "r", encoding="utf-8")` 读取。当Py...
+  stats: steps=4, duration_ms=73088

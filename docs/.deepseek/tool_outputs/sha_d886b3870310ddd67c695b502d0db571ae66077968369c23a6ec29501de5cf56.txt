@@ -1,0 +1,44 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_f61177f2 (explore) status=Completed
+  objective: 你的任务是读取文件 "01_AI与编程开发/OffVis搜索解析结果名称问题排查.md" 并提取其中的知识点。
+
+请按要求输出：
+
+## 提取结果
+
+### 知识点列表
+对每个知识点，给出：
+- **[知识点标题]** — 一句话概括
+  - 来源文件：OffVis搜索解析结果名称问题排查.md
+  - 核心解释：2-3句详细的解释，包含关键命令、配置、参数或操作步骤
+
+### 规则
+- 只提取有实际信息量的知识点（技术要点、方法...
+  result: ## 提取结果
+
+### 知识点列表
+
+- **OLE复合文档（CFB）结构模型** — xls 文件底层并非单一文件，而是一个微型文件系统式的复合文档容器。
+  - 来源文件：OffVis搜索解析结果名称问题排查.md
+  - 核心解释：经典的 .xls 文件基于 OLE 复合文档（又称结构化存储 / CFB 文件），内部包含 Storages（存储，类似目录/文件夹）和 Streams（流，类似文件，承载工作簿内容、摘要信息等实际数据）以及 Properties（元数据）。了解这一模型是理解 OffVis 解析结果的前提——搜索目标通常不是单元格内容，而是某个 Storage 或 Stream 的名称。
+
+- **OffVis 的二进制搜索特性与操作技巧** — OffVis 是二进制格式查看器，其搜索逻辑与常规文档编辑器不同，需要针对性调整搜索策略。
+  - 来源文件：OffVis搜索解析结果名称问题排查.md
+  - 核心解释：OffVis 搜索直接作用于二进制数据或解析出的结构名称，而非 Excel 单元格文本内容。有效技巧包括：(1) 将待搜索的字符串转换为十六进制（如 UTF-8 编码）进行搜索；(2) 使用 "Find Next" 逐个定位结果（不会自动高亮全部）；(3) 在 "Streams" 或 "Storages" 等不同结构视图中分别尝试搜索。
+
+- **OffVis 已知目录解析 BUG 及规避方法** — OffVis 存在目录树解析 BUG，可能导致搜索失败或数据显示不全，可通过直接导航到关键 Stream 绕过。
+  - 来源文件：OffVis搜索解析结果名称问题排查.md
+  - 核心解释：OffVis 在解析 OLE 目录结构时可能出现显示错乱、截断或无法展开的情况（尤其是涉及 CFB 复合文档目录循环时），这会导致部分数据无法被正确索引从而搜索不到。临时解决方法是直接手动分析关键的流（如 `Workbook` 流），而非依赖目录树进行搜索和浏览。
+
+- **xls 底层结构分析专业工具链** — 深入分析 xls 二进制结构需要配合多款专业工具而非仅靠 OffVis。
+  - 来源文件：OffVis搜索解析结果名称问题排查.md
+  - 核心解释：推荐的工具组合包括：(1) **010 Editor**（配合 Office 文件模板，能可视化解析并展示数据结构）；(2) **oledump.py**（Python 脚本，专门分析 OLE 文件，可列出所有流并提取内容搜索）；(3) **OfficeMalScanner**（专注于恶意文档分析，也能解析文件结构）。这些工具可交叉验证 OffVis 的解析结果。
+
+- **MS-XLS 规范文档是分析的权威参考** — 微软官方的 MS-XLS 技术规范是 xls 二进制结构分析的最终理论依据。
+  - 来源文件：OffVis搜索解析结果名称问题排查.md
+  - 核心解释：要找到某个结构在技术文档中的理论支持，应当搜索 "MS-XLS specification download" 或直接访问 Microsoft Docs，获取并查阅该 PDF 规范。所有与 xls 二进制格式相关的结构定义、字段含义和解析规则均在此规范中详细说明，是逆向分析和修改处理的核心参考资料。
+
+---
+  stats: steps=3, duration_ms=33842

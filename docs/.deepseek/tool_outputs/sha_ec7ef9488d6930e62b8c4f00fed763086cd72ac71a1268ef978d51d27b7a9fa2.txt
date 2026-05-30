@@ -1,0 +1,19 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\project_progress.md
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\project_progress.md
+@@ -162,10 +162,10 @@
+ - 已合并至: knowledge_cache.md AI与编程开发 章节尾部
+ - knowledge_cache.md: 1589行 → 1691行
+ - 已处理文件列表:
+-  1. 本地模型输出错误信息排查.md (~48KB) — 4条：Ollama Modelfile TEMPLATE/SYSTEM 关系、ChatML模板结构、停止词配置、异常排查步骤
+-  2. 快捷键分析报告生成.md (~42KB) — 4条：Word兼容HTML规范、Blob下载Word文档、Windows系统快捷键、WPS快捷键体系
+-  3. OffVis搜索解析结果名称问题排查.md (~39KB) — 5条：OLE/CFB结构模型、OffVis搜索特性、目录解析BUG、xls分析工具链、MS-XLS规范
+-  4. 合并md文件脚本编写.md (~37KB) — 5条：Python/Bash合并脚本、Python缩进修复、GBK编码问题、Windows终端操作指南
++  1. WPS VBA语法兼容性分析.md (~38KB) — 6条：WPS与标准VBA对象模型差异、不支持的高级功能、版本授权差异、Office 365功能差异、核心文档体系、CHM转文本方案
++  2. WPS插件开发与加载指南.md (~37KB) — 6条：插件类型兼容性对照、wpsjs工具链、离线打包安装、oem.ini/jsplugins.xml注册、JS API操作表格、AI辅助开发架构
++  3. Python操作WPS写入执行VBA代码.md (~37KB) — 5条：COM ProgID、VBComponents动态注入、删除重建替换策略、单元格数据交换、UTF-8/UTF-16编码链路
++  4. 阿里云服务器PaddleOCR使用指南.md (~33KB) — 5条：命令行三合一识别、Python API结果解析、阈值调优、Docker容器进入流程、三类错误排查
+ 
+ ## 处理策略 (恢复后执行)
+ 1. 读取本进度文件了解待处理内容
+
+Replaced 1 occurrence in \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\project_progress.md

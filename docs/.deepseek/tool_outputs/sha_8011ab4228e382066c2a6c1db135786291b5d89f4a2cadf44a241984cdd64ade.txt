@@ -1,0 +1,204 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\PowerShell脚本打包错误修复.md" total_lines="2847" shown_lines="1-200" truncated="true" next_start_line="201">
+     1│ # PowerShell脚本打包错误修复
+     2│ 对话ID: ac16152e-8c1f-4229-8de0-e2562629fb09
+     3│ 创建时间: 2026-04-04T16:49:06.973000+08:00
+     4│ 更新时间: 2026-04-07T23:36:05.816000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ 这个打包脚本在运行的时候报错
+     9│ (venv) PS E:\excel> .\build-windows.ps1
+    10│ 所在位置 E:\excel\build-windows.ps1:30 字符: 1
+    11│ + }
+    12│ + ~
+    13│ 表达式或语句中包含意外的标记“}”。
+    14│     + CategoryInfo          : ParserError: (:) [], ParseException
+    15│     + FullyQualifiedErrorId : UnexpectedToken
+    16│ 
+    17│ ---
+    18│ 
+    19│ ## ❓ unknown
+    20│ 
+    21│ 我们被问到一个问题：用户提供了一个PowerShell脚本build-windows.ps1，在运行时遇到错误：
+    22│ 
+    23│ ```
+    24│ (venv) PS E:\excel> .\build-windows.ps1
+    25│ 所在位置 E:\excel\build-windows.ps1:30 字符: 1
+    26│ + }
+    27│ + ~
+    28│ 表达式或语句中包含意外的标记“}”。
+    29│     + CategoryInfo          : ParserError: (:) [], ParseException
+    30│     + FullyQualifiedErrorId : UnexpectedToken
+    31│ ```
+    32│ 
+    33│ 用户想要知道为什么报错并解决它。我们需要分析脚本内容。脚本中第30行是一个单独的`}`，这看起来是多余的。查看脚本内容：从第1行到第64行左右，但报错在第30行。可能的原因是脚本中某处有一个未匹配的大括号或者多余的右花括号。让我们仔细分析脚本。
+    34│ 
+    35│ 提供的脚本内容：
+    36│ 
+    37│ ```
+    38│ # Excel分析工具 - PowerShell打包脚本
+    39│ Write-Host "========================================" -ForegroundColor Cyan
+    40│ Write-Host "   Excel分析工具 - Windows EXE打包工具" -ForegroundColor Cyan
+    41│ Write-Host "========================================" -ForegroundColor Cyan
+    42│ Write-Host ""
+    43│ 
+    44│ # 检查Python
+    45│ $pythonPath = Get-Command python -ErrorAction SilentlyContinue
+    46│ if (-not $pythonPath) {
+    47│     Write-Host "[错误] 未找到Python，请先安装Python 3.10+" -ForegroundColor Red
+    48│     Write-Host "下载地址: https://www.python.org/downloads/" -ForegroundColor Yellow
+    49│     pause
+    50│     exit 1
+    51│ }
+    52│ 
+    53│ # 检查虚拟环境
+    54│ $venvActive = $false
+    55│ if (Test-Path "venv\Scripts\activate.ps1") {
+    56│     Write-Host "[信息] 激活虚拟环境..." -ForegroundColor Green
+    57│     & "venv\Scripts\activate.ps1"
+    58│     $venvActive = $true
+    59│ } else {
+    60│     Write-Host "[信息] 未找到虚拟环境，使用系统Python" -ForegroundColor Yellow
+    61│ }
+    62│ 
+    63│ # 检查依赖文件
+    64│ if (-not (Test-Path "requirements-build.txt")) {
+    65│     Write-Host "[错误] 未找到requirements-build.txt" -ForegroundColor Red
+    66│     Write-Host "请先创建打包依赖文件" -ForegroundColor Yellow
+    67│     pause
+    68│     exit 1
+    69│ }
+    70│ 
+    71│ # 安装依赖
+    72│ Write-Host ""
+    73│ Write-Host "[1/4] 安装依赖包..." -ForegroundColor Green
+    74│ pip install --upgrade pip
+    75│ pip install -r requirements-build.txt
+    76│ if ($LASTEXITCODE -ne 0) {
+    77│     Write-Host "[错误] 依赖安装失败" -ForegroundColor Red
+    78│     pause
+    79│     exit 1
+    80│ }
+    81│ 
+    82│ # 清理旧构建
+    83│ Write-Host ""
+    84│ Write-Host "[2/4] 清理旧构建文件..." -ForegroundColor Green
+    85│ if (Test-Path "build") { Remove-Item -Path "build" -Recurse -Force }
+    86│ if (Test-Path "dist") { Remove-Item -Path "dist" -Recurse -Force }
+    87│ if (Test-Path "ExcelAnalyzer.spec") { Remove-Item -Path "ExcelAnalyzer.spec" -Force }
+    88│ 
+    89│ # 构建PyInstaller命令
+    90│ Write-Host ""
+    91│ Write-Host "[3/4] 开始打包EXE..." -ForegroundColor Green
+    92│ $pyinstallerArgs = @(
+    93│     "--onefile",
+    94│     "--windowed",
+    95│     "--name", "ExcelAnalyzer"
+    96│ )
+    97│ 
+    98│ # 添加图标
+    99│ if (Test-Path "icon.ico") {
+   100│     $pyinstallerArgs += "--icon=icon.ico"
+   101│ }
+   102│ 
+   103│ # 添加版本信息
+   104│ if (Test-Path "version_info.txt") {
+   105│     $pyinstallerArgs += "--version-file=version_info.txt"
+   106│ }
+   107│ 
+   108│ # 添加其他参数
+   109│ $pyinstallerArgs += @(
+   110│     "--add-data", "src;src",
+   111│     "--add-data", "config.json;.",
+   112│     "--hidden-import=PyQt5",
+   113│     "--hidden-import=PyQt5.QtCore",
+   114│     "--hidden-import=PyQt5.QtGui",
+   115│     "--hidden-import=PyQt5.QtWidgets",
+   116│     "--hidden-import=openpyxl",
+   117│     "--hidden-import=pandas",
+   118│     "--hidden-import=numpy",
+   119│     "--hidden-import=xlwings",
+   120│     "--hidden-import=pywintypes",
+   121│     "--hidden-import=win32api",
+   122│     "--hidden-import=win32com",
+   123│     "--hidden-import=pythoncom",
+   124│     "--collect-all", "PyQt5",
+   125│     "--exclude-module=matplotlib",
+   126│     "--exclude-module=scipy",
+   127│     "main.py"
+   128│ )
+   129│ 
+   130│ # 执行打包
+   131│ pyinstaller @pyinstallerArgs
+   132│ if ($LASTEXITCODE -ne 0) {
+   133│     Write-Host "[错误] 打包过程失败" -ForegroundColor Red
+   134│     pause
+   135│     exit 1
+   136│ }
+   137│ 
+   138│ # 验证结果
+   139│ Write-Host ""
+   140│ Write-Host "[4/4] 验证打包结果..." -ForegroundColor Green
+   141│ if (Test-Path "dist\ExcelAnalyzer.exe") {
+   142│     $exeInfo = Get-Item "dist\ExcelAnalyzer.exe"
+   143│     Write-Host ""
+   144│     Write-Host "========================================" -ForegroundColor Green
+   145│     Write-Host "   打包成功!" -ForegroundColor Green
+   146│     Write-Host "========================================" -ForegroundColor Green
+   147│     Write-Host "EXE文件位置: $($exeInfo.FullName)" -ForegroundColor Yellow
+   148│     Write-Host "文件大小: $([math]::Round($exeInfo.Length/1MB, 2)) MB" -ForegroundColor Yellow
+   149│     Write-Host ""
+   150│     Write-Host "下一步:" -ForegroundColor Cyan
+   151│     Write-Host "1. 在dist目录中找到ExcelAnalyzer.exe"
+   152│     Write-Host "2. 可以复制到其他Windows电脑运行"
+   153│     Write-Host "3. 建议在目标电脑上安装Microsoft Excel"
+   154│     Write-Host "4. 可能需要安装Visual C++ Redistributable"
+   155│ } else {
+   156│     Write-Host "[错误] 未生成EXE文件" -ForegroundColor Red
+   157│ }
+   158│ 
+   159│ Write-Host ""
+   160│ pause
+   161│ ```
+   162│ 
+   163│ 这个脚本看起来整体是完整的。但是报错说第30行有一个意外的`}`。我们数一下行号：第1行是注释，第2行Write-Host...，一直到第27行？我们需要数出确切的第30行。
+   164│ 
+   165│ 假设脚本开头：
+   166│ 1 # Excel分析工具...
+   167│ 2 Write-Host ...
+   168│ 3 Write-Host ...
+   169│ 4 Write-Host ...
+   170│ 5 Write-Host ""
+   171│ 6 
+   172│ 7 # 检查Python
+   173│ 8 $pythonPath = ...
+   174│ 9 if (-not $pythonPath) {
+   175│ 10    Write-Host ...
+   176│ 11    Write-Host ...
+   177│ 12    pause
+   178│ 13    exit 1
+   179│ 14 }
+   180│ 15 
+   181│ 16 # 检查虚拟环境
+   182│ 17 $venvActive = $false
+   183│ 18 if (Test-Path ...) {
+   184│ 19    Write-Host ...
+   185│ 20    & "venv\Scripts\activate.ps1"
+   186│ 21    $venvActive = $true
+   187│ 22 } else {
+   188│ 23    Write-Host ...
+   189│ 24 }
+   190│ 25 
+   191│ 26 # 检查依赖文件
+   192│ 27 if (-not (Test-Path ...)) {
+   193│ 28    Write-Host ...
+   194│ 29    Write-Host ...
+   195│ 30    pause
+   196│ 31    exit 1
+   197│ 32 }
+   198│ ```
+   199│ 
+   200│ 等等，按照这个计数，第30行应该是`pause`？但错误说第30字符1处是`}`。也许实际脚本中有额外的`}`。可能是在`if`语句后面多了一个`}`。用户提供的脚本内容中，第30行可能是`}`，但看起来并没有。注意：用户提供的内容中，在“# 检查依赖文件”那个if块结束后，紧接着是“# 安装依赖”，没有多余大括号。
+
+[TRUNCATED] Showing lines 1-200 of 2847. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\PowerShell脚本打包错误修复.md" start_line=201 max_lines=200
+</file>

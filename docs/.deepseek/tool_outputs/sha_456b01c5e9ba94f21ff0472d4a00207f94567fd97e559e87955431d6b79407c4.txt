@@ -1,0 +1,50 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_b77be993 (general) status=Completed
+  objective: 你是知识提取子代理。你的唯一任务是读取并分析以下文件，提取出所有可用的知识点。
+
+文件路径: 01_AI与编程开发/WPS加载项目录位置.md
+
+要求：
+1. 使用 read_file 读取该文件的全部内容
+2. 从文件中提取所有有价值的知识点（概念解释、操作步骤、配置方法、问题解决等）
+3. 每个知识点用以下格式输出：
+
+```
+### 知识点N: [标题]
+[清晰的知识点描述，包含关键细节、步骤、参数等]
+```
+
+4. 输出...
+  result: 文件已完整读取（共282行），现在提取所有知识点。
+
+---
+
+### 知识点1: WPS JS加载项（新式插件）默认目录
+WPS JS加载项是基于网页技术开发的新式插件，其存放位置因操作系统而异：Windows 下为 `%APPDATA%\kingsoft\wps\jsaddons\`；macOS 下为 `~/Library/Containers/com.kingsoft.wpsoffice.mac/Data/.kingsoft/wps/jsaddons/`；Linux 下为 `~/.local/share/Kingsoft/wps/jsaddons/`。其中 `%APPDATA%` 是系统变量，实际路径通常为 `C:\Users\你的用户名\AppData\Roaming`。
+
+### 知识点2: COM加载项等传统加载项默认目录（Windows）
+Windows 系统中，COM 加载项等传统加载项通常存放在 `%APPDATA%\kingsoft\wps\addons\`，或者 WPS 安装目录下的 `addons` 文件夹中。
+
+### 知识点3: WPS配置文件目录（含加载项入口）
+Windows 下 WPS 配置文件路径为 `WPS安装目录\office6\cfgs\`（例如 `C:\Program Files\Kingsoft\WPS Office\版本号\office6\cfgs\`）；Linux 下为 `/opt/kingsoft/wps-office/office6/cfgs/`。
+
+### 知识点4: 快速查找WPS加载项目录的方法
+Windows 用户最快的方法：按下 `Win + R` 键，输入 `%APPDATA%\kingsoft\wps` 并确定，即可看到 `jsaddons` 和 `addons` 等子文件夹。通用方法：如果已知插件名，可直接在文件管理器中搜索；也可通过 WPS 内部菜单（"文件"→"选项"→"文件位置"）查看默认路径，或在顶部菜单栏"工具"→"COM加载项"/"WPS加载项"中查看加载项详细信息。
+
+### 知识点5: WPS加载项存在多个路径的原因
+新开发的插件多使用基于网页技术的 **WPS JS加载项**，而传统插件（如 MathType）则作为 **COM加载项** 存在，两者类型不同导致存放位置不同。
+
+### 知识点6: 找不到WPS加载项时的排查方法
+若按默认路径找不到，可能原因有：安装WPS或插件时自定义了安装位置；不同版本WPS（个人版、专业版）或不同操作系统存在细微差别；`AppData` 或 `.kingsoft` 等文件夹被隐藏，需在文件管理器"查看"选项中勾选"隐藏的项目"。
+
+### 知识点7: 手动管理WPS加载项的注意事项
+不建议直接通过删除文件夹来卸载插件，应优先使用 WPS 内置的"加载项管理器"或相关设置进行管理。对于熟悉命令行的开发者，可在 WPS JS加载项项目目录下使用 `wpsjs publish` 等命令来管理加载项。
+
+### 知识点8: 方法一——使用wpsjs命令行工具加载本地JS加载项
+此方法适用于开发者和 JS 加载项，是 WPS 官方推荐的方式。前提：需安装 Node.js（建议 v20 LTS 稳定版）和 WPS 官方工具 `wpsjs`。核心步骤：在加载项项目根目录运行 `wpsjs debug` 启动调试模式（自动启动WPS并临时加载加载项）；运行 `wpsjs publish` 将加载项文件复制到 WPS 的 JS 加载项目录（如 `%APPDATA%\kingsoft\wps\jsaddons`）完成本地安装。
+
+### 知识点9: 方法二——手动复制/添加模板类加载项
+适用于传统模板文件（`.dotm`、`.xla...
+  stats: steps=3, duration_ms=24973

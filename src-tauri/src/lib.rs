@@ -55,6 +55,7 @@ pub mod multimodal; // 多模态知识库模块（基于 Qwen3-VL-Embedding/Rera
 pub mod notes_exporter;
 pub mod notes_manager;
 pub mod ocr_adapters; // OCR 适配器模块（支持多种 OCR 引擎）
+pub mod paddleocr_api; // PaddleOCR REST API 直接集成
 pub mod ocr_circuit_breaker; // OCR 熔断器（三态：Closed/Open/HalfOpen）
 pub mod package_manager;
 pub mod page_rasterizer;
@@ -944,44 +945,44 @@ pub fn run() {
             crate::commands::generate_anki_cards_from_document_file,
             crate::commands::generate_anki_cards_from_document_base64,
             crate::commands::call_llm_for_boundary, // CardForge 2.0 - LLM 定界
-            crate::commands::check_anki_connect_status,
-            crate::commands::get_anki_deck_names,
-            crate::commands::get_anki_model_names,
-            crate::commands::create_anki_deck,
-            crate::commands::save_anki_cards,
-            crate::commands::add_cards_to_anki_connect,
-            crate::commands::import_anki_package,
-            crate::commands::export_cards_as_apkg,
-            crate::commands::export_cards_as_apkg_with_template,
-            crate::cmd::anki_connect::export_multi_template_apkg,
+            crate::commands::anki_connect_check_status,
+            crate::commands::anki_connect_get_deck_names,
+            crate::commands::anki_connect_get_model_names,
+            crate::commands::anki_connect_create_deck,
+            crate::commands::anki_connect_save_cards,
+            crate::commands::anki_connect_add_cards,
+            crate::commands::anki_connect_import_package,
+            crate::commands::anki_connect_export_apkg,
+            crate::commands::anki_connect_export_apkg_with_template,
+            crate::cmd::anki_connect::anki_connect_export_multi_apkg,
             // 🔧 P0-30 修复：注册批量导出命令
-            crate::commands::batch_export_cards,
-            crate::commands::save_json_file,
-            crate::commands::start_enhanced_document_processing,
-            crate::commands::pause_document_processing,
-            crate::commands::resume_document_processing,
-            crate::commands::get_document_processing_state,
-            crate::commands::get_document_task_counts,
-            crate::commands::trigger_task_processing,
-            crate::commands::get_document_tasks,
-            crate::commands::get_task_cards,
-            crate::commands::update_anki_card,
-            crate::commands::delete_anki_card,
-            crate::commands::delete_document_task,
-            crate::commands::delete_document_session,
-            crate::commands::export_apkg_for_selection,
-            crate::commands::get_document_cards,
-            crate::commands::list_anki_library_cards,
-            crate::commands::export_anki_cards,
-            crate::cmd::enhanced_anki::recover_stuck_document_tasks,
-            crate::cmd::enhanced_anki::list_document_sessions,
-            crate::cmd::enhanced_anki::get_anki_stats,
+            crate::commands::anki_connect_batch_export_cards,
+            crate::commands::anki_connect_save_json_file,
+            crate::commands::enhanced_anki_start_document_processing,
+            crate::commands::enhanced_anki_pause_document_processing,
+            crate::commands::enhanced_anki_resume_document_processing,
+            crate::commands::enhanced_anki_get_document_processing_state,
+            crate::commands::enhanced_anki_get_document_task_counts,
+            crate::commands::enhanced_anki_trigger_task_processing,
+            crate::commands::enhanced_anki_get_document_tasks,
+            crate::commands::enhanced_anki_get_task_cards,
+            crate::commands::enhanced_anki_update_card,
+            crate::commands::enhanced_anki_delete_card,
+            crate::commands::enhanced_anki_delete_document_task,
+            crate::commands::enhanced_anki_delete_document_session,
+            crate::commands::enhanced_anki_export_apkg_for_selection,
+            crate::commands::enhanced_anki_get_document_cards,
+            crate::commands::enhanced_anki_list_library_cards,
+            crate::commands::enhanced_anki_export_cards,
+            crate::cmd::enhanced_anki::enhanced_anki_recover_stuck_tasks,
+            crate::cmd::enhanced_anki::enhanced_anki_list_document_sessions,
+            crate::cmd::enhanced_anki::enhanced_anki_get_stats,
             // 状态恢复相关命令
             crate::commands::get_recent_document_tasks,
             crate::commands::get_all_recent_cards,
-            crate::commands::get_pending_memory_candidates,
-            crate::commands::dismiss_pending_memory_candidates,
-            crate::commands::mark_pending_memory_candidates_saved,
+            crate::commands::enhanced_anki_get_pending_memory_candidates,
+            crate::commands::enhanced_anki_dismiss_pending_memory_candidates,
+            crate::commands::enhanced_anki_mark_pending_memory_candidates_saved,
             crate::commands::parse_document_from_path,
             crate::commands::parse_document_from_base64,
             // Translation Commands
@@ -1242,33 +1243,24 @@ pub fn run() {
             ,crate::chat_v2::handlers::search_handlers::chat_v2_remove_tag
             ,crate::chat_v2::handlers::search_handlers::chat_v2_list_all_tags
             // 工作区命令（Agent 协作系统）
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_create
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_get
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_close
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_delete
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_create_agent
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_list_agents
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_send_message
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_list_messages
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_set_context
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_get_context
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_list_documents
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_get_document
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_list_all
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_run_agent
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_cancel_agent
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_manual_wake
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_cancel_sleep
-            ,crate::chat_v2::handlers::workspace_handlers::workspace_restore_executions
-            // ⚠️ DEPRECATED 资源库命令 — 前端已迁移到 VFS (vfs_* 命令)，零引用。
-            // 保留注册以兼容旧版前端，计划在下一次大版本中移除。参见 P1-#9。
-            ,crate::chat_v2::handlers::resource_handlers::resource_create_or_reuse
-            ,crate::chat_v2::handlers::resource_handlers::resource_get
-            ,crate::chat_v2::handlers::resource_handlers::resource_get_latest
-            ,crate::chat_v2::handlers::resource_handlers::resource_exists
-            ,crate::chat_v2::handlers::resource_handlers::resource_increment_ref
-            ,crate::chat_v2::handlers::resource_handlers::resource_decrement_ref
-            ,crate::chat_v2::handlers::resource_handlers::resource_get_versions_by_source
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_create
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_get
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_close
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_delete
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_create_agent
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_list_agents
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_send_message
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_list_messages
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_set_context
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_get_context
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_list_documents
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_get_document
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_list_all
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_run_agent
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_cancel_agent
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_manual_wake
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_cancel_sleep
+            ,crate::chat_v2::handlers::workspace_handlers::chat_v2_workspace_restore_executions
             // 🆕 Skills 文件系统命令
             ,crate::chat_v2::skills::skill_list_directories
             ,crate::chat_v2::skills::skill_read_file
@@ -1355,6 +1347,14 @@ pub fn run() {
             ,crate::vfs::handlers::vfs_set_indexing_config
             ,crate::vfs::handlers::vfs_get_indexing_config
             ,crate::vfs::handlers::vfs_get_all_index_status
+            // VFS 统一索引命令（index_handlers.rs）
+            ,crate::vfs::index_handlers::vfs_unified_index_status
+            ,crate::vfs::index_handlers::vfs_get_resource_units
+            ,crate::vfs::index_handlers::vfs_reindex_unit
+            ,crate::vfs::index_handlers::vfs_unified_batch_index
+            ,crate::vfs::index_handlers::vfs_sync_resource_units
+            ,crate::vfs::index_handlers::vfs_delete_resource_index
+            ,crate::vfs::index_handlers::vfs_list_embedding_dims
             // VFS 数据透视命令（OCR 查看/清除、文本块查看）
             ,crate::vfs::handlers::vfs_get_resource_ocr_info
             ,crate::vfs::handlers::vfs_clear_resource_ocr
@@ -1381,32 +1381,38 @@ pub fn run() {
             ,crate::vfs::handlers::vfs_list_mindmaps
             ,crate::vfs::handlers::vfs_set_mindmap_favorite
             // 待办列表操作（独立于 VFS）
-            ,crate::vfs::todo_handlers::todo_create_list
-            ,crate::vfs::todo_handlers::todo_get_list
-            ,crate::vfs::todo_handlers::todo_list_lists
-            ,crate::vfs::todo_handlers::todo_update_list
-            ,crate::vfs::todo_handlers::todo_delete_list
-            ,crate::vfs::todo_handlers::todo_toggle_list_favorite
-            ,crate::vfs::todo_handlers::todo_ensure_inbox
-            ,crate::vfs::todo_handlers::todo_create_item
-            ,crate::vfs::todo_handlers::todo_get_item
-            ,crate::vfs::todo_handlers::todo_list_items
-            ,crate::vfs::todo_handlers::todo_update_item
-            ,crate::vfs::todo_handlers::todo_toggle_item
-            ,crate::vfs::todo_handlers::todo_delete_item
-            ,crate::vfs::todo_handlers::todo_reorder_items
-            ,crate::vfs::todo_handlers::todo_list_today
-            ,crate::vfs::todo_handlers::todo_list_overdue
-            ,crate::vfs::todo_handlers::todo_list_upcoming
-            ,crate::vfs::todo_handlers::todo_list_completed
-            ,crate::vfs::todo_handlers::todo_search
-            ,crate::vfs::todo_handlers::todo_get_active_summary
+            ,crate::vfs::todo_handlers::vfs_todo_create_list
+            ,crate::vfs::todo_handlers::vfs_todo_get_list
+            ,crate::vfs::todo_handlers::vfs_todo_list_lists
+            ,crate::vfs::todo_handlers::vfs_todo_update_list
+            ,crate::vfs::todo_handlers::vfs_todo_delete_list
+            ,crate::vfs::todo_handlers::vfs_todo_toggle_list_favorite
+            ,crate::vfs::todo_handlers::vfs_todo_ensure_inbox
+            ,crate::vfs::todo_handlers::vfs_todo_create_item
+            ,crate::vfs::todo_handlers::vfs_todo_get_item
+            ,crate::vfs::todo_handlers::vfs_todo_list_items
+            ,crate::vfs::todo_handlers::vfs_todo_update_item
+            ,crate::vfs::todo_handlers::vfs_todo_toggle_item
+            ,crate::vfs::todo_handlers::vfs_todo_delete_item
+            ,crate::vfs::todo_handlers::vfs_todo_reorder_items
+            ,crate::vfs::todo_handlers::vfs_todo_list_today
+            ,crate::vfs::todo_handlers::vfs_todo_list_overdue
+            ,crate::vfs::todo_handlers::vfs_todo_list_upcoming
+            ,crate::vfs::todo_handlers::vfs_todo_list_completed
+            ,crate::vfs::todo_handlers::vfs_todo_search
+            ,crate::vfs::todo_handlers::vfs_todo_get_active_summary
             // 番茄钟命令
-            ,crate::vfs::todo_handlers::pomodoro_create_record
-            ,crate::vfs::todo_handlers::pomodoro_get_record
-            ,crate::vfs::todo_handlers::pomodoro_list_by_todo
-            ,crate::vfs::todo_handlers::pomodoro_today_stats
-            ,crate::vfs::todo_handlers::pomodoro_list_today
+            ,crate::vfs::todo_handlers::vfs_pomodoro_create_record
+            ,crate::vfs::todo_handlers::vfs_pomodoro_get_record
+            ,crate::vfs::todo_handlers::vfs_pomodoro_list_by_todo
+            ,crate::vfs::todo_handlers::vfs_pomodoro_today_stats
+            ,crate::vfs::todo_handlers::vfs_pomodoro_list_today
+            // OCR 结果存储模块 (2026-05-30)
+            ,crate::vfs::ocr_storage_handlers::vfs_ocr_store_result
+            ,crate::vfs::ocr_storage_handlers::vfs_ocr_list_results
+            ,crate::vfs::ocr_storage_handlers::vfs_ocr_delete_result
+            ,crate::vfs::ocr_storage_handlers::vfs_ocr_mark_exported
+            ,crate::vfs::ocr_storage_handlers::vfs_ocr_list_for_export
             // 索引诊断命令
             ,crate::vfs::handlers::vfs_debug_index_status
             ,crate::vfs::handlers::vfs_reset_disabled_to_pending
@@ -1846,7 +1852,7 @@ fn build_app_state(
     }
 
     // 🔧 Phase 1: 启动时恢复卡住的 Anki 制卡任务
-    match anki_database.recover_stuck_document_tasks() {
+    match anki_database.enhanced_anki_recover_stuck_tasks() {
         Ok(count) if count > 0 => {
             tracing::info!("[AppSetup] Recovered {} stuck Anki document tasks", count);
         }

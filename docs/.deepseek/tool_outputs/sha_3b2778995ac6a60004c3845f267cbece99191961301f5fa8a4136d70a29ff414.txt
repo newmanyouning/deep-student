@@ -1,0 +1,202 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\PowerShell脚本打包错误修复.md" total_lines="2847" shown_lines="2648-2847" truncated="false">
+  2648│     "--hidden-import=tempfile",
+  2649│     "--collect-all", "PyQt5",
+  2650│     "--collect-all", "PIL",
+  2651│     "--collect-all", "xlwings",
+  2652│     "--collect-all", "win32com",
+  2653│     "--exclude-module=matplotlib",
+  2654│     "--exclude-module=scipy",
+  2655│     "--runtime-tmpdir", ".",
+  2656│     "--add-data", "xlwings_runtime_hook.py;.",
+  2657│     "main.py"
+  2658│ )
+  2659│ 
+  2660│ if ($pywintypesDll -and (Test-Path $pywintypesDll)) {
+  2661│     $pyinstallerArgs += "--add-binary=$pywintypesDll;pywin32_system32"
+  2662│ }
+  2663│ if ($pythoncomDll -and (Test-Path $pythoncomDll)) {
+  2664│     $pyinstallerArgs += "--add-binary=$pythoncomDll;pywin32_system32"
+  2665│ }
+  2666│ 
+  2667│ pyinstaller @pyinstallerArgs
+  2668│ if ($LASTEXITCODE -ne 0) {
+  2669│     Write-Host "[错误] 打包过程失败" -ForegroundColor Red
+  2670│     pause
+  2671│     exit 1
+  2672│ }
+  2673│ 
+  2674│ Write-Host ""
+  2675│ Write-Host "[4/4] 验证打包结果..." -ForegroundColor Green
+  2676│ if (Test-Path "dist\ExcelAnalyzer.exe") {
+  2677│     $exeInfo = Get-Item "dist\ExcelAnalyzer.exe"
+  2678│     Write-Host ""
+  2679│     Write-Host "========================================" -ForegroundColor Green
+  2680│     Write-Host "   打包成功!" -ForegroundColor Green
+  2681│     Write-Host "========================================" -ForegroundColor Green
+  2682│     Write-Host "EXE文件位置: $($exeInfo.FullName)" -ForegroundColor Yellow
+  2683│     Write-Host "文件大小: $([math]::Round($exeInfo.Length/1MB, 2)) MB" -ForegroundColor Yellow
+  2684│     Write-Host ""
+  2685│     Write-Host "下一步:" -ForegroundColor Cyan
+  2686│     Write-Host "1. 在dist目录中找到ExcelAnalyzer.exe"
+  2687│     Write-Host "2. 可以复制到其他Windows电脑运行"
+  2688│     Write-Host "3. 建议在目标电脑上安装Microsoft Excel或WPS Office"
+  2689│     Write-Host "4. WPS用户建议安装VBA插件以获得完整功能"
+  2690│     Write-Host "5. 可能需要安装Visual C++ Redistributable"
+  2691│     Write-Host ""
+  2692│     Write-Host "WPS兼容性说明:" -ForegroundColor Yellow
+  2693│     Write-Host "- WPS环境性能比Excel慢30-50%，属于正常现象"
+  2694│     Write-Host "- template.xls中的复杂格式（合并单元格、图片、页眉页脚）已优化处理"
+  2695│     Write-Host "- 部分高级功能需要WPS VBA插件支持"
+  2696│ } else {
+  2697│     Write-Host "[错误] 未生成EXE文件" -ForegroundColor Red
+  2698│ }
+  2699│ 
+  2700│ Write-Host ""
+  2701│ pause
+  2702│ '@
+  2703│ 
+  2704│ # 以 UTF-8 with BOM 写入文件（PowerShell 5.1 的 -Encoding UTF8 会添加 BOM）
+  2705│ $script | Out-File -FilePath "build-windows.ps1" -Encoding UTF8 -Force
+  2706│ 
+  2707│ Write-Host "文件已重新生成并保存为 UTF-8 with BOM" -ForegroundColor Green
+  2708│ ```
+  2709│ 
+  2710│ 执行完毕后，运行以下命令验证文件头是否为 `239 187 191`（BOM 标识）：
+  2711│ ```powershell
+  2712│ Get-Content .\build-windows.ps1 -Encoding Byte -TotalCount 3
+  2713│ ```
+  2714│ 
+  2715│ 应该输出 `239 187 191`。然后执行脚本：
+  2716│ ```powershell
+  2717│ .\build-windows.ps1
+  2718│ ```
+  2719│ 
+  2720│ ## 如果仍无法解决
+  2721│ 
+  2722│ 极少数情况下，PowerShell 的执行策略或系统区域设置可能影响。你可以尝试：
+  2723│ 
+  2724│ 1. **使用 Windows Terminal**（支持 UTF-8 更好）。
+  2725│ 2. **将脚本中的中文字符全部改为英文**（临时规避）。但这不推荐，因为你的脚本需要输出中文提示。
+  2726│ 
+  2727│ 请尝试上述命令，问题应能彻底解决。如果还有任何错误，请提供完整的错误输出截图。
+  2728│ 
+  2729│ ---
+  2730│ 
+  2731│ ## ❓ unknown
+  2732│ 
+  2733│ Successfully installed PyQt5-5.15.11 openpyxl-3.1.5 pandas-3.0.2 pyinstaller-6.19.0 pyinstaller-hooks-contrib-2026.4
+  2734│ 
+  2735│ [2/4] 清理旧构建文件...
+  2736│ 
+  2737│ [3/4] 开始打包EXE...
+  2738│ pyinstaller : 无法将“pyinstaller”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写
+  2739│ ，如果包括路径，请确保路径正确，然后再试一次。
+  2740│ 所在位置 E:\excel\build-windows.ps1:152 字符: 1
+  2741│ + pyinstaller @pyinstallerArgs
+  2742│ + ~~~~~~~~~~~
+  2743│     + CategoryInfo          : ObjectNotFound: (pyinstaller:String)
+  2744│     [], CommandNotFoundException
+  2745│     + FullyQualifiedErrorId : CommandNotFoundException
+  2746│ 
+  2747│ 
+  2748│ [4/4] 验证打包结果...
+  2749│ [错误] 未生成EXE文件
+  2750│ 
+  2751│ ---
+  2752│ 
+  2753│ ## ❓ unknown
+  2754│ 
+  2755│ 我们注意到尽管 `pip install` 成功安装了 `pyinstaller`，但随后运行 `pyinstaller` 命令时 PowerShell 却找不到它。这通常是因为安装的 Python 包的可执行文件路径没有添加到当前会话的 `PATH` 环境变量中，或者是在虚拟环境中安装但未正确激活虚拟环境（即使脚本中尝试激活了）。
+  2756│ 
+  2757│ 从输出看，安装的是 `pyinstaller-6.19.0`，但命令未找到。需要确保 `pyinstaller` 在 PATH 中，或者使用 `python -m PyInstaller` 来调用。
+  2758│ 
+  2759│ 建议修改脚本：将 `pyinstaller @pyinstallerArgs` 替换为 `python -m PyInstaller @pyinstallerArgs`，这样可以直接通过 Python 模块运行，避免路径问题。另外，安装依赖后可能需要刷新环境变量。
+  2760│ 
+  2761│ 由于用户已经执行了脚本并卡在这一步，提供修复建议：
+  2762│ 
+  2763│ 1. 在调用 `pyinstaller` 之前，尝试找到其安装路径并加入 PATH，或者直接用 `python -m PyInstaller`。
+  2764│ 2. 确保虚拟环境激活正确（在脚本中 `& "venv\Scripts\activate.ps1"` 只是激活了当前作用域，不会影响外部命令的查找？实际上激活脚本会修改 PATH，但可能在 PowerShell 中需要点操作。更可靠的是直接使用 `python -m PyInstaller`。
+  2765│ 
+  2766│ 因此，建议修改脚本中对应行。
+  2767│ 
+  2768│ 另外，用户现在可能想知道如何手动解决，以便继续打包。可以给出临时命令或修改脚本的方法。
+  2769│ 问题出在 `pyinstaller` 命令虽然已通过 `pip` 安装，但 PowerShell 在当前会话中找不到它的可执行文件路径。这是因为：
+  2770│ - 你使用了虚拟环境（`venv`），脚本中虽然调用了 `activate.ps1`，但它只修改了当前 PowerShell 会话的环境变量（`PATH`），而在脚本中直接调用 `pyinstaller` 可能仍无法识别。
+  2771│ - 或者 `pyinstaller` 被安装到了用户目录的 Python Scripts 文件夹，但该路径未加入系统 PATH。
+  2772│ 
+  2773│ ## 立即解决方法（无需修改脚本）
+  2774│ 
+  2775│ 在 PowerShell 中直接运行以下命令（在项目目录 `E:\excel` 下）：
+  2776│ 
+  2777│ ```powershell
+  2778│ # 确保虚拟环境激活（如果存在）
+  2779│ if (Test-Path "venv\Scripts\activate.ps1") {
+  2780│     & "venv\Scripts\activate.ps1"
+  2781│ }
+  2782│ 
+  2783│ # 使用 python -m 调用 PyInstaller（推荐）
+  2784│ python -m PyInstaller --onefile --windowed --name ExcelAnalyzer --add-data "src;src" --add-data "config.json;." --add-data "template.xls;." --add-data "test_image.png;." --hidden-import=PyQt5 --hidden-import=openpyxl --hidden-import=pandas --hidden-import=numpy --hidden-import=xlwings --hidden-import=xlrd --hidden-import=PIL --hidden-import=networkx --collect-all PyQt5 --collect-all PIL --exclude-module matplotlib --exclude-module scipy main.py
+  2785│ ```
+  2786│ 
+  2787│ 如果上述命令成功，那么 `dist\ExcelAnalyzer.exe` 就会生成。
+  2788│ 
+  2789│ ## 永久修复脚本（推荐）
+  2790│ 
+  2791│ 将脚本中的 `pyinstaller @pyinstallerArgs` 改为 `python -m PyInstaller @pyinstallerArgs`。另外，最好在安装依赖后刷新 PATH 或直接使用模块方式调用。
+  2792│ 
+  2793│ 下面是修改后的脚本关键片段（第152行附近）：
+  2794│ 
+  2795│ ```powershell
+  2796│ # 原来：
+  2797│ pyinstaller @pyinstallerArgs
+  2798│ 
+  2799│ # 改为：
+  2800│ python -m PyInstaller @pyinstallerArgs
+  2801│ ```
+  2802│ 
+  2803│ 同时，建议将脚本中所有 `pip` 命令也改为 `python -m pip`，以确保在正确的 Python 环境中执行。
+  2804│ 
+  2805│ 你可以手动编辑 `build-windows.ps1`，找到 `pyinstaller @pyinstallerArgs` 这一行，在前面加上 `python -m `，变成 `python -m PyInstaller @pyinstallerArgs`，保存后再运行脚本。
+  2806│ 
+  2807│ ## 快速修补脚本的命令
+  2808│ 
+  2809│ 在 PowerShell 中执行以下命令，自动替换脚本内容：
+  2810│ 
+  2811│ ```powershell
+  2812│ $file = "build-windows.ps1"
+  2813│ $content = Get-Content $file -Raw
+  2814│ $newContent = $content -replace 'pyinstaller @pyinstallerArgs', 'python -m PyInstaller @pyinstallerArgs'
+  2815│ $newContent | Out-File $file -Encoding UTF8 -Force
+  2816│ Write-Host "已修改脚本，将 pyinstaller 改为 python -m PyInstaller" -ForegroundColor Green
+  2817│ ```
+  2818│ 
+  2819│ 然后重新运行：
+  2820│ ```powershell
+  2821│ .\build-windows.ps1
+  2822│ ```
+  2823│ 
+  2824│ ## 备选方案：直接执行打包命令（不依赖脚本）
+  2825│ 
+  2826│ 如果不想修改脚本，可以直接在 PowerShell 中逐条执行（确保当前目录是 `E:\excel`）：
+  2827│ 
+  2828│ ```powershell
+  2829│ # 激活虚拟环境（如果有）
+  2830│ if (Test-Path "venv\Scripts\activate.ps1") { & "venv\Scripts\activate.ps1" }
+  2831│ 
+  2832│ # 安装依赖（如果还没装全）
+  2833│ python -m pip install --upgrade pip
+  2834│ python -m pip install pyinstaller PyQt5 openpyxl pandas numpy xlwings xlrd pillow networkx pywin32
+  2835│ 
+  2836│ # 清理
+  2837│ Remove-Item -Path build, dist, *.spec -Recurse -Force -ErrorAction SilentlyContinue
+  2838│ 
+  2839│ # 打包
+  2840│ python -m PyInstaller --onefile --windowed --name ExcelAnalyzer --add-data "src;src" --add-data "config.json;." --add-data "template.xls;." --add-data "test_image.png;." --hidden-import=PyQt5 --hidden-import=openpyxl --hidden-import=pandas --hidden-import=numpy --hidden-import=xlwings --hidden-import=xlrd --hidden-import=PIL --hidden-import=networkx --collect-all PyQt5 --collect-all PIL --exclude-module matplotlib --exclude-module scipy main.py
+  2841│ ```
+  2842│ 
+  2843│ 执行后即可在 `dist` 目录得到 `ExcelAnalyzer.exe`。
+  2844│ 
+  2845│ 请尝试以上方法，问题应该能够解决。如果还有错误，请提供具体的错误信息。
+  2846│ 
+  2847│ ---
+</file>

@@ -1,0 +1,36 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_c02c0fd7 (explore) status=Completed
+  objective: 你是知识提取代理。请读取文件 `01_AI与编程开发/拉取GitHub项目更新方法.md`，完整阅读后提取3-6条核心知识点。
+
+每条知识点格式：
+```
+- **[简短标题]** — 一句话概述。
+  - 来源文件：拉取GitHub项目更新方法.md
+  - 核心解释：3-5句话详细解释这个概念/技术/方法的要点。要包含具体的技术细节、参数、命令等。
+```
+
+重点关注：技术实现细节、可复用的代码模式、配置/命令、最佳实践。忽略...
+  result: 以下是提取的核心知识点：
+
+- **[`git pull` 命令的基本用法]** — 使用 `git pull` 一键拉取远程分支的最新更新并自动合并到本地。
+  - 来源文件：拉取GitHub项目更新方法.md
+  - 核心解释：`git pull` 是拉取远程更新的最简便方法，执行后会从当前分支对应的远程分支获取更新并自动合并。如果当前分支未设置上游跟踪，需显式指定远程和分支名，例如 `git pull origin main`（默认分支为 `main`）或 `git pull origin master`。建议在执行前先用 `git status` 查看本地状态，确认没有未提交的更改，以避免合并冲突。
+
+- **[`git fetch` + `git merge` 的安全拉取策略]** — 先用 `git fetch` 下载远程更新但不合并，再手动执行 `git merge` 以控制合并时机。
+  - 来源文件：拉取GitHub项目更新方法.md
+  - 核心解释：`git fetch origin` 只会将远程仓库的最新提交下载到本地，而不会自动合并到当前分支，从而给开发者留出检查差异的时间。执行 `git fetch` 后，可以通过 `git diff origin/main` 查看本地与远程的差异，确认无误后再执行 `git merge origin/main` 手动合并。相比直接 `git pull`，这种两步法能有效避免自动合并带来的冲突风险。
+
+- **[处理本地未提交修改的两种方案]** — 使用 `git stash` 临时储藏或先提交本地修改，再拉取远程更新。
+  - 来源文件：拉取GitHub项目更新方法.md
+  - 核心解释：当本地有未提交的修改时，`git pull` 可能被拒绝。推荐的做法是使用 `git stash` 暂存本地更改，然后 `git pull` 拉取更新，最后 `git stash pop` 恢复本地修改。另一种方案是先 `git add . && git commit -m "..."` 提交本地改动，再执行 `git pull`。`git stash` 方案更灵活，适合临时保存未完成的修改而不生成多余的提交记录。
+
+- **[通过 `git reset --hard` 强制覆盖本地代码]** — 用远程版本完全覆盖本地修改，适用于需要丢弃本地变更的场景。
+  - 来源文件：拉取GitHub项目更新方法.md
+  - 核心解释：如需完全丢弃本地所有未提交的更改并用远程仓库版本覆盖，可执行 `git fetch origin` 后接 `git reset --hard origin/main`。此操作会强制将本地当前分支指向远程 `origin/main` 的最新提交，所有本地未提交的修改将永久丢失。该命令需谨慎使用，适合在确定不需要本地更改（如测试后的清理或误改后的恢复）时执行。
+
+- **[Git 更新后依赖重新安装的判断与命令]** — 根据 `git pull` 输出是否涉及依赖配置文件变更来决定是否需要重新安装，并给出不同包管理器的安装命令。
+  - 来源文件：拉取GitHub项目更新方法.md
+  - 核心解释：拉取更新后，观察 `git pull` 输出是否包含 `package.json`、`yarn.lock`、`requirements.txt`、`pyproject.toml` 等依赖配置文件的更新。若有，则需重新安装：npm 项目执行 `npm install`，Yarn 项目执行 `yarn install`，pnpm 项目执行 `pnpm install`，Python 项目执行 `pip install -r requirements.txt`（或 `pip...
+  stats: steps=4, duration_ms=14289

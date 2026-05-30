@@ -1,0 +1,48 @@
+--- a/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_append_batch10b.py
++++ b/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_append_batch10b.py
+@@ -0,0 +1,43 @@
++#!/usr/bin/env python3
++"""Append batch 10b knowledge points to knowledge_cache.md"""
++
++entries = """
++
++- **[对话总结提示词核心机制]** — 对话总结提示词是一种记忆锚点机制，通过语义提炼将对话核心要素压缩为精炼提示词，实现跨对话记忆延续
++  - 来源文件：`01_AI与编程开发/对话总结提示词功能详解.md`
++  - 核心解释：当对话接近最大长度前，AI提取核心问题、关键结论、用户特殊要求，生成结构化提示词。下次发送该提示词即可调取记忆片段。最佳时机在15-20轮对话时生成，总结仅保留核心逻辑不存储敏感数据。
++
++- **[智能压缩与认知密码机制]** — AI采用语义提炼而非简单复制进行压缩，提示词中嵌入反常识组合词作为认知钩子实现自动解压
++  - 来源文件：`01_AI与编程开发/对话总结提示词功能详解.md`
++  - 核心解释：提示词按模块化分类（拖延症根源、破解策略、认知升级、生理调节、统计学习）。认知密码如"唾液孵化""5分钟虫洞曲率"作为触发词，AI在新对话中遇到任一密码即可解压完整历史信息。三重验证机制：时间锁匹配、认知指纹检测、神经刀哈希完整性校验。
++
++- **[向量数据库与Redis核心区别]** — 向量数据库专为高维向量相似性搜索设计，Redis是通用内存键值存储后扩展向量搜索能力
++  - 来源文件：`01_AI与编程开发/向量数据库与Redis区别.md`
++  - 核心解释：向量数据库（Milvus/Pinecone/Weaviate/Qdrant）内置HNSW/IVF/PQ等ANN索引算法，可处理数亿级高维向量毫秒级检索。Redis原生无向量概念，通过RediSearch模块支持FLAT/HNSW索引做KNN查询，但作为轻量级扩展在大规模下稳定性不如专业向量库。向量数据库采用内存+磁盘混合存储经济处理百亿级向量，Redis纯内存成本高。
++
++- **[向量数据库与Redis适用场景选择]** — 已有Redis基础设施且数据规模可控选Redis+RediSearch；核心业务依赖大规模向量搜索选专业向量数据库
++  - 来源文件：`01_AI与编程开发/向量数据库与Redis区别.md`
++  - 核心解释：Redis优势：依赖极简（单一二进制）、极低延迟、与现有基础设施无缝结合。专业向量库优势：十亿级相似图片检索、复杂多租户隔离、混合查询优化、完善AI工具链集成。向量数据库高度依赖外部Embedding模型形成强绑定；Redis数据由应用代码直接产生，不耦合AI模型。
++
++- **[华为GaussDB数据库概述]** — GaussDB是华为2012实验室高斯实验室研发的企业级分布式关系型数据库品牌，始于2007年电信计费场景
++  - 来源文件：`01_AI与编程开发/华为GaussDB数据库介绍与应用场景.md`
++  - 核心解释：命名向数学家高斯致敬，2019年正式全球发布，2020年后全面转向云服务模式。核心优势"五高两易"：高可用、高安全、高性能、高弹性、高智能、易部署、易迁移，获CC EAL4+安全认证，在招商银行/工商银行等核心系统大规模验证。
++
++- **[GaussDB四大产品系列与选型]** — GaussDB分为for openGauss(OLTP)、DWS(OLAP数据仓库)、for MySQL(MySQL兼容)、NoSQL(多模)四大系列
++  - 来源文件：`01_AI与编程开发/华为GaussDB数据库介绍与应用场景.md`
++  - 核心解释：for openGauss面向银行交易/ERP等核心系统（强一致/RPO=0）；DWS面向PB级大数据分析（MPP架构）；for MySQL面向现有MySQL生态平滑迁移（计算存储分离）；NoSQL包括文档型和宽表型满足物联网/内容管理等多样化需求。
++
++- **[VBA代码在Excel中的存储结构]** — VBA代码嵌入在.xlsm文件的vbaProject.bin二进制文件中，按标准模块/类模块/窗体/工作表/ThisWorkbook对象组织
++  - 来源文件：`01_AI与编程开发/Excel VBA代码存储位置与编辑工具.md`
++  - 核心解释：.xlsm本质是ZIP压缩包，vbaProject.bin存放所有VBA代码。代码组织：标准模块(.bas)存通用宏、类模块(.cls)存类定义、窗体(.frm)存自定义UI。导出/导入：VBA编辑器中右键模块选择导出/导入文件实现纯文本版本控制。
++
++- **[VBA代码编辑工具生态]** — 除内置Alt+F11编辑器外，有VbaDeveloper(自动导出Git版控)、vba-edit(Python CLI)、pywinauto(GUI自动化)、COM接口编程操作等方案
++  - 来源文件：`01_AI与编程开发/Excel VBA代码存储位置与编辑工具.md`
++  - 核心解释：VbaDeveloper免费Excel插件每次保存自动导出代码为文本文件；vba-edit开源Python CLI支持终端批量提取编辑打包；pywinauto模拟鼠标键盘操控WPS VBA编辑器；COM接口通过Python win32com.client直接操控Excel Application.VBE对象模型最稳定。商业方案有SheetJS Pro、Spire.XLS、Aspose.Cells。
++
++"""
++
++with open('knowledge_cache.md', 'a', encoding='utf-8') as f:
++    f.write(entries)
++
++print("Batch 10b appended to knowledge_cache.md")
+
+Created C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_append_batch10b.py (5026 bytes)

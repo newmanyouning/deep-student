@@ -1,0 +1,148 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_append_knowledge.py
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_append_knowledge.py
+@@ -1,86 +1,80 @@
+ #!/usr/bin/env python3
+-"""Append batch 5 knowledge entries to knowledge_cache.md"""
++"""Append batch 6 knowledge entries to knowledge_cache.md"""
+ 
+-content = r"""
++with open('knowledge_cache.md', 'a', encoding='utf-8') as f:
++    f.write("""
+ 
+-#### Excel工具开发与打包.md
++#### 拉取GitHub项目更新方法.md
+ 
+-- **[openpyxl 双模式加载：data_only=False 保留公式与格式]** — 用 `openpyxl.load_workbook(file_path, data_only=False)` 加载 Excel 时可同时获取公式文本和单元格样式，配合 pandas 只做数据展示，形成"格式引擎+数据引擎"的分离架构。
+-  - 来源文件：Excel工具开发与打包.md
+-  - 核心解释：`openpyxl.load_workbook()` 的 `data_only` 参数决定读取的是公式本身（`False`）还是公式计算后的缓存值（`True`）。设置为 `False` 后，可通过 `cell.data_type == 'f'` 判断是否为公式单元格，通过 `cell.has_style` 判断是否有自定义样式，并进一步提取 `cell.font`、`cell.fill`、`cell.border`、`cell.alignment`、`cell.number_format` 和 `cell.comment.text`。与 pandas 的 `pd.read_excel()` 配合使用时，pandas 负责快速展示行列数据（`df.iterrows()`），openpyxl 负责在后台线程中提取格式元数据存入字典 `cell_formats[sheet_name][cell.coordinate]`，避免了主线程阻塞。
++- **[git pull 命令的基本用法]** — 使用 `git pull` 一键拉取远程分支的最新更新并自动合并到本地。
++  - 来源文件：拉取GitHub项目更新方法.md
++  - 核心解释：`git pull` 是拉取远程更新的最简便方法，执行后会从当前分支对应的远程分支获取更新并自动合并。如果当前分支未设置上游跟踪，需显式指定远程和分支名，例如 `git pull origin main`（默认分支为 main）或 `git pull origin master`。建议在执行前先用 `git status` 查看本地状态，确认没有未提交的更改，以避免合并冲突。
+ 
+-- **[正则表达式提取 Excel 公式中的单元格引用]** — 使用 `re.findall(r'([A-Z]+[0-9]+)', formula)` 从公式字符串中解析出所有被引用的单元格坐标，构建依赖关系图。
+-  - 来源文件：Excel工具开发与打包.md
+-  - 核心解释：遍历 `ws.iter_rows()` 返回的每个单元格，当 `cell.data_type == 'f'` 或 `cell.value` 以 `=` 开头时，对该公式字符串应用正则 `([A-Z]+[0-9]+)` 提取所有列号+行号的引用（如 A1、B2，`$` 符号在正则中自动忽略）。提取结果存入 `formula_dependencies[sheet_name][cell.coordinate]`，结构为 `{'formula': 原始公式, 'dependencies': [引用列表], 'value': 当前值}`。该模式支持后续的依赖关系展示和手动修改依赖源功能——修改时通过 `new_formula.replace(old_ref, new_ref)` 逐对替换引用坐标，再写回 `ws[cell].value`。
++- **[git fetch + git merge 的安全拉取策略]** — 先用 `git fetch` 下载远程更新但不合并，再手动执行 `git merge` 以控制合并时机。
++  - 来源文件：拉取GitHub项目更新方法.md
++  - 核心解释：`git fetch origin` 只会将远程仓库的最新提交下载到本地，而不会自动合并到当前分支，从而给开发者留出检查差异的时间。执行 `git fetch` 后，可以通过 `git diff origin/main` 查看本地与远程的差异，确认无误后再执行 `git merge origin/main` 手动合并。相比直接 `git pull`，这种两步法能有效避免自动合并带来的冲突风险。
+ 
+-- **[openpyxl 工作表页眉页脚属性遍历]** — 通过访问 Worksheet 对象的 `oddHeader`/`oddFooter`/`evenHeader`/`evenFooter`/`firstHeader`/`firstFooter` 六个属性提取完整的页面设置信息。
+-  - 来源文件：Excel工具开发与打包.md
+-  - 核心解释：openpyxl 的 Worksheet 对象在打开 `.xlsx` 文件后直接暴露这六个与打印页面布局相关的属性。代码中先使用 `hasattr(ws, 'oddHeader')` 做兼容性检查，然后按"奇数页/偶数页/首页"三种场景分别读取页眉和页脚。奇数页对应 `oddHeader` 和 `oddFooter`，偶数页对应 `evenHeader` 和 `evenFooter`，首页对应 `firstHeader` 和 `firstFooter`。对于包含打印设置的检测报告模板，这些属性可用于完整复现原始文档的页面布局。
++- **[处理本地未提交修改的两种方案：stash 和 commit]** — 使用 `git stash` 临时储藏或先提交本地修改，再拉取远程更新。
++  - 来源文件：拉取GitHub项目更新方法.md
++  - 核心解释：当本地有未提交的修改时，`git pull` 可能被拒绝。推荐的做法是使用 `git stash` 暂存本地更改，然后 `git pull` 拉取更新，最后 `git stash pop` 恢复本地修改。另一种方案是先 `git add . && git commit -m "..."` 提交本地改动，再执行 `git pull`。`git stash` 方案更灵活，适合临时保存未完成的修改而不生成多余的提交记录。
+ 
+-- **[tkinter 多线程加载模式防止 UI 冻结]** — 使用 `threading.Thread` 将大文件加载操作放入后台线程，通过 `root.after()` 将 UI 更新回主线程，避免界面卡顿。
+-  - 来源文件：Excel工具开发与打包.md
+-  - 核心解释：`thread = threading.Thread(target=self._load_file, args=(file_path,))` 创建后台线程执行 `openpyxl.load_workbook()` 和 `pd.read_excel()` 等耗时操作。子线程中处理完数据后，通过 `self.root.after(0, lambda: self._update_sheet_list(sheet_names))` 将 UI 更新任务调度回 tkinter 主事件循环。`after(0, ...)` 表示零延迟排队到主线程执行，确保线程安全。此模式适用于所有需要加载大文件或执行耗时计算但必须保持界面响应的 tkinter 桌面应用。
++- **[通过 git reset --hard 强制覆盖本地代码]** — 用远程版本完全覆盖本地修改，适用于需要丢弃本地变更的场景。
++  - 来源文件：拉取GitHub项目更新方法.md
++  - 核心解释：如需完全丢弃本地所有未提交的更改并用远程仓库版本覆盖，可执行 `git fetch origin` 后接 `git reset --hard origin/main`。此操作会强制将本地当前分支指向远程 `origin/main` 的最新提交，所有本地未提交的修改将永久丢失。该命令需谨慎使用，适合在确定不需要本地更改（如测试后的清理或误改后的恢复）时执行。
+ 
+-#### 修复PyInstaller打包命令.md
++- **[Git 更新后依赖重新安装的判断方法]** — 根据 `git pull` 输出中是否涉及 `requirements.txt`、`pyproject.toml` 等依赖配置文件变更来决定是否需要重新安装。
++  - 来源文件：拉取GitHub项目更新方法.md
++  - 核心解释：拉取更新后，观察 `git pull` 输出是否包含依赖配置文件（如 `requirements.txt`、`pyproject.toml`、`package.json` 等）的更新。若有，则需重新安装：Python 项目执行 `pip install -r requirements.txt` 或 `pip install -e .`，Node.js 项目执行 `npm install` 或 `yarn install`，Rust 项目执行 `cargo build`。查看项目根目录的 README.md 是确定安装命令的最快捷方式。
+ 
+-- **[PyInstaller --add-binary 路径错误与修复]** — PowerShell 中使用 venv 内的绝对路径而非 `$env` 变量引用 DLL 文件可避免 "Unable to find" 错误。
+-  - 来源文件：修复PyInstaller打包命令.md
+-  - 核心解释：原命令使用 `$env:LOCALAPPDATA\Programs\Python\Python313\...` 引用 `pywintypes313.dll` 和 `pythoncom313.dll`，导致系统找不到该路径。正确做法是先用 `Get-ChildItem -Path D:\excel\venv -Filter "pywintypes*.dll" -Recurse` 定位实际文件路径，然后在 `--add-binary` 中填入虚拟环境内的准确绝对路径，如 `D:\excel\venv\Lib\site-packages\pywin32_system32\pywintypes313.dll;pywin32_system32`。分号后的 `pywin32_system32` 指定 DLL 在打包输出中的相对子目录位置。
++#### cc-mini参数错误排查.md
+ 
+-- **[PowerShell 中 PyInstaller 参数字符串引用方式]** — PowerShell 将 `;` 视为语句分隔符，含分号的 `--add-data` 和 `--add-binary` 参数必须用双引号包裹。
+-  - 来源文件：修复PyInstaller打包命令.md
+-  - 核心解释：PowerShell 将 `;` 视为语句分隔符，因此 `--add-data src;src` 会导致 `src` 被当作独立命令执行而报 `CommandNotFoundException`。正确写法是 `--add-data "src;src"`（Windows 分隔符用 `;`，Linux 用 `:`）。多行命令建议使用 PowerShell 的行继续符 `` ` `` 将命令分行，每行一个参数，并用双引号包裹所有含分号或空格的 `SOURCE;DEST` 对，便于维护和调试。
++- **[Python函数参数错误的通用诊断方法]** — 当遇到 `missing X required positional arguments` 错误时，根本原因是函数调用时未以关键字参数传递必需参数，通常源于库版本不兼容或 API 变更。
++  - 来源文件：cc-mini参数错误排查.md
++  - 核心解释：Python 运行时抛出 `FileWriteTool.execute() missing 2 required positional arguments: 'file_path' and 'content'` 意味着调用方使用了 `tool.execute()` 而非 `tool.execute(file_path="...", content="...")`。排查步骤为：①确认 Python 版本；②检查项目依赖文件；③创建虚拟环境并重装依赖（`python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`）；④定位源码中调用该方法的位置，将无参调用改为显式关键字参数传递。这是 Python API 升级后最常见的兼容性问题模式。
+ 
+-- **[使用 .spec 文件管理复杂 PyInstaller 配置]** — 对于包含大量依赖的 Python 项目，使用 `.spec` 配置文件替代长命令行更专业、更可维护。
+-  - 来源文件：修复PyInstaller打包命令.md
+-  - 核心解释：先用 `python -m PyInstaller --onefile --windowed --name ExcelAnalyzer main.py` 生成基础 `.spec` 文件，然后编辑 `Analysis()` 部分，将 `binaries`、`datas`、`hiddenimports`、`excludes`、`runtime_hooks` 等列表配置进去。例如 `binaries=[('D:\\path\\pywintypes313.dll', 'pywin32_system32')]`，`datas=[('src', 'src'), ('config.json', '.')]`。配置完成后只需 `python -m PyInstaller ExcelAnalyzer.spec` 即可打包，`.spec` 文件是纯文本 Python 代码，可用任何编辑器打开修改，便于版本控制和团队协作。
++- **[macOS 上 Git 代理残留的完整排查与清除流程]** — 当 Git 连接 GitHub 报 `Failed to connect to 127.0.0.1 port 7890` 时，核心步骤是区分全局 Git 代理配置与 Shell 环境变量代理，并彻底清除或重设。
++  - 来源文件：cc-mini参数错误排查.md
++  - 核心解释：Git 代理失败的原因有三个层面：①全局 Git 配置中残存了 `http.proxy`/`https.proxy` 指向不存在的代理服务；②Shell 环境变量 `HTTP_PROXY`/`HTTPS_PROXY` 残留；③代理软件的端口或协议类型不匹配。排查命令链：`git config --global --list | grep proxy` 查看全局 Git 代理 → `git config --global --get-regexp http.*proxy` 和 `git config --local --get-regexp http.*proxy` 检查全局+本地配置 → `env | grep -i proxy` 检查环境变量。清除：`git config --global --unset-all http.proxy` 和 `git config --global --unset-all https.proxy`（本地同样操作）。验证用 `git ls-remote https://github.com`。如需保留代理，推荐统一使用 SOCKS5 协议：`git config --global http.proxy socks5://127.0.0.1:7891`。
+ 
+-- **[xlwings.rest 与 werkzeug 模块缺失警告处理]** — PyInstaller 打包时关于 xlwings 可选子模块的 `ModuleNotFoundError` 警告不影响主程序运行，可选择性安装 werkzeug 消除。
+-  - 来源文件：修复PyInstaller打包命令.md
+-  - 核心解释：打包输出中常见的 `WARNING: Failed to collect submodules for 'xlwings.rest' because importing 'xlwings.rest' raised: ModuleNotFoundError: No module named 'werkzeug'` 是因为 xlwings 的 RESTful API 功能（rest 子模块）依赖 werkzeug 库，但环境中未安装。如果程序不使用 xlwings 的 REST 服务功能，该警告可以安全忽略。若需消除，在虚拟环境中执行 `pip install werkzeug` 后重新打包即可。
++- **[macOS 上 Python 项目的标准初始化流程：克隆 + 虚拟环境 + 安装]** — 从 GitHub 克隆 Python 开源项目并在 macOS 上搭建可运行环境的五步标准操作。
++  - 来源文件：cc-mini参数错误排查.md
++  - 核心解释：标准流程为：①退出当前虚拟环境（`deactivate`）；②删除旧项目目录（`rm -rf project_name`，注意备份自定义配置）；③克隆最新代码（`git clone https://github.com/user/project.git`）；④创建并激活虚拟环境（`python3 -m venv venv && source venv/bin/activate`）；⑤安装依赖（`pip install -r requirements.txt` 或 `pip install -e ".[dev]"`）。安装后可用 `pip list` 确认依赖包已存在，再启动项目运行。
+ 
+-#### 容器内PaddleOCR转PDF为MD.md
++#### GitHub SSH配置与项目克隆指南.md
+ 
+-- **[PPStructure 引擎初始化与参数配置]** — PPStructure 是 PaddleOCR 的文档版面分析引擎，可将 PDF 转换为结构化数据（Markdown/HTML/JSON）。
+-  - 来源文件：容器内PaddleOCR转PDF为MD.md
+-  - 核心解释：PPStructure 通过 `paddleocr` 库导入，初始化时支持多个关键参数：`show_log=True` 开启运行日志便于调试；`image_orientation=True` 自动校正图像方向；`layout=True` 启用版面分析（识别标题、段落、表格等元素）；`lang='ch'` 设定中英文文档识别语言。调用时直接传入 PDF 文件路径 `engine(pdf_path)` 即可触发解析，返回每页的结构化结果列表。
++- **[SSH 密钥对生成：ed25519 算法]** — 使用 `ssh-keygen -t ed25519` 命令生成更安全、更快的 SSH 密钥对，作为连接 GitHub 的身份凭证。
++  - 来源文件：GitHub SSH配置与项目克隆指南.md
++  - 核心解释：执行 `ssh-keygen -t ed25519 -C "your_email@example.com"` 生成密钥对，`-t ed25519` 指定算法（较旧系统可改用 `-t rsa -b 4096`），`-C` 添加注释标签（通常用 GitHub 注册邮箱）。命令执行后可按回车接受默认路径 `~/.ssh/id_ed25519`，并可选择设置 passphrase 增加保护层。生成的密钥对包含私钥文件 `id_ed25519`（须严格保密）和公钥文件 `id_ed25519.pub`（可公开分享）。生成前可用 `ls -al ~/.ssh` 检查是否已有现有密钥。
+ 
+-- **[PaddlePaddle 基础镜像不包含 PaddleOCR，需手动安装]** — 用户拉取的 `paddle:3.3.0-gpu-cuda12.9-cudnn9.9` 仅是 PaddlePaddle 框架镜像，不含 PaddleOCR 库及 OpenCV 依赖。
+-  - 来源文件：容器内PaddleOCR转PDF为MD.md
+-  - 核心解释：进入容器后需执行 `pip install paddleocr` 安装 OCR 包（PaddlePaddle 框架已有，不会重复安装）。此外还需安装系统级图形依赖：`apt-get update && apt-get install -y libgl1-mesa-glx libsm6 libxext6 libxrender-dev libgomp1`，这些是 OpenCV 等底层库运行所需的共享库，缺失会导致 `ImportError` 或运行时段错误。
++- **[公钥绑定到 GitHub 账户]** — 将本地生成的公钥内容通过 GitHub 网站 Settings → SSH and GPG keys → New SSH key 提交，完成账户级身份绑定。
++  - 来源文件：GitHub SSH配置与项目克隆指南.md
++  - 核心解释：先运行 `cat ~/.ssh/id_ed25519.pub` 复制完整的公钥内容。登录 GitHub 后依次点击右上角头像 → Settings → 侧边栏 Access → SSH and GPG keys → 绿色 New SSH key 按钮。在 Title 中为密钥命名（如 "My Laptop"），将公钥粘贴到 Key 框中，点击 Add SSH key 保存。SSH 密钥是账户级别的配置，一次绑定后用户名下所有仓库（包括有权限的他人仓库）均可通过 SSH 协议进行克隆、推送和拉取操作。
+ 
+-- **[Docker 目录挂载实现宿主机 PDF 文件访问与结果输出]** — 容器内外文件隔离，必须通过 `-v` 参数建立路径映射，使用绝对路径。
+-  - 来源文件：容器内PaddleOCR转PDF为MD.md
+-  - 核心解释：使用 `sudo docker run -it --rm --gpus all -v /home/ecs-user/pdfs:/pdfs -v /home/ecs-user/pdf_output:/output <镜像名> /bin/bash` 启动容器。`-v /home/ecs-user/pdfs:/pdfs` 将宿主机 PDF 目录映射到容器内 `/pdfs`，`-v /home/ecs-user/pdf_output:/output` 映射输出目录。脚本在容器内读写这些挂载路径，结果自动同步到宿主机。若当前用户不在 docker 组中需加 `sudo`，可通过 `sudo usermod -aG docker $USER` 添加后重新登录生效。
++- **[SSH 连接测试与项目克隆]** — 用 `ssh -T git@github.com` 验证配置，用 SSH 格式地址 `git clone git@github.com:用户名/仓库名.git` 克隆仓库。
++  - 来源文件：GitHub SSH配置与项目克隆指南.md
++  - 核心解释：配置完成后执行 `ssh -T git@github.com` 测试连接，若返回 `Hi [用户名]! You've successfully authenticated...` 即表示配置成功。克隆项目时在 GitHub 仓库页面点击绿色 Code 按钮选择 SSH 选项，复制 `git@github.com:用户名/仓库名.git` 格式的地址。在本地终端执行 `git clone` 加该地址即可将项目代码克隆到当前目录。SSH 克隆的底层是一个身份验证过程：GitHub 服务器检查连接者提供的 SSH 公钥，查找绑定的账户，再根据账户权限判断是否允许访问目标仓库。
+ 
+-- **[save_structure_res 分页输出模式与多页合并方案]** — `save_structure_res` 默认每页生成独立 `.md` 文件，需自行合并为完整文档。
+-  - 来源文件：容器内PaddleOCR转PDF为MD.md
+-  - 核心解释：`save_structure_res(result, output_dir, base_name)` 会在输出目录下创建以 PDF 文件名命名的子文件夹，内含 `页_1.md`、`页_2.md` 等逐页文件（同时生成 HTML 和 JSON 格式，方便多格式输出）。若要获取单一完整 Markdown，需编写合并脚本：按文件名排序读取所有 `.md` 文件，依次写入目标文件并以 `\n\n` 分隔各页，合并命令示例为 `python merge_md.py /output/pdf_name /output/pdf_name/merged.md`。
++- **[SSH 与 HTTPS 协议对比]** — SSH 克隆需要 GitHub 账户和密钥配置但后续免密操作，HTTPS 克隆公开仓库无需账号但推送时需额外验证。
++  - 来源文件：GitHub SSH配置与项目克隆指南.md
++  - 核心解释：SSH 克隆强制要求拥有 GitHub 账户（因为公钥必须绑定到具体账户），首次配置需生成密钥并添加到 GitHub，但后续所有 Git 操作（推送、拉取）都不再需要输入密码。HTTPS 克隆公开仓库可直接匿名执行 `git clone https://github.com/用户名/仓库名.git`，无需任何认证或注册，但对于私有仓库仍需输入凭据。仅想临时下载或阅读公开项目代码时 HTTPS 最快捷；频繁推送代码或管理多个仓库的开发者应配置 SSH。
+ 
+-- **[批量处理 PDF 的命令行脚本设计模式]** — 可复用的 Python 脚本模式，支持传入单个 PDF 文件或目录批量处理，自动创建输出子目录。
+-  - 来源文件：容器内PaddleOCR转PDF为MD.md
+-  - 核心解释：脚本通过 `os.path.isfile()` / `os.path.isdir()` 判断输入是单个文件还是目录。若为文件则直接处理；若为目录则用列表推导式 `[f for f in os.listdir(input_path) if f.lower().endswith('.pdf')]` 收集所有 PDF。每个 PDF 的输出目录独立创建（`os.makedirs(out_dir, exist_ok=True)`），以 PDF 文件名命名。在 Docker 容器内通过挂载目录运行 `python /root/pdf_to_md.py /pdfs /output` 即可完成批量转换。
++#### 应用迁移方案指南.md
+ 
+-#### 树莓派5安装Ubuntu的Java版本选择指南.md
++- **[系统还原点创建（迁移前安全措施）]** — 迁移任何应用前，通过创建系统还原点提供一键回滚的保险机制。
++  - 来源文件：应用迁移方案指南.md
++  - 核心解释：按 Win + R 输入 `sysdm.cpl` 并回车，进入系统保护选项卡，选中系统盘（通常是 C 盘），点击创建并输入描述（如"应用迁移前"）即可创建还原点。迁移失败时可通过系统还原将系统恢复到迁移前状态。这是迁移操作的第一道安全绳，免费且无需额外工具。
+ 
+-- **[Java安装包命名规则解析：架构与格式二维矩阵]** — ARM64 vs x64、Compressed Archive vs RPM vs Debian Package 等术语分别代表CPU架构和打包格式两个维度，理解后可避免下错安装包。
+-  - 来源文件：树莓派5安装Ubuntu的Java版本选择指南.md
+-  - 核心解释：Java官网下载页面的选项由"CPU架构"和"打包格式"两个维度交叉组成。CPU架构方面，ARM64（AArch64）用于树莓派、Apple Silicon等ARM设备，x64（x86_64/amd64）用于传统Intel/AMD电脑。打包格式方面，Compressed Archive（tar.gz）是最通用的格式，适用于所有Linux发行版，需手动解压；RPM Package用于Red Hat/CentOS/Fedora等RPM系系统；Debian Package（.deb）用于Ubuntu/Debian系系统。树莓派5是ARMv8/AArch64架构，必须选择ARM64版本。
++- **[使用 mklink /J 创建目录交接点实现无感知迁移]** — 将程序文件剪切到目标磁盘，在原位置创建符号链接，使程序认为仍在原路径运行。
++  - 来源文件：应用迁移方案指南.md
++  - 核心解释：以管理员身份打开命令提示符，执行 `mklink /J "C:\原程序路径" "D:\新程序路径"` 即可创建目录交接点（Junction）。关键约束：原路径包含空格时必须用英文双引号括起来。成功后原位置会显示一个带快捷方式箭头的文件夹，实际文件存储在目标磁盘。此方案对几乎所有桌面应用通用，且对破解版软件（如 MATLAB 破解版）尤其安全，因为程序自身看到的仍是原路径，不会触发许可证重新验证。
+ 
+-- **[树莓派5 + Ubuntu首选安装方案：APT包管理器]** — 使用 `sudo apt install openjdk-17-jdk` 一行命令即可自动匹配ARM64架构并完成安装，是最简单、最推荐的方式。
+-  - 来源文件：树莓派5安装Ubuntu的Java版本选择指南.md
+-  - 核心解释：Ubuntu基于Debian，系统仓库中的 openjdk 包已针对ARM64优化。安装步骤为：先执行 `sudo apt update` 更新软件包列表，再执行 `sudo apt install openjdk-17-jdk`（也可指定其他版本如 openjdk-11-jdk 或 openjdk-8-jdk）。安装后运行 `java -version` 验证，若输出信息中包含 "openjdk version" 和 "aarch64" 字样，说明安装正确。此方法的优势是系统自动处理依赖关系和后续更新，无需手动配置环境变量。
++- **[使用 robocopy 进行大文件集的高保真复制]** — 针对 MATLAB 等超大软件的磁盘迁移，用 robocopy 替代普通复制粘贴以保证文件完整性和权限。
++  - 来源文件：应用迁移方案指南.md
++  - 核心解释：完整命令：`robocopy "C:\Program Files\MATLAB" "D:\Matlab" /E /COPYALL /DCOPY:T /R:3 /W:10 /V /LOG:D:\Matlab_copy.log`。参数含义：`/E` 复制所有子目录（含空目录），`/COPYALL` 复制数据、属性、时间戳、NTFS 安全权限和所有者信息，`/DCOPY:T` 复制目录时间戳，`/R:3 /W:10` 表示失败后重试3次、等待10秒，`/LOG` 记录完整日志便于排查错误。复制完成后务必检查日志中是否有 ERROR 或 FAIL 输出，并对比源和目标文件夹的大小和文件数量是否一致。
+ 
+-- **[三重过滤法：快速判断Java安装包是否可用]** — 通过"操作系统→CPU架构→文件格式"三层筛选，一眼锁定正确的安装包。
+-  - 来源文件：树莓派5安装Ubuntu的Java版本选择指南.md
+-  - 核心解释：第一重，平台必须包含"Linux"字样，排除Windows/macOS/AIX等；第二重（最关键），架构必须包含 `aarch64` 或 `ARM64`，排除 `x64`/`x86_64`/`amd64`（Intel/AMD）以及 `arm32`/`armhf`（旧款树莓派）；第三重，文件格式优先选 `.tar.gz`（通用，适用于所有Linux发行版）或 `.deb`（Ubuntu原生格式，可用 `sudo dpkg -i 包名.deb` 安装），不推荐 `.rpm`（需用alien转换，易出错）。实战示例：正确文件名为 `jdk-17_linux-aarch64_bin.tar.gz`。
+-
+-- **[手动安装 tar.gz 压缩包完整步骤]** — 下载 ARM64 架构的 tar.gz 压缩包后，通过解压到 `/usr/lib/jvm/` 并配置 `JAVA_HOME` 环境变量完成安装。
+-  - 来源文件：树莓派5安装Ubuntu的Java版本选择指南.md
+-  - 核心解释：从 Adoptium 或 Oracle 官网下载 `*-linux-aarch64_bin.tar.gz` 文件后，依次执行：`sudo mkdir -p /usr/lib/jvm` 创建安装目录，`sudo tar -xzf jdk-17_linux-aarch64_bin.tar.gz -C /usr/lib/jvm/` 解压，`echo 'export JAVA_HOME=/usr/lib/jvm/jdk-17.0.9' >> ~/.bashrc` 和 `echo 'export PATH=$JAVA_HOME/bin:$PATH' >> ~/.bashrc` 配置环境变量，`source ~/.bashrc` 使配置生效。注意解压后的文件夹名需用 `ls /usr/lib/jvm` 查看确认，版本号因下载而异。安装 .deb 格式用 `sudo dpkg -i *.deb`，若报依赖问题则用 `sudo apt -f install` 修复。
+-"""
+-
+-with open('knowledge_cache.md', 'a', encoding='utf-8') as f:
+-    f.write(content)
++- **[迁移失败后的回滚恢复流程]** — 符号链接方案可无损恢复，删除链接并将备份文件移回原位即可复原。
++  - 来源文件：应用迁移方案指南.md
++  - 核心解释：如果迁移后程序无法启动，符号链接方案的恢复步骤为：`rmdir "C:\原程序路径"` 删除符号链接（注意是 `rmdir` 而非 `del`，因为目录交接点是目录而非文件），然后将之前重命名的备份文件夹改回原名：`ren "C:\原路径_backup" "原文件夹名"`。此操作可完全恢复原始状态，对原文件无任何损伤。若使用了系统还原点，也可直接通过系统还原回滚。对于普通复制迁移，只需将目标盘文件复制回原位置即可。
++""")
+ 
+-print('OK - appended batch 5 knowledge entries')
++print('OK - appended batch 6')
+
+Wrote 12304 bytes to \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_append_knowledge.py

@@ -1,0 +1,51 @@
+--- a/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\scan_all.py
++++ b/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\scan_all.py
+@@ -0,0 +1,46 @@
++import os, json
++
++base = r"C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md"
++
++results = []
++for root, dirs, files in os.walk(base):
++    for f in files:
++        if f.endswith('.md') and not f.startswith('analysis_'):
++            fpath = os.path.join(root, f)
++            rel = os.path.relpath(fpath, base)
++            try:
++                with open(fpath, 'r', encoding='utf-8', errors='ignore') as fh:
++                    lines = sum(1 for _ in fh)
++            except:
++                lines = 0
++            results.append({"path": rel, "lines": lines})
++
++results.sort(key=lambda x: x["lines"], reverse=True)
++
++# 分类
++small = [r for r in results if r["lines"] < 500]
++medium = [r for r in results if 500 <= r["lines"] <= 1500]
++large = [r for r in results if r["lines"] > 1500]
++
++print(f"总计: {len(results)}")
++print(f"小文件 (<500): {len(small)}")
++print(f"中等 (500-1500): {len(medium)}")
++print(f"超大 (>1500): {len(large)}")
++print()
++
++# 输出所有小+中文件的完整列表（供后续读取）
++target = small + medium
++target.sort(key=lambda x: x["lines"])
++print("=== 目标文件列表 (小+中，共{}个) ===".format(len(target)))
++for i, r in enumerate(target):
++    print(f"{i+1:3d}. [{r['lines']:5d}行] {r['path']}")
++
++print()
++print("=== 超大文件 (排除) ===")
++for i, r in enumerate(large):
++    print(f"  [{r['lines']:5d}行] {r['path']}")
++
++# 保存到 JSON 供后续使用
++with open(os.path.join(base, "_scan_result.json"), 'w', encoding='utf-8') as f:
++    json.dump({"all": results, "small": small, "medium": medium, "large": large, "target": target}, f, ensure_ascii=False, indent=2)
++print("\n结果已保存到 _scan_result.json")
+
+Created C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\scan_all.py (1659 bytes)

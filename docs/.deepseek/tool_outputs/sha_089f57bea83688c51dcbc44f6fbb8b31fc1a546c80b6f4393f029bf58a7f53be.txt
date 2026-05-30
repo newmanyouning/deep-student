@@ -1,0 +1,133 @@
+# WPS加载项AI开发环境准备
+对话ID: ac39e085-d144-4015-b21c-43cff8040c3f
+创建时间: 2026-04-18T18:49:09.050000+08:00
+更新时间: 2026-04-18T19:09:47.637000+08:00
+
+## ❓ unknown
+
+我需要使用AI工具进行WPS加载项的开发，我需要准备什么环境？
+
+---
+
+## ❓ unknown
+
+用户想了解使用AI工具进行WPS加载项开发所需准备的环境。我需要提供关于开发环境、AI工具等方面的信息。为了全面获取信息，我需要同时进行多项搜索，涵盖WPS加载项开发环境、AI工具在其中的应用、以及相关的官方文档和社区资源。
+{'type': 'TOOL_SEARCH'}
+搜索结果显示了一些相关页面。为了全面了解WPS加载项开发的环境准备、AI工具集成以及相关资源，我们需要同时打开这些页面。
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+这些资料提供了关于WPS加载项开发环境、AI集成以及相关工具的信息。我的回答将涵盖基础开发环境、AI集成准备和其他辅助工具。回答会列出所需的硬件、软件、AI服务、调试工具等，并会引用相关来源。
+使用AI工具开发WPS加载项，你需要的环境分为两大部分：**加载项开发的基础环境**和**集成AI能力的特定环境**。我为你整理了详细的准备步骤：
+
+### 🚀 一、搭建WPS加载项的基础开发环境
+
+这是开发任何WPS加载项都必须完成的步骤。
+
+*   **安装Node.js**：建议使用 `Node.js v20 LTS` 这类长期支持版本，稳定性更好[reference:0]。
+*   **安装开发工具**：推荐使用代码编辑器 **Visual Studio Code (VS Code)**[reference:1]。
+*   **安装WPS客户端**：确保已安装 **WPS Office 2019 或更高版本**。注意，个人版从特定版本开始对加载项加载有限制[reference:2]，若遇问题可参考此处的[问题排查指南](https://qn.cache.wpscdn.cn/encs/doc/office_v19/topics/WPS%20集成模式/WPS%20加载项开发/加载项概述.html#faq)。
+*   **安装WPS官方脚手架工具 (wpsjs)**：在命令行执行 `npm install -g wpsjs` 全局安装，用于创建、调试和发布加载项项目[reference:3]。若下载慢，可指定国内镜像源[reference:4]。
+*   **初始化并调试项目**：安装完成后，通过 `wpsjs create 你的项目名` 创建新项目，根据提示选择加载项类型和Vue/React等前端框架[reference:5][reference:6]。进入项目目录后，运行 `wpsjs debug` 启动调试，该命令会自动打开WPS并加载你的插件[reference:7]。
+
+### 🤖 二、准备集成AI能力的特定环境
+
+AI功能是加载项能力的延伸，具体准备取决于AI服务的部署方式。
+
+| 部署方式 | 技术路径 | 准备工作 |
+| :--- | :--- | :--- |
+| **调用云端AI服务API** | 通过HTTP请求调用云端AI模型，如DeepSeek、OpenAI等[reference:8]。 | 1. 获取API Key并理解相关接口文档。<br>2. 在项目中配置代理解决跨域问题[reference:9]。 |
+| **本地部署开源大模型** | 将开源模型（如DeepSeek）部署在本地服务器，通过API调用，适合数据敏感场景[reference:10]。 | 1. 准备较高性能的硬件（如NVIDIA RTX 3060+）[reference:11]。<br>2. 使用Docker或FastAPI等工具部署并暴露API[reference:12][reference:13]。 |
+| **使用WPS AI官方能力** | 调用WPS官方提供的AI接口，集成方式更原生[reference:14]。 | 1. 申请WPS AI的开发者权限。<br>2. 熟悉官方AI组件的使用文档。 |
+| **集成已有的AI工具** | 通过COM加载项机制，在WPS中启用“OfficeAI助手”等第三方插件[reference:15][reference:16]。 | 1. 在WPS信任中心，勾选“启用所有第三方COM加载项”。<br>2. 下载安装插件并完成配置。 |
+
+### 🛠️ 三、其他开发辅助工具
+
+*   **API调试工具**：推荐 **Postman** 或 **Insomnia**，用于在集成前测试AI服务的API接口。
+*   **开发文档**：
+    *   **WPS官方文档**：加载项开发的权威指南，不过有时可能更新不及时[reference:17]。核心资料可参考[WPS加载项概述](http://qn.cache.wpscdn.cn/encs/doc/office_v19/topics/WPS%20集成模式/WPS%20加载项开发/加载项概述.html)和[开发说明](http://qn.cache.wpscdn.cn/encs/doc/office_v19/topics/WPS%20集成模式/WPS%20加载项开发/WPS%20加载项开发说明.html)。
+    *   **社区与博客**：遇到问题时，可查阅 **WPS官方论坛**[reference:18]、**CSDN**[reference:19]等技术社区，以及AI服务提供商的官方文档[reference:20][reference:21]。
+
+你计划开发的 AI 功能主要是偏向文字处理、表格分析还是 PPT 生成呢？告诉我你具体的应用场景，我可以为你推荐更匹配的技术方案和 WPS API。
+
+---
+
+## ❓ unknown
+
+Node.js v20如何下载
+
+---
+
+## ❓ unknown
+
+用户想了解如何下载Node.js v20。这是一个很直接的问题。我需要提供清晰、准确的下载和安装指南。为了确保信息的完整性，我需要同时进行多项搜索，涵盖Node.js v20的下载方法、安装步骤、不同操作系统的具体指南、版本选择（LTS vs Current）以及可能遇到的常见问题。
+{'type': 'TOOL_SEARCH'}
+搜索结果显示了一些相关页面。为了全面获取信息，我们需要同时打开这些页面。
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+这些资料提供了详细的安装步骤。我的回答将涵盖Windows、macOS和Linux三大操作系统，并会提到版本选择（LTS vs Current）、验证安装、配置镜像源等实用信息。回答将采用清晰的结构，并引用多个来源。
+Node.js v20 的下载和安装很简单，这里为你整理了在 Windows、macOS 和 Linux 上的完整指南。
+
+**🚀 第一步：获取安装包**
+
+1.  **访问官网**：打开浏览器，访问 Node.js 官方网站 **[https://nodejs.org/](https://nodejs.org/)**[reference:0]。官网会自动识别你的操作系统，并提供对应的安装包。
+2.  **版本选择**：请务必选择左侧绿色的 **LTS** 版本（Long Term Support，长期支持版）进行下载。这是官方推荐用于开发和生产环境的稳定版本，能确保最佳的兼容性和安全性[reference:1][reference:2][reference:3]。右侧的“Current”版本包含最新特性，但可能不够稳定，不建议新手选择。
+
+**💻 第二步：根据操作系统安装**
+
+*   **Windows**
+    1.  下载后，双击运行 `.msi` 格式的安装文件[reference:4]。
+    2.  在安装向导中，一路点击“Next”。建议在“Custom Setup”页面勾选“**Add to PATH**”选项，这样安装程序会自动配置环境变量，省去手动操作的麻烦[reference:5]。
+    3.  继续点击“Install”完成安装[reference:6]。
+*   **macOS**
+    *   **方法一 (图形化)**：双击下载的 `.pkg` 安装包，按照向导提示完成安装即可[reference:7][reference:8]。
+    *   **方法二 (Homebrew)**：如果你的 Mac 已安装 Homebrew 包管理器，可在终端执行 `brew install node` 命令一键安装[reference:9]。
+*   **Linux (Ubuntu/Debian)**
+    *   **方法一 (使用NodeSource仓库)**：在终端中依次执行以下命令，安装 Node.js 20.x 版本[reference:10][reference:11]。
+        ```bash
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt install -y nodejs
+        ```
+    *   **方法二 (使用NVM)**：通过 Node Version Manager (NVM) 可以灵活管理多个 Node.js 版本[reference:12]。安装 NVM 后，执行 `nvm install --lts` 即可安装最新的 LTS 版本[reference:13]。
+
+> **提示**：对于 macOS 和 Linux 用户，使用 **fnm** (Fast Node Manager) 或 **nvm** (Node Version Manager) 是更专业的做法，可以轻松地在不同项目间切换 Node.js 版本[reference:14][reference:15]。
+
+**✅ 第三步：验证安装**
+
+安装完成后，打开系统的**终端**或**命令提示符**，输入以下命令验证是否成功[reference:16]：
+```bash
+node -v
+```
+如果终端正确显示了类似 `v20.19.6` 的版本号，说明 Node.js v20 已成功安装[reference:17]。
+
+**✨ 第四步：配置国内镜像源**
+
+为了加快后续使用 `npm` 安装包的速度，建议将 npm 的默认镜像源设置为国内镜像（如淘宝源）。在终端中执行以下命令即可[reference:18][reference:19]：
+```bash
+npm config set registry https://registry.npmmirror.com
+```
+
+完成以上步骤，你就准备好了开发 WPS 加载项所需的 Node.js 环境。接下来，就可以通过 `npm install -g wpsjs` 来安装官方脚手架，正式开始你的加载项开发之旅了[reference:20]。
+
+---

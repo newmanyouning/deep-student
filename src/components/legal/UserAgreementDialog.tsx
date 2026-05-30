@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { NotionButton } from '@/components/ui/NotionButton';
 import { CaretRight } from '@phosphor-icons/react';
 import { Z_INDEX } from '@/config/zIndex';
+import { settingsApi } from '@/api/settingsApi';
 
 // ============================================================================
 // 常量
@@ -38,7 +39,7 @@ export function useUserAgreement() {
     // 如果首次检查失败，进行重试而非直接判定为"需要同意"，避免已有用户被误弹协议弹窗。
     const tryCheck = async (): Promise<'agreed' | 'not_agreed' | 'error'> => {
       try {
-        const accepted = await invoke('get_setting', { key: USER_AGREEMENT_ACCEPTED_KEY }) as string | null;
+        const accepted = await settingsApi.get(USER_AGREEMENT_ACCEPTED_KEY ) as string | null;
         return accepted === USER_AGREEMENT_VERSION ? 'agreed' : 'not_agreed';
       } catch {
         return 'error';
@@ -79,19 +80,15 @@ export function useUserAgreement() {
 
   const acceptAgreement = useCallback(async () => {
     try {
-      await invoke('save_setting', {
-        key: USER_AGREEMENT_ACCEPTED_KEY,
-        value: USER_AGREEMENT_VERSION,
-      });
+      await settingsApi.save(USER_AGREEMENT_ACCEPTED_KEY, USER_AGREEMENT_VERSION,
+      );
       setNeedsAgreement(false);
     } catch (err) {
       // 保存失败：首先尝试重试一次
       try {
         await new Promise(r => setTimeout(r, 500));
-        await invoke('save_setting', {
-          key: USER_AGREEMENT_ACCEPTED_KEY,
-          value: USER_AGREEMENT_VERSION,
-        });
+        await settingsApi.save(USER_AGREEMENT_ACCEPTED_KEY, USER_AGREEMENT_VERSION,
+        );
         setNeedsAgreement(false);
       } catch {
         // 重试仍失败：允许继续使用，但提示用户下次启动可能再次显示

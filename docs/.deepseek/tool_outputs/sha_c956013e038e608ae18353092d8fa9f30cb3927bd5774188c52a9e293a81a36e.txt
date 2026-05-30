@@ -1,0 +1,51 @@
+--- a/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_check_remaining2.py
++++ b/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_check_remaining2.py
+@@ -0,0 +1,46 @@
++import re, os
++
++# Read cache
++with open(r'C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md', encoding='utf-8') as f:
++    text = f.read()
++
++# Extract ALL referenced files - match both formats:
++#   来源文件：文件名.md
++#   来源文件：`01_AI与编程开发/文件名.md`
++refs = set()
++for m in re.finditer(r'来源文件[：:]\s*(?:`?01_AI与编程开发/)?(.+?\.md)', text):
++    refs.add(m.group(1))
++
++print(f'已在缓存中引用的文件: {len(refs)} 个')
++
++# Read the full file list
++d = r'C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发'
++all_files = set(f for f in os.listdir(d) if os.path.isfile(os.path.join(d, f)))
++
++remaining = all_files - refs
++print(f'\n真待处理: {len(remaining)} 个')
++
++# Categorize
++big = []
++med = []
++small = []
++for r in remaining:
++    sz = os.path.getsize(os.path.join(d, r))
++    if sz > 50000:
++        big.append((sz, r))
++    elif sz > 10000:
++        med.append((sz, r))
++    else:
++        small.append((sz, r))
++
++print(f'\n大文件(>50KB): {len(big)}')
++for sz, n in sorted(big, reverse=True):
++    print(f'  [{sz:>10}B] {n}')
++
++print(f'\n中文件(10-50KB): {len(med)}')
++for sz, n in sorted(med, reverse=True):
++    print(f'  [{sz:>10}B] {n}')
++
++print(f'\n小文件(<=10KB): {len(small)}')
++for sz, n in sorted(small, reverse=True):
++    print(f'  [{sz:>10}B] {n}')
+
+Created C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_check_remaining2.py (1351 bytes)

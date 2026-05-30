@@ -1,0 +1,430 @@
+<file path="01_AI与编程开发\提示词工程完全指南生成.md" total_lines="6798" shown_lines="1201-1700" truncated="true" next_start_line="1701">
+  1201│ 
+  1202│ #### 3.3.1 ToT的核心组件
+  1203│ 
+  1204│ ```markdown
+  1205│ ## ToT框架
+  1206│ 
+  1207│ <task>
+  1208│ 解决以下创意问题：设计一个可以在火星上使用的货币系统。
+  1209│ </task>
+  1210│ 
+  1211│ <tot_config>
+  1212│ - 分支因子(b): 3 (每步生成3个思路)
+  1213│ - 深度(d): 4 (探索4层推理)
+  1214│ - 评估函数: 可行性、创新性、简洁性
+  1215│ - 剪枝策略: 保留前2个最高分路径
+  1216│ </tot_config>
+  1217│ 
+  1218│ <execution>
+  1219│ 
+  1220│ ### 第1层：初始思路生成
+  1221│ 思路1: 基于地球货币改造
+  1222│ 思路2: 完全重新设计  
+  1223│ 思路3: 采用实物货币
+  1224│ 
+  1225│ 评估分数:
+  1226│ 思路1: 可行性8，创新性3，简洁性6 → 总分17
+  1227│ 思路2: 可行性4，创新性9，简洁性4 → 总分17
+  1228│ 思路3: 可行性6，创新性2，简洁性8 → 总分16
+  1229│ 
+  1230│ 保留: 思路1、思路2
+  1231│ 
+  1232│ ### 第2层：深化思路1
+  1233│ 分支1.1: 数字化火星币，与地球汇率挂钩
+  1234│ 分支1.2: 基于贡献度的积分系统
+  1235│ 分支1.3: 时间银行概念
+  1236│ 
+  1237│ 评估后保留: 分支1.1(总分19)、分支1.2(总分18)
+  1238│ 
+  1239│ ### 第2层：深化思路2
+  1240│ 分支2.1: 基于火星资源的商品本位（水、氧气）
+  1241│ 分支2.2: 基于能源消耗的碳信用系统
+  1242│ 分支2.3: DAO治理的去中心化货币
+  1243│ 
+  1244│ 评估后保留: 分支2.1(总分20)、分支2.3(总分19)
+  1245│ 
+  1246│ ### 第3-4层：继续深化...
+  1247│ 
+  1248│ ### 最终输出：最优路径
+  1249│ 路径: 思路2 → 分支2.1 → 具体设计 → 实施细节
+  1250│ </execution>
+  1251│ ```
+  1252│ 
+  1253│ #### 3.3.2 ToT vs CoT对比实验
+  1254│ 
+  1255│ | 任务类型 | CoT准确率 | ToT准确率 | 提升 | ToT额外开销 |
+  1256│ |---------|----------|-----------|------|------------|
+  1257│ | 24点游戏 | 4% | 74% | +70% | 5-8倍 |
+  1258│ | 创意写作评分 | 6.5/10 | 8.2/10 | +26% | 3-4倍 |
+  1259│ | 复杂规划 | 45% | 78% | +33% | 4-6倍 |
+  1260│ | 数学证明 | 32% | 61% | +29% | 5-7倍 |
+  1261│ 
+  1262│ > **专家提示**：ToT虽然强大但计算成本高。只在以下情况使用ToT：1) 任务有明确的评估标准；2) 需要创新性解决方案；3) 错误成本高；4) 有足够的Token预算。
+  1263│ 
+  1264│ ### 3.4 Self-Consistency
+  1265│ 
+  1266│ Self-Consistency通过多次采样并投票选择最一致的答案，显著提高CoT的准确性。
+  1267│ 
+  1268│ #### 3.4.1 Self-Consistency工作流程
+  1269│ 
+  1270│ ```python
+  1271│ # Self-Consistency伪代码
+  1272│ def self_consistency(question, llm, n=5, temperature=0.7):
+  1273│     """
+  1274│     question: 输入问题
+  1275│     llm: 大语言模型
+  1276│     n: 采样次数
+  1277│     temperature: 采样温度
+  1278│     """
+  1279│     answers = []
+  1280│     reasoning_paths = []
+  1281│     
+  1282│     for i in range(n):
+  1283│         # 每次使用CoT生成推理路径和答案
+  1284│         prompt = f"{question}\n让我们一步步思考："
+  1285│         response = llm.generate(prompt, temperature=temperature)
+  1286│         
+  1287│         # 提取最终答案（假设答案在"因此"或"答案是"之后）
+  1288│         final_answer = extract_answer(response)
+  1289│         answers.append(final_answer)
+  1290│         reasoning_paths.append(response)
+  1291│     
+  1292│     # 投票选择最一致的答案
+  1293│     from collections import Counter
+  1294│     vote_result = Counter(answers).most_common(1)[0]
+  1295│     
+  1296│     return {
+  1297│         "answer": vote_result[0],
+  1298│         "confidence": vote_result[1] / n,
+  1299│         "all_answers": answers,
+  1300│         "reasoning_paths": reasoning_paths
+  1301│     }
+  1302│ 
+  1303│ # 使用示例
+  1304│ question = "一个抽屉里有5只红袜子和4只蓝袜子。如果不看随机拿两只，拿到同色的概率是多少？"
+  1305│ result = self_consistency(question, llm, n=5)
+  1306│ 
+  1307│ print(f"最终答案: {result['answer']}")
+  1308│ print(f"置信度: {result['confidence']:.0%}")
+  1309│ print(f"所有答案: {result['all_answers']}")
+  1310│ 
+  1311│ # 可能输出:
+  1312│ # 最终答案: 4/9 ≈ 0.444
+  1313│ # 置信度: 80%
+  1314│ # 所有答案: ['4/9', '4/9', '4/9', '5/9', '4/9']
+  1315│ ```
+  1316│ 
+  1317│ #### 3.4.2 Self-Consistency效果数据
+  1318│ 
+  1319│ | 任务 | 标准CoT | Self-Consistency (n=5) | Self-Consistency (n=20) | 提升 |
+  1320│ |------|---------|----------------------|-----------------------|------|
+  1321│ | GSM8K数学 | 60.2% | 70.1% | 74.4% | +14.2% |
+  1322│ | AQuA推理 | 46.3% | 53.1% | 56.7% | +10.4% |
+  1323│ | StrategyQA | 66.8% | 72.5% | 75.1% | +8.3% |
+  1324│ | 常识推理 | 71.2% | 74.8% | 76.3% | +5.1% |
+  1325│ 
+  1326│ **最佳实践：**
+  1327│ - n=3-5适合大多数任务（性价比最优）
+  1328│ - temperature设置在0.5-0.8（太低会缺乏多样性，太高会引入噪声）
+  1329│ - 答案格式需要规范化处理（例如统一为分数、小数或百分比）
+  1330│ 
+  1331│ ### 3.5 ReAct (Reasoning + Acting)
+  1332│ 
+  1333│ ReAct框架让模型交替进行推理和行动，能够与外部环境交互（如调用API、搜索数据库、执行代码）。
+  1334│ 
+  1335│ #### 3.5.1 ReAct的核心循环
+  1336│ 
+  1337│ ```markdown
+  1338│ ## ReAct模式模板
+  1339│ 
+  1340│ <system>
+  1341│ 你是一个AI助手，可以执行以下行动：
+  1342│ - Search[query]: 搜索知识库
+  1343│ - Calculate[expression]: 计算数学表达式
+  1344│ - Code[python_code]: 执行Python代码
+  1345│ - Finish[answer]: 输出最终答案
+  1346│ </system>
+  1347│ 
+  1348│ <format>
+  1349│ Thought: [当前推理]
+  1350│ Action: [选择的行动]
+  1351│ Observation: [行动结果]
+  1352│ (重复上述循环)
+  1353│ Thought: 我可以给出最终答案
+  1354│ Action: Finish[最终答案]
+  1355│ </format>
+  1356│ 
+  1357│ <example>
+  1358│ Question: 2024年奥斯卡最佳影片的导演还导演过哪些电影？
+  1359│ 
+  1360│ Thought: 我需要先找到2024年奥斯卡最佳影片是什么。
+  1361│ Action: Search[2024年奥斯卡最佳影片]
+  1362│ Observation: 2024年奥斯卡最佳影片是《奥本海默》
+  1363│ 
+  1364│ Thought: 现在我知道电影是《奥本海默》，需要找到导演。
+  1365│ Action: Search[奥本海默 导演]
+  1366│ Observation: 导演是克里斯托弗·诺兰
+  1367│ 
+  1368│ Thought: 需要找出诺兰导演的其他电影。
+  1369│ Action: Search[克里斯托弗·诺兰 电影作品]
+  1370│ Observation: 《盗梦空间》、《星际穿越》、《敦刻尔克》、《信条》、《蝙蝠侠》三部曲等
+  1371│ 
+  1372│ Thought: 我已经收集到足够信息，可以回答。
+  1373│ Action: Finish[克里斯托弗·诺兰执导的电影包括：《盗梦空间》(2010)、《星际穿越》(2014)、《敦刻尔克》(2017)、《信条》(2020)、《蝙蝠侠：黑暗骑士》三部曲等]
+  1374│ </example>
+  1375│ 
+  1376│ <new_question>
+  1377│ 特斯拉2023年的全球交付量是多少？这个数字比2022年增长了多少百分比？
+  1378│ </new_question>
+  1379│ ```
+  1380│ 
+  1381│ #### 3.5.2 ReAct实际应用案例
+  1382│ 
+  1383│ ```python
+  1384│ # ReAct实现示例（简化版）
+  1385│ class ReActAgent:
+  1386│     def __init__(self, llm, tools):
+  1387│         self.llm = llm
+  1388│         self.tools = tools
+  1389│         self.max_iterations = 10
+  1390│     
+  1391│     def run(self, question):
+  1392│         context = f"Question: {question}\n"
+  1393│         
+  1394│         for _ in range(self.max_iterations):
+  1395│             # 生成Thought和Action
+  1396│             prompt = self.build_prompt(context)
+  1397│             response = self.llm.generate(prompt)
+  1398│             
+  1399│             # 解析Action
+  1400│             action = self.parse_action(response)
+  1401│             if action['type'] == 'Finish':
+  1402│                 return action['content']
+  1403│             
+  1404│             # 执行Action
+  1405│             observation = self.execute_action(action)
+  1406│             context += f"\n{response}\nObservation: {observation}\n"
+  1407│         
+  1408│         return "达到最大迭代次数，无法完成"
+  1409│     
+  1410│     def execute_action(self, action):
+  1411│         tool_name = action['name']
+  1412│         tool_input = action['input']
+  1413│         
+  1414│         if tool_name in self.tools:
+  1415│             return self.tools[tool_name](tool_input)
+  1416│         else:
+  1417│             return f"错误：未找到工具{tool_name}"
+  1418│ 
+  1419│ # 使用案例：股票分析
+  1420│ tools = {
+  1421│     "get_stock_price": lambda x: f"{x}的最新价格是$150.25",
+  1422│     "calculate_pe_ratio": lambda x: f"市盈率是25.6",
+  1423│     "search_news": lambda x: f"关于{x}的最新新闻：..."
+  1424│ }
+  1425│ 
+  1426│ agent = ReActAgent(llm, tools)
+  1427│ result = agent.run("特斯拉当前的估值是否合理？请分析P/E比率和近期新闻")
+  1428│ ```
+  1429│ 
+  1430│ > **专家提示**：ReAct的关键是设计良好的行动空间。行动粒度要适中：太大失去灵活性，太小导致过多迭代。好的行动通常是"原子操作"——不可再分且功能单一。
+  1431│ 
+  1432│ ### 3.6 RAG融合
+  1433│ 
+  1434│ RAG（Retrieval-Augmented Generation）通过检索外部知识库增强LLM的生成能力，解决知识截止和幻觉问题。
+  1435│ 
+  1436│ #### 3.6.1 RAG的标准流程
+  1437│ 
+  1438│ ```markdown
+  1439│ ## RAG提示词模板
+  1440│ 
+  1441│ <system>
+  1442│ 你是一个问答助手，可以访问以下检索到的相关文档。
+  1443│ </system>
+  1444│ 
+  1445│ <retrieved_documents>
+  1446│ {% for doc in retrieved_docs %}
+  1447│ ### 文档{{ loop.index }} (相关性: {{ doc.score }})
+  1448│ 来源: {{ doc.source }}
+  1449│ 内容: {{ doc.content }}
+  1450│ ---
+  1451│ {% endfor %}
+  1452│ </retrieved_documents>
+  1453│ 
+  1454│ <instruction>
+  1455│ 基于上述检索到的文档回答问题。如果文档中没有相关信息，明确说明"根据现有资料无法回答"。
+  1456│ 不要使用文档之外的知识。
+  1457│ 引用具体文档编号来支持你的回答。
+  1458│ </instruction>
+  1459│ 
+  1460│ <question>
+  1461│ {{ user_question }}
+  1462│ </question>
+  1463│ 
+  1464│ <output_format>
+  1465│ ## 回答
+  1466│ [你的答案]
+  1467│ 
+  1468│ ## 依据
+  1469│ - 文档{{ doc_id }}: [具体引用内容]
+  1470│ - 文档{{ doc_id }}: [具体引用内容]
+  1471│ 
+  1472│ ## 可信度
+  1473│ [高/中/低] - 理由：...
+  1474│ </output_format>
+  1475│ ```
+  1476│ 
+  1477│ #### 3.6.2 RAG优化技巧
+  1478│ 
+  1479│ **1. 检索质量优化**
+  1480│ 
+  1481│ | 问题 | 解决方案 | 示例 |
+  1482│ |------|----------|------|
+  1483│ | 检索结果不相关 | 查询改写、HyDE | 将问题改写为假设性答案再检索 |
+  1484│ | 信息过时 | 时效性加权 | 给新文档更高权重 |
+  1485│ | 上下文过长 | 智能压缩、摘要 | 提取最相关的段落而非整篇文档 |
+  1486│ | 多跳推理 | 迭代检索 | 第一次检索后生成子问题再检索 |
+  1487│ 
+  1488│ **2. RAG提示词高级技巧**
+  1489│ 
+  1490│ ```markdown
+  1491│ ## 带置信度的RAG
+  1492│ 
+  1493│ <retrieved_chunks>
+  1494│ [
+  1495│   {
+  1496│     "text": "截至2024年1月，GPT-4的上下文窗口为128K tokens。",
+  1497│     "source": "OpenAI官方文档",
+  1498│     "date": "2024-01-15",
+  1499│     "relevance": 0.95
+  1500│   },
+  1501│   {
+  1502│     "text": "GPT-4 Turbo支持128K上下文，约等于300页文本。",
+  1503│     "source": "技术博客",
+  1504│     "date": "2023-11-06", 
+  1505│     "relevance": 0.87
+  1506│   }
+  1507│ ]
+  1508│ </retrieved_chunks>
+  1509│ 
+  1510│ <instruction>
+  1511│ 回答时请标注：
+  1512│ - 【高置信】: 多个文档一致确认
+  1513│ - 【中置信】: 单个可靠文档支持
+  1514│ - 【低置信】: 文档信息冲突或过时
+  1515│ - 【无信息】: 未找到相关信息
+  1516│ </instruction>
+  1517│ 
+  1518│ 问题: GPT-4的上下文窗口有多大？
+  1519│ 
+  1520│ 回答:
+  1521│ 【高置信】根据OpenAI官方文档（2024-01-15）和技术博客（2023-11-06）的一致信息，GPT-4的上下文窗口为128K tokens。
+  1522│ 
+  1523│ 额外说明：不同版本的GPT-4可能有差异，GPT-4基础版为8K或32K，GPT-4 Turbo为128K。
+  1524│ ```
+  1525│ 
+  1526│ ### 3.7 元提示
+  1527│ 
+  1528│ 元提示（Meta-Prompting）是让模型生成或优化提示词的技术，实现提示词的自我改进。
+  1529│ 
+  1530│ #### 3.7.1 元提示的层次结构
+  1531│ 
+  1532│ ```markdown
+  1533│ ## Level 1: 提示词生成
+  1534│ 
+  1535│ <task>
+  1536│ 你是一个提示词工程师。请为以下任务生成一个提示词模板：
+  1537│ 任务：从客户反馈中提取产品改进建议
+  1538│ 输出格式：JSON，包含category、suggestion、priority字段
+  1539│ 要求：能够处理正面和负面反馈
+  1540│ </task>
+  1541│ 
+  1542│ 生成的提示词：
+  1543│ ```markdown
+  1544│ 你是一个产品分析师。分析以下客户反馈：
+  1545│ 
+  1546│ ## 反馈内容
+  1547│ {{feedback}}
+  1548│ 
+  1549│ ## 输出要求
+  1550│ {
+  1551│   "improvements": [
+  1552│     {
+  1553│       "category": "性能/功能/体验/价格/服务",
+  1554│       "suggestion": "具体建议",
+  1555│       "priority": "high/medium/low",
+  1556│       "evidence": "反馈中的原文依据"
+  1557│     }
+  1558│   ]
+  1559│ }
+  1560│ 
+  1561│ 如果反馈中没有改进建议，输出空数组。
+  1562│ ```
+  1563│ ```
+  1564│ 
+  1565│ ```markdown
+  1566│ ## Level 2: 提示词优化
+  1567│ 
+  1568│ <original_prompt>
+  1569│ 将文本翻译成英文：{{text}}
+  1570│ </original_prompt>
+  1571│ 
+  1572│ <feedback>
+  1573│ 问题：翻译结果质量不稳定，专业术语处理不好。
+  1574│ </feedback>
+  1575│ 
+  1576│ <optimization_task>
+  1577│ 请优化上述提示词，解决质量问题。要求：
+  1578│ 1. 添加术语表支持
+  1579│ 2. 增加质量检查步骤
+  1580│ 3. 提供少样本示例
+  1581│ </optimization_task>
+  1582│ 
+  1583│ 优化后的提示词：
+  1584│ ```markdown
+  1585│ <system>
+  1586│ 你是一个专业翻译，专精于{{domain}}领域。
+  1587│ </system>
+  1588│ 
+  1589│ <terminology>
+  1590│ {{#if terminology}}
+  1591│ 以下是术语对照表：
+  1592│ {{terminology}}
+  1593│ {{/if}}
+  1594│ </terminology>
+  1595│ 
+  1596│ <examples>
+  1597│ 输入: "The system is experiencing latency issues."
+  1598│ 输出: "系统出现延迟问题。"
+  1599│ 
+  1600│ 输入: "We need to optimize the O(n²) algorithm."
+  1601│ 输出: "需要优化时间复杂度为O(n²)的算法。"
+  1602│ </examples>
+  1603│ 
+  1604│ <text>
+  1605│ {{text}}
+  1606│ </text>
+  1607│ 
+  1608│ <quality_check>
+  1609│ 翻译完成后，检查：
+  1610│ 1. 术语是否与术语表一致
+  1611│ 2. 是否有漏译或错译
+  1612│ 3. 语气是否与原文匹配
+  1613│ </quality_check>
+  1614│ ```
+  1615│ ```
+  1616│ 
+  1617│ #### 3.7.2 元提示的高级应用：提示词自适应
+  1618│ 
+  1619│ ```python
+  1620│ # 动态提示词优化系统
+  1621│ class MetaPromptOptimizer:
+  1622│     def __init__(self, base_llm, eval_llm):
+  1623│         self.base_llm = base_llm
+  1624│         self.eval_llm = eval_llm
+  1625│         sel
+[TRUNCATED] Showing lines 1201-1700 of 6798. To continue, call read_file with path="01_AI与编程开发\提示词工程完全指南生成.md" start_line=1701 max_lines=500
+
+[TRUNCATED] The selected range exceeded 16KB. Continue with a smaller max_lines value.
+</file>

@@ -1,0 +1,267 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 3,
+      "line": "创建时间: 2026-05-10T12:21:27.498000+08:00",
+      "context_before": [
+        "# 依赖更新调研后续AI提示词",
+        "对话ID: dcb4b1f4-19b3-443d-a971-1d1b47c25299"
+      ],
+      "context_after": [
+        "更新时间: 2026-05-15T08:44:08.701000+08:00",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 4,
+      "line": "更新时间: 2026-05-15T08:44:08.701000+08:00",
+      "context_before": [
+        "对话ID: dcb4b1f4-19b3-443d-a971-1d1b47c25299",
+        "创建时间: 2026-05-10T12:21:27.498000+08:00"
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 57,
+      "line": "项目团队提交了 `dependency_update_investigation.md`（详见文档内容），对8个依赖工具进行了调研。我们已基于2026年5月10日的最新信息对该调研结果的准确性进行了二次核查。**以下为核查结论和修改指令，请逐一执行。**",
+      "context_before": [
+        "## 背景",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## 必须修正的调研结论（3项）"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 66,
+      "line": "- `dagrejs/dagre` 库目前非常活跃，最新版本为 **v2.0.0**（发布于 2025年11月23日），其主动维护的分支是 `@dagrejs/dagre` NPM 包。",
+      "context_before": [
+        "",
+        "**实际调研结果**："
+      ],
+      "context_after": [
+        "- 该仓库持续在更新，仍在接收修复与改进。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 102,
+      "line": "| `gpt-5.4` | ✅ 存在且可用 | **OpenAI GPT-5.4 确实是官方模型**（2026年3月5日发布）。在 LiteLLM 中通过 `gpt-5.4` 调用。 |",
+      "context_before": [
+        "|--------------|--------------|------|",
+        "| `deepseek-v4-flash` | ✅ 存在且可用 | **当前 DeepSeek API 的 primary 模型名就是 `deepseek-v4-flash`**。传统别名 `deepseek-chat` 仍然可用，但仅映射到 V4-Flash 的非思考模式。 |"
+      ],
+      "context_after": [
+        "| `qwen3.6-max` | ⚠️ 名称微小差异 | 实际 API 名为 `qwen3.6-max-preview`（Preview 后缀）。这是因为当前为预览版。 |",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 121,
+      "line": "- DeepSeek V4 API 文档确认 `deepseek-v4-flash` 是当前正式模型名，传统别名 `deepseek-chat` 在2026年7月24日前可用[reference:2][reference:3]。",
+      "context_before": [
+        "",
+        "**证据来源**："
+      ],
+      "context_after": [
+        "- OpenAI GPT-5.4 于2026年3月5日发布，`gpt-5.4` 是 LiteLLM 支持的模型名[reference:4][reference:5]。",
+        "- 阿里云官方模型列表显示实际 API 名称是 `qwen3.6-max-preview`[reference:6][reference:7]。"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 122,
+      "line": "- OpenAI GPT-5.4 于2026年3月5日发布，`gpt-5.4` 是 LiteLLM 支持的模型名[reference:4][reference:5]。",
+      "context_before": [
+        "**证据来源**：",
+        "- DeepSeek V4 API 文档确认 `deepseek-v4-flash` 是当前正式模型名，传统别名 `deepseek-chat` 在2026年7月24日前可用[reference:2][reference:3]。"
+      ],
+      "context_after": [
+        "- 阿里云官方模型列表显示实际 API 名称是 `qwen3.6-max-preview`[reference:6][reference:7]。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 171,
+      "line": "4. **调研报告需注明调研日期为 2026-05-10**，并注明本二次核查的复核人标识。",
+      "context_before": [
+        "   - 验证 `deepseek-v4-flash` 和 `gpt-5.4` 现有的调用链是否正常工作",
+        ""
+      ],
+      "context_after": [
+        "",
+        "---"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 563,
+      "line": "       4 - 测试时间：2026-05-10 16:02",
+      "context_before": [
+        "       2",
+        "       3 ## 测试信息"
+      ],
+      "context_after": [
+        "       5 - Python 版本：3.13.13 (venv313)",
+        "       6 - MinerU 版本：3.0.4"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 582,
+      "line": "       5 - **测试周期**: 2026-05-09 ~ 2026-05-10",
+      "context_before": [
+        "       3 ## 项目信息",
+        "       4 - **项目名称**: AI辅助管理体系文档数据流提取与可视化工具"
+      ],
+      "context_after": [
+        "       6 - **测试工具**: Claude Code + 自动化脚本",
+        "       7"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 594,
+      "line": "      3 **生成日期**: 2026-05-10",
+      "context_before": [
+        "      1 # 第六步需人工确认的事项",
+        "      2"
+      ],
+      "context_after": [
+        "      4",
+        "      5 ---"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 2671,
+      "line": "信息已返回。DeepSeek API文档显示，当前模型名为`deepseek-v4-flash`和`deepseek-v4-pro`，旧版别名`deepseek-chat`和`deepseek-reasoner`将于2026年7月24日弃用。两个新模型都支持思考模式，通过`thinking`参数或`reasoning_effort`启用。搜索结果也印证了这一点。现在可以基于这些信息来撰写提示词了。提示词需要涵盖全链路测试、打包（如PyInstaller）和用户手册的生成，其中要特别说明DeepSeek模型的可配置性，包括Flash和Pro两种选项及其思考模式的启用。",
+      "context_before": [
+        "{'type': 'TOOL_OPEN'}",
+        "{'type': 'TOOL_SEARCH'}"
+      ],
+      "context_after": [
+        "{'type': 'TOOL_OPEN'}",
+        "所有必要信息都已获取。DeepSeek 的最新模型是 `deepseek-v4-flash` 和 `deepseek-v4-pro`，支持思考模式。现在来撰写提示词，以指导 AI 完成从全链路测试到打包发布的后续工作。"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 2701,
+      "line": "| `deepseek-chat` | 旧版别名，指向 v4-flash 非思考模式 | 2026-07-24 停用 |",
+      "context_before": [
+        "| `deepseek-v4-flash` | 轻量版（284B 总参/13B 激活），快速响应 | 支持，默认启用 |",
+        "| `deepseek-v4-pro` | 旗舰版（1.6T 总参/49B 激活），最强推理 | 支持，默认启用 |"
+      ],
+      "context_after": [
+        "| `deepseek-reasoner` | 旧版别名，指向 v4-flash 思考模式 | 2026-07-24 停用 |",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 2702,
+      "line": "| `deepseek-reasoner` | 旧版别名，指向 v4-flash 思考模式 | 2026-07-24 停用 |",
+      "context_before": [
+        "| `deepseek-v4-pro` | 旗舰版（1.6T 总参/49B 激活），最强推理 | 支持，默认启用 |",
+        "| `deepseek-chat` | 旧版别名，指向 v4-flash 非思考模式 | 2026-07-24 停用 |"
+      ],
+      "context_after": [
+        "",
+        "- 思考模式开关：`thinking: {\"type\": \"enabled\"/\"disabled\"}`"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 2707,
+      "line": "- 禁止再使用 `deepseek-chat` / `deepseek-reasoner`，它们将于 2026-07-24 停用。",
+      "context_before": [
+        "- 思考强度控制：`reasoning_effort: \"high\"/\"max\"`（仅思考模式下生效）",
+        "- 当前项目应使用 `deepseek-v4-flash`（默认）和 `deepseek-v4-pro`（可选）。"
+      ],
+      "context_after": [
+        "",
+        "**来源**：DeepSeek API 文档首页及 Thinking Mode 指南。"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 3015,
+      "line": "npm error A complete log of this run can be found in: C:\\Users\\国检中心\\AppData\\Local\\npm-cache\\_logs\\2026-05-11T11_53_55_278Z-debug-0.log",
+      "context_before": [
+        "npm error",
+        "npm error If you believe this might be a permissions issue, please double-check the permissions of the file and its containing directories, or try running the command again as root/Administrator."
+      ],
+      "context_after": [
+        "PS D:\\manage\\frontend> npm run dev",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 4876,
+      "line": "time=\"2026-05-11T22:10:28+08:00\" level=warning msg=\"D:\\\\manage\\\\docker-compose.dev.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion\"",
+      "context_before": [
+        "#启动主界面的docker时提示：",
+        "PS D:\\manage> docker compose -f docker-compose.dev.yml up -d"
+      ],
+      "context_after": [
+        "unable to get image 'neo4j:5': failed to connect to the docker API at npipe:////./pipe/dockerDesktopLinuxEngine; check if the path is correct and if the daemon is running: open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.",
+        "#需要对这两个问题进行修复"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 4988,
+      "line": "[2026-05-11 22:17:27,188: WARNING/MainProcess] 22:17:27 - LiteLLM:WARNING: get_model_cost_map.py:271 - LiteLLM: Failed to fetch remote model cost map from https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json: The read operation timed out. Falling back to local backup.",
+      "context_before": [
+        "#发现前端可交互页面删除文件失败，也无法提取元素，且后端报错如下：",
+        "celery："
+      ],
+      "context_after": [
+        "[2026-05-11 22:17:27,188: WARNING/MainProcess] LiteLLM: Failed to fetch remote model cost map from https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json: The read operation timed out. Falling back to local backup.",
+        "[2026-05-11 22:17:31,922: INFO/MainProcess] Requesting upload URL for tmp9uv6c0m6.docx (191978 bytes)"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 4989,
+      "line": "[2026-05-11 22:17:27,188: WARNING/MainProcess] LiteLLM: Failed to fetch remote model cost map from https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json: The read operation timed out. Falling back to local backup.",
+      "context_before": [
+        "celery：",
+        "[2026-05-11 22:17:27,188: WARNING/MainProcess] 22:17:27 - LiteLLM:WARNING: get_model_cost_map.py:271 - LiteLLM: Failed to fetch remote model cost map from https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json: The read operation timed out. Falling back to local backup."
+      ],
+      "context_after": [
+        "[2026-05-11 22:17:31,922: INFO/MainProcess] Requesting upload URL for tmp9uv6c0m6.docx (191978 bytes)",
+        "[2026-05-11 22:17:33,321: ERROR/MainProcess] MinerU cloud parse failed for C:\\Users\\国检中心\\AppData\\Local\\Temp\\tmp9uv6c0m6.docx"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 4990,
+      "line": "[2026-05-11 22:17:31,922: INFO/MainProcess] Requesting upload URL for tmp9uv6c0m6.docx (191978 bytes)",
+      "context_before": [
+        "[2026-05-11 22:17:27,188: WARNING/MainProcess] 22:17:27 - LiteLLM:WARNING: get_model_cost_map.py:271 - LiteLLM: Failed to fetch remote model cost map from https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json: The read operation timed out. Falling back to local backup.",
+        "[2026-05-11 22:17:27,188: WARNING/MainProcess] LiteLLM: Failed to fetch remote model cost map from https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json: The read operation timed out. Falling back to local backup."
+      ],
+      "context_after": [
+        "[2026-05-11 22:17:33,321: ERROR/MainProcess] MinerU cloud parse failed for C:\\Users\\国检中心\\AppData\\Local\\Temp\\tmp9uv6c0m6.docx",
+        "Traceback (most recent call last):"
+      ]
+    }
+  ],
+  "total_matches": 20,
+  "files_searched": 1,
+  "truncated": false
+}

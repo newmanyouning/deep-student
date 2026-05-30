@@ -1,0 +1,204 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\02_计算机与操作系统\Windows下固定API密钥方法.md" total_lines="1038" shown_lines="1-200" truncated="true" next_start_line="201">
+     1│ # Windows下固定API密钥方法
+     2│ 对话ID: b708675a-827b-4e45-91b3-0dd409796275
+     3│ 创建时间: 2026-04-08T10:44:01.354000+08:00
+     4│ 更新时间: 2026-04-10T22:19:08.892000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ 这是cc-mini的readme，找到在windows下固定云端模型APIkey的方法
+     9│ <div align="center">
+    10│ 
+    11│ # cc-mini
+    12│ 
+    13│ **Ultra-light Harness scaffolding for AI agents**
+    14│ 
+    15│ **Agentic** &nbsp;·&nbsp; **Built to Extend** &nbsp;·&nbsp; **From Claude Code**
+    16│ <br>
+    17│ 
+    18│ The entire core is `~1000 lines of Python`
+    19│ 
+    20│ </div>
+    21│ 
+    22│ ---
+    23│ 
+    24│ ### **NEW: Buddy — AI Companion with Custom Sprites**
+    25│ 
+    26│ > Your coding companion lives in the terminal. Type `/buddy` to hatch it. Supports custom ASCII species — bring your own Pikachu!
+    27│ 
+    28│ ![Custom Pikachu buddy companion](assets/buddy-pikachu.jpg)
+    29│ 
+    30│ [Full Buddy docs &rarr;](docs/buddy.md)
+    31│ 
+    32│ ---
+    33│ 
+    34│ ## Features
+    35│ 
+    36│ ### Core
+    37│ 
+    38│ - **Interactive REPL** with streaming output, command history, slash command autocomplete
+    39│ - **Agentic tool loop** — Claude calls tools autonomously until the task is complete
+    40│ - **9 built-in tools**: `Read`, `Edit`, `Write`, `Glob`, `Grep`, `Bash`, `AskUser`, `EnterPlanMode`, `ExitPlanMode`
+    41│ - **Plan mode** — parallel subagents explore codebase before you implement, with permission isolation
+    42│ - **Permission system** — mode-aware (default/plan), reads auto-approved, writes/bash ask for confirmation
+    43│ - **Session persistence** — auto-save conversations, `/resume` to continue later
+    44│ - **Context compression** — auto-compact when approaching token limits
+    45│ - **Anthropic + OpenAI compatible** — works with any compatible API endpoint
+    46│ 
+    47│ ### Advanced (from unreleased Claude Code features)
+    48│ 
+    49│ | Feature | Description | Docs |
+    50│ |---------|-------------|------|
+    51│ | **Coordinator Mode** | Background workers for parallel research and implementation | [docs &rarr;](docs/coordinator.md) |
+    52│ | **Buddy** | Tamagotchi AI pet with personality, stats, mood, and speech bubbles | [docs &rarr;](docs/buddy.md) |
+    53│ | **KAIROS Memory** | Cross-session memory with auto-consolidation | [docs &rarr;](docs/memory.md) |
+    54│ | **Skills** | One-command workflows: `/review`, `/commit`, `/test`, `/simplify` | [docs &rarr;](docs/skills.md) |
+    55│ | **Sandbox** | Bubblewrap isolation for bash commands | [docs &rarr;](docs/sandbox.md) |
+    56│ 
+    57│ ---
+    58│ 
+    59│ ## Quick Start
+    60│ 
+    61│ ### Requirements
+    62│ 
+    63│ - Python 3.10+ (3.11+ recommended)
+    64│ - An API key for [Anthropic](https://console.anthropic.com/) or any OpenAI-compatible provider
+    65│ 
+    66│ ### Install
+    67│ 
+    68│ ```bash
+    69│ # One-line install (recommended)
+    70│ curl -fsSL https://raw.githubusercontent.com/e10nMa2k/cc-mini/main/install.sh | bash
+    71│ 
+    72│ # Or manual
+    73│ git clone https://github.com/e10nMa2k/cc-mini.git
+    74│ cd cc-mini
+    75│ pip install -e ".[dev]"
+    76│ ```
+    77│ 
+    78│ ### Set API Key
+    79│ 
+    80│ ```bash
+    81│ # Anthropic
+    82│ export ANTHROPIC_API_KEY=sk-ant-...
+    83│ 
+    84│ # Or OpenAI-compatible
+    85│ export CC_MINI_PROVIDER=openai
+    86│ export OPENAI_API_KEY=sk-...
+    87│ export OPENAI_BASE_URL=https://your-gateway.example.com/v1
+    88│ ```
+    89│ 
+    90│ ### Run
+    91│ 
+    92│ ```bash
+    93│ cc-mini                              # Interactive REPL
+    94│ cc-mini "what tests exist?"          # One-shot prompt
+    95│ cc-mini -p "summarize this codebase" # Print and exit
+    96│ cc-mini --auto-approve               # Skip permission prompts
+    97│ cc-mini --resume 1                   # Resume previous session
+    98│ cc-mini --coordinator                # Coordinator mode
+    99│ ```
+   100│ 
+   101│ ### First Session Demo
+   102│ 
+   103│ ```
+   104│ cc-mini
+   105│ 
+   106│ > list all python files in this project
+   107│ ↳ Glob(**/*.py) ✓
+   108│ Found 12 Python files...
+   109│ 
+   110│ > read engine.py and explain the tool loop
+   111│ ↳ Read(src/core/engine.py) ✓
+   112│ The submit() method implements an agentic loop...
+   113│ 
+   114│ > /buddy
+   115│ Hatching your companion...
+   116│ ✨ SHINY LEGENDARY DUCK
+   117│ Glitch Quack hatched! ★★★★★
+   118│ 
+   119│ > /buddy mood
+   120│ Glitch Quack's mood:
+   121│   Happy      ████████████████░░░░  65 (high)
+   122│   Bored      ██████████░░░░░░░░░░  50 (neutral)
+   123│ 
+   124│ > /review
+   125│ Running skill: /review…
+   126│ ↳ Bash(git diff) … ✓ done
+   127│ ## Code Review: no issues found ✓
+   128│ ```
+   129│ 
+   130│ [Full configuration docs &rarr;](docs/configuration.md)
+   131│ 
+   132│ ---
+   133│ 
+   134│ ## Tools
+   135│ 
+   136│ | Tool | Description | Permission |
+   137│ |------|-------------|------------|
+   138│ | `Read` | Read file contents | auto-approved |
+   139│ | `Glob` | Find files by pattern | auto-approved |
+   140│ | `Grep` | Search file contents | auto-approved |
+   141│ | `Edit` | Edit file (string replacement) | requires confirmation |
+   142│ | `Write` | Write/create file | requires confirmation |
+   143│ | `Bash` | Run shell command | requires confirmation |
+   144│ | `AskUser` | Ask user a question | auto-approved |
+   145│ | `EnterPlanMode` | Enter plan mode | auto-approved |
+   146│ | `ExitPlanMode` | Exit plan mode | auto-approved |
+   147│ 
+   148│ Coordinator mode adds: `Agent` (spawn worker), `SendMessage` (continue worker), `TaskStop` (stop worker). Plan mode also uses `Agent` to launch parallel read-only explore/plan subagents. See [coordinator docs](docs/coordinator.md).
+   149│ 
+   150│ ---
+   151│ 
+   152│ ## Data Paths
+   153│ 
+   154│ | Data | Path |
+   155│ |------|------|
+   156│ | Installation (source code) | `~/.cc-mini/` |
+   157│ | Sessions | `~/.config/cc-mini/sessions/` |
+   158│ | Memory (KAIROS) | `~/.config/cc-mini/memory/` |
+   159│ | Plans | `~/.config/cc-mini/plans/` |
+   160│ | REPL history | `~/.config/cc-mini/history` |
+   161│ | Companion data | `~/.config/cc-mini/companion.json` |
+   162│ | User skills | `~/.cc-mini/skills/` |
+   163│ | Project skills | `{cwd}/.cc-mini/skills/` |
+   164│ | Project config | `.cc-mini.toml` |
+   165│ 
+   166│ ---
+   167│ 
+   168│ ## Slash Commands
+   169│ 
+   170│ | Command | Description |
+   171│ |---------|-------------|
+   172│ | `/help` | Show all available commands |
+   173│ | `/compact` | Compress conversation context |
+   174│ | `/resume` | Resume a past session |
+   175│ | `/history` | List saved sessions |
+   176│ | `/clear` | Clear conversation, start new session |
+   177│ | `/skills` | List all available skills |
+   178│ | `/buddy` | Companion pet — hatch, pet, stats, mood |
+   179│ | `/buddy help` | Show all buddy commands and gameplay guide |
+   180│ | `/review` | Code review (skill) |
+   181│ | `/commit` | Git commit (skill) |
+   182│ | `/test` | Run tests (skill) |
+   183│ | `/simplify` | Review and fix code (skill) |
+   184│ 
+   185│ Type `/` to see autocomplete suggestions.
+   186│ 
+   187│ ---
+   188│ 
+   189│ ## Project Structure
+   190│ 
+   191│ ```
+   192│ src/
+   193│ ├── core/                  # Pure harness — engine, LLM, config
+   194│ │   ├── engine.py          # Streaming API loop + tool execution
+   195│ │   ├── llm.py             # LLM client (Anthropic + OpenAI)
+   196│ │   ├── config.py          # Configuration (CLI, env, TOML)
+   197│ │   ├── context.py         # System prompt builder
+   198│ │   ├── tool.py            # Base Tool protocol + ToolResult
+   199│ │   ├── permissions.py     # Permission checker
+   200│ │   └── session.py         # Session persistence
+
+[TRUNCATED] Showing lines 1-200 of 1038. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\02_计算机与操作系统\Windows下固定API密钥方法.md" start_line=201 max_lines=200
+</file>

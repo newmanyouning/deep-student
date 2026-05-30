@@ -41,21 +41,21 @@ export interface PomodoroTodayStats {
 // ============================================================================
 
 export async function createPomodoroRecord(input: CreatePomodoroInput): Promise<PomodoroRecord> {
-  return invoke('pomodoro_create_record', { input });
+  return invoke('vfs_pomodoro_create_record', { input });
 }
 
 export async function getPomodoroRecord(recordId: string): Promise<PomodoroRecord | null> {
-  return invoke('pomodoro_get_record', { recordId });
+  return invoke('vfs_pomodoro_get_record', { recordId });
 }
 
 export async function listPomodorosByTodo(todoItemId: string): Promise<PomodoroRecord[]> {
-  return invoke('pomodoro_list_by_todo', { todoItemId });
+  return invoke('vfs_pomodoro_list_by_todo', { todoItemId });
 }
 
 export async function getPomodoroTodayStats(): Promise<PomodoroTodayStats> {
-  return invoke('pomodoro_today_stats');
+  return invoke('vfs_pomodoro_today_stats');
 }
 
 export async function listTodayPomodoros(): Promise<PomodoroRecord[]> {
-  return invoke('pomodoro_list_today');
+  return invoke('vfs_pomodoro_list_today');
 }

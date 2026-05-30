@@ -1,0 +1,54 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md" total_lines="2276" shown_lines="1367-1416" truncated="true" next_start_line="1417">
+  1367│ ## AI与编程开发
+  1368│ 
+  1369│ - **[2026年TTS模型推荐]** — 开源6款+商业4款TTS模型对比，Qwen3-TTS（3秒克隆/2.12%中文WER/97ms延迟/6-8GB显存）为首选。
+  1370│   - 来源文件：2026年TTS模型推荐.md
+  1371│   - 核心解释：Mac Mini M1部署可选tts-router、MLX优化版、Docker三种方案。
+  1372│ 
+  1373│ - **[AI项目token消耗估算]** — 极简项目800-1500token，常规小项目3000-6000token，含前端5000-10000token。
+  1374│   - 来源文件：AI项目token消耗估算.md
+  1375│   - 核心解释：仅发送需修改的函数可省98%token，只发关键错误信息可省99%。
+  1376│ 
+  1377│ - **[API缓存机制]** — 缓存命中(Cache Hit)直接返回极快，未命中(Cache Miss)需查询后端再写入缓存后返回。
+  1378│   - 来源文件：API缓存命中未命中解释.md
+  1379│   - 核心解释：三大问题：穿透/击穿/雪崩；LLM场景有提示词前缀缓存。
+  1380│ 
+  1381│ - **[Claude Desktop与Code配置隔离]** — Desktop用GUI配置，Claude Code用~/.claude/JSON配置，互不通用。
+  1382│   - 来源文件：Claude Desktop 与配置管理解析.md
+  1383│   - 核心解释：ModelScope MCP三种配置方案和CC-Switch一键切换工具。
+  1384│ 
+  1385│ - **[Docker部署模型优势]** — 解决依赖地狱、环境隔离、GPU透传性能损耗<3%、快速回滚切换。
+  1386│   - 来源文件：Docker部署模型优势解析.md
+  1387│   - 核心解释：生产环境Docker必选，个人学习conda更轻量。
+  1388│ 
+  1389│ - **[DeepSeek对话批量导出]** — 无官方一键导出功能，推荐DS随心转浏览器插件或API脚本批量导出。
+  1390│   - 来源文件：DeepSeek对话批量导出方法.md
+  1391│   - 核心解释：插件支持Word/PDF/Excel多格式导出，API需遍历session列表。
+  1392│ 
+  1393│ - **[VS JIT调试器错误与修复]** — 当程序抛出未处理win32异常且无启用JIT的调试器时触发"Just-In-Time Debugging failed"错误。
+  1394│   - 来源文件：实时调试错误翻译.md
+  1395│   - 核心解释：在Visual Studio中通过 工具→选项→调试→实时 勾选启用即可。错误对话框英文原文为"An unhandled win32 exception occurred in [9660] ExcelAnalyzer.exe"，常见于Excel VBA等COM组件调试场景。
+  1396│ 
+  1397│ - **[Python虚拟环境创建与激活命令]** — python -m venv创建虚拟环境，跨平台激活命令不同。
+  1398│   - 来源文件：创建激活Python虚拟环境命令.md
+  1399│   - 核心解释：Windows CMD用 `myenv\Scripts\activate`，PowerShell用 `Activate.ps1`，Linux/macOS用 `source myenv/bin/activate`。激活后提示符前出现(myenv)字样，退出用deactivate。若系统同时有Python 2和3，需使用python3 -m venv。
+  1400│ 
+  1401│ - **[DeepSeek API模型版本体系（2026年4月）]** — 官方API主力模型为V3.2（128K上下文），通过两个端点调用。
+  1402│   - 来源文件：DeepSeek API模型版本.md
+  1403│   - 核心解释：deepseek-chat端点对应非思考模式（快速响应），deepseek-reasoner端点对应思考模式（展示推理过程）。另有V3.2-Exp实验版、R1推理模型可用。2026年2月Web端已测试百万级上下文新结构，但官方API当时仍未跟进。
+  1404│ 
+  1405│ - **[DeepSeek V4论文国内下载渠道]** — 首选魔搭社区(ModelScope)和HuggingFace官方，备选CSDN、量子位等。
+  1406│   - 来源文件：DeepSeekV4论文国内下载渠道.md
+  1407│   - 核心解释：魔搭下载地址为 modelscope.cn/collections/deepseek-ai/DeepSeek-V4，HuggingFace直接PDF链接为 huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/main/DeepSeek_V4.pdf。相关论文还包括mHC流形约束超连接、DualPath智能体推理框架、Engram条件记忆模块。
+  1408│ 
+  1409│ - **[Ollama社区模型命名规则]** — 格式为"用户名/模型名"，前缀是上传者的Ollama用户名。
+  1410│   - 来源文件：社区上传模型名称解释.md
+  1411│   - 核心解释：例如 t1c/deepseek-math-7b-rl 中 t1c 是上传者的Ollama用户名，deepseek-math-7b-rl 才是模型实际名称。Ollama页面会标注"UNOFFICIAL uploads"说明非官方上传。官方模型在HuggingFace上的名称为 deepseek-ai/deepseek-math-7b-rl。
+  1412│ 
+  1413│ - **[WPS加载项类型与本地路径]** — COM加载项(.dll/.exe)与WPS网页技术加载项(jsaddons目录)两类。
+  1414│   - 来源文件：WPS加载项查找与添加指南.md
+  1415│   - 核心解释：WPS加载项本地路径为 %AppData%\kingsoft\wps\jsaddons，启动项路径为 %AppData%\Kingsoft\wps\startup。启用入口在"开发工具"选项卡（如找不到，右键功能区空白处→自定义功能区→勾选"开发工具"）。COM加载项通过"添加"按钮选择.dll文件即可。
+  1416│ 
+
+[TRUNCATED] Showing lines 1367-1416 of 2276. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md" start_line=1417 max_lines=50
+</file>

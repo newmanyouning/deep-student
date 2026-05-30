@@ -18,7 +18,7 @@ use rusqlite::OptionalExtension;
 use serde_json::{json, Value};
 
 use super::arg_utils::get_json_array_arg;
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -403,7 +403,7 @@ impl BuiltinResourceExecutor {
     fn resolve_read_target(
         vfs_db: &Arc<VfsDatabase>,
         raw_resource_id: &str,
-    ) -> Result<ResolvedReadTarget, String> {
+    ) -> ToolResult<ResolvedReadTarget> {
         let requested_id = Self::sanitize_read_resource_id(raw_resource_id);
 
         if let Some(resource_type) = Self::infer_type_from_id(&requested_id) {
@@ -416,19 +416,19 @@ impl BuiltinResourceExecutor {
         }
 
         if !requested_id.starts_with("res_") {
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "Cannot infer resource type from ID: {}. 请传入 note_/tb_/file_/exam_/essay_/tr_/mm_ 或 res_ 开头的资源 ID。",
                 requested_id
-            ));
+            )));
         }
 
         let resource = VfsResourceRepo::get_resource(vfs_db, &requested_id)
-            .map_err(|e| format!("Failed to resolve resource '{}': {}", requested_id, e))?
+            .map_err(|e| ToolError::Execution(format!("Failed to resolve resource '{}': {}", requested_id, e)))?
             .ok_or_else(|| {
-                format!(
+                ToolError::NotFound(format!(
                     "Resource '{}' not found. 请先调用 unified_search/resource_list 获取最新 ID。",
                     requested_id
-                )
+                ))
             })?;
 
         if let Some(source_id) = resource.source_id.as_deref() {
@@ -462,10 +462,10 @@ impl BuiltinResourceExecutor {
             }
         }
 
-        Err(format!(
+        Err(ToolError::NotFound(format!(
             "Resource '{}' exists, but cannot map it to a readable source ID. 请尝试 resource_list/resource_search 重新定位具体资源。",
             resource.id
-        ))
+        )))
     }
 
     fn extract_page_preview_images(vfs_db: &Arc<VfsDatabase>, preview: &Value) -> Vec<Value> {
@@ -567,7 +567,7 @@ impl BuiltinResourceExecutor {
     }
 
     /// 执行资源列表
-    async fn execute_list(&self, call: &ToolCall, ctx: &ExecutionContext) -> Result<Value, String> {
+    async fn execute_list(&self, call: &ToolCall, ctx: &ExecutionContext) -> ToolResult<Value> {
         let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
 
         // 解析参数
@@ -688,7 +688,7 @@ impl BuiltinResourceExecutor {
         vfs_db: &Arc<VfsDatabase>,
         type_filter: &str,
         options: &DstuListOptions,
-    ) -> Result<(Vec<DstuNode>, Vec<String>), String> {
+    ) -> ToolResult<(Vec<DstuNode>, Vec<String>)> {
         let limit = options.limit.unwrap_or(DEFAULT_LIST_LIMIT);
         let offset = options.offset.unwrap_or(0);
         let favorites_only = options.is_favorite.unwrap_or(false);
@@ -1057,7 +1057,7 @@ impl BuiltinResourceExecutor {
                 (all_results, errors)
             }
             _ => {
-                return Err(format!("不支持的资源类型: '{}', 有效类型: note, textbook, exam, essay, translation, image, file, mindmap, all", type_filter));
+                return Err(ToolError::InvalidArgs(format!("不支持的资源类型: '{}', 有效类型: note, textbook, exam, essay, translation, image, file, mindmap, all", type_filter)));
             }
         };
 
@@ -1080,7 +1080,7 @@ impl BuiltinResourceExecutor {
     }
 
     /// 执行资源读取
-    async fn execute_read(&self, call: &ToolCall, ctx: &ExecutionContext) -> Result<Value, String> {
+    async fn execute_read(&self, call: &ToolCall, ctx: &ExecutionContext) -> ToolResult<Value> {
         let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
 
         // 解析参数
@@ -1250,7 +1250,7 @@ impl BuiltinResourceExecutor {
         vfs_db: &Arc<VfsDatabase>,
         resource_type: &str,
         resource_id: &str,
-    ) -> Result<Option<Value>, String> {
+    ) -> ToolResult<Option<Value>> {
         match resource_type {
             "notes" => match VfsNoteRepo::get_note(vfs_db, resource_id) {
                 Ok(Some(note)) => Ok(Some(json!({
@@ -1273,7 +1273,7 @@ impl BuiltinResourceExecutor {
                         resource_id,
                         msg
                     );
-                    Err(msg)
+                    Err(ToolError::Execution(msg))
                 }
             },
             "textbooks" => match VfsTextbookRepo::get_textbook(vfs_db, resource_id) {
@@ -1298,7 +1298,7 @@ impl BuiltinResourceExecutor {
                         resource_id,
                         msg
                     );
-                    Err(msg)
+                    Err(ToolError::Execution(msg))
                 }
             },
             "exams" => match VfsExamRepo::get_exam_sheet(vfs_db, resource_id) {
@@ -1328,7 +1328,7 @@ impl BuiltinResourceExecutor {
                         resource_id,
                         msg
                     );
-                    Err(msg)
+                    Err(ToolError::Execution(msg))
                 }
             },
             "essays" => match VfsEssayRepo::get_session(vfs_db, resource_id) {
@@ -1353,7 +1353,7 @@ impl BuiltinResourceExecutor {
                         resource_id,
                         msg
                     );
-                    Err(msg)
+                    Err(ToolError::Execution(msg))
                 }
             },
             "translations" => match VfsTranslationRepo::get_translation(vfs_db, resource_id) {
@@ -1378,7 +1378,7 @@ impl BuiltinResourceExecutor {
                         resource_id,
                         msg
                     );
-                    Err(msg)
+                    Err(ToolError::Execution(msg))
                 }
             },
             "files" => {
@@ -1407,7 +1407,7 @@ impl BuiltinResourceExecutor {
                                 resource_id,
                                 msg
                             );
-                            Err(msg)
+                            Err(ToolError::Execution(msg))
                         }
                     }
                 } else {
@@ -1445,7 +1445,7 @@ impl BuiltinResourceExecutor {
                                 resource_id,
                                 msg
                             );
-                            Err(msg)
+                            Err(ToolError::Execution(msg))
                         }
                     }
                 }
@@ -1474,7 +1474,7 @@ impl BuiltinResourceExecutor {
                         resource_id,
                         msg
                     );
-                    Err(msg)
+                    Err(ToolError::Execution(msg))
                 }
             },
             _ => {
@@ -1493,7 +1493,7 @@ impl BuiltinResourceExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
 
         // 解析参数
@@ -1680,7 +1680,7 @@ impl BuiltinResourceExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
 
         // 解析参数
@@ -1778,7 +1778,7 @@ impl BuiltinResourceExecutor {
         vfs_db: &Arc<VfsDatabase>,
         parent_id: Option<&str>,
         include_count: bool,
-    ) -> Result<Vec<Value>, String> {
+    ) -> ToolResult<Vec<Value>> {
         self.get_folders_recursive_with_depth(vfs_db, parent_id, include_count, 0)
     }
 
@@ -1789,7 +1789,7 @@ impl BuiltinResourceExecutor {
         parent_id: Option<&str>,
         include_count: bool,
         depth: usize,
-    ) -> Result<Vec<Value>, String> {
+    ) -> ToolResult<Vec<Value>> {
         // 深度限制检查
         if depth > Self::MAX_FOLDER_DEPTH {
             log::warn!(
@@ -1962,7 +1962,7 @@ impl BuiltinResourceExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
 
         // 解析参数
@@ -2122,11 +2122,11 @@ impl BuiltinResourceExecutor {
         Ok(result)
     }
 
-    fn parse_mindmap_document(content: &str) -> Result<Value, String> {
+    fn parse_mindmap_document(content: &str) -> ToolResult<Value> {
         let doc: Value = serde_json::from_str(content)
-            .map_err(|e| format!("Invalid mindmap JSON content: {}", e))?;
+            .map_err(|e| ToolError::InvalidArgs(format!("Invalid mindmap JSON content: {}", e)))?;
         if doc.get("root").is_none() {
-            return Err("Mindmap document missing required `root` field".to_string());
+            return Err(ToolError::InvalidArgs("Mindmap document missing required `root` field".to_string()));
         }
         Ok(doc)
     }
@@ -2199,7 +2199,7 @@ impl BuiltinResourceExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
 
         // 解析参数
@@ -2253,10 +2253,10 @@ impl BuiltinResourceExecutor {
         let expected_updated_at = match VfsMindMapRepo::get_mindmap(vfs_db, mindmap_id) {
             Ok(Some(m)) => Some(m.updated_at),
             Ok(None) => {
-                return Err(format!(
+                return Err(ToolError::NotFound(format!(
                     "Mindmap not found: {}. 请先调用 resource_list(type=\"mindmap\") 确认导图存在。",
                     mindmap_id
-                ));
+                )));
             }
             Err(e) => {
                 log::error!(
@@ -2264,7 +2264,7 @@ impl BuiltinResourceExecutor {
                     mindmap_id,
                     e
                 );
-                return Err(format!("无法验证导图状态，请重试: {}", e));
+                return Err(ToolError::Execution(format!("无法验证导图状态，请重试: {}", e)));
             }
         };
 
@@ -2358,7 +2358,7 @@ impl BuiltinResourceExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
 
         // 解析参数（优先 mindmap_id，兼容旧参数名 resource_id）
@@ -2459,7 +2459,7 @@ impl BuiltinResourceExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
 
         // 1. 解析参数
@@ -2520,7 +2520,7 @@ impl BuiltinResourceExecutor {
                 "add_node" => Self::op_add_node(&mut doc, op),
                 "delete_node" => Self::op_delete_node(&mut doc, op),
                 "move_node" => Self::op_move_node(&mut doc, op),
-                _ => Err(format!("Unknown operation type: '{}'", op_type)),
+                _ => Err(ToolError::InvalidArgs(format!("Unknown operation type: '{}'", op_type))),
             };
 
             match result {
@@ -2629,7 +2629,7 @@ impl BuiltinResourceExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
 
         let mindmap_id = call
@@ -2681,7 +2681,7 @@ impl BuiltinResourceExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
 
         let mindmap_id = call
@@ -2691,7 +2691,7 @@ impl BuiltinResourceExecutor {
             .ok_or("Missing 'mindmap_id' parameter")?;
 
         if !mindmap_id.starts_with("mm_") {
-            return Err(format!("Invalid mindmap_id: {}", mindmap_id));
+            return Err(ToolError::InvalidArgs(format!("Invalid mindmap_id: {}", mindmap_id)));
         }
 
         let detail_limit = call
@@ -2735,10 +2735,10 @@ impl BuiltinResourceExecutor {
         };
 
         if from_version.mindmap_id != mindmap_id {
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "Version {} does not belong to mindmap {}",
                 from_version.version_id, mindmap_id
-            ));
+            )));
         }
 
         let from_content = VfsMindMapRepo::get_version_content(vfs_db, &from_version.version_id)
@@ -2767,10 +2767,10 @@ impl BuiltinResourceExecutor {
                 .map_err(|e| format!("Failed to read target version metadata: {}", e))?
                 .ok_or_else(|| format!("to_version_id not found: {}", to_version_id))?;
             if to_version.mindmap_id != mindmap_id {
-                return Err(format!(
+                return Err(ToolError::InvalidArgs(format!(
                     "Version {} does not belong to mindmap {}",
                     to_version.version_id, mindmap_id
-                ));
+                )));
             }
 
             let to_version_content = VfsMindMapRepo::get_version_content(vfs_db, to_version_id)
@@ -2788,10 +2788,10 @@ impl BuiltinResourceExecutor {
                 to_version_content,
             )
         } else {
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "Invalid to_version_id: {}. Use mv_* or current.",
                 to_version_id
-            ));
+            )));
         };
 
         let to_doc = Self::parse_mindmap_document(&to_content)?;
@@ -2920,7 +2920,7 @@ impl BuiltinResourceExecutor {
     // ------------------------------------------------------------------------
 
     /// update_node: 修改节点属性
-    fn op_update_node(doc: &mut Value, op: &Value) -> Result<(), String> {
+    fn op_update_node(doc: &mut Value, op: &Value) -> ToolResult<()> {
         let node_id = op
             .get("node_id")
             .and_then(|v| v.as_str())
@@ -2938,7 +2938,7 @@ impl BuiltinResourceExecutor {
     }
 
     /// add_node: 在指定父节点下添加子节点
-    fn op_add_node(doc: &mut Value, op: &Value) -> Result<(), String> {
+    fn op_add_node(doc: &mut Value, op: &Value) -> ToolResult<()> {
         let parent_id = op
             .get("parent_id")
             .and_then(|v| v.as_str())
@@ -2981,20 +2981,20 @@ impl BuiltinResourceExecutor {
     }
 
     /// delete_node: 删除节点（禁止删除根节点）
-    fn op_delete_node(doc: &mut Value, op: &Value) -> Result<(), String> {
+    fn op_delete_node(doc: &mut Value, op: &Value) -> ToolResult<()> {
         let node_id = op
             .get("node_id")
             .and_then(|v| v.as_str())
-            .ok_or("delete_node: missing 'node_id'")?;
+            .ok_or(ToolError::InvalidArgs("delete_node: missing 'node_id'".to_string()))?;
 
         // 禁止删除根节点
         if let Some(root) = doc.get("root") {
             if root.get("id").and_then(|v| v.as_str()) == Some(node_id) {
-                return Err("delete_node: cannot delete root node".to_string());
+                return Err(ToolError::InvalidArgs("delete_node: cannot delete root node".to_string()));
             }
         }
 
-        let root = doc.get_mut("root").ok_or("Document has no 'root' node")?;
+        let root = doc.get_mut("root").ok_or(ToolError::InvalidArgs("Document has no 'root' node".to_string()))?;
 
         Self::find_and_remove_child(root, node_id)
             .ok_or_else(|| format!("delete_node: node '{}' not found", node_id))?;
@@ -3003,28 +3003,28 @@ impl BuiltinResourceExecutor {
     }
 
     /// move_node: 移动节点到新父节点下
-    fn op_move_node(doc: &mut Value, op: &Value) -> Result<(), String> {
+    fn op_move_node(doc: &mut Value, op: &Value) -> ToolResult<()> {
         let node_id = op
             .get("node_id")
             .and_then(|v| v.as_str())
-            .ok_or("move_node: missing 'node_id'")?;
+            .ok_or(ToolError::InvalidArgs("move_node: missing 'node_id'".to_string()))?;
 
         let new_parent_id = op
             .get("new_parent_id")
             .and_then(|v| v.as_str())
-            .ok_or("move_node: missing 'new_parent_id'")?;
+            .ok_or(ToolError::InvalidArgs("move_node: missing 'new_parent_id'".to_string()))?;
 
         let index = op.get("index").and_then(|v| v.as_u64());
 
         // 禁止移动根节点
         if let Some(root) = doc.get("root") {
             if root.get("id").and_then(|v| v.as_str()) == Some(node_id) {
-                return Err("move_node: cannot move root node".to_string());
+                return Err(ToolError::InvalidArgs("move_node: cannot move root node".to_string()));
             }
         }
 
         // 先从原位置移除
-        let root = doc.get_mut("root").ok_or("Document has no 'root' node")?;
+        let root = doc.get_mut("root").ok_or(ToolError::InvalidArgs("Document has no 'root' node".to_string()))?;
 
         let removed = Self::find_and_remove_child(root, node_id)
             .ok_or_else(|| format!("move_node: node '{}' not found", node_id))?;
@@ -3213,7 +3213,7 @@ impl ToolExecutor for BuiltinResourceExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let tool_name = strip_tool_namespace(&call.name);
 
@@ -3237,7 +3237,7 @@ impl ToolExecutor for BuiltinResourceExecutor {
             "mindmap_edit_nodes" => self.execute_mindmap_edit_nodes(call, ctx).await,
             "mindmap_versions" => self.execute_mindmap_versions(call, ctx).await,
             "mindmap_diff_versions" => self.execute_mindmap_diff_versions(call, ctx).await,
-            _ => Err(format!("Unknown builtin resource tool: {}", tool_name)),
+            _ => Err(ToolError::InvalidArgs(format!("Unknown builtin resource tool: {}", tool_name))),
         };
 
         let duration = start_time.elapsed().as_millis() as u64;

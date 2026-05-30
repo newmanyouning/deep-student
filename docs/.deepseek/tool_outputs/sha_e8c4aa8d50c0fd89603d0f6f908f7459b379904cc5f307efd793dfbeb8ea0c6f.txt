@@ -1,0 +1,34 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_320c7f49 (general) status=Completed
+  objective: 你是知识提取助手。请读取文件 `01_AI与编程开发/容器与虚拟机区别解析.md`（位于当前工作目录），提取其中可复用的知识点。
+
+输出格式要求（每条知识一个条目）：
+- **[核心概念/技术名称]** — 一句话摘要
+  - 来源文件：容器与虚拟机区别解析.md
+  - 核心解释：详细的技术解释，包含具体操作步骤、关键参数、注意事项
+
+提取原则：
+- 每条知识应有独立价值，可脱离原文件单独使用
+- 优先提取：通用技术原理、可复用...
+  result: - **[容器与虚拟机的核心架构差异]** — 容器是操作系统级虚拟化（共享宿主机内核），虚拟机是硬件级虚拟化（每台VM有独立Guest OS）
+  - 来源文件：容器与虚拟机区别解析.md
+  - 核心解释：虚拟机通过 Hypervisor（如 KVM、VMware ESXi）在物理硬件之上模拟出虚拟CPU、内存、磁盘等，每个VM包含完整操作系统，启动需数分钟；容器直接运行在宿主机操作系统上，所有容器共享同一个内核，仅打包应用及其依赖（库、二进制文件），启动可在秒级甚至毫秒级完成。这种架构差异决定了容器在资源消耗、镜像体积（几十KB~数百MB vs 数百MB~数GB）、单机部署密度（2~3倍于VM）上的优势。
+
+- **[Hypervisor 技术原理]** — 虚拟机实现硬件级虚拟化的核心软件层
+  - 来源文件：容器与虚拟机区别解析.md
+  - 核心解释：Hypervisor 是运行在物理硬件和虚拟机之间的中间层，负责将物理资源（CPU、内存、存储、I/O）抽象为虚拟资源分配给各个VM。主流实现有 KVM（Linux 内核内置，属于 Type 1 裸机型）、VMware ESXi（裸机型）和 VirtualBox（Type 2 宿主型）。每个VM通过 Hypervisor 获得独立的虚拟硬件，可以运行与宿主机不同的操作系统（如在Linux宿主机上运行Windows VM），提供最强的隔离性——一个VM崩溃或安全漏洞不会波及其他VM或宿主机。
+
+- **[Linux Namespace 与 Cgroups 隔离机制]** — 容器实现操作系统级虚拟化的两块基石
+  - 来源文件：容器与虚拟机区别解析.md
+  - 核心解释：Namespace（命名空间）负责"视图隔离"：PID Namespace 让容器内进程只能看到自己的进程树，Mount Namespace 隔离文件系统挂载点，Network Namespace 提供独立的网络栈和IP地址，UTS Namespace 隔离主机名，IPC Namespace 隔离进程间通信，User Namespace 隔离用户和组ID。Cgroups（控制组）负责"资源限制"：限制、记账和隔离进程组的CPU、内存、磁盘I/O、网络带宽等资源使用。两者结合使容器在不运行独立OS的前提下，获得近似虚拟机的隔离效果。
+
+- **[User Namespace 与 UID 映射机制]** — 容器内独立用户身份的实现原理，确保"容器内root≠宿主机root"
+  - 来源文件：容器与虚拟机区别解析.md
+  - 核心解释：User Namespace 允许将容器内的UID/GID映射为宿主机上不同的UID/GID。例如 Docker 的 `userns-remap` 参数从 `/etc/subuid` 读取映射配置 `dockremap:100000:65536`，将容器内 UID 0~65535 线性映射到宿主机 UID 100000~165535。效果：容器内 `whoami` 显示 root（UID=0），可安装软件、绑定低端口，但宿主机视角该进程真实UID是100000（普通用户），即使容器被攻破也无法破坏宿主机。注意：Docker 默认未启用 User Namespace，需显式配置；若不启用，容器内 root 即宿主机 root，存在安全风险。
+
+- **[容器内普通用户的宿主机映射规则]** — UID映射计算公式与权限范围
+  - 来源文件：容器与虚拟机区别解析.md
+  - 核心解释：在启用 User Namespace 且配置了线性映射（如 `base=100000, range=65536`）的前提下，容器内 UID x 对应宿主机 UID = base + x。例如容器内普...
+  stats: steps=3, duration_ms=98489

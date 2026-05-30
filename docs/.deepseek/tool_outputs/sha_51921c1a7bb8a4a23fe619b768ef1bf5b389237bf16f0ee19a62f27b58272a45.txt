@@ -1,0 +1,108 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md
+@@ -1587,3 +1587,103 @@
+ - **[Windows终端Python环境操作指南]** — 在 Windows 终端（CMD/PowerShell）中管理 Python 的三种模式：交互式环境、编辑文件、运行脚本。
+   - 来源文件：合并md文件脚本编写.md
+   - 核心解释：在终端输入 `python` 或 `py` 进入交互式 REPL（出现 `>>>` 提示符），输入 `exit()` 或 `Ctrl+Z` 退出；用 `notepad 文件名.py` 或 `code 文件名.py` 打开文件编辑；用 `python 脚本名.py` 或 `py 脚本名.py` 运行脚本。需确保 Python 已添加至环境变量，且 `cd` 到脚本所在目录。
++
++---
++
++### 第4批（2026-05-17，4个中文件）:
++
++#### WPS VBA语法兼容性分析.md
++
++- **[WPS VBA与标准VBA：语法相同但对象模型不同]** — WPS VBA的基础语法与标准VB完全兼容，但对象模型差异巨大，是兼容性问题的根源。
++  - 来源文件：WPS VBA语法兼容性分析.md
++  - 核心解释：WPS VBA的控制结构（如`If...Then...Else`、`For...Next`、`Do...Loop`）与微软VBA完全一致，但其对象模型并未完全实现微软Office VBA中的所有对象和方法。例如，`Application.FileDialog`对象在WPS中完全不可用，许多属性是只读的或设置后会"静默失败"（代码不报错但无效果）。这意味着在Excel VBA中能运行的代码，在WPS中可能直接报错或行为异常。
++
++- **[WPS VBA不支持的高级功能与组件]** — WPS VBA环境受限，不支持许多高级COM组件和ActiveX控件。
++  - 来源文件：WPS VBA语法兼容性分析.md
++  - 核心解释：WPS VBA不支持调用`.NET`互操作或`XMLHTTP`等高级COM组件，也不支持ActiveX控件。事件模型不完整，`WithEvents`的事件绑定支持有限，部分事件（如`Workbook_BeforeSave`）可能完全不会被触发。这些限制意味着依赖外部库或高级事件驱动的代码通常无法在WPS中正常运行。
++
++- **[WPS不同版本的VBA授权差异]** — WPS个人版不含VBA功能，仅专业版/增强版和WPS 365商业应用版提供正版VBA支持。
++  - 来源文件：WPS VBA语法兼容性分析.md
++  - 核心解释：WPS个人版默认不包含VBA环境，无法直接使用宏功能，需要安装第三方插件才能获得有限支持。WPS专业版/增强版内置完整VBA组件，而WPS 365则需要购买商业应用版套餐才能获得正版VBA授权。个人用户自行安装VBA插件可能存在法律合规风险，企业用户应优先考虑商业授权版本。
++
++- **[WPS VBA与Office 365的功能差异清单]** — WPS VBA主要支持旧版对象模型，不支持动态数组公式和新函数。
++  - 来源文件：WPS VBA语法兼容性分析.md
++  - 核心解释：WPS VBA的对象模型以旧版为主，不支持Office 365中的动态数组公式（`Range.Formula2`）和新函数（如`XLOOKUP`）。WPS的宏录制功能可能不完善，VBA执行复杂任务时可能稍慢，VBA编辑器也可能缺少智能提示（IntelliSense）或代码折叠等功能。这些差异在将Office 365 VBA代码迁移到WPS时需要特别注意。
++
++- **[WPS VBA核心开发文档体系]** — WPS VBA开发可参考三份CHM核心文档和社区流传的API V9帮助文档。
++  - 来源文件：WPS VBA语法兼容性分析.md
++  - 核心解释：WPS VBA开发的核心官方文档是三份CHM离线帮助文件：`ET.CHM`（WPS表格，涵盖Workbook、Worksheet、Range等对象）、`WPS.CHM`（WPS文字，涵盖Application、Document等对象）、`WPP.CHM`（WPS演示，涵盖Presentation、Slide等对象）。另外，社区流传的《WPS API V9 开发帮助文档》也是重要参考。这些文档通常可在金山开发者社区、GitCode等平台免费获取。
++
++- **[CHM文档无法直接被AI解析的解决方案]** — CHM是编译二进制格式，需转换为纯文本或Markdown后才能被云端AI正确解析。
++  - 来源文件：WPS VBA语法兼容性分析.md
++  - 核心解释：CHM文件是编译后的二进制格式，主流AI API无法直接解析其内容。Windows系统可使用 `hh.exe -decompile <输出目录> <文件.chm>` 命令反编译CHM为HTML文件集合，再通过HTML转Markdown工具处理；或用7-Zip解压CHM文件获取其中的HTML源码。转换后纯文本内容即可被AI工具正确读取和分析。
++
++#### WPS插件开发与加载指南.md
++
++- **[WPS插件类型与个人版兼容性对照]** — 了解不同WPS插件在个人专业版上的加载能力差异。
++  - 来源文件：WPS插件开发与加载指南.md
++  - 核心解释：WPS插件主要有四种类型：WPS加载项（Web技术，基于HTML/CSS/JS，个人版完全支持）、COM加载项（传统COM组件，个人版有白名单限制，可能无法加载）、VBA宏（个人版不支持，仅专业增强版/企业版提供）、JS宏（WPS内置，所有版本均可用）。其中WPS加载项是官方主推的开发方式，也是个人版用户开发插件的最佳选择。
++
++- **[wpsjs命令行工具链：创建、调试与发布]** — 掌握wpsjs这一官方开发工具的核心生命周期。
++  - 来源文件：WPS插件开发与加载指南.md
++  - 核心解释：wpsjs是WPS官方提供的命令行开发工具，通过`npm install -g wpsjs`全局安装。使用`wpsjs create <项目名>`可快速创建项目模板，过程中会引导选择插件适用的组件（文字/表格/演示）和前端框架（原生JS或Vue）。`wpsjs debug`命令会自动打开WPS并加载插件，支持热更新；`wpsjs build`打包源码，`wpsjs publish`生成可分发的发布文件。
++
++- **[WPS加载项的离线打包与本地安装]** — 掌握插件自用分发的两种安装方式。
++  - 来源文件：WPS插件开发与加载指南.md
++  - 核心解释：开发完成后，运行`wpsjs build`并选择离线模式，会在项目中生成`wps-addon-build`目录和`.7z`离线安装包。安装方式有两种：方式一（推荐）通过运行`wpsjs publish`生成的`publish.html`页面点击安装；方式二（手动配置）将解压后的插件文件夹放入`%AppData%\kingsoft\wps\jsaddons`，并创建`jsplugins.xml`配置文件，同时在WPS安装目录的`oem.ini`中添加`[Server]`节指定插件列表路径。
++
++- **[通过oem.ini和jsplugins.xml手动注册插件]** — 理解WPS加载项的手动加载机制。
++  - 来源文件：WPS插件开发与加载指南.md
++  - 核心解释：WPS通过`oem.ini`和`jsplugins.xml`两个配置文件实现插件的加载注册。`jsplugins.xml`存放在`%AppData%\kingsoft\wps\jsaddons\`下，定义插件的名称、类型、路径和版本；`oem.ini`位于WPS安装目录（如`...\office6\cfgs\`），通过`[Server]`节的`JSPluginsServer`字段指向`jsplugins.xml`的路径，并需在`[Support]`节设置`JsApiPlugin=true`。修改配置文件后重启WPS，插件即可出现在加载项或开发工具选项卡中。
++
++- **[WPS加载项通过JS API操作表格的核心能力]** — 掌握通过JavaScript读写单元格公式和内容的关键API用法。
++  - 来源文件：WPS插件开发与加载指南.md
++  - 核心解释：WPS加载项通过WPS JS API可以完整地读写Excel工作簿。通过读取单元格的`Formula`属性获取公式字符串，解析其中的单元格引用（如`A1`、`$B$2`）构建依赖图谱；修改后再将新公式字符串写回`Formula`属性，WPS表格引擎会自动重新计算使修改生效。此外，通过JavaScript遍历工作簿和工作表，可以实现批量修改页眉页脚、跨工作簿读写特定单元格数据等操作。
++
++- **[AI辅助WPS加载项开发的环境架构]** — 搭建"AI API + WPS加载项"的辅助开发环境，实现AI生成代码、手动集成的工作流。
++  - 来源文件：WPS插件开发与加载指南.md
++  - 核心解释：AI辅助WPS加载项开发的标准架构为：前端使用原生JS或Vue框架编写WPS加载项UI，通过WPS JS API操作Office文档；AI模型（如DeepSeek）通过API提供代码生成、公式理解和问题解答能力。开发者将AI生成的代码片段集成到wpsjs项目中，用`wpsjs debug`实时预览效果，形成"AI生成→人工审查→热更新验证"的迭代循环。
++
++#### Python操作WPS写入执行VBA代码.md
++
++- **[Python通过win32com连接WPS应用的COM ProgID]** — WPS各组件对应的Dispatch字符串标识。
++  - 来源文件：Python操作WPS写入执行VBA代码.md
++  - 核心解释：通过 `win32com.client.Dispatch("et.Application")` 创建WPS表格应用对象，其中 `"et.Application"` 是WPS表格的COM ProgID。对于WPS文字和WPS演示，分别使用 `"wps.Application"` 和 `"wpp.Application"`。这些ProgID与Microsoft Office的 `"Excel.Application"` 等不同，是WPS独立注册的COM标识。
++
++- **[通过VBComponents接口向WPS工作簿动态注入VBA代码]** — 使用 `CodeModule.AddFromString` 将Python字符串写入VBA工程模块。
++  - 来源文件：Python操作WPS写入执行VBA代码.md
++  - 核心解释：通过 `workbook.VBProject.VBComponents.Add(1)` 创建标准模块（参数1代表 `vbext_ct_StdModule`），然后调用 `vb_comp.CodeModule.AddFromString(vba_code)` 将VBA代码字符串直接注入。COM接口会自动处理Python字符串到VBA编辑器内部UTF-16 LE编码的转换，无需手动编码转换。注入前应先检查是否已存在同类模块，避免重复创建。
++
++- **[模块内容替换策略：删除后重建而非追加]** — 每次调用AddFromString会追加代码，需用Remove+Add实现完全替换。
++  - 来源文件：Python操作WPS写入执行VBA代码.md
++  - 核心解释：`AddFromString` 方法的行为是在模块末尾追加代码，多次调用会导致重复定义错误。正确的替换方式是先通过 `wb.VBProject.VBComponents.Remove(wb.VBProject.VBComponents(module_name))` 删除旧模块，再用 `Add(1)` 新建并设置 `Name` 属性，最后调用 `AddFromString`。删除不存在的模块会抛出异常，需要用 `try/except` 包裹。
++
++- **[Python与WPS VBA之间可靠的数据交换方式：工作表单元格读写]** — 捕获VBA执行结果优先通过单元格而非立即窗口。
++  - 来源文件：Python操作WPS写入执行VBA代码.md
++  - 核心解释：捕获 `Debug.Print` 输出在WPS中极不稳定（需依赖SendKeys模拟复制，易受版本影响）。推荐在VBA代码中将结果写入工作表特定单元格（如 `ThisWorkbook.Sheets(1).Range("A1").Value = result`），Python再通过COM读取该单元格值，或直接使用 `Application.Run` 的返回值——若VBA函数返回String，Python可直接接收。文件交换（JSON/TXT）也是适合复杂结果的备选方案。
++
++- **[VBA代码文件的编码处理：UTF-8存储、COM自动转UTF-16 LE]** — 从文件读取VBA代码并注入WPS时的编码链路。
++  - 来源文件：Python操作WPS写入执行VBA代码.md
++  - 核心解释：VBA编辑器内部使用UTF-16 LE编码存储代码，但Python端推荐使用UTF-8格式保存 `.bas` 文件，并用 `open(path, "r", encoding="utf-8")` 读取。当Python通过COM接口调用 `AddFromString` 传入VBA代码时，COM中间层会自动将Python的Unicode字符串转换为VBA编辑器所需的UTF-16 LE编码，开发者无需手动编解码转换。
++
++#### 阿里云服务器PaddleOCR使用指南.md
++
++- **[PaddleOCR 命令行快速识别（图片/文件夹/PDF三合一）]** — 无需编写代码，一条命令即可完成文字识别，支持图片、文件夹批量处理和PDF文档。
++  - 来源文件：阿里云服务器PaddleOCR使用指南.md
++  - 核心解释：安装PaddleOCR whl包后，使用 `paddleocr --image_dir <路径> --use_angle_cls true` 即可识别单张图片。将 `--image_dir` 指向文件夹路径可批量处理所有图片；指向PDF文件可直接识别PDF内容。通过 `--page_num 3` 可限制只识别PDF前3页，默认值0表示识别全部页面。`--use_angle_cls true` 启用方向分类模型，能自动校正旋转或倒置的图片，建议始终开启。
++
++- **[PaddleOCR Python API 的结果解析模式]** — 理解 `ocr.ocr()` 返回值的嵌套结构是集成PaddleOCR到应用程序的关键。
++  - 来源文件：阿里云服务器PaddleOCR使用指南.md
++  - 核心解释：`ocr.ocr(img_path, cls=True)` 返回一个列表，每个元素对应一个检测到的文本框。每个元素的结构为 `[box, [text, confidence]]`：`box` 是文本框四个角的坐标列表，`text` 是识别出的文字内容，`confidence` 是置信度分数（0到1之间的浮点数）。在循环中通过 `line[1][0]` 取文本、`line[1][1]` 取置信度即可完成结果提取。
++
++- **[PaddleOCR 检测阈值与结果过滤的调优方法]** — 通过调整检测灵敏度阈值和置信度过滤阈值，可以在召回率和精确率之间取得平衡。
++  - 来源文件：阿里云服务器PaddleOCR使用指南.md
++  - 核心解释：`--det_db_thresh` 参数控制文本检测的灵敏度，值越小检测出的文本框越多但可能引入误检，默认值与DB检测算法相关。`--drop_score 0.5` 可过滤掉置信度低于0.5的识别结果，让输出更干净。在Python API中，还可通过 `det_model_dir`、`rec_model_dir`、`cls_model_dir` 分别指定自定义的检测、识别和分类模型路径，实现模型替换而非仅用默认模型。
++
++- **[Ubuntu 22.04 下进入 Docker 容器的标准操作流程]** — 从查看容器状态到进入容器内部的完整步骤，以及常见错误的排查方法。
++  - 来源文件：阿里云服务器PaddleOCR使用指南.md
++  - 核心解释：先用 `sudo docker ps` 查看正在运行的容器，获取容器名或ID；然后用 `sudo docker exec -it <容器名或ID> /bin/bash` 进入容器。`-i` 保持标准输入打开，`-t` 分配伪终端，两者必须组合使用才能获得交互式Shell。如果提示 `/bin/bash` 不存在，说明容器使用的是精简镜像（如Alpine Linux），应改用 `/bin/sh`。退出容器用 `exit` 命令，容器会继续在后台运行而不会被停止。
++
++- **[Docker 容器无法进入的三类常见错误及解决方案]** — 覆盖 "command not found"、"No such container" 和 "no such file or directory" 三种高频问题及其根因。
++  - 来源文件：阿里云服务器PaddleOCR使用指南.md
++  - 核心解释：错误一：`docker: command not found` 表示Docker未安装或当前用户不在docker用户组，加 `sudo` 或将用户加入docker组（`sudo usermod -aG docker $USER`）解决。错误二：`No such container` 表示指定的容器名/ID不存在，用 `sudo docker ps -a` 查看所有容器（包括已停止的）确认真实名称。错误三：`no such file or directory` 出现在使用 `/bin/bash` 进入精简镜像容器时，改用 `/bin/sh` 即可，这类问题在Alpine Linux基础镜像中尤为常见。
+
+Replaced 1 occurrence in \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md

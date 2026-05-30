@@ -10,6 +10,7 @@ import type { ThemeMode, ThemePalette } from '@/hooks/useTheme';
 import type { UseSettingsConfigDeps } from './hookDepsTypes';
 import type { SystemConfig } from './types';
 import { BUILTIN_SERVER_ID } from '@/mcp/builtinMcpServer';
+import { settingsApi } from '@/api/settingsApi';
 
 const console = debugLog as Pick<typeof debugLog, 'log' | 'warn' | 'error' | 'info' | 'debug'>;
 const isTauri = typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__;
@@ -66,45 +67,45 @@ const normalizeThemePalette = (value: unknown): ThemePalette => {
             image_generation_model_config_id: string | null,
             translation_display_mode: string | null,
           }>,
-          invoke('get_setting', { key: 'auto_save' }).catch(() => 'true') as Promise<string>,
-          invoke('get_setting', { key: 'theme' }).catch(() => 'light') as Promise<string>,
-          invoke('get_setting', { key: 'theme_palette' }).catch(() => 'default') as Promise<string>,
-          invoke('get_setting', { key: 'debug_mode' }).catch(() => 'false') as Promise<string>,
-          invoke('get_setting', { key: 'rag_enabled' }).catch(() => 'false') as Promise<string>,
-          invoke('get_setting', { key: 'rag_top_k' }).catch(() => '5') as Promise<string>,
-          invoke('get_setting', { key: 'anki_connect_enabled' }).catch(() => 'false') as Promise<string>,
+          settingsApi.get('auto_save' ).catch(() => 'true') as Promise<string>,
+          settingsApi.get('theme' ).catch(() => 'light') as Promise<string>,
+          settingsApi.get('theme_palette' ).catch(() => 'default') as Promise<string>,
+          settingsApi.get('debug_mode' ).catch(() => 'false') as Promise<string>,
+          settingsApi.get('rag_enabled' ).catch(() => 'false') as Promise<string>,
+          settingsApi.get('rag_top_k' ).catch(() => '5') as Promise<string>,
+          settingsApi.get('anki_connect_enabled' ).catch(() => 'false') as Promise<string>,
 
           // MCP 工具协议设置（移除全局启用项）
-          invoke('get_setting', { key: 'mcp.transport.command' }).catch(() => 'npx') as Promise<string>,
-          invoke('get_setting', { key: 'mcp.transport.args' }).catch(() => DEFAULT_STDIO_ARGS_STORAGE) as Promise<string>,
-          invoke('get_setting', { key: 'mcp.transport.type' }).catch(() => 'stdio') as Promise<string>,
-          invoke('get_setting', { key: 'mcp.transport.url' }).catch(() => 'ws://localhost:8000') as Promise<string>,
-          invoke('get_setting', { key: 'mcp.tools.advertise_all_tools' }).catch(() => 'false') as Promise<string>,
-          invoke('get_setting', { key: 'mcp.tools.whitelist' }).catch(() => 'read_file, write_file, list_directory') as Promise<string>,
-          invoke('get_setting', { key: 'mcp.tools.blacklist' }).catch(() => 'delete_file, execute_command, rm, sudo') as Promise<string>,
+          settingsApi.get('mcp.transport.command' ).catch(() => 'npx') as Promise<string>,
+          settingsApi.get('mcp.transport.args' ).catch(() => DEFAULT_STDIO_ARGS_STORAGE) as Promise<string>,
+          settingsApi.get('mcp.transport.type' ).catch(() => 'stdio') as Promise<string>,
+          settingsApi.get('mcp.transport.url' ).catch(() => 'ws://localhost:8000') as Promise<string>,
+          settingsApi.get('mcp.tools.advertise_all_tools' ).catch(() => 'false') as Promise<string>,
+          settingsApi.get('mcp.tools.whitelist' ).catch(() => 'read_file, write_file, list_directory') as Promise<string>,
+          settingsApi.get('mcp.tools.blacklist' ).catch(() => 'delete_file, execute_command, rm, sudo') as Promise<string>,
           // 多工具配置（JSON）
-          invoke('get_setting', { key: 'mcp.tools.list' }).catch(() => '[]') as Promise<string>,
-          invoke('get_setting', { key: 'mcp.performance.timeout_ms' }).catch(() => '15000') as Promise<string>,
-          invoke('get_setting', { key: 'mcp.performance.rate_limit_per_second' }).catch(() => '10') as Promise<string>,
-          invoke('get_setting', { key: 'mcp.performance.cache_max_size' }).catch(() => '500') as Promise<string>,
-          invoke('get_setting', { key: 'mcp.performance.cache_ttl_ms' }).catch(() => '300000') as Promise<string>,
+          settingsApi.get('mcp.tools.list' ).catch(() => '[]') as Promise<string>,
+          settingsApi.get('mcp.performance.timeout_ms' ).catch(() => '15000') as Promise<string>,
+          settingsApi.get('mcp.performance.rate_limit_per_second' ).catch(() => '10') as Promise<string>,
+          settingsApi.get('mcp.performance.cache_max_size' ).catch(() => '500') as Promise<string>,
+          settingsApi.get('mcp.performance.cache_ttl_ms' ).catch(() => '300000') as Promise<string>,
 
           // Web Search 设置（移除全局启用项）
-          invoke('get_setting', { key: 'web_search.engine' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.timeout_ms' }).catch(() => '15000') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.api_key.google_cse' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.google_cse.cx' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.api_key.serpapi' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.api_key.tavily' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.api_key.brave' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.searxng.endpoint' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.searxng.api_key' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.api_key.zhipu' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.api_key.bocha' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.site_whitelist' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.site_blacklist' }).catch(() => '') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.inject.snippet_max_chars' }).catch(() => '180') as Promise<string>,
-          invoke('get_setting', { key: 'web_search.inject.total_max_chars' }).catch(() => '1900') as Promise<string>,
+          settingsApi.get('web_search.engine' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.timeout_ms' ).catch(() => '15000') as Promise<string>,
+          settingsApi.get('web_search.api_key.google_cse' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.google_cse.cx' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.api_key.serpapi' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.api_key.tavily' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.api_key.brave' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.searxng.endpoint' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.searxng.api_key' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.api_key.zhipu' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.api_key.bocha' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.site_whitelist' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.site_blacklist' ).catch(() => '') as Promise<string>,
+          settingsApi.get('web_search.inject.snippet_max_chars' ).catch(() => '180') as Promise<string>,
+          settingsApi.get('web_search.inject.total_max_chars' ).catch(() => '1900') as Promise<string>,
         ]);
 
         // 解构赋值
@@ -169,7 +170,7 @@ const normalizeThemePalette = (value: unknown): ThemePalette => {
           const parsed = parseInt(mcpCacheMax || '500', 10);
           const val = Number.isFinite(parsed) ? parsed : 500;
           if (val <= 100) {
-            invoke('save_setting', { key: 'mcp.performance.cache_max_size', value: '500' }).catch(() => {});
+            settingsApi.save('mcp.performance.cache_max_size', '500' ).catch(() => {});
             return 500;
           }
           return val;
@@ -338,47 +339,47 @@ const normalizeThemePalette = (value: unknown): ThemePalette => {
     try {
       if (invoke) {
         await Promise.all([
-          invoke('save_setting', { key: 'auto_save', value: config.autoSave.toString() }),
-          invoke('save_setting', { key: 'theme', value: config.theme }),
-          invoke('save_setting', { key: 'theme_palette', value: config.themePalette ?? 'default' }),
-          invoke('save_setting', { key: 'rag_enabled', value: config.ragEnabled.toString() }),
-          invoke('save_setting', { key: 'rag_top_k', value: config.ragTopK.toString() }),
-          invoke('save_setting', { key: 'anki_connect_enabled', value: config.ankiConnectEnabled.toString() }),
-          invoke('save_setting', { key: 'debug_mode', value: config.debugMode.toString() }),
+          settingsApi.save('auto_save', config.autoSave.toString() ),
+          settingsApi.save('theme', config.theme ),
+          settingsApi.save('theme_palette', config.themePalette ?? 'default' ),
+          settingsApi.save('rag_enabled', config.ragEnabled.toString() ),
+          settingsApi.save('rag_top_k', config.ragTopK.toString() ),
+          settingsApi.save('anki_connect_enabled', config.ankiConnectEnabled.toString() ),
+          settingsApi.save('debug_mode', config.debugMode.toString() ),
           // MCP 工具协议设置保存（移除全局启用项）
-          invoke('save_setting', { key: 'mcp.transport.type', value: String(config.mcpTransportType || 'stdio') }),
-          invoke('save_setting', { key: 'mcp.transport.command', value: config.mcpCommand }),
-          invoke('save_setting', { key: 'mcp.transport.args', value: config.mcpArgs }),
-          invoke('save_setting', { key: 'mcp.transport.url', value: String(config.mcpUrl || '') }),
-          invoke('save_setting', { key: 'mcp.tools.advertise_all_tools', value: config.mcpAdvertiseAll.toString() }),
-          invoke('save_setting', { key: 'mcp.tools.whitelist', value: config.mcpWhitelist }),
-          invoke('save_setting', { key: 'mcp.tools.blacklist', value: config.mcpBlacklist }),
-          invoke('save_setting', { key: 'mcp.performance.timeout_ms', value: String(config.mcpTimeoutMs ?? 15000) }),
-          invoke('save_setting', { key: 'mcp.performance.rate_limit_per_second', value: String(config.mcpRateLimit ?? 10) }),
-          invoke('save_setting', { key: 'mcp.performance.cache_max_size', value: String(config.mcpCacheMax ?? 500) }),
-          invoke('save_setting', { key: 'mcp.performance.cache_ttl_ms', value: String(config.mcpCacheTtlMs ?? 300000) }),
+          settingsApi.save('mcp.transport.type', String(config.mcpTransportType || 'stdio') ),
+          settingsApi.save('mcp.transport.command', config.mcpCommand ),
+          settingsApi.save('mcp.transport.args', config.mcpArgs ),
+          settingsApi.save('mcp.transport.url', String(config.mcpUrl || '') ),
+          settingsApi.save('mcp.tools.advertise_all_tools', config.mcpAdvertiseAll.toString() ),
+          settingsApi.save('mcp.tools.whitelist', config.mcpWhitelist ),
+          settingsApi.save('mcp.tools.blacklist', config.mcpBlacklist ),
+          settingsApi.save('mcp.performance.timeout_ms', String(config.mcpTimeoutMs ?? 15000) ),
+          settingsApi.save('mcp.performance.rate_limit_per_second', String(config.mcpRateLimit ?? 10) ),
+          settingsApi.save('mcp.performance.cache_max_size', String(config.mcpCacheMax ?? 500) ),
+          settingsApi.save('mcp.performance.cache_ttl_ms', String(config.mcpCacheTtlMs ?? 300000) ),
           // 保存多工具配置（过滤掉内置服务器）
-          invoke('save_setting', { key: 'mcp.tools.list', value: JSON.stringify((config.mcpTools || []).filter(s => s.id !== BUILTIN_SERVER_ID)) }),
+          settingsApi.save('mcp.tools.list', JSON.stringify((config.mcpTools || []).filter(s => s.id !== BUILTIN_SERVER_ID)) ),
           // 强制使用前端SDK模式
-          invoke('save_setting', { key: 'mcp.mode', value: 'frontend' }),
+          settingsApi.save('mcp.mode', 'frontend' ),
 
           // Web Search 设置保存
           // 外部搜索保存（移除全局启用项）
-          invoke('save_setting', { key: 'web_search.engine', value: config.webSearchEngine ?? '' }),
-          invoke('save_setting', { key: 'web_search.timeout_ms', value: String(config.webSearchTimeoutMs ?? 15000) }),
-          invoke('save_setting', { key: 'web_search.api_key.google_cse', value: config.webSearchGoogleKey ?? '' }),
-          invoke('save_setting', { key: 'web_search.google_cse.cx', value: config.webSearchGoogleCx ?? '' }),
-          invoke('save_setting', { key: 'web_search.api_key.serpapi', value: config.webSearchSerpApiKey ?? '' }),
-          invoke('save_setting', { key: 'web_search.api_key.tavily', value: config.webSearchTavilyKey ?? '' }),
-          invoke('save_setting', { key: 'web_search.api_key.brave', value: config.webSearchBraveKey ?? '' }),
-          invoke('save_setting', { key: 'web_search.searxng.endpoint', value: config.webSearchSearxngEndpoint ?? '' }),
-          invoke('save_setting', { key: 'web_search.searxng.api_key', value: config.webSearchSearxngKey ?? '' }),
-          invoke('save_setting', { key: 'web_search.api_key.zhipu', value: config.webSearchZhipuKey ?? '' }),
-          invoke('save_setting', { key: 'web_search.api_key.bocha', value: config.webSearchBochaKey ?? '' }),
-          invoke('save_setting', { key: 'web_search.site_whitelist', value: config.webSearchWhitelist ?? '' }),
-          invoke('save_setting', { key: 'web_search.site_blacklist', value: config.webSearchBlacklist ?? '' }),
-          invoke('save_setting', { key: 'web_search.inject.snippet_max_chars', value: String(config.webSearchInjectSnippetMax ?? 180) }),
-          invoke('save_setting', { key: 'web_search.inject.total_max_chars', value: String(config.webSearchInjectTotalMax ?? 1900) }),
+          settingsApi.save('web_search.engine', config.webSearchEngine ?? '' ),
+          settingsApi.save('web_search.timeout_ms', String(config.webSearchTimeoutMs ?? 15000) ),
+          settingsApi.save('web_search.api_key.google_cse', config.webSearchGoogleKey ?? '' ),
+          settingsApi.save('web_search.google_cse.cx', config.webSearchGoogleCx ?? '' ),
+          settingsApi.save('web_search.api_key.serpapi', config.webSearchSerpApiKey ?? '' ),
+          settingsApi.save('web_search.api_key.tavily', config.webSearchTavilyKey ?? '' ),
+          settingsApi.save('web_search.api_key.brave', config.webSearchBraveKey ?? '' ),
+          settingsApi.save('web_search.searxng.endpoint', config.webSearchSearxngEndpoint ?? '' ),
+          settingsApi.save('web_search.searxng.api_key', config.webSearchSearxngKey ?? '' ),
+          settingsApi.save('web_search.api_key.zhipu', config.webSearchZhipuKey ?? '' ),
+          settingsApi.save('web_search.api_key.bocha', config.webSearchBochaKey ?? '' ),
+          settingsApi.save('web_search.site_whitelist', config.webSearchWhitelist ?? '' ),
+          settingsApi.save('web_search.site_blacklist', config.webSearchBlacklist ?? '' ),
+          settingsApi.save('web_search.inject.snippet_max_chars', String(config.webSearchInjectSnippetMax ?? 180) ),
+          settingsApi.save('web_search.inject.total_max_chars', String(config.webSearchInjectTotalMax ?? 1900) ),
       ]);
         if (!silent) {
           showGlobalNotification('success', t('settings:notifications.config_save_success'));

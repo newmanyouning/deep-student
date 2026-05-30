@@ -74,7 +74,7 @@ export async function getPendingMemoryCandidates(conversationId: string): Promis
       conversation_id: string;
       candidates: Array<{ content: string; category: string }>;
       created_at: string;
-    } | null>('get_pending_memory_candidates', {
+    } | null>('enhanced_anki_get_pending_memory_candidates', {
       conversationId: conversationId,
     });
     return response;
@@ -87,7 +87,7 @@ export async function getPendingMemoryCandidates(conversationId: string): Promis
 // 用户记忆：清除/忽略待处理的记忆候选
 export async function dismissPendingMemoryCandidates(conversationId: string): Promise<number> {
   try {
-    const response = await invoke<number>('dismiss_pending_memory_candidates', {
+    const response = await invoke<number>('enhanced_anki_dismiss_pending_memory_candidates', {
       conversationId: conversationId,
     });
     return response;
@@ -100,7 +100,7 @@ export async function dismissPendingMemoryCandidates(conversationId: string): Pr
 // 用户记忆：标记待处理记忆候选为已保存
 export async function markPendingMemoryCandidatesSaved(conversationId: string): Promise<number> {
   try {
-    const response = await invoke<number>('mark_pending_memory_candidates_saved', {
+    const response = await invoke<number>('enhanced_anki_mark_pending_memory_candidates_saved', {
       conversationId: conversationId,
     });
     return response;

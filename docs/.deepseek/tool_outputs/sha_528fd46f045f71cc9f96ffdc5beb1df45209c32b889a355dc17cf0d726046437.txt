@@ -1,0 +1,107 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_progress.py
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_progress.py
+@@ -1,32 +1,65 @@
+ #!/usr/bin/env python3
+-"""Update project_progress.md for batch 5 completion"""
++"""Update project_progress.md for batch 6 completion"""
+ import re
+ 
+ path = 'project_progress.md'
+ with open(path, 'r', encoding='utf-8') as f:
+     content = f.read()
+ 
+-# Add batch 5 to "已缓存文件" section
+-old = '- 阿里云服务器PaddleOCR使用指南.md（5条知识点）\n\n## 缓存文件路径'
+-new = '- 阿里云服务器PaddleOCR使用指南.md（5条知识点）\n\n### 第5批 (本轮新增 2026-05-17，4个中文件):\n- Excel工具开发与打包.md（4条知识点）\n- 修复PyInstaller打包命令.md（4条知识点）\n- 容器内PaddleOCR转PDF为MD.md（5条知识点）\n- 树莓派5安装Ubuntu的Java版本选择指南.md（4条知识点）\n\n## 缓存文件路径'
+-content = content.replace(old, new)
++# Add batch 6 to "已缓存文件" section (after batch 5)
++old_b5 = '### 第5批 (本轮新增 2026-05-17，4个中文件):\n- Excel工具开发与打包.md（4条知识点）\n- 修复PyInstaller打包命令.md（4条知识点）\n- 容器内PaddleOCR转PDF为MD.md（5条知识点）\n- 树莓派5安装Ubuntu的Java版本选择指南.md（4条知识点）\n\n## 缓存文件路径'
++new_b5 = old_b5.replace('## 缓存文件路径', '''### 第5批 (2026-05-17，4个中文件):
++- Excel工具开发与打包.md（4条知识点）
++- 修复PyInstaller打包命令.md（4条知识点）
++- 容器内PaddleOCR转PDF为MD.md（5条知识点）
++- 树莓派5安装Ubuntu的Java版本选择指南.md（4条知识点）
++
++### 第6批 (本轮新增 2026-05-17，4个中文件):
++- 拉取GitHub项目更新方法.md（5条知识点）
++- cc-mini参数错误排查.md（3条知识点）
++- GitHub SSH配置与项目克隆指南.md（4条知识点）
++- 应用迁移方案指南.md（4条知识点）
++
++## 缓存文件路径''')
++content = content.replace(old_b5, new_b5)
+ 
+ # Update AI领域已处理 count
+-content = content.replace('| AI与编程开发 | 46/112 | ~77 |', '| AI与编程开发 | 50/112 | ~81 |')
++content = content.replace('| AI与编程开发 | 50/112 | ~81 |', '| AI与编程开发 | 54/112 | ~85 |')
+ 
+ # Update knowledge_cache.md line reference
+-content = re.sub(r'knowledge_cache\.md \(当前\d+行', 'knowledge_cache.md (当前1766行', content)
++content = re.sub(r'knowledge_cache\.md \(当前\d+行', 'knowledge_cache.md (当前1812行', content)
+ 
+-# Update next batch to batch 6
+-old_batch = '''### Step 3: 启动4个子代理处理下一批中文件
+-```markdown
+-下一批待处理的中文件（第5批）：
+-1. 01_AI与编程开发/Excel工具开发与打包.md (29810B)
+-2. 01_AI与编程开发/修复PyInstaller打包命令.md (29639B)
+-3. 01_AI与编程开发/容器内PaddleOCR转PDF为MD.md (28226B)
+-4. 01_AI与编程开发/树莓派5安装Ubuntu的Java版本选择指南.md (28090B)
+-```'''
+-new_batch = '''### Step 3: 启动4个子代理处理下一批中文件
++# Update 本轮处理记录 - replace batch 5 record with batch 6, keep batch 5 as history
++old_batch5_record = '''## 本轮处理记录 (2026-05-17 第5批)
++- 处理数量: 4个中文件(10-50KB)
++- 新增知识条目: 17条
++- 提取方式: 4个子代理并行读取，主代理统一写入
++- 已合并至: knowledge_cache.md AI与编程开发 章节尾部
++- knowledge_cache.md: 1689行 → 1766行
++- 已处理文件列表:
++  1. Excel工具开发与打包.md (~30KB) — 4条：openpyxl双模式加载、公式依赖正则提取、页眉页脚属性遍历、tkinter多线程加载
++  2. 修复PyInstaller打包命令.md (~30KB) — 4条：--add-binary路径修复、PowerShell分号引用、.spec文件管理、xlwings.rest警告处理
++  3. 容器内PaddleOCR转PDF为MD.md (~28KB) — 5条：PPStructure引擎配置、镜像不含PaddleOCR、Docker目录挂载、分页合并方案、批量处理脚本模式
++  4. 树莓派5安装Ubuntu的Java版本选择指南.md (~28KB) — 4条：Java包命名规则、APT安装方案、三重过滤法、tar.gz手动安装步骤
++
++## 历史处理记录'''
++new_batch6_record = '''## 本轮处理记录 (2026-05-17 第6批)
++- 处理数量: 4个中文件(10-50KB)
++- 新增知识条目: 16条
++- 提取方式: 4个子代理并行读取，主代理统一写入
++- 已合并至: knowledge_cache.md AI与编程开发 章节尾部
++- knowledge_cache.md: 1766行 → 1845行
++- 已处理文件列表:
++  1. 拉取GitHub项目更新方法.md (~27KB) — 5条：git pull基本用法、fetch+merge安全策略、stash处理、reset --hard强制覆盖、依赖重装判断
++  2. cc-mini参数错误排查.md (~25KB) — 3条：Python参数错误诊断、macOS Git代理清除、项目初始化流程
++  3. GitHub SSH配置与项目克隆指南.md (~25KB) — 4条：ed25519密钥生成、公钥绑定账户、SSH测试克隆、SSH vs HTTPS对比
++  4. 应用迁移方案指南.md (~25KB) — 4条：系统还原点、mklink/J目录交接、robocopy高保真复制、回滚恢复流程
++
++## 历史处理记录 (2026-05-17 第5批)'''
++content = content.replace(old_batch5_record, new_batch6_record)
++
++# Update next batch to batch 7
++old_next = '''### Step 3: 启动4个子代理处理下一批中文件
+ ```markdown
+ 下一批待处理的中文件（第6批）：
+ 1. 01_AI与编程开发/拉取GitHub项目更新方法.md (27125B)
+@@ -34,9 +67,17 @@
+ 3. 01_AI与编程开发/GitHub SSH配置与项目克隆指南.md (24909B)
+ 4. 01_AI与编程开发/应用迁移方案指南.md (24829B)
+ ```'''
+-content = content.replace(old_batch, new_batch)
++new_next = '''### Step 3: 启动4个子代理处理下一批中文件
++```markdown
++下一批待处理的中文件（第7批）：
++1. 01_AI与编程开发/中文版Claude Code网页入口.md (24465B)
++2. 01_AI与编程开发/VBA代码问题分析.md (23914B)
++3. 01_AI与编程开发/云服务器GPU占用查看命令.md (23626B)
++4. 01_AI与编程开发/训练方式与分词关系.md (23201B)
++```'''
++content = content.replace(old_next, new_next)
+ 
+ with open(path, 'w', encoding='utf-8') as f:
+     f.write(content)
+ 
+-print('OK - project_progress.md updated')
++print('OK - project_progress.md updated for batch 6')
+
+Wrote 4634 bytes to \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_progress.py

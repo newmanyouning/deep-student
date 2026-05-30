@@ -1,0 +1,45 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\快捷键分析报告生成.md",
+      "line_number": 398,
+      "line": "        <p>WPS对MS Office快捷键体系高度兼容，并增加特色功能，满足国人习惯。以下是WPS全组件通用的高频组合键：</p>",
+      "context_before": [
+        "        </table>",
+        "        <div class=\"note\">💡 分析洞察：Windows系统快捷键与WPS深度协同，如使用「Win+Shift+S」截图后可直接粘贴至WPS文字/表格；「Win+V」剪贴板历史支持WPS多次复制不同内容，避免来回切换源文件。</div>",
+        "",
+        "        <!-- 第二部分：WPS通用快捷键（跨组件） -->",
+        "        <h2>二、WPS Office 跨组件通用快捷键（文字/表格/演示）</h2>"
+      ],
+      "context_after": [
+        "        <table>",
+        "            <thead><tr><th>快捷键</th><th>功能说明</th><th>适用组件与效率加成</th></tr></thead>",
+        "            <tbody>",
+        "                <tr><td class=\"shortcut-key\">Ctrl + S</td><td>保存当前文档</td><td>所有组件通用，结合WPS云文档自动备份，防数据丢失</td></tr>",
+        "                <tr><td class=\"shortcut-key\">Ctrl + P</td><td>打印预览/打印</td><td>快速调出打印设置，支持WPS虚拟打印输出PDF</td></tr>"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\快捷键分析报告生成.md",
+      "line_number": 471,
+      "line": "        <p>基于对典型办公人员的跟踪调研，快捷键熟练程度与任务处理时间成反比。初级用户每日鼠标点击高达7000次，而中高级快捷键用户可减少约55%的点击操作。结合Windows + WPS复合快捷键体系，可达成以下效能收益：</p>",
+      "context_before": [
+        "        </table>",
+        "        <div class=\"note\">🎤 演讲提升秘诀：放映时善用B/W黑屏吸引焦点，数字跳转回答问题，搭配Win+Shift+S截图即时展示操作流程，让WPS演示配合系统快捷键形成专业演讲闭环。</div>",
+        "",
+        "        <!-- 第六部分：分析总结与学习路径建议 -->",
+        "        <h2>六、效率分析与快捷键掌握策略</h2>"
+      ],
+      "context_after": [
+        "        <ul>",
+        "            <li><strong>认知负荷降低：</strong>减少在菜单栏/功能区寻找功能的时间，维持心流状态，创作效率提升35%以上。</li>",
+        "            <li><strong>跨软件协作无感：</strong>Windows剪贴板历史（Win+V）与WPS结合，可跨文档保留10条以上复制项，资料整理效率倍增。</li>",
+        "            <li><strong>特色WPS快捷键优势：</strong>F4重复上一步操作、Ctrl+Alt+A截图、Ctrl+Shift+C/V格式刷等组合键弥补传统办公软件的不足，尤其适合中文排版、教学课件制作。</li>",
+        "            <li><strong>数据统计准确性：</strong>表格组件借助Ctrl+Shift+方向键 + Alt+= 系列组合，避免手动拖拽选择错误，显著降低统计误差风险。</li>"
+      ]
+    }
+  ],
+  "total_matches": 2,
+  "files_searched": 1,
+  "truncated": false
+}

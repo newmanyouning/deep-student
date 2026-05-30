@@ -1,0 +1,46 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\2026年TTS模型推荐.md" total_lines="243" shown_lines="200-243" truncated="false">
+   200│       -v $(pwd)/output:/app/output \
+   201│       registry.cn-hangzhou.aliyuncs.com/inscode/qwen3-tts-12hz-1.7b-customvoice:latest bash
+   202│     ```
+   203│     此命令会启动一个容器，并暴露一个Web界面在 `http://localhost:7860`[reference:5][reference:6]。你可以在浏览器中打开这个地址，通过图形界面来使用TTS功能。
+   204│ 
+   205│ ### 🔗 集成到 OpenMAIC
+   206│ 目前，关于Qwen3-TTS在OpenMAIC中的配置，公开信息较少。不过，OpenMAIC本身支持自定义TTS服务，你可以通过以下方式尝试集成。
+   207│ 
+   208│ 1.  **启动API服务**：你可以使用`tts-router`（部署方案一）启动一个兼容OpenAI接口的API服务[reference:7]：
+   209│     ```bash
+   210│     tts-router serve --port 8091
+   211│     ```
+   212│     启动后，你可以在浏览器打开 `http://localhost:8091` 查看API文档。
+   213│ 
+   214│ 2.  **配置OpenMAIC**：在你的OpenMAIC项目中（通常是`.env.local`或类似配置文件），寻找`TTS`相关的配置项，例如`TTS_PROVIDER`、`TTS_API_URL`、`TTS_API_KEY`等，然后进行如下设置：
+   215│     ```
+   216│     TTS_PROVIDER=custom  # 或 openai，取决于OpenMAIC的支持方式
+   217│     TTS_API_URL=http://localhost:8091/v1/audio/speech
+   218│     TTS_API_KEY=not-needed
+   219│     ```
+   220│     *注意：具体的配置字段名称可能因OpenMAIC版本而异，建议查阅其官方文档或源代码中的配置示例。*
+   221│ 
+   222│ ### 🎤 功能速览
+   223│ 部署成功后，你可以使用以下功能：
+   224│ 
+   225│ *   **内置音色**：Qwen3-TTS提供了多种预设的、高质量的音色，覆盖不同性别、语言和风格。例如，`Vivian`是明亮年轻的女声，`Uncle_Fu`是权威的新闻主播男声[reference:8]。
+   226│ *   **语音克隆**：如果你想让AI模仿某个特定人的声音，可以提供一个5-10秒的参考音频文件，模型就能学习并克隆该声音[reference:9]。
+   227│ *   **风格与情感控制**：这是Qwen3-TTS最强大的功能之一。你可以通过简单的指令（`--instruct`参数）来控制语音的情感和风格，例如“用一种激动兴奋的语气说”或“像新闻主播一样，保持冷静权威”[reference:10]。
+   228│ 
+   229│ ### ⚡ 快速选择建议
+   230│ | 你的需求 | 推荐方案 |
+   231│ | :--- | :--- |
+   232│ | **追求简单、快速、开箱即用** | **部署方案一 (tts-router)**。一条命令下载，一条命令测试，最适合开发者。 |
+   233│ | **想深度定制，或集成到自己的Python项目中** | **部署方案二 (MLX优化版本)**。提供了最大的灵活性，方便你编写脚本进行控制。 |
+   234│ | **希望隔离环境，或偏爱图形界面** | **部署方案三 (Docker)**。但需注意在Mac上可能无法获得最佳性能。 |
+   235│ 
+   236│ ### ⚠️ 注意事项
+   237│ *   **环境问题**：务必在干净独立的Python虚拟环境中安装依赖，避免版本冲突[reference:11]。
+   238│ *   **资源监控**：在运行模型时，可以通过“活动监视器”观察内存占用情况，特别是使用1.7B模型时。
+   239│ *   **首次运行**：无论是`tts-router pull`还是模型代码，首次运行都会从Hugging Face下载模型文件，请确保网络通畅，并耐心等待。
+   240│ 
+   241│ 你可以先试试**部署方案一**中的 `tts-router`，这是最快能让你听到效果的路径。如果在配置OpenMAIC的环节需要更具体的指导，随时可以再来问我。
+   242│ 
+   243│ ---
+</file>

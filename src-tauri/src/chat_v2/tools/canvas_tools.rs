@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::canvas_tool_names;
+use super::executor::{ToolError, ToolResult};
 
 // ============================================================================
 // 工具参数类型
@@ -678,9 +679,9 @@ pub fn replace_content(
     search: &str,
     replace: &str,
     is_regex: bool,
-) -> Result<(String, usize), String> {
+) -> ToolResult<(String, usize)> {
     if is_regex {
-        let regex = Regex::new(search).map_err(|e| format!("无效的正则表达式: {}", e))?;
+        let regex = Regex::new(search).map_err(|e| ToolError::InvalidArgs(format!("无效的正则表达式: {}", e)))?;
         let mut count = 0;
         let new_content = regex
             .replace_all(content, |_caps: &regex::Captures| {

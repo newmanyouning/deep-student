@@ -1,0 +1,64 @@
+<file path="knowledge_cache.md" total_lines="2276" shown_lines="2180-2239" truncated="true" next_start_line="2240">
+  2180│   - 核心解释：在传统词袋模型中，关键词是上下文无关的，无法区分多义词的不同含义，"猫追老鼠"和"老鼠追猫"可能被表示为相同的特征向量。
+  2181│ 
+  2182│ - **[Token与关键词的功能目的差异]** — 关键词用于统计特征，Token用于语言建模
+  2183│   - 来源文件：`01_AI与编程开发/大语言模型token与关键词区别解析.md`
+  2184│   - 核心解释：关键词作为统计特征（频率、出现与否）用于捕捉文档主题，适用于分类、聚类、简单检索；Token是构建语言理解、生成和推理的基础单元，用于建模语言概率分布P(下一个token|之前的tokens)。
+  2185│ 
+  2186│ - **[子词分词器处理OOV问题]** — 子词tokenizer能将未登录词分解为已知子词片段
+  2187│   - 来源文件：`01_AI与编程开发/大语言模型token与关键词区别解析.md`
+  2188│   - 核心解释：子词tokenizer的核心优势之一是能有效处理未登录词（OOV），即使一个词不在词表中也能分解成已知的子词token（如antidisestablishmentarianism → anti dis establish ment arian ism），保留了词的部分或全部语义信息，而传统方法遇到OOV词会直接忽略或映射为UNK符号。
+  2189│ 
+  2190│ - **[WPS加载项目录路径]** — WPS加载项的存放位置取决于加载项类型和操作系统，有多个默认路径
+  2191│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2192│   - 核心解释：WPS JS加载项（新式插件）在Windows下位于`%APPDATA%\kingsoft\wps\jsaddons\`，macOS下位于`~/Library/Containers/com.kingsoft.wpsoffice.mac/Data/.kingsoft/wps/jsaddons/`，Linux下位于`~/.local/share/Kingsoft/wps/jsaddons/`。传统COM加载项多在`%APPDATA%\kingsoft\wps\addons\`或WPS安装目录下的`addons`文件夹。配置文件则位于WPS安装目录的`office6\cfgs\`下。
+  2193│ 
+  2194│ - **[wpsjs命令行工具安装]** — wpsjs工具通过npm全局安装，无独立安装包，需先安装Node.js环境
+  2195│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2196│   - 核心解释：wpsjs是WPS官方为开发者提供的JS加载项命令行管理工具，通过`npm install -g wpsjs`命令全局安装。安装前需要先安装Node.js（建议v20 LTS稳定版），网络不佳时可配置淘宝镜像源加速。安装完成后通过`wpsjs -h`验证是否成功。
+  2197│ 
+  2198│ - **[本地加载项加载方法]** — WPS加载本地加载项有官方wpsjs命令行方式和手动复制两种主要方法
+  2199│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2200│   - 核心解释：开发者可使用wpsjs命令行工具：在项目目录运行`wpsjs debug`启动调试模式临时加载加载项，运行`wpsjs publish`将加载项发布到WPS的jsaddons目录完成安装。普通用户可将`.dotm`或`.xlam`等模板文件复制到WPS启动目录，或通过WPS的"开发工具"→"加载项"→"添加"手动导入。
+  2201│ 
+  2202│ - **[WPS加载项类型区分]** — WPS加载项主要分为JS加载项和COM/模板类加载项，文件特征不同
+  2203│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2204│   - 核心解释：JS加载项是基于网页技术的新式插件，包含`index.html`、`main.js`、`ribbon.xml`等文件；模板类加载项是传统插件，扩展名为`.dotm`（文字）、`.xlam`（表格）等。不同类型的加载项对应的存储目录和管理方式也不同。
+  2205│ 
+  2206│ - **[加载项故障排查要点]** — 加载项无法加载时需检查功能开关、调试工具和WPS版本兼容性
+  2207│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2208│   - 核心解释：若加载项无法加载，首先确保WPS安装包带有加载项功能，可在`cfgs`文件夹下创建或编辑`oem.ini`文件，添加`JsApiShowWebDebugger=true`配置。其次可按`Alt+F12`或`F12`打开开发者工具查看错误信息。还需确认加载项与当前WPS版本兼容。
+  2209│ 
+  2210│ - **[wpsjs核心命令速查]** — wpsjs提供create、debug、build、publish四条核心命令管理加载项全生命周期
+  2211│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2212│   - 核心解释：`wpsjs create 项目名`用于创建新加载项项目；`wpsjs debug`启动调试模式，自动打开WPS并支持热更新；`wpsjs build`将项目打包成可分发的文件；`wpsjs publish`将打包好的加载项发布安装到本地WPS中。
+  2213│ 
+  2214│ - **[Ollama下载报错解析]** — 使用Ollama拉取模型时出现`max retries exceeded`错误，核心原因是TCP连接被远程服务器重置
+  2215│   - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
+  2216│   - 核心解释：错误发生在模型下载过程中中断，提示"max retries exceeded"表示多次重试同一数据块均失败。具体底层原因是`read tcp ... connection reset by peer`，即服务器端主动关闭了TCP连接，可能源于网络不稳定、服务器负载高、IPv6路由问题或防火墙干扰。
+  2217│ 
+  2218│ - **[IPv6引起的Ollama连接问题]** — 使用IPv6地址连接Ollama下载服务器时，可能因IPv6路由不稳定导致连接被重置
+  2219│   - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
+  2220│   - 核心解释：错误日志显示客户端使用IPv6地址连接服务器，某些网络环境下IPv6链路不稳定或被阻断。解决方法是在macOS系统设置中将"配置IPv6"改为"仅限本地链接"或"关闭"，或使用终端命令`sudo networksetup -setv6off Wi-Fi`临时禁用IPv6。
+  2221│ 
+  2222│ - **[Ollama模型断点续传]** — Ollama支持断点续传，直接重试下载命令可从中断处继续，无需重新下载整个模型
+  2223│   - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
+  2224│   - 核心解释：遇到下载中断错误后，直接再次运行`ollama run <模型名>`即可从断点处继续下载，因为Ollama会保留已下载的数据块，只重新拉取失败的部分。这是应对临时网络故障的首选方法。
+  2225│ 
+  2226│ - **[ollama show查看模型信息]** — 使用`ollama show`命令配合不同参数，可查看模型的提示词模板、系统提示词、参数配置和Modelfile等详细信息
+  2227│   - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
+  2228│   - 核心解释：`ollama show --template <模型名>`查看提示词模板（定义对话格式）；`ollama show --system <模型名>`查看系统提示词（设定模型人设）；`ollama show --modelfile <模型名>`查看模型制作源文件；`ollama show --parameters <模型名>`查看参数配置。在运行模型后的交互界面中输入`/show`也可获得同等信息。
+  2229│ 
+  2230│ - **[Ollama模型存储位置]** — 在macOS上，Ollama下载的模型文件默认存储在隐藏目录`~/.ollama/models/`中
+  2231│   - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
+  2232│   - 核心解释：该目录下主要包含`blobs`（存放模型的实际数据层）和`manifests`（存放模型的元数据）等子目录。可通过`du -sh ~/.ollama/models`查看占用的磁盘空间。
+  2233│ 
+  2234│ - **[OLLAMA_MODELS自定义路径]** — 通过设置`OLLAMA_MODELS`环境变量可更改Ollama模型下载的存储路径
+  2235│   - 来源文件：`01_AI与编程开发/Ollama模型下载报错解析.md`
+  2236│   - 核心解释：临时修改可在终端执行`export OLLAMA_MODELS=/新路径`；永久修改需在shell配置文件（如`~/.zshrc`）中添加该行并`source`生效。修改后需要重启Ollama服务，模型将下载到新路径下。
+  2237│ 
+  2238│ - **[上海六所高校NLP方向概览]** — 上海交通大学、上海大学、上海工程技术大学、上海财经大学、上海师范大学、上海外国语大学均开设自然语言处理相关硕士方向
+  2239│   - 来源文件：`01_AI与编程开发/上海高校自然语言处理硕士项目对比.md`
+
+[TRUNCATED] Showing lines 2180-2239 of 2276. To continue, call read_file with path="knowledge_cache.md" start_line=2240 max_lines=60
+</file>

@@ -1,0 +1,30 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_e5332fab (explore) status=Completed
+  objective: 你是知识提取代理。请读取文件 `01_AI与编程开发/修复PyInstaller打包命令.md`，完整阅读后提取3-6条核心知识点。
+
+每条知识点格式：
+```
+- **[简短标题]** — 一句话概述。
+  - 来源文件：修复PyInstaller打包命令.md
+  - 核心解释：3-5句话详细解释这个概念/技术/方法的要点。要包含具体的技术细节、参数、命令等。
+```
+
+重点关注：技术实现细节、可复用的代码模式、配置/命令、最...
+  result: - **[PyInstaller `--add-binary` 路径错误与修复]** — PowerShell 中使用绝对路径而非 `$env` 变量引用 DLL 文件可避免 "Unable to find" 错误。
+  - 来源文件：修复PyInstaller打包命令.md
+  - 核心解释：原命令使用 `$env:LOCALAPPDATA\Programs\Python\Python313\...` 引用 `pywintypes313.dll` 和 `pythoncom313.dll`，导致系统找不到该路径。正确做法是先用 `Get-ChildItem -Path D:\excel\venv -Filter "pywintypes*.dll" -Recurse` 定位实际文件路径，然后在 `--add-binary` 中填入虚拟环境内的准确绝对路径，如 `D:\excel\venv\Lib\site-packages\pywin32_system32\pywintypes313.dll;pywin32_system32`。
+
+- **[PowerShell 中 PyInstaller 参数字符串引用方式]** — 在 PowerShell 中参数必须用双引号包裹路径及分号，避免被识别为独立命令或语法错误。
+  - 来源文件：修复PyInstaller打包命令.md
+  - 核心解释：PowerShell 将 `;` 视为语句分隔符，因此 `--add-data src;src` 会导致 `src` 被当作命令执行而报错。正确写法是 `--add-data "src;src"`（Windows 分隔符用 `;`，Linux 用 `:`）。同理，所有含分号或空格的路径参数如 `--add-binary`、`--add-data` 都应用双引号包裹 `SOURCE:DEST` 或 `SOURCE;DEST` 对。
+
+- **[使用 `.spec` 文件管理复杂 PyInstaller 配置]** — 对于包含大量依赖的 Python 项目，使用 `.spec` 配置文件替代长命令行更专业、更可维护。
+  - 来源文件：修复PyInstaller打包命令.md
+  - 核心解释：先用 `python -m PyInstaller --onefile --windowed --name ExcelAnalyzer main.py` 生成基础 `.spec` 文件，然后编辑其中的 `Analysis()` 部分，将 `binaries`、`datas`、`hiddenimports`、`excludes`、`runtime_hooks` 等列表配置进去。例如 `binaries=[('D:\\path\\pywintypes313.dll', 'pywin32_system32')]`，`datas=[('src', 'src'), ('config.json', '.')]`。配置完成后只需 `python -m PyInstaller ExcelAnalyzer.spec` 即可打包，便于版本控制和团队协作。
+
+- **[处理 `xlwings.rest` 与 `werkzeug` 模块缺失警告]** — PyInstaller 打包时关于依赖的可选模块警告通常不影响主程序，可按需忽略或安装。
+  - 来源文件：修复PyInstaller打包命令.md
+  - 核心解释：打包输出中常见 `WARNING: Failed to collect submodules for 'xlwings.rest' because importing 'xlwings.rest' raised: ModuleNotFoundError: No module...
+  stats: steps=4, duration_ms=85913

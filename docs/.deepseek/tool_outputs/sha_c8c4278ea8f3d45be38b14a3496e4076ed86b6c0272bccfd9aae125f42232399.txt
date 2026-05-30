@@ -1,0 +1,57 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\10_人文与知识\九十年代VR实现与光波调制解调.md" total_lines="86" shown_lines="1-86" truncated="true">
+     1│ # 九十年代VR实现与光波调制解调
+     2│ 对话ID: 48711b1c-2841-43c2-b656-dda510bcbb7a
+     3│ 创建时间: 2026-03-12T19:05:31.457000+08:00
+     4│ 更新时间: 2026-03-12T19:08:02.069000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ 上世纪九十年代的VR是怎样实现的？光波调制解调是用来干什么的
+     9│ 
+    10│ ---
+    11│ 
+    12│ ## ❓ unknown
+    13│ 
+    14│ {'type': 'SEARCH', 'results': [{'url': 'https://baike.baidu.com/item/QuickTime%20VR/1307931?noadapt=1', 'title': 'QuickTime VR', 'snippet': '该技术基于静态图像处理，通过拼接照片或计算机渲染生成360度圆柱/立方体全景图像，支持视角切换、物体多角度观察与超媒体链接功能，可在普通计算机上实现虚拟场景浏览。兼容JPEG等多种图像格式...', 'cite_index': 1, 'published_at': 1759075200.0, 'site_name': '百度百科', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'http://www.tckjdsc.com/tec/114/114220.html', 'title': '[00114220]集成光学多路复用调制/解调器', 'snippet': '1. 项目概述 该多路复用调制器/解调器将一个光子发射器/探测器矩阵和一套信号处理电路制作在同一芯片上。其构造及工作原理如下所述. ... 2. 市场应用前景 可以被直接用于芯片內部各模块之間的连接，电子芯片之間的相互连接。', 'cite_index': 2, 'published_at': None, 'site_name': 'tckjdsc.com', 'site_icon': 'https://cdn.deepseek.com/site-icons/tckjdsc.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.taibo.cn/p/40856', 'title': '一篇文章带你俯瞰VR行业全景', 'snippet': 'VR经历了三次热潮：第一次源于1960年代，确立了VR技术原理;第二次发生在1990年代，VR试图商业化但未能成功;目前正处于第三次热潮前期，以Facebook 20亿美元收购Oculus为标志，全球范围内掀起了VR商业化普及化的浪潮。', 'cite_index': 3, 'published_at': 1457280000.0, 'site_name': '泰伯网', 'site_icon': 'https://cdn.deepseek.com/site-icons/taibo.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://m.c114.com.cn/w2837-644993.html', 'title': '100G系统中PM-QPSK光解调器的研究', 'snippet': '摘要：PM-QPSK技术具有高的频谱效率，将传输符号的波特率降低为二进制调制的四分之一,并能使光信噪比极大改善，可以用强大的DSP来处理极化模复用信号。文章分析了PM-QPSK技术调制和解调的基本原理...', 'cite_index': 4, 'published_at': 1316966400.0, 'site_name': 'C114通信网', 'site_icon': 'https://cdn.deepseek.com/site-icons/c114.com.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.im2maker.com/news/20160601/b149c585fa171c35.html', 'title': '被乔布斯遗忘的VR：纽约大学教授解密苹果与虚拟现实的尘封往事', 'snippet': '然而，在QuickTime VR被苹果人机界面团队开发出来的九十年代初，数码摄像机远没有发展到现在的程度。那时更没有谷歌Jump这种360度摄像机可以用。 所以解决方案就是用一台静态相机拍摄一大堆照片...', 'cite_index': 5, 'published_at': 1464710400.0, 'site_name': '镁客网', 'site_icon': 'https://cdn.deepseek.com/site-icons/im2maker.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://browse.library.kiwix.org/content/wikipedia_en_all_maxi/A/Sega_VR', 'title': 'Sega VR', 'snippet': 'The Sega VR is an unreleased virtual reality headset developed by Sega in the early 1990s. Planned as an add-on peripheral for the Sega Genesis and only publicly showcased at a number of trade shows and expositions, its release was postponed and later cancelled outright after Sega ran into development issues.', 'cite_index': 6, 'published_at': None, 'site_name': 'Kiwix', 'site_icon': 'https://cdn.deepseek.com/site-icons/kiwix.org', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.eepw.com.cn/zhuanlan/351218.html', 'title': '什么是相干光通信？原理是什么？', 'snippet': '它基于发送端和接收端使用具有相同频率和相位的激光作为载波，通过调制发送端的光波来编码信息，并在接收端使用相同的激光与接收到的信号进行相干解调以恢复原始信息。', 'cite_index': 7, 'published_at': 1733328000.0, 'site_name': '电子产品世界', 'site_icon': 'https://cdn.deepseek.com/site-icons/eepw.com.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://news.17173.com/content/2016-06-10/20160610004000959_2.shtml', 'title': '上世纪90年代的VR游戏机玩起来是怎样的体验', 'snippet': '圆环里的磁场发射器围绕玩家创造一个3D磁场，机枪控制器和Visette头盔里的接收器可以检测出玩家看向哪个方向，枪指向哪个方向。在任天堂的体感游戏机Wii还在娘胎的时候，这的确可以算得上是绝妙的运动追踪解决方案。', 'cite_index': 8, 'published_at': 1465488000.0, 'site_name': '17173', 'site_icon': 'https://cdn.deepseek.com/site-icons/17173.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.kczg.org.cn/fruit/detail?id=727058', 'title': '5G 高速光模块核心器件 _科创中国', 'snippet': '基于晶体光学和微光光学材料，应用偏振复用相干光调制解调技术，研发 5G 相干光通信及超远距离微弱信号光纤传感系统领域的高速收发模块与器件。产品旨在打破了欧美国家长期技术垄断和封锁...', 'cite_index': 9, 'published_at': 1756828800.0, 'site_name': '科创中国', 'site_icon': 'https://cdn.deepseek.com/site-icons/kczg.org.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www1.ingdan.com/news/detail-13955.html?isComment=1', 'title': '苹果曾经是先驱 QuickTime VR项目早已被遗忘', 'snippet': '在设计时，QuickTime VR做的许多事情和Facebook 360度视频一样，它也可以让观看者沉浸于不同的物理空间（或者观看特殊对象），主要通过全景图片实现 ... 也没有360度摄像头，比如类似谷歌Jump的摄像头。', 'cite_index': 10, 'published_at': 1464796800.0, 'site_name': 'IngDan', 'site_icon': 'https://cdn.deepseek.com/site-icons/ingdan.com', 'query_indexes': [0], 'is_hidden': False}]}
+    15│ 嗯，用户同时问了两个跨度很大的问题：一个是VR发展史的技术话题，另一个是现代光通信的专业术语。用户可能是在阅读或学习中遇到这两个概念，想一次性搞清楚。我需要分别回答，并说明这两个概念之间没有直接关系。
+    16│ 
+    17│ 我打算先解释90年代VR的两种主要实现路径，再说明光波调制解调器的用途，最后指出两者的时代和技术领域差异。如果搜索结果充分，可以分别引用不同来源来支撑。
+    18│ 
+    19│ 关于90年代VR，搜索结果中有多个高质量来源。苹果QuickTime VR的介绍非常详细[citation:1][citation:5][citation:10]，说明它是基于静态照片拼接的全景技术，当时被称为"穷人的VR"。还有专门讲Sega VR的[citation:6]，详细描述了其开发过程和最终被取消的原因，包括引发晕动症的问题。Virtuality 1000CS的介绍[citation:8]提供了早期街机式VR系统的细节，包括磁场追踪技术。
+    20│ 
+    21│ 关于光波调制解调器，几个技术类网页都很有价值。有个科技成果页面介绍了集成光学多路复用调制解调器[citation:2]，解释其工作原理和芯片集成特点。相干光通信的科普文章[citation:7]清晰地解释了调制解调器的基本原理，特别是在现代通信中的作用。100G系统的专业论文[citation:4]和5G光模块介绍[citation:9]进一步印证了这是现代高速通信的核心技术，与90年代VR完全无关。
+    22│ 
+    23│ 我准备用对比的方式呈现90年代VR的两条路径：低成本软件方案以苹果QTVR为代表，高端硬件方案以Virtuality和Sega VR为代表。然后解释光波调制解调器是现代光通信的"翻译官"角色。最后点明两者的时代差异，避免用户混淆。
+    24│ 上世纪九十年代的VR实现方式与今天截然不同，更像是一次充满想象力的“平地起高楼”。它主要通过两种路径实现：一种是基于**苹果QuickTime VR的软件方案**，另一种是**世嘉、Virtuality等公司的硬件设备方案**[citation:1][citation:3][citation:6]。而您提到的“光波调制解调器”，其实是现代高速通信（如5G、光纤宽带）领域的核心技术，与90年代的VR并无直接关联[citation:2][citation:4][citation:7]。
+    25│ 
+    26│ 为了让你更清晰地了解，这里为你分别梳理：
+    27│ 
+    28│ ### 📷 九十年代的VR是如何实现的？
+    29│ 当时主要分为两种“画风”迥异的流派：
+    30│ 
+    31│ *   **苹果的“穷人的VR”：基于照片的软件模拟** [citation:1][citation:5][citation:10]
+    32│     *   **实现方式**：它不依赖头盔，而是先在现实中用普通相机拍摄大量重叠的照片，再用**克雷超级计算机**把这些照片“缝合”成360度全景图。用户只需通过鼠标拖动，就能在电脑屏幕上“环顾”虚拟空间，例如著名的辛普森案现场地图就是用此技术制作的[citation:1][citation:5]。
+    33│ *   **世嘉与Virtuality：笨重的硬件头显** [citation:3][citation:6][citation:8]
+    34│     *   **实现方式**：这才是我们今天理解的“戴头盔”。例如1991年的**Virtuality 1000CS**，需要连接笨重的电脑主机和腰带，利用**磁场发射器**来追踪玩家头部的转动[citation:8]。而世嘉的**Sega VR**更是命运多舛，虽然已经造出了原型机并开发了游戏，却因为测试者反馈会引发**严重的晕动症和头痛**，最终在1994年被迫取消了上市计划[citation:6]。
+    35│ 
+    36│ ### 💡 “光波调制解调器”是用来干什么的？
+    37│ 这是一种在现代光纤通信中负责**翻译**和**压缩**数据的关键设备[citation:7][citation:9]。
+    38│ 
+    39│ *   **核心作用**：它利用了复杂的**偏振复用**和**相位调制**技术，把不同颜色（波长）的光信号进行合并或分离[citation:2][citation:4]。简单理解，就像是把多股细流汇成一条大河，或者反过来把大河精准分流，从而实现一根光纤内同时传输海量数据。
+    40│ *   **应用场景**：这正是支撑我们今天的**100Gbps甚至更高速率互联网**（如5G、长途骨干网）背后的“黑科技”，是2010年代后才大规模应用的尖端技术，自然不可能出现在90年代的VR设备中[citation:4][citation:9]。
+    41│ 
+    42│ 九十年代的VR受限于当时的计算能力，是一种充满想象力的“取巧”之作；而光波调制解调器则代表了基础物理材料学的深厚积累。你对当时具体的某款VR设备，比如任天堂的Virtual Boy，或者世嘉取消的那个项目更感兴趣吗？我们可以接着聊聊那些有趣的产品故事。
+    43│ 
+    44│ ---
+    45│ 
+    46│ ## ❓ unknown
+    47│ 
+    48│ 光波调制解调可以用在上世纪九十年代VR技术上吗？
+    49│ 
+    50│ ---
+    51│ 
+    52│ ## ❓ unknown
+    53│ 
+    54│ {'type': 'SEARCH', 'results': [{'url': 'https://www.zte.com.cn/china/about/magazine/zte-communications/2011/4/cn_671/243392.html', 'title': '光正交频分复用技术及其应用（1）', 'snippet': 'OFDM的概念最早是贝尔实验室的R.W. Chang于1966年提出的。其他的一些OFDM关键技术包括：1969年Weinsten等提出的用逆离散傅里叶变换(IDFT)/傅里叶变换(DFT)实现OFDM的调制和解调；1980年提出的循环前缀技术。这3个关键概念构成了OFDM的基础[2]...', 'cite_index': 1, 'published_at': 1311091200.0, 'site_name': 'ZTE', 'site_icon': 'https://cdn.deepseek.com/site-icons/zte.com.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.ifanr.com/410308', 'title': '虚拟现实，头戴式显示器只是第一步', 'snippet': '顾丁奕认为，过去虚拟现实技术发展遭遇到最大的瓶颈，是计算机图形运算能力不够发达。“当时计算机图形计算能力的不足，无法满足视觉信息传达的要求，从而限制了虚拟现实技术的发挥。比如任天堂的 Virtual Boy...', 'cite_index': 2, 'published_at': 1395936000.0, 'site_name': '爱范儿', 'site_icon': 'https://cdn.deepseek.com/site-icons/ifanr.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'http://book.interlib.cn/sscr/1273/product/20055521.html', 'title': '智享U阅', 'snippet': '1960 年，美国人梅曼 (Maiman) 发明了第一台红宝石激光器；1970 年，美国贝尔实验室研制成功可在室温下连续振荡的镓铝砷 (GaAlAs) 半导体激光器，为高速信息的光调制提供了光源条件。1977 年...', 'cite_index': 3, 'published_at': None, 'site_name': '广州图创计算机软件开发有限公司', 'site_icon': 'https://cdn.deepseek.com/site-icons/interlib.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://stc.computer.org/csdl/magazine/cg/1999/06/mcg1999060016/13rRUwgyOfi', 'title': "What's Real About Virtual Reality?", 'snippet': 'By 1994, one could honestly say that VR "almost works." Many workers at many centers could doe quite exciting demos. Nevertheless, the enabling technologies had limitations that seriously impeded building VR systems for any real work except entertainment and vehicle simulators.', 'cite_index': 4, 'published_at': 941385600.0, 'site_name': 'computer.org', 'site_icon': 'https://cdn.deepseek.com/site-icons/computer.org', 'query_indexes': [2], 'is_hidden': False}, {'url': 'http://www.iccsz.com/site/cn/News/2017/08/11/20170811015746423600.htm', 'title': '光通信其实没你想得那么难', 'snippet': '摘要：通信史上，波波夫发送与接收第一封无线电报是在1896年，而以发明电话而著名的贝尔，在1876年发明了电话之后，就想到利用光来通电话的问题。1880年，他利用太阳光作光源，大气为传输媒质，用硒晶体作为光接收器件，成功地进行了光电话的实验，通话距离最远达到了213米。', 'cite_index': 5, 'published_at': 1502380800.0, 'site_name': '讯石光通讯网', 'site_icon': 'https://cdn.deepseek.com/site-icons/iccsz.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://vr.ofweek.com/news/2018-11/ART-815014-8470-30281650.html', 'title': '20年前吊打Virtual Boy的VR游戏机当年竟惨遭搁置？', 'snippet': '当单一色彩显示、配三角支架的VB正面杠上计算机图形学、CG技术迅猛发展的90年代，彼时玩家对于游戏画面的要求正不断被愈发精湛的游戏美术拔高，加上价格昂贵、3D效果差、缺乏真正的便携性，VB面世后溃不成军。VB的失败引发任天堂股价应声下跌...', 'cite_index': 6, 'published_at': 1542211200.0, 'site_name': 'OFweek', 'site_icon': 'https://cdn.deepseek.com/site-icons/ofweek.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://book.qq.com/book-read/41864892/22', 'title': '通信导论（第2版）_1.4.2 激光与量子通信技术的演进在线阅读-QQ阅读', 'snippet': '1880年，美国科学家贝尔发明了第一个光电话，可以说是现代光通信的开端。在光电话中，他将弧光灯的恒定光束投射在传声器的音膜上，随声音的振动而得到强弱变化的反射光束，形成对光的调制，在大气中传输200m后，接收端的硅电池对收到的信号进行解调制，还原成原始语音信号...', 'cite_index': 7, 'published_at': 1639497600.0, 'site_name': 'QQ阅读', 'site_icon': 'https://cdn.deepseek.com/site-icons/qq.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.dvbcn.com/p/36620.html', 'title': '【VR深度】英特尔的奇思妙想，与VR行业中“枯萎技术”潮', 'snippet': '受90年代VR潮流的影响，他在类VR设备Virtual Boy中用到了当时不太成熟的3D技术，笨重而丑陋的外观设计也难以受到消费者认同，产品在发售5个月后就面临停产，销
+[TRUNCATED] The selected range exceeded 16KB. Continue with a smaller max_lines value.
+</file>

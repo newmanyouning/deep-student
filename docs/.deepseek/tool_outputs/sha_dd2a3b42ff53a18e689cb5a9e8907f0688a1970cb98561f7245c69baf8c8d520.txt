@@ -1,0 +1,26 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_5ce3545b (explore) status=Completed
+  objective: 你是知识提取代理。请读取文件 `01_AI与编程开发/cc-mini参数错误排查.md`，完整阅读后提取3-6条核心知识点。
+
+每条知识点格式：
+```
+- **[简短标题]** — 一句话概述。
+  - 来源文件：cc-mini参数错误排查.md
+  - 核心解释：3-5句话详细解释这个概念/技术/方法的要点。要包含具体的技术细节、参数、命令等。
+```
+
+重点关注：技术实现细节、可复用的代码模式、配置/命令、最佳实践。忽略对话...
+  result: - **[Python函数参数错误的通用诊断方法]** — 当遇到 `missing X required positional arguments` 错误时，根本原因是函数调用时未以关键字参数传递必需参数，通常源于库版本不兼容或API变更。
+  - 来源文件：cc-mini参数错误排查.md
+  - 核心解释：Python运行时抛出 `FileWriteTool.execute() missing 2 required positional arguments: 'file_path' and 'content'` 意味着调用方使用了 `tool.execute()` 而非 `tool.execute(file_path="...", content="...")`。排查步骤为：①确认Python版本 ≥3.10（`python3 --version`）；②检查项目是否存在 `requirements.txt` 或 `pyproject.toml` 依赖文件；③创建虚拟环境并重装依赖（`python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt`）；④定位源码中调用该方法的位置，将无参调用改为显式关键字参数传递。这是Python API升级后最常见的兼容性问题模式。
+
+- **[macOS上使用Git代理的完整排查与清除流程]** — 当Git连接GitHub报 `Failed to connect to 127.0.0.1 port 7890` 时，核心步骤是区分全局Git代理配置与Shell环境变量代理，并彻底清除或重设。
+  - 来源文件：cc-mini参数错误排查.md
+  - 核心解释：Git代理失败的原因有三个层面：①全局Git配置中残存了`http.proxy`/`https.proxy`指向不存在的代理服务；②Shell环境变量`HTTP_PROXY`/`HTTPS_PROXY`残留；③代理软件的端口或协议类型不匹配。排查命令链：`git config --global --list | grep proxy` 查看全局Git代理 → `git config --global --get-regexp http.*proxy` 和 `git config --local --get-regexp http.*proxy` 检查全局+本地配置 → `env | grep -i proxy` 检查环境变量。清除命令：`git config --global --unset-all http.proxy` 和 `git config --global --unset-all https.proxy`（本地同样操作）。验证成功用 `git ls-remote https://github.com/e10nMa2k/cc-mini.git` — 返回仓库引用列表而非连接失败即代表正常。如果仍需代理，推荐统一使用 SOCKS5 协议：`git config --global http.proxy socks5://127.0.0.1:7891`。
+
+- **[Git克隆+虚拟环境的macOS项目初始化标准流程]** — 从GitHub克隆Python开源项目并在macOS上搭建可运行环境的五步标准操作。
+  - 来源文件：cc-mini参数错误排查.md
+  - 核心解释：标准流程为：①退出当前虚拟环境（`deactivate`，可选但推荐避免路径混淆）；②删除旧项目目录（`rm -rf cc-mini`，注意备份自定义配置文件如`.env`）；③克隆最新代码（`git clone https://github.com/e1...
+  stats: steps=4, duration_ms=188980

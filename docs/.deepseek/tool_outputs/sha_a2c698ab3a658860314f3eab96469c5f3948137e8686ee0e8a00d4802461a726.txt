@@ -1,0 +1,104 @@
+# 国内编程模型上下文窗口对比
+对话ID: ca68f19e-07e8-436a-ba4d-6ff4c94347ce
+创建时间: 2026-04-04T06:58:18.265000+08:00
+更新时间: 2026-04-04T11:00:44.137000+08:00
+
+## ❓ unknown
+
+现在主流编程模型的上下文窗口大概是多少？给我一份尽可能详细的表单告诉我国内主流编程模型的上下文窗口大小。仅输出对比表格。
+
+---
+
+## ❓ unknown
+
+用户要求提供国内主流编程模型的上下文窗口大小对比表格。我需要收集国内主流模型的相关信息。为了全面覆盖，我将同时进行多项搜索，以获取不同模型的上下文窗口数据。
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+搜索结果显示了一些相关信息。为了全面收集国内主流编程模型的上下文窗口数据，我们需要同时进行多项搜索，以覆盖不同的模型。
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+搜索结果显示了一些模型的上下文窗口数据。为了更全面地覆盖国内主流编程模型，我们需要同时进行多项搜索，以获取如“讯飞星火”、“百川智能”、“零一万物”、“月之暗面”等模型的上下文窗口信息。
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+搜索结果中已经包含了部分模型的上下文窗口信息。为了更全面地覆盖国内主流编程模型，我们还需要进一步搜索其他相关模型，例如“天工”、“智谱AI”、“字节跳动”等。
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+搜索结果显示了一些模型的上下文窗口数据。接下来，我将整理一份对比表格，包含模型名称、开发者/所属机构、上下文窗口大小等信息。表格中会列出Qwen、文心快码、CodeGeeX、DeepSeek Coder、豆包、混元、智谱、MiniMax、讯飞星火、百川、零一万物、月之暗面、天工、字节跳动等模型。
+| 模型 | 开发者/所属机构 | 上下文窗口 | 主要备注 |
+| :--- | :--- | :--- | :--- |
+| **千问 (Qwen) 3.6-Plus** | 阿里巴巴 | 1M Token | 当前主流国产编程模型标杆，支持百万级窗口[reference:0][reference:1] |
+| **DeepSeek (通用/Agent版)** | 深度求索 | 1M Token | 对话Agent版本支持，与Qwen同为第一梯队[reference:2] |
+| **豆包 (Doubao) Seed-Code** | 字节跳动 | 256K Token | 编程专用模型，适合大型代码库[reference:3][reference:4] |
+| **月之暗面 (Moonshot AI) Kimi K2** | 月之暗面 | 256K Token | 旗舰模型，具备自主行动能力[reference:5][reference:6] |
+| **腾讯混元 (Hunyuan)** | 腾讯 | 4K ~ 256K Token | 不同版本差异大：Code版4K/8K，FunctionCall版32K，开源7B版256K[reference:7][reference:8][reference:9][reference:10] |
+| **智谱 (Zhipu) GLM 系列** | 智谱 | 128K ~ 200K Token | GLM-4.5为128K，GLM-4.6/4.7/5V-Turbo升级至200K[reference:11][reference:12][reference:13][reference:14] |
+| **百度文心快码 (Baidu Comate)** | 百度 | 128K ~ 200K Token | 内置GLM模型，版本不同有差异[reference:15][reference:16] |
+| **CodeGeeX (第4代)** | 智谱 | 128K Token | 编程专用模型[reference:17][reference:18] |
+| **MiniMax M2** | MiniMax | 128K ~ 204.8K Token | 不同版本有差异：M2为128K，M1达1M Token（侧重长文），M2.5为200K[reference:19][reference:20][reference:21][reference:22] |
+| **DeepSeek Coder** | 深度求索 | 16K ~ 32K Token | 早期代码专用模型，存在不同版本[reference:23][reference:24] |
+| **零一万物 Yi-34B** | 零一万物 | 200K Token | 开源模型，支持超长文本[reference:25][reference:26] |
+| **百川 (Baichuan)** | 百川智能 | 4K ~ 192K Token | 7B版为4K，Baichuan2-Turbo API为192K[reference:27][reference:28] |
+| **昆仑万维天工 (Tiangong) 2.0** | 昆仑万维 | 100K Token | 通用模型，支持超长上下文[reference:29][reference:30] |
+| **字节跳动 Coze** | 字节跳动 | 32K Token | 基于滑动窗口注意力机制[reference:31] |
+| **讯飞星火 (iFlyCode)** | 科大讯飞 | 未明确公布 | 智能编程助手，需通过API管理历史上下文[reference:32][reference:33] |
+
+---
+
+## ❓ unknown
+
+API error: Error code: 400 - {'error': {'message': "This model's maximum context length is 
+131072 tokens. However, you requested 131491 tokens (123299 in the messages, 8192 in the 
+completion). Please reduce the length of the messages or completion.", 'type': 
+'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}
+这个报错说明这个模型的上下文窗口大概是多少？
+
+---
+
+## ❓ unknown
+
+我们被问到：“这个报错说明这个模型的上下文窗口大概是多少？” 报错信息显示：最大上下文长度是131072 tokens，但请求了131491 tokens（消息中123299，completion中8192）。所以上下文窗口大小就是131072 tokens。回答要简洁。
+根据报错信息，该模型的**上下文窗口为 131,072 tokens**（即 128K，因为 1K=1024，128×1024=131072）。
+
+---
+
+## ❓ unknown
+
+completion是什么？修改这个长度对模型的性能有影响吗？
+
+---
+
+## ❓ unknown
+
+我们被问到两个问题：1) completion是什么？2) 修改这个长度对模型性能有影响吗？用户之前遇到API错误，提示context length超限，其中提到了completion。需要解释completion的含义以及调整其长度对性能的影响。回答要简洁清晰。
+**1. Completion 是什么？**  
+在 API 请求中，`completion` 指模型**生成输出的那部分 token 长度**。  
+- 你发送给模型的 `messages`（或 `prompt`）占一部分 token。  
+- 模型回答的内容（即输出结果）占另一部分 token，就是 `completion`。  
+- 两者之和 + 少量固定开销 ≤ 模型的上下文窗口。
+
+例如错误信息中：  
+- 输入占 `123299` tokens  
+- 你请求的输出预留了 `8192` tokens  
+- 总需求 = `131491` > 模型上限 `131072`（128K）  
+
+**2. 修改 completion 长度对模型性能的影响**  
+- **正面影响**：缩短 `max_tokens`（completion 上限）可以**减少总 token 数**，避免超限错误，同时**降低单次请求的延迟**和计算开销。  
+- **负面影响**：  
+  - **截断回答**：如果模型真实回答需要 8192 tokens，但你设成 4096，输出会被强行切断，信息不完整。  
+  - **质量潜在下降**：对长思考链（如复杂代码生成、长文档总结）来说，过短的 completion 会让模型“仓促结尾”，降低推理深度。  
+- **对模型本身能力无永久影响**：只是运行时限制，不改变模型权重或后续能力。
+
+**建议**：  
+- 若报错因输入已接近上限，可设置 `max_tokens = 2048~4096` 并采用流式输出，或压缩输入（如裁剪对话历史）。  
+- 对代码生成类任务，一般 4096 tokens 足够覆盖大多数函数/文件；超大项目可改用 1M 窗口的模型（如 Qwen、DeepSeek）。
+
+---

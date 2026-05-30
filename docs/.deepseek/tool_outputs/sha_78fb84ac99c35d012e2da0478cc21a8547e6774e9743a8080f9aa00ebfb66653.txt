@@ -1,0 +1,204 @@
+<file path="01_AI与编程开发\项目重构方案.md" total_lines="6198" shown_lines="4534-4733" truncated="true" next_start_line="4734">
+  4534│     IsMerged As Boolean
+  4535│     MergeArea As String
+  4536│ End Type
+  4537│ 
+  4538│ ' 宸ヤ綔琛ㄦ暟鎹粨鏋?
+  4539│ Public Type SheetData
+  4540│     Name As String
+  4541│     Index As Long
+  4542│     UsedRangeAddress As String
+  4543│     RowCount As Long
+  4544│     ColumnCount As Long
+  4545│     Cells() As cellData
+  4546│     CellCount As Long
+  4547│ End Type
+  4548│ 
+  4549│ ' 宸ヤ綔绨挎暟鎹粨鏋?
+  4550│ Public Type WorkbookData
+  4551│     Name As String
+  4552│     Path As String
+  4553│     SheetCount As Long
+  4554│     Sheets() As SheetData
+  4555│     TotalCells As Long
+  4556│ End Type
+  4557│ 
+  4558│ ' 涓诲嚱鏁帮細鎻愬彇宸ヤ綔绨挎墍鏈夋暟鎹?
+  4559│ Public Function ExtractAllCellsData() As String
+  4560│     Dim wb As Workbook
+  4561│     Dim result As WorkbookData
+  4562│     Dim jsonStr As String
+  4563│     
+  4564│     On Error GoTo ErrorHandler
+  4565│     
+  4566│     Set wb = ThisWorkbook
+  4567│     result = ExtractWorkbookData(wb)
+  4568│     jsonStr = WorkbookDataToJson(result)
+  4569│     
+  4570│     ExtractAllCellsData = jsonStr
+  4571│     Exit Function
+  4572│     
+  4573│ ErrorHandler:
+  4574│     ExtractAllCellsData = "Error: " & Err.Description
+  4575│ End Function
+  4576│ 
+  4577│ ' 鎻愬彇宸ヤ綔绨挎暟鎹?
+  4578│ Private Function ExtractWorkbookData(wb As Workbook) As WorkbookData
+  4579│     Dim result As WorkbookData
+  4580│     Dim ws As Worksheet
+  4581│     Dim i As Long
+  4582│     
+  4583│     result.Name = wb.Name
+  4584│     result.Path = wb.Path
+  4585│     result.SheetCount = wb.Worksheets.Count
+  4586│     
+  4587│     ReDim result.Sheets(1 To result.SheetCount)
+  4588│     
+  4589│     For i = 1 To result.SheetCount
+  4590│         Set ws = wb.Worksheets(i)
+  4591│         result.Sheets(i) = ExtractSheetData(ws)
+  4592│         result.TotalCells = result.TotalCells + result.Sheets(i).CellCount
+  4593│     Next i
+  4594│     
+  4595│     ExtractWorkbookData = result
+  4596│ End Function
+  4597│ 
+  4598│ ' 鎻愬彇宸ヤ綔琛ㄦ暟鎹?
+  4599│ Private Function ExtractSheetData(ws As Worksheet) As SheetData
+  4600│     Dim result As SheetData
+  4601│     Dim usedRange As Range
+  4602│     Dim cell As Range
+  4603│     Dim cellData() As cellData
+  4604│     Dim cellIndex As Long
+  4605│     Dim i As Long, j As Long
+  4606│     
+  4607│     result.Name = ws.Name
+  4608│     result.Index = ws.Index
+  4609│     
+  4610│     ' 鑾峰彇浣跨敤鑼冨洿
+  4611│     On Error Resume Next
+  4612│     Set usedRange = ws.usedRange
+  4613│     On Error GoTo 0
+  4614│     
+  4615│     If Not usedRange Is Nothing Then
+  4616│         result.UsedRangeAddress = usedRange.Address
+  4617│         result.RowCount = usedRange.Rows.Count
+  4618│         result.ColumnCount = usedRange.Columns.Count
+  4619│         
+  4620│         ' 棰勫垎閰嶆暟缁?
+  4621│         ReDim cellData(1 To result.RowCount * result.ColumnCount)
+  4622│         cellIndex = 0
+  4623│         
+  4624│         ' 閬嶅巻鎵€鏈夊崟鍏冩牸
+  4625│         For i = 1 To result.RowCount
+  4626│             For j = 1 To result.ColumnCount
+  4627│                 Set cell = usedRange.Cells(i, j)
+  4628│                 cellIndex = cellIndex + 1
+  4629│                 cellData(cellIndex) = ExtractCellData(cell, ws.Name)
+  4630│             Next j
+  4631│         Next i
+  4632│         
+  4633│         ' 璋冩暣鏁扮粍澶у皬
+  4634│         ReDim Preserve cellData(1 To cellIndex)
+  4635│         result.Cells = cellData
+  4636│         result.CellCount = cellIndex
+  4637│     Else
+  4638│         ' 娌℃湁浣跨敤鑼冨洿
+  4639│         result.UsedRangeAddress = ""
+  4640│         result.RowCount = 0
+  4641│         result.ColumnCount = 0
+  4642│         result.CellCount = 0
+  4643│     End If
+  4644│     
+  4645│     ExtractSheetData = result
+  4646│ End Function
+  4647│ 
+  4648│ ' 鎻愬彇鍗曚釜鍗曞厓鏍兼暟鎹?
+  4649│ Private Function ExtractCellData(cell As Range, sheetName As String) As cellData
+  4650│     Dim result As cellData
+  4651│     
+  4652│     result.sheetName = sheetName
+  4653│     result.Address = cell.Address
+  4654│     result.Row = cell.Row
+  4655│     result.Column = cell.Column
+  4656│     
+  4657│     ' 鑾峰彇鍊煎拰鍏紡
+  4658│     result.Value = cell.Value
+  4659│     result.Formula = cell.Formula
+  4660│     result.HasFormula = (Left(cell.Formula, 1) = "=")
+  4661│     
+  4662│     ' 鍒ゆ柇鏁版嵁绫诲瀷
+  4663│     If IsError(cell.Value) Then
+  4664│         result.DataType = "error"
+  4665│     ElseIf IsEmpty(cell.Value) Or IsNull(cell.Value) Then
+  4666│         result.DataType = "empty"
+  4667│     ElseIf IsNumeric(cell.Value) Then
+  4668│         result.DataType = "number"
+  4669│     ElseIf IsDate(cell.Value) Then
+  4670│         result.DataType = "date"
+  4671│     ElseIf TypeName(cell.Value) = "Boolean" Then
+  4672│         result.DataType = "boolean"
+  4673│     Else
+  4674│         result.DataType = "string"
+  4675│     End If
+  4676│     
+  4677│     ' 妫€鏌ュ悎骞跺崟鍏冩牸
+  4678│     result.IsMerged = cell.MergeCells
+  4679│     If result.IsMerged Then
+  4680│         result.MergeArea = cell.MergeArea.Address
+  4681│     Else
+  4682│         result.MergeArea = ""
+  4683│     End If
+  4684│     
+  4685│     ExtractCellData = result
+  4686│ End Function
+  4687│ 
+  4688│ ' 灏嗗伐浣滅翱鏁版嵁杞崲涓篔SON瀛楃涓?
+  4689│ Private Function WorkbookDataToJson(data As WorkbookData) As String
+  4690│     Dim json As String
+  4691│     Dim i As Long, j As Long
+  4692│     
+  4693│     json = "{"
+  4694│     json = json & """workbook_name"": """ & EscapeJson(data.Name) & ""","
+  4695│     json = json & """workbook_path"": """ & EscapeJson(data.Path) & ""","
+  4696│     json = json & """sheet_count"": " & data.SheetCount & ","
+  4697│     json = json & """total_cells"": " & data.TotalCells & ","
+  4698│     json = json & """sheets"": ["
+  4699│     
+  4700│     For i = 1 To data.SheetCount
+  4701│         json = json & SheetDataToJson(data.Sheets(i))
+  4702│         If i < data.SheetCount Then json = json & ","
+  4703│     Next i
+  4704│     
+  4705│     json = json & "]"
+  4706│     json = json & "}"
+  4707│     
+  4708│     WorkbookDataToJson = json
+  4709│ End Function
+  4710│ 
+  4711│ ' 灏嗗伐浣滆〃鏁版嵁杞崲涓篔SON瀛楃涓?
+  4712│ Private Function SheetDataToJson(data As SheetData) As String
+  4713│     Dim json As String
+  4714│     Dim i As Long
+  4715│     
+  4716│     json = "{"
+  4717│     json = json & """sheet_name"": """ & EscapeJson(data.Name) & ""","
+  4718│     json = json & """sheet_index"": " & data.Index & ","
+  4719│     json = json & """used_range"": """ & EscapeJson(data.UsedRangeAddress) & ""","
+  4720│     json = json & """row_count"": " & data.RowCount & ","
+  4721│     json = json & """column_count"": " & data.ColumnCount & ","
+  4722│     json = json & """cell_count"": " & data.CellCount & ","
+  4723│     json = json & """cells"": ["
+  4724│     
+  4725│     For i = 1 To data.CellCount
+  4726│         json = json & CellDataToJson(data.Cells(i))
+  4727│         If i < data.CellCount Then json = json & ","
+  4728│     Next i
+  4729│     
+  4730│     json = json & "]"
+  4731│     json = json & "}"
+  4732│     
+  4733│     SheetDataToJson = json
+
+[TRUNCATED] Showing lines 4534-4733 of 6198. To continue, call read_file with path="01_AI与编程开发\项目重构方案.md" start_line=4734 max_lines=200
+</file>

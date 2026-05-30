@@ -1,0 +1,41 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_f0a4c77b (explore) status=Completed
+  objective: 你是知识点提取器。读取以下文件并提取 3-8 条知识条目。
+
+文件路径: C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\查看云服务器模型版本方法.md
+
+对每条知识点，按以下格式输出：
+```
+- **[主题标签]** — 一句话概括
+  - 来源文件：文件名.md
+  - 核心解释：2-4句话详细解释核心概念/原理/步骤
+```
+
+要求:
+-...
+  result: - **[pip查看Python包版本]** — 通过 `pip show` 或 `__version__` 属性查看安装在Python环境中的模型库版本。
+  - 来源文件：查看云服务器模型版本方法.md
+  - 核心解释：这是AI模型部署中最常见的场景。使用 `pip show <包名>` 可直接显示包的版本、依赖等详细信息；使用 `python -c "import <包名>; print(<包名>.__version__)"` 则通过Python代码一行输出版本号。若不确定包名，可先用 `pip list` 列出所有已安装包再搜索。
+
+- **[apt/dpkg查看系统包版本]** — 通过 `apt` 或 `dpkg` 命令查看已安装系统级软件包的版本信息。
+  - 来源文件：查看云服务器模型版本方法.md
+  - 核心解释：适用于通过 `apt` 安装的Ubuntu软件包（如某些模型依赖库）。命令 `apt show <包名>` 显示特定包详情；`apt list --installed | grep <关键词>` 列出所有已装包后用 grep 过滤；`dpkg -l | grep <关键词>` 则是另一种等效查询方式。
+
+- **[可执行文件版本参数查询]** — 使用 `--version` 或 `-v` 参数查看源码编译或预编译二进制部署的模型推理引擎版本。
+  - 来源文件：查看云服务器模型版本方法.md
+  - 核心解释：对于直接下载或编译的模型推理引擎（如 `llama.cpp` 的可执行文件），多数命令行工具支持 `--version` 或 `-v` 参数输出版本号。如果程序不在PATH中，需要指定完整路径执行，例如 `./main --version`。
+
+- **[Docker容器内查看模型版本流程]** — 四步操作法：确定容器→进入Shell→按部署方式查版本→退出。
+  - 来源文件：查看云服务器模型版本方法.md
+  - 核心解释：在Docker部署场景下，先用 `docker ps` 找到容器ID或名称，然后用 `docker exec -it <容器> /bin/bash` 进入容器内部交互Shell。进入后根据模型的安装方式（pip包、apt包、可执行文件、环境变量等）选择对应命令查询，最后用 `exit` 退出容器回到宿主机。
+
+- **[容器外辅助查版本手段]** — 当容器内找不到版本信息时，通过镜像标签、构建历史或容器配置辅助定位。
+  - 来源文件：查看云服务器模型版本方法.md
+  - 核心解释：在宿主机上执行 `docker images | grep <镜像名>` 查看镜像标签（如 `my-model:v1.2`）可能暗示版本；`docker history <镜像名>:<标签>` 查看镜像构建历史推断版本；`docker inspect <容器>` 查看容器启动时的环境变量配置，这些方法可作为容器内查询失败的补充。
+
+- **[环境变量与文件中的版本信息]** — 通过环境变量或特定文件查找模型版本号。
+  - 来源文件：查看云服务器模型版本方法.md
+  - 核心解释：开发者常将模型版本号写入环境变量或配置文件中。在容器或服务器内部，可用 `env | grep -i version` 筛选包含"version"的环境变量，或用 `cat /path/to/version.txt` 查看特定版本文件。此外可用 `find / -name "*version*" 2>/dev/null` 全局搜索含版本关键词的文件。
+  stats: steps=4, duration_ms=14503

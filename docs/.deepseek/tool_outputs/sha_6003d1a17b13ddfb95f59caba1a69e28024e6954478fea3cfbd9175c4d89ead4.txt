@@ -1,0 +1,86 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\10_人文与知识\基督教教派及中国合法教派介绍.md" total_lines="591" shown_lines="201-400" truncated="true" next_start_line="401">
+   201│ | **北京锡安教会长三角区苏州堂**[citation:3] | 苏州市姑苏区民政和卫生健康局[citation:3] | 2024年1月[citation:3] | 作为非法社会组织被取缔[citation:3] |
+   202│ | **新约使徒教会**（源自台湾的系统亦称"锡安教会"）[citation:7] | 中共四川省委政法委员会[citation:7] | - | 被认定为邪教组织[citation:7] |
+   203│ 
+   204│ ### ⚠️ 参与风险与辨别指南
+   205│ 
+   206│ 参与这些被取缔的"锡安教会"及相关组织活动，可能存在以下风险：
+   207│ 
+   208│ - **法律风险**：这些组织已被定性为**非法社会组织**，其活动不受法律保护，继续参与可能面临法律风险[citation:1][citation:3][citation:5]。
+   209│ - **潜在危害**：部分相关组织，如"新约使徒教会"（其台湾系统亦称"锡安教会"），已被官方明确认定为**邪教组织**。这类组织可能具有更强的社会危害性[citation:7]。
+   210│ 
+   211│ ### 💡 如何核实合法的宗教活动场所
+   212│ 
+   213│ 在中国，合法的宗教团体需要依法登记。如果你想确认一个宗教组织是否合法，可以通过以下官方渠道查询：
+   214│ 
+   215│ - **官方查询平台**：通过国家设立的"**中国社会组织政务服务平台**"（包括其网站和手机端）进行查验[citation:3][citation:4]。
+   216│ - **地方民政部门**：也可以直接联系活动所在地的民政部门进行查询和核实[citation:3]。
+   217│ 
+   218│ 希望这些信息能帮助你做出更清晰的判断。如果你对特定宗教活动场所的合法性有疑问，利用上述官方渠道进行核实是一个可靠的方法。
+   219│ 
+   220│ ---
+   221│ 
+   222│ ## ❓ unknown
+   223│ 
+   224│ 中国的锡安教会主要违反了哪些法律
+   225│ 
+   226│ ---
+   227│ 
+   228│ ## ❓ unknown
+   229│ 
+   230│ {'type': 'SEARCH', 'results': [{'url': 'http://www.shuangliao.gov.cn/zw/tzhgg/202506/t20250624_740512.html', 'title': '双辽市人民政府', 'snippet': '经调查，“锡安教会”未经登记，擅自以社会组织名义在我市开展非法活动，其行为违反了《社会团体登记管理条例》第三十二条和《取缔非法社会组织办法》第三条规定，“锡安教会”属于非法社会组织。经研究决定对该组织依法予以取缔。', 'cite_index': 1, 'published_at': None, 'site_name': '双辽市人民政府', 'site_icon': 'https://cdn.deepseek.com/site-icons/shuangliao.gov.cn', 'query_indexes': [0, 1], 'is_hidden': False}, {'url': 'https://pkulaw.com/lar/b27ca53f47bbfb2cd592b01a0e742b4dbdfb.html?way=textRightFblx', 'title': '西安市民政局关于取缔“锡安山教会”的公告', 'snippet': '经查，“锡安山教会"未经登记，擅自以社会团体名义进行活动，认定为非法社会组织。依据《社会团体登记管理条例》第三十二条和《取缔非法民间组织暂行办法》第二条第二款、第九条的规定，本机关决定对“锡安山教会"予以取缔。', 'cite_index': 2, 'published_at': None, 'site_name': 'Pkulaw', 'site_icon': 'https://cdn.deepseek.com/site-icons/pkulaw.com', 'query_indexes': [0, 1], 'is_hidden': False}, {'url': 'http://o4g.xiancity.cn/system/2024/04/19/031132252.shtml', 'title': '这两家非法社会组织被取缔!-原创频道-西安网', 'snippet': '经查，“锡安山教会”未经登记，擅自以社会团体名义进行活动，认定为非法社会组织。依据《社会团体登记管理条例》第三十二条和《取缔非法民间组织暂行办法》第二条第二款、第九条的规定，本机关决定对“锡安山教会”予以取缔。', 'cite_index': 3, 'published_at': 1713456000.0, 'site_name': '西安网', 'site_icon': 'https://cdn.deepseek.com/site-icons/xiancity.cn', 'query_indexes': [0, 1], 'is_hidden': False}, {'url': 'http://mzt.jiangsu.gov.cn/art/2024/1/5/art_55087_11118556.html?from=singlemessage', 'title': '【南京日报】江苏公布今年首批取缔、涉嫌非法社会组织名单', 'snippet': '1月4日 ... 据介绍，社会公众如果发现被取缔的非法社会组织仍在开展活动的，可依法向公安机关报案；如果发现涉嫌非法社会组织继续开展活动的，可向相关民政部门进行举报。', 'cite_index': 4, 'published_at': 1704384000.0, 'site_name': 'Jiangsu', 'site_icon': 'https://cdn.deepseek.com/site-icons/jiangsu.gov.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://peswtzb.gov.cn/news/mzzj/25453.html', 'title': '【普法学法】《宗教事务条例》中关于组织参与违规违法宗教活动的处罚规定', 'snippet': '擅自举行大型宗教活动的，由宗教事务部门会同有关部门责令停止活动，可以并处10万元以上30万元以下的罚款；有违法所得、非法财物的，没收违法所得和非法财物。其中，大型宗教活动是宗教团体、宗教活动场所擅自举办的，登记管理机关还可以责令该宗教团体...', 'cite_index': 5, 'published_at': 1739203200.0, 'site_name': '', 'site_icon': 'https://cdn.deepseek.com/site-icons/peswtzb.gov.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'http://www.gusu.gov.cn/gsq/gsgg/202310/e7746412390a4c6db150d989fb2cb1c7.shtml', 'title': '关于取缔“北京锡安教会长三角区苏州堂”的公告', 'snippet': '经查明，“北京锡安教会长三角区苏州堂”未经登记，擅自以社会组织名义开展活动。依据国务院《社会团体登记管理条例》第三十二条和民政部《取缔非法民间组织暂行办法》第九条的规定，决定取缔“北京锡安教会长三角区苏州堂”。', 'cite_index': 6, 'published_at': 1696867200.0, 'site_name': '苏州市姑苏区人民政府', 'site_icon': 'https://cdn.deepseek.com/site-icons/gusu.gov.cn', 'query_indexes': [0, 1], 'is_hidden': False}, {'url': 'http://news.jstv.com/a/20240104/9faa59eeb2c2485a89c77373ecf3a967.shtml?r=1704440435244', 'title': '2024年第一批!江苏省民政厅发布取缔、涉嫌非法社会组织名单', 'snippet': '1 中瑞华侨经济文化促进协会 徐州市民政局 2 北京锡安教会长三角区苏州堂 苏州市姑苏区民政和卫生健康局 3 上帝的教会', 'cite_index': 7, 'published_at': 1704297600.0, 'site_name': '荔枝网', 'site_icon': 'https://cdn.deepseek.com/site-icons/jstv.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'http://mzzjswj.suzhou.gov.cn/zjj/flfggz/201805/cf2525579cc544c19c764223d3192526.shtml', 'title': '【权威解读】新修订《宗教事务条例》释义 第八章 法律责任 第六十三条', 'snippet': '来源：苏州市民族宗教事务局发布时间：  原 文  宣扬、支持、资助宗教极端主义，或者利用宗教进行危害国家安全、公共安全，破坏民族团结、分裂国家和恐怖活动，侵犯公民人身权利、民主权利，妨害社会管理秩序，侵犯公私财产等违法活动，构成犯罪的，依法追究刑事责任；尚不构成犯罪的，由有关部门依法给予行政处罚；对公民、法人或者其他组织造成损失的，依法承担民事责任。  宗教团体、宗教院校或者宗教活动场所有前款行为', 'cite_index': 8, 'published_at': 1690473600.0, 'site_name': 'Suzhou', 'site_icon': 'https://cdn.deepseek.com/site-icons/suzhou.gov.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'http://xdkb.net/p1/js/j9ln8/453619.html', 'title': '江苏现代快报', 'snippet': '首页 > 江苏 > 正文  江苏集中公布2024年第一批取缔、涉嫌非法社会组织名单  - 来源：现代快报全媒体 - 编辑：张爱红 - 时间：2024-01-04 21:34:11  现代快报讯（记者 徐苏宁）为提高公众防范意识，谨防上当受骗，1月4日，江苏省民政厅向社会集中公布2024年第一批依法取缔、涉嫌非法社会组织名单。社会公众如果发现被取缔的非法社会组织仍在开展活动的，可依法向公安机关报案；', 'cite_index': 9, 'published_at': 1704297600.0, 'site_name': '现代快报网', 'site_icon': 'https://cdn.deepseek.com/site-icons/xdkb.net', 'query_indexes': [1], 'is_hidden': False}, {'url': 'http://tzb.hnu.edu.cn/info/1084/1082.htm', 'title': '《中华人民共和国境内外国人宗教活动管理规定》-湖南大学统一战线工作部', 'snippet': '第一条 为了保障中华人民共和国境内外国人的宗教信仰自由，维护社会公共利益，根据宪法，制定本规定。  第二条 中华人民共和国尊重在中国境内的外国人的宗教信仰自由，保护外国人在宗教方面同中国宗教界进行的友好往来和文化学术交流活动。  第三条 外国人可以在中国境内的寺院、宫观、清真寺、教堂等宗教活动场所参加宗教活动。经省、自治区、直辖市以上宗教团体的邀请，外国人可以在中国宗教活动场所讲经、讲道。  第四', 'cite_index': 10, 'published_at': 1653494400.0, 'site_name': 'Hnu', 'site_icon': 'https://cdn.deepseek.com/site-icons/hnu.edu.cn', 'query_indexes': [0], 'is_hidden': False}]}
+   231│ 嗯，用户想了解中国的锡安教会主要违反了哪些法律，这应该是基于之前关于锡安教会合法性问题的延续，希望更深入了解其违法依据。
+   232│ 
+   233│ 我打算从法律角度系统梳理锡安教会的违法情况，需要涵盖具体的法律条款、违法表现和相应后果。根据搜索结果，[citation:1]和[citation:2]直接提供了吉林和西安民政部门取缔锡安教会的公告，明确指出其未经登记擅自开展活动，这违反了《社会团体登记管理条例》。[citation:4]和[citation:7]也证实了江苏地区对类似组织的取缔情况。
+   234│ 
+   235│ 关于法律依据，[citation:5]详细列出了《宗教事务条例》中关于违法宗教活动的处罚规定，特别是第六十九条关于擅自设立宗教活动场所的规定非常相关。[citation:8]则对条例第六十三条进行了解释，说明了利用宗教从事违法活动的法律责任。
+   236│ 
+   237│ 我考虑先用表格形式清晰呈现违法类型、法律依据和具体表现，这样能帮助用户快速理解核心信息。然后分别详细说明社会组织管理和宗教事务管理两方面的法律规定，最后补充参与这类非法活动的潜在风险。这些搜索结果大多来自政府官方网站，权威性较高，可以放心引用。
+   238│ 在中国，"锡安教会"及其相关组织被依法取缔，主要原因是其活动不符合中国关于社会组织管理和宗教事务管理的法律法规。
+   239│ 
+   240│ ### ⚖️ 主要违法依据与行为
+   241│ 
+   242│ 下表梳理了"锡安教会"涉及的主要违法行为及对应的法律依据：
+   243│ 
+   244│ | 违法类型 | 主要法律依据 | 具体表现 |
+   245│ | :--- | :--- | :--- |
+   246│ | **擅自开展活动** | 《社会团体登记管理条例》第三条、第三十二条[citation:2] | "锡安教会"及其相关组织未在民政部门登记，却擅自以社会组织名义开展活动[citation:1][citation:2]。 |
+   247│ | **非法宗教活动** | 《宗教事务条例》第三十五条、第六十九条[citation:5] | 非宗教团体（如"锡安教会"）擅自组织、举行宗教活动，接受宗教性捐赠[citation:5]。 |
+   248│ 
+   249│ 除了上述核心违法行为，"锡安教会"的活动还可能触及其他法律红线：
+   250│ 
+   251│ *   **违反《中华人民共和国境内外国人宗教活动管理规定》**：该法规明确规定，**外国人在中国境内不得成立宗教组织、发展教徒或进行传教活动**[citation:10]。如果"锡安教会"与境外组织存在关联并接受指令或资助，或者在中国公民中发展成员，就可能违反此项规定。
+   252│ *   **涉及更严重的法律后果**：如果"锡安教会"的活动不仅限于未经批准开展活动，还进一步**利用宗教进行危害国家安全、公共安全，破坏民族团结、分裂国家和恐怖活动**，或**宣扬、支持、资助宗教极端主义**，那么将不再是简单的违法，可能**构成刑事犯罪**[citation:5][citation:8]。届时，不仅组织会被取缔，**相关负责人和积极参与者也可能被迫究刑事责任**。
+   253│ 
+   254│ ### 🛡️ 合法宗教活动与风险防范
+   255│ 
+   256│ 在中国，合法的宗教活动必须在**依法登记的宗教活动场所**内，由**经备案的宗教教职人员**主持[citation:5]。任何组织和个人都不得在未经批准的地点（包括私人住宅、网络平台等）组织宗教活动。
+   257│ 
+   258│ 参与"锡安教会"这类非法组织活动，个人可能面临以下风险：
+   259│ *   **法律风险**：参与者可能因卷入非法活动而受到调查，若构成犯罪，则需承担刑事责任。
+   260│ *   **经济风险**：容易成为**诈骗财物**的目标，造成经济损失。
+   261│ *   **社会风险**：这类组织可能传播极端思想，侵蚀个人理性思考能力，甚至诱导成员从事危害社会秩序的行为。
+   262│ 
+   263│ ### 💡 核实组织合法性的途径
+   264│ 
+   265│ 要确认一个宗教组织是否合法，可以通过以下官方渠道查询：
+   266│ *   **中国社会组织政务服务平台—全国社会组织信用信息公示平台**（网址：`https://xxgs.chinanpo.mca.gov.cn/gsxt/newList`）[citation:4]。
+   267│ *   直接联系活动所在地的**民政部门**进行查询[citation:4]。
+   268│ 
+   269│ 希望以上信息能帮助你更全面地了解相关法律界限。请务必在依法登记的宗教活动场所内进行宗教活动，远离任何形式的非法宗教组织。
+   270│ 
+   271│ ---
+   272│ 
+   273│ ## ❓ unknown
+   274│ 
+   275│ 经济学人这种外刊对于我国取缔锡安教会的评价用词是镇压宗教活动，请问为什么会有这样的立场差异
+   276│ 
+   277│ ---
+   278│ 
+   279│ ## ❓ unknown
+   280│ 
+   281│ {'type': 'SEARCH', 'results': [{'url': 'http://www.shuangliao.gov.cn/zw/tzhgg/202506/t20250624_740512.html', 'title': '双辽市人民政府', 'snippet': '经调查，“锡安教会”未经登记，擅自以社会组织名义在我市开展非法活动，其行为违反了《社会团体登记管理条例》第三十二条和《取缔非法社会组织办法》第三条规定，“锡安教会”属于非法社会组织。经研究决定对该组织依法予以取缔。', 'cite_index': 1, 'published_at': None, 'site_name': '双辽市人民政府', 'site_icon': 'https://cdn.deepseek.com/site-icons/shuangliao.gov.cn', 'query_indexes': [1, 2], 'is_hidden': False}, {'url': 'https://m.huanqiu.com/article/48dCCzfKgNo', 'title': '将猪和中国人作对比激怒中国网民！英国《经济学人》发来澄清声明', 'snippet': '尽管《经济学人》文章本身想表达的意思是，全世界更多的粮食是被牲畜而不是人类吃掉了，但这家英国媒体拿猪和中国人进行对比的做法，却引起了大量中国网民不满，认为这是一种种族主义的体现。', 'cite_index': 2, 'published_at': None, 'site_name': '环球网', 'site_icon': 'https://cdn.deepseek.com/site-icons/huanqiu.com', 'query_indexes': [3], 'is_hidden': False}, {'url': 'https://wap.cnki.net/touch/web/Journal/Article/ZYMD200501007.html', 'title': '中西宗教观之比较-中央民族大学学报2005年01期-手机知网', 'snippet': '只要从中西方思维结构与思维模式、价值观、神人观、来世观以及宗教在社会中的地位和作用、君权与神权的关系、哲学与宗教的关系等方面进行具体分析,就不难发现,中国和西方在上述诸多方面都存在着很大差异。正是这些文化深层结构的差异...', 'cite_index': 3, 'published_at': None, 'site_name': '手机知网', 'site_icon': 'https://cdn.deepseek.com/site-icons/cnki.net', 'query_indexes': [4], 'is_hidden': False}, {'url': 'https://pkulaw.com/lar/b27ca53f47bbfb2cd592b01a0e742b4dbdfb.html?way=textRightFblx', 'title': '西安市民政局关于取缔“锡安山教会”的公告', 'snip
+[TRUNCATED] Showing lines 201-400 of 591. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\10_人文与知识\基督教教派及中国合法教派介绍.md" start_line=401 max_lines=200
+
+[TRUNCATED] The selected range exceeded 16KB. Continue with a smaller max_lines value.
+</file>

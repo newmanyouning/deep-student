@@ -62,6 +62,7 @@ const providerTypeOptions = [
   { value: 'moonshot', labelKey: 'settings:vendor_modal.providers.moonshot', defaultLabel: 'Moonshot' },
   { value: 'nvidia', labelKey: 'settings:vendor_modal.providers.nvidia', defaultLabel: 'NVIDIA' },
   { value: 'mimo', labelKey: 'settings:vendor_modal.providers.mimo', defaultLabel: 'Xiaomi MiMo' },
+  { value: 'paddleocr', labelKey: 'settings:vendor_modal.providers.paddleocr', defaultLabel: 'PaddleOCR' },
   { value: 'ollama', labelKey: 'settings:vendor_modal.providers.ollama', defaultLabel: 'Ollama' },
 ];
 

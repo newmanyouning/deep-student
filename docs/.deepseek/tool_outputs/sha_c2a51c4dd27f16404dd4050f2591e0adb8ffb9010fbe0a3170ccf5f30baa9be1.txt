@@ -1,0 +1,50 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\DeepSeekV4论文国内下载渠道.md" total_lines="48" shown_lines="1-48" truncated="false">
+     1│ # DeepSeekV4论文国内下载渠道
+     2│ 对话ID: e8421c6f-8adf-45fa-8db1-ceba8aa3768c
+     3│ 创建时间: 2026-04-29T19:42:23.996000+08:00
+     4│ 更新时间: 2026-04-29T21:04:04.324000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ deepseek-V4论文国内渠道全文下载方式在哪里
+     9│ 
+    10│ ---
+    11│ 
+    12│ ## ❓ unknown
+    13│ 
+    14│ 用户想了解如何通过国内渠道下载DeepSeek-V4论文的全文。这可能是在询问获取DeepSeek-V4相关研究论文全文的途径。为了全面获取信息，我需要同时进行多项搜索，涵盖不同关键词和可能的发布平台。
+    15│ {'type': 'TOOL_SEARCH'}
+    16│ 搜索结果显示了一些可能包含下载链接的页面。为了全面获取信息，我们需要同时打开这些可能包含下载方式的页面。
+    17│ {'type': 'TOOL_OPEN'}
+    18│ {'type': 'TOOL_OPEN'}
+    19│ {'type': 'TOOL_OPEN'}
+    20│ {'type': 'TOOL_OPEN'}
+    21│ {'type': 'TOOL_OPEN'}
+    22│ {'type': 'TOOL_OPEN'}
+    23│ {'type': 'TOOL_OPEN'}
+    24│ {'type': 'TOOL_OPEN'}
+    25│ 这些结果提供了多个可能的下载渠道，包括 huggingface、modelscope、CSDN、MBA Lib 等。我的回答将总结这些渠道，并提供具体链接。
+    26│ DeepSeek-V4 的技术报告（论文）可以通过下面几个国内的平台和渠道免费下载到。
+    27│ 
+    28│ ### 📌 推荐渠道：便捷、稳定
+    29│ *   **魔搭社区 (ModelScope)**：这是阿里的一个AI模型平台，国内下载很稳定，是除了官网之外的首选。你可以直接在魔搭的 DeepSeek-V4 页面找到“技术报告”的下载链接[reference:0]。
+    30│     *   **下载地址**：`https://modelscope.cn/collections/deepseek-ai/DeepSeek-V4`
+    31│ 
+    32│ *   **Hugging Face**：这是官方的发布平台，和模型权重放在一起，适合需要下载模型和论文的开发者[reference:1][reference:2]。
+    33│     *   **直接下载链接**：`https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro/blob/main/DeepSeek_V4.pdf`
+    34│ 
+    35│ ### 📚 其他方式：作为补充
+    36│ *   **CSDN**：如果官方渠道因为网络问题访问不了，CSDN上有用户上传好的，搜索“DeepSeek-V4”就能找到。不过需要注意，有些下载需要积分或会员，而且因为是用户上传的，内容不一定和官方完全一致[reference:3]。
+    37│ *   **技术社区**：量子位、36氪等一些科技资讯平台也可能直接提供下载链接[reference:4][reference:5]。
+    38│ *   **学术数据库**：在知网、万方等国内学术数据库中搜索DeepSeek V4也可能找到它们的踪迹。
+    39│ *   **MBA Lib**：这是一个商业管理文库，也收录了这篇论文，适合从商业或管理角度来研究的用户[reference:6]。
+    40│     *   **下载地址**：`https://doc.mbalib.com/view/1e42b0bb0e2c8b2c7f0a8b3e4d5f6a7b.html`
+    41│ 
+    42│ ### 💡 了解一下：DeepSeek-V4还有什么相关论文
+    43│ 除了主要的V4技术报告，还有一些相关的技术论文也值得一读，它们为V4的诞生做了技术上的铺垫，也能帮你更深入地理解它：
+    44│ *   **mHC（流形约束超连接）**：这个技术进入了V4，相关的论文于2025年12月31日上传至arXiv[reference:7]。
+    45│ *   **DualPath（智能体推理框架）**：这款智能体推理框架与V4有关，体现了DeepSeek在推理框架上的探索，该论文于2026年2月上传至arXiv，ArXiv ID为 `2602.21548`[reference:8]。
+    46│ *   **Engram（条件记忆模块）**：这篇论文探讨了新的记忆模块，虽然是面向下一代模型V5的，但有助于了解DeepSeek的长期技术路线[reference:9]。
+    47│ 
+    48│ ---
+</file>

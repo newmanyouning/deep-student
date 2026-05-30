@@ -1,0 +1,204 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\树莓派5安装Java项目打包指南.md" total_lines="14316" shown_lines="5000-5199" truncated="true" next_start_line="5200">
+  5000│ 
+  5001│  ```
+  5002│  plugins {
+  5003│      id 'java'
+  5004│  }
+  5005│ 
+  5006│  dependencies {
+  5007│      implementation 'com.formdev:flatlaf:3.0'
+  5008│  }
+  5009│ 
+  5010│  jar {
+  5011│      manifest {
+  5012│          attributes 'Main-Class': 'com.cburch.logisim.Main'
+  5013│      }
+  5014│  }
+  5015│  ```
+  5016│ 
+  5017│  如果已经有类似的配置，那么只需要添加shadow插件并运行shadowJar即可。
+  5018│ 
+  5019│  如果还没有FlatLaf依赖，我们需要添加。
+  5020│ 
+  5021│  我们先查看build.gradle的内容：
+  5022│ 
+  5023│  运行：`head -50 build.gradle` 和 `grep -A5 -B5 "dependencies" build.gradle`
+  5024│ 
+  5025│  如果没有看到FlatLaf依赖，我们需要添加。
+  5026│ 
+  5027│  但是，为了不破坏原项目配置，我们可以创建一个新的构建文件，或者直接在原文件上添加。
+  5028│ 
+  5029│  考虑到这是一个开源项目，我们应该尊重原项目的构建方式，但原项目可能没有提供完整的打包配置。
+  5030│ 
+  5031│  我决定采用以下步骤：
+  5032│ 
+  5033│  1. 查看原build.gradle，了解项目结构和依赖。
+  5034│  2. 添加shadowJar插件和FlatLaf依赖（如果缺失）。
+  5035│  3. 运行shadowJar。
+  5036│ 
+  5037│  如果原build.gradle中没有FlatLaf依赖，我们需要知道确切的版本。错误信息中没有给出版本，我们可以尝试查找项目文档或者从其他地方推断。
+  5038│ 
+  5039│  如果无法推断，我们可以尝试搜索项目中的其他配置文件（比如gradle.properties）或者查看错误信息中是否有版本。
+  5040│ 
+  5041│  另外，我们可以查看项目的文档或README。
+  5042│ 
+  5043│  但是，为了快速解决，我们可以尝试添加一个较新版本的FlatLaf，比如3.0。
+  5044│ 
+  5045│  如果原项目已经有一个版本，我们最好使用相同的版本。
+  5046│ 
+  5047│  我们可以在项目的其他部分（比如gradle.lockfile或者旧的构建文件中）查找版本信息。
+  5048│ 
+  5049│  如果找不到，我们可以尝试在项目的代码仓库中查找。
+  5050│ 
+  5051│  现在，为了快速运行，我们可以假设使用FlatLaf 3.0。
+  5052│ 
+  5053│  修改build.gradle：
+  5054│ 
+  5055│  步骤：
+  5056│ 
+  5057│  1. 在build.gradle的顶部添加shadow插件。
+  5058│  2. 在dependencies部分添加FlatLaf依赖（如果缺失）。
+  5059│  3. 确保有主类配置。
+  5060│ 
+  5061│  然后运行shadowJar。
+  5062│ 
+  5063│  如果原build.gradle中已经有主类配置，那么shadowJar会使用相同的主类。
+  5064│ 
+  5065│  如果没有，我们需要在shadowJar中配置主类。
+  5066│ 
+  5067│  我们开始操作：
+  5068│ 
+  5069│  先备份build.gradle。
+  5070│ 
+  5071│  然后编辑build.gradle。
+  5072│ 
+  5073│  如果原文件内容很少，我们可以直接修改。如果原文件很复杂，我们最好只添加必要的部分。
+  5074│ 
+  5075│  下面是一个示例修改：
+  5076│ 
+  5077│  原build.gradle可能是这样的：
+  5078│ 
+  5079│  ```
+  5080│  plugins {
+  5081│      id 'java'
+  5082│  }
+  5083│ 
+  5084│  repositories {
+  5085│      mavenCentral()
+  5086│  }
+  5087│ 
+  5088│  dependencies {
+  5089│      // 已有的依赖
+  5090│  }
+  5091│ 
+  5092│  jar {
+  5093│      // 已有的jar配置
+  5094│  }
+  5095│  ```
+  5096│ 
+  5097│  我们修改为：
+  5098│ 
+  5099│  ```
+  5100│  plugins {
+  5101│      id 'java'
+  5102│      id 'com.github.johnrengelman.shadow' version '8.1.1'
+  5103│  }
+  5104│ 
+  5105│  repositories {
+  5106│      mavenCentral()
+  5107│  }
+  5108│ 
+  5109│  dependencies {
+  5110│      // 已有的依赖
+  5111│      implementation 'com.formdev:flatlaf:3.0'  // 添加FlatLaf依赖，如果已有则不用添加
+  5112│  }
+  5113│ 
+  5114│  // 如果原jar配置中已经有主类，那么shadowJar会继承，但为了保险，我们也可以显式配置shadowJar
+  5115│  shadowJar {
+  5116│      manifest {
+  5117│          attributes 'Main-Class': 'com.cburch.logisim.Main'
+  5118│      }
+  5119│  }
+  5120│ 
+  5121│  // 保留原有的jar配置（如果有）
+  5122│  jar {
+  5123│      manifest {
+  5124│          attributes 'Main-Class': 'com.cburch.logisim.Main'
+  5125│      }
+  5126│  }
+  5127│  ```
+  5128│ 
+  5129│  然后运行：
+  5130│ 
+  5131│  ```
+  5132│  ./gradlew shadowJar
+  5133│  ```
+  5134│ 
+  5135│  在build/libs目录下会生成一个shadow JAR，文件名可能是类似`项目名-all.jar`。
+  5136│ 
+  5137│  然后我们运行：
+  5138│ 
+  5139│  ```
+  5140│  java -jar build/libs/项目名-all.jar
+  5141│  ```
+  5142│ 
+  5143│  如果原项目已经有一个主类配置在jar任务中，那么我们可以只添加shadow插件和FlatLaf依赖。
+  5144│ 
+  5145│  注意：如果原项目已经依赖了FlatLaf，但是版本不同，我们最好使用原版本。所以，如果原项目已经有FlatLaf依赖，我们就不需要添加。
+  5146│ 
+  5147│  因此，我们需要先检查原build.gradle中是否有FlatLaf依赖。
+  5148│ 
+  5149│  如果没有，再添加。
+  5150│ 
+  5151│  现在，我们执行以下命令来检查：
+  5152│ 
+  5153│  ```
+  5154│  grep -i flatlaf build.gradle
+  5155│  ```
+  5156│ 
+  5157│  如果有输出，则已经存在，我们不需要添加。
+  5158│ 
+  5159│  如果没有，我们再添加。
+  5160│ 
+  5161│  另外，我们也可以查看项目是否有gradle/lockfile或者其他的依赖管理文件。
+  5162│ 
+  5163│  总之，我们先尝试用原build.gradle运行shadowJar，如果原build.gradle中已经包含了FlatLaf依赖，那么shadowJar会将它打包进去。
+  5164│ 
+  5165│  如果原build.gradle没有FlatLaf依赖，那么我们需要添加。
+  5166│ 
+  5167│  我们开始操作：
+  5168│ 
+  5169│  1. 备份原build.gradle。
+  5170│  2. 添加shadow插件。
+  5171│  3. 检查是否有FlatLaf依赖，没有则添加。
+  5172│  4. 添加主类配置（如果原jar配置中没有）。
+  5173│ 
+  5174│  然后运行shadowJar。
+  5175│ 
+  5176│  如果shadowJar成功，我们就可以运行新的JAR。
+  5177│ 
+  5178│  如果失败，我们可能需要调整。
+  5179│ 
+  5180│  另外，我们也可以尝试使用Gradle的application插件，然后通过`./gradlew run`运行，但这需要安装application插件，并且可能不会打包JAR。
+  5181│ 
+  5182│  为了分发，我们更希望有一个可执行的JAR。
+  5183│ 
+  5184│  所以，我们优先使用shadowJar。
+  5185│ 
+  5186│  现在，我们假设原build.gradle中没有FlatLaf依赖，我们添加FlatLaf 3.0。
+  5187│ 
+  5188│  修改后的build.gradle示例（如果原文件很简单）：
+  5189│ 
+  5190│  原文件：
+  5191│ 
+  5192│  ```
+  5193│  plugins {
+  5194│      id 'java'
+  5195│  }
+  5196│ 
+  5197│  repositories {
+  5198│      mavenCentral()
+  5199│  }
+
+[TRUNCATED] Showing lines 5000-5199 of 14316. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\树莓派5安装Java项目打包指南.md" start_line=5200 max_lines=200
+</file>

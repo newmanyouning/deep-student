@@ -1,0 +1,397 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 6,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "更新时间: 2026-03-13T10:25:57.955000+08:00",
+        ""
+      ],
+      "context_after": [
+        "",
+        "有哪些考研资料可以作为PDF文字版上传给AI作为知识库？"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 12,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "{'type': 'SEARCH', 'results': [{'url': 'https://lib.dgut.edu.cn/info/72359.jspx', 'title': '维普考研资源数据库（试用期至20250830+）', 'snippet': '《维普考研资源数据库》http:// kaoyan.cqvip.com 提供考研人群复习全过程所需资料，并提供复习练习功能支持，是一个内容较为全面，学习练习方式多样的考研资源数据库。', 'cite_index': 1, 'published_at': 1772380800.0, 'site_name': '东莞理工学院图书馆', 'site_icon': 'https://cdn.deepseek.com/site-icons/dgut.edu.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://news.koolearn.com/20250904/1276863.html', 'title': '2026年考研大纲权威发布渠道与使用全攻略——考生必读指南', 'snippet': '发布形式：官网会提供大纲的电子版(PDF格式)供考生免费下载，内容与纸质版完全一致。 2. 高等教育出版社(官方出版渠道) 发布方式：教育部教育考试院会授权高等教育出版社出版发行考研大纲的纸质书籍。', 'cite_index': 2, 'published_at': 1756915200.0, 'site_name': '新东方在线', 'site_icon': 'https://cdn.deepseek.com/site-icons/koolearn.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://bbs.wps.cn/topic/78588', 'title': '学生考研：构建WPS个人知识库', 'snippet': '一、知识库基础信息 名称：2025 考研全科备战库 封面：自定义考研目标院校 Logo+「上岸倒计时」文字 简介：包含政治 / 英语 / 数学 / 专业课的笔记、真题、错题集，支持 AI 答疑与知识点汇总', 'cite_index': 3, 'published_at': 1766764800.0, 'site_name': 'WPS社区', 'site_icon': 'https://cdn.deepseek.com/site-icons/wps.cn', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://lib.gdupt.edu.cn/info/1047/6357.htm', 'title': '维普考研资源数据库-广东石油化工学院图书馆主页', 'snippet': '《维普考研资源数据库》提供考研人群复习全过程所需资料，并提供复习练习功能支持，是一个内容较为全面，学习练习方式多样的考研资源数据库 ... 用以帮助考研人群汇总考研资料，进行在线学习和复习。', 'cite_index': 4, 'published_at': 1688140800.0, 'site_name': '广东石油化工学院图书馆', 'site_icon': 'https://cdn.deepseek.com/site-icons/gdupt.edu.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://au.hyit.edu.cn/info/1073/5274.htm', 'title': '【匠心筑梦 学海导航】学长学姐考研说', 'snippet': '1.构建学科知识图谱：以时间轴串联史纲重大事件，以核心理论（如马克思主义中国化）为主线梳理毛中特，理解各部分内在关联。', 'cite_index': 5, 'published_at': 1761580800.0, 'site_name': '淮阴工学院', 'site_icon': 'https://cdn.deepseek.com/site-icons/hyit.edu.cn', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://www.kaoyantools.com/26allnotes/26zznote/38450.html', 'title': '26考研腿姐每日一题（一烫）', 'snippet': '涵盖高频考点如新质生产力、中国式现代化、周年纪念事件等，并附有详细解析和技巧总结（如“圈词法”“4K法则”） ... 文档的预览图如下，需要完整PDF文件的同学，文末有文档编码，保存后即可直接打印使用。', 'cite_index': 6, 'published_at': 1755619200.0, 'site_name': '考研工具站', 'site_icon': 'https://cdn.deepseek.com/site-icons/kaoyantools.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://mtoutiao.xdf.cn/kaoyan/202508/14868072.html', 'title': '考研专业课复习：构建知识框架的黄金法则-新东方网', 'snippet': '本文聚焦考研专业课复习的核心策略，探讨如何通过构建系统化的知识框架提升复习效率。文章从知识框架的定义入手，分析其重要性，并详细阐述“纵向梳理-横向关联-动态更新”三步法，结合实例说明如何将零散知识点转化为有机整体。最后提出避免知识碎片化的注意事项...', 'cite_index': 7, 'published_at': 1756483200.0, 'site_name': '新东方', 'site_icon': 'https://cdn.deepseek.com/site-icons/xdf.cn', 'query_indexes': [2], 'is_hidden': False}, {'url': 'http://www.goodjiaoshi.com/content/764028.html', 'title': '2025考研专业课高效备考资料_视频教程下载_好教师网', 'snippet': '本资料专为2025年考研学子设计，涵盖法硕、管综、计算机等多个专业课领域的核心备考内容。资料包括高教版基础配套练习、华研法硕1000题、陈剑、鑫全、孙勇等名师辅导材料，以及计算机、教材类等丰富的电子资源。无论是法硕的逻辑训练...', 'cite_index': 8, 'published_at': None, 'site_name': 'goodjiaoshi.com', 'site_icon': 'https://cdn.deepseek.com/site-icons/goodjiaoshi.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://lib.nankai.edu.cn/2025/0912/c15444a577450/pagem.htm', 'title': '上岸考研网', 'snippet': '通过整合精品视频课程、历年真题试卷、仿真模考试卷、AI智能知识图谱、学习资料、招考资讯、招生简章及官方考试大纲等八大类核心资源，“上岸考研网”构建出系统、全面、权威的一站式备考资源体系，深度契合同学们的备考全周期需求。', 'cite_index': 9, 'published_at': 1757606400.0, 'site_name': '南开大学图书馆', 'site_icon': 'https://cdn.deepseek.com/site-icons/nankai.edu.cn', 'query_indexes': [2], 'is_hidden': False}, {'url': 'http://www.kaoyantools.com/tag/25%e5%b9%b2%e8%b4%a7', 'title': '25干货 – 考研工具站', 'snippet': '今天给各位考研人准备的的是：2025肖徐腿米四大名师知识点杂糅重点笔记（电子版pdf）。这份笔记汇总了25考研肖1000题、徐涛优题库、腿姐30天70分、米鹏1000题四大名师的题库中，可以直接背诵的知识点，还是很有参考价值的。 文档的预览图如下...', 'cite_index': 10, 'published_at': None, 'site_name': '考研工具站', 'site_icon': 'https://cdn.deepseek.com/site-icons/kaoyantools.com', 'query_indexes': [0], 'is_hidden': False}]}"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 42,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "有什么好的AI OCR识别图片PDF的工具推荐"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 48,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "{'type': 'SEARCH', 'results': [{'url': 'https://cloud.baidu.com/article/3676833', 'title': '开源OCR利器：PaddleOCR批量处理PDF与图片的深度解析', 'snippet': '简介：本文推荐一款免费开源的OCR引擎PaddleOCR，详细介绍其批量识别PDF及图片中表格与文字的功能，涵盖安装部署、核心特性、代码示例及高级应用场景 ... PaddleOCR凭借其免费开源、多语言支持、高性能的特点，成为批量识别PDF与图片表格文字的首选工具。', 'cite_index': 1, 'published_at': 1758211200.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.jiandaoyun.com/nblog/321683/', 'title': '照片转文字软件推荐，哪些软件效果最好？', 'snippet': '市面上优秀的照片转文字软件主要有1、OCR文字识别类工具（如迅捷OCR、ABBYY FineReader、百度识图、简道云OCR）、2、办公套件内嵌识别功能（如WPS Office、Microsoft Office Lens）、3、手机端App（如扫描全能王、CamScanner）、4、在线网页工具（如Google Keep、腾讯文档OCR）、**5、AI智能辅助软件（如ChatGPT Plus图片识别...', 'cite_index': 2, 'published_at': 1759939200.0, 'site_name': '简道云', 'site_icon': 'https://cdn.deepseek.com/site-icons/jiandaoyun.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://pypi.org/project/olmocr/', 'title': 'olmocr', 'snippet': 'A toolkit for converting PDFs and other image-based document formats into clean, readable, plain text format. Try the online demo: https://olmocr.allenai.org/ Features: - Convert PDF, PNG, and JPEG based documents into clean Markdown', 'cite_index': 3, 'published_at': 1769270400.0, 'site_name': 'PyPI', 'site_icon': 'https://cdn.deepseek.com/site-icons/pypi.org', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/article/3690519', 'title': '高效精准识别：八款极少出错的图片文字识别在线工具推荐', 'snippet': '二、八款极少出错的OCR工具深度评测 #### 1. ABBYY FineReader Online ... 2. Adobe Acrobat Pro DC ... 3. Google Cloud Vision API ... 4. Tesseract OCR（在线封装版）', 'cite_index': 4, 'published_at': 1758211200.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.czur.com/cn/detail/news/374', 'title': '成者采编王升级版来袭，打造更高效的智能化办公场景', 'snippet': '无论是通过高拍仪实时拍摄，还是连接平板/高速扫描仪批量扫描，采编王都能快速完成图像数字化采集。软件对导入文件的格式兼容性强，支持jpg、png、pdf、ofd等格式图像或文档的混合导入。', 'cite_index': 5, 'published_at': 1758643200.0, 'site_name': 'CZUR', 'site_icon': 'https://cdn.deepseek.com/site-icons/czur.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/article/3884634', 'title': '高效办公必备：超强免费OCR工具深度评测与推荐', 'snippet': '简介：本文深度评测了五款超强免费OCR文字识别工具，从识别精度、多语言支持、批量处理能力到API接口开放性进行全方位对比，帮助开发者与企业用户选择最适合的解决方案。', 'cite_index': 6, 'published_at': 1760112000.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://pypi.org/project/docstrange/', 'title': 'docstrange', 'snippet': 'DocStrange converts documents to Markdown, JSON, CSV, and HTML quickly and accurately. - Converts PDF, image, PPTX, DOCX, XLSX, and URL files. ... DocStrange is a Python library for converting a wide range of document formats—including PDF, DOCX, PPTX, XLSX, and images — into clean, usable data.', 'cite_index': 7, 'published_at': 1761840000.0, 'site_name': 'PyPI', 'site_icon': 'https://cdn.deepseek.com/site-icons/pypi.org', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://ironsoftware.com/zh-hant/csharp/ocr/blog/compare-to-other-components/best-ocr-software-win-10/#anchor-36-49-36-49-ocr-36-49', 'title': '適用於 Windows 10 的最佳 OCR 軟體比較', 'snippet': '高效的OCR軟體能夠平衡決定實際性能的幾個關鍵因素。 識別準確率是首要考慮因素——即使準確率達到 95%，也意味著每一頁都會出現錯誤，需要手動糾正。 領先的解決方案在乾淨的文件上可達到 99% 以上的準確率...', 'cite_index': 8, 'published_at': 1766073600.0, 'site_name': 'Iron Software', 'site_icon': 'https://cdn.deepseek.com/site-icons/ironsoftware.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.npmjs.com/package/@zamanapp/hadid?activeTab=code', 'title': '@zamanapp/hadid', 'snippet': 'Hadid OCR A dead simple way of OCR-ing a document for AI ingestion. ... - Pass in a file (PDF, DOCX, image, etc.) - Convert that file into a series of images - Pass each image to GPT and ask nicely for Markdown', 'cite_index': 9, 'published_at': 1752508800.0, 'site_name': 'NPM', 'site_icon': 'https://cdn.deepseek.com/site-icons/npmjs.com', 'query_indexes': [0], 'is_hidden': False}]}"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 93,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "我需要用一个云服务器部署开源AI模型跑这个，我可以选择哪家的服务？"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 99,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "{'type': 'SEARCH', 'results': [{'url': 'https://support.huaweicloud.com/intl/zh-cn/bestpractice-modelarts/modelarts_llm_train_590601.html', 'title': '方案概述_AI开发平台ModelArts-华为云', 'snippet': '本文档介绍了在ModelArts的Lite Server上基于AscendFactory训练框架，对业界主流的开源三方大模型进行训练的详细过程。训练使用的算力资源是Snt9b和Snt9b23。', 'cite_index': 1, 'published_at': 1765382400.0, 'site_name': '华为云帮助中心', 'site_icon': 'https://cdn.deepseek.com/site-icons/huaweicloud.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/article/3558780', 'title': '跑AI模型选云还是本地？深度解析与实操指南', 'snippet': '简介：本文深度对比云服务器与本地服务器在运行AI模型时的核心差异，从成本、性能、灵活性、安全性四大维度展开分析，结合真实场景给出实操建议，帮助开发者与企业做出最优决策。', 'cite_index': 2, 'published_at': 1757606400.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/article/3581722', 'title': 'DeepSeek模型各云平台部署方案对比', 'snippet': '简介：本文深度对比AWS、Azure、阿里云、腾讯云及华为云五大云平台部署DeepSeek模型的方案，从性能、成本、易用性、扩展性及安全性五大维度展开分析，提供选型建议与优化策略，助力企业高效落地AI应用。', 'cite_index': 3, 'published_at': 1758038400.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [2, 1], 'is_hidden': False}, {'url': 'https://developer.aliyun.com/article/1715582', 'title': '【OpenClaw保姆级图文教程】阿里云/本地部署集成模型Ollama/Qwen3.5/百炼 API 步骤流程及避坑指南', 'snippet': 'OpenClaw（曾用名Clawdbot）作为开源AI代理框架，既支持对接阿里云百炼等云端免费API，也能通过Ollama部署本地大模型，完美解决两类核心需求：一是担心云端API泄露核心数据的隐私安全诉求；二是频繁调用导致token消耗过高的成本控制需求。', 'cite_index': 4, 'published_at': 1772985600.0, 'site_name': '阿里云开发者社区', 'site_icon': 'https://cdn.deepseek.com/site-icons/aliyun.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/article/4701152', 'title': '深度学习云平台选型指南：实验室无GPU环境下的最优解', 'snippet': '简介：实验室无GPU时如何高效开展深度学习？本文深度对比主流云平台，从性能、成本、易用性三维度解析，助你快速选择最适合的解决方案 ... 1. AWS SageMaker：企业级全流程解决方案', 'cite_index': 5, 'published_at': 1762185600.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.51ima.com/news/11330.html', 'title': '大模型解决方案官网：中关村科金得助智能、阿里云、百度云、腾讯云、字节跳动等！', 'snippet': '文章摘要：最近整理了一份2025年大模型解决方案官网，包含6家头部玩家（中关村科金得助智能、/阿里云、百度云、腾讯云、字节跳动、华为云），那么他们有哪些差异性呢？现在做大模型服务的平台...', 'cite_index': 6, 'published_at': 1753200000.0, 'site_name': '中关村科金得助智能', 'site_icon': 'https://cdn.deepseek.com/site-icons/51ima.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://developer.aliyun.com/article/1715891', 'title': '两步上手龙虾AI！OpenClaw部署（云端+本地）+ 免费多模型配置保姆级教程', 'snippet': '简介： 2026年爆火的开源个人AI助手OpenClaw（“龙虾AI”），由PSPDFKit创始人打造，主打真执行、强隐私、高扩展。支持邮件处理、日程管理、订票、写代码、自动备份等任务。本文详解阿里云一键云端部署与本地三步安装法...', 'cite_index': 7, 'published_at': 1773158400.0, 'site_name': '阿里云开发者社区', 'site_icon': 'https://cdn.deepseek.com/site-icons/aliyun.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.digitaloceans.cn/business-advise/1780/', 'title': '出海企业的AI基础设施选择指南：哪些云服务厂商既支持云主机又提供GPU？', 'snippet': '这类平台主要提供高性能GPU实例，专注AI训练、模型推理、3D渲染等场景，但通常缺乏完整的云主机生态，例如VPC管理、对象存储、Web服务部署支持较弱。 他们的优点是： - GPU型号齐全...', 'cite_index': 8, 'published_at': 1752508800.0, 'site_name': 'DigitalOcean中文网', 'site_icon': 'https://cdn.deepseek.com/site-icons/digitaloceans.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/article/3576161', 'title': 'GPU云服务器选购指南：五大平台深度评测与推荐', 'snippet': '简介：本文深度对比AWS、Azure、阿里云、腾讯云、华为云五大GPU云服务器平台，从性能、成本、生态、适用场景等维度展开分析，为开发者与企业提供选型决策依据 ... 优先AWS（P4d/G5）或阿里云（GN7），关注GPU算力与内存带宽。', 'cite_index': 9, 'published_at': 1757952000.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://developer.aliyun.com/article/1715824', 'title': '快来养龙虾，助理秒上线！阿里云OpenClaw一键部署，三步拥有超级AI助理！', 'snippet': '简介： 阿里云推出OpenClaw（原Clawdbot）极速部署方案：零代码、三步上线！这款开源本地优先AI智能体，能调用浏览器/文件/邮件等工具自动执行任务，支持通义千问、GPT等多模型，数据自主可控。即刻拥有7×24小时在线“超级龙虾”数字助理！', 'cite_index': 10, 'published_at': 1773072000.0, 'site_name': '阿里云开发者社区', 'site_icon': 'https://cdn.deepseek.com/site-icons/aliyun.com', 'query_indexes': [0], 'is_hidden': False}]}"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 135,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "我需要部署一个适合把考研资料扫描版资料转换为可以喂给AI知识库的材料的模型，是理工科考研，我该选择哪家云服务商然后自行部署什么模型？"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 141,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "{'type': 'SEARCH', 'results': [{'url': 'https://news.sciencenet.cn/htmlnews/2025/10/553392.shtm', 'title': '支持109种语言，百度多模态文档解析模型开源—新闻—科学网', 'snippet': '10月16日，百度发布并开源自研多模态文档解析模型PaddleOCR-VL。其核心模型参数仅0.9B，轻量高效，能够在极低计算开销下，精准识别文本、手写汉字、表格、公式、图表等复杂元素，支持109 种语言，覆盖中文、英语、法语、日语、俄语、阿拉伯语、西班牙语等多语场景，广泛适用于政企文档管理...', 'cite_index': 1, 'published_at': 1760716800.0, 'site_name': '科学网—新闻', 'site_icon': 'https://cdn.deepseek.com/site-icons/sciencenet.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/article/3795059', 'title': '带GPU云服务器怎么选？高性价比方案深度解析', 'snippet': '数据显示，T4实例在推理场景下具有最佳性价比，而A100在训练场景中单位算力成本更低。需注意，部分厂商提供”按秒计费”和”抢占式实例”，可进一步降低30%-50%成本。', 'cite_index': 2, 'published_at': 1758816000.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.digitalocean.com/community/tutorials/image-processing-using-llama-huggingface#faqs', 'title': 'Image Processing Using Llama 3.2 with Hugging Face Transformers | DigitalOcean', 'snippet': 'this tutorial provides a scalable and efficient way to implement AI-powered image processing. In this tutorial, you will learn to set up Llama 3.2 Vision with DigitalOcean’s cloud infrastructure, and demonstrate how to use it for AI-powered image processing for extracting employee IDs and names from images.', 'cite_index': 3, 'published_at': 1742313600.0, 'site_name': 'DigitalOcean', 'site_icon': 'https://cdn.deepseek.com/site-icons/digitalocean.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://pypi.org/project/unstructured-paddleocr/', 'title': 'unstructured-paddleocr', 'snippet': '🎨 模型丰富一键调用：将文本图像智能分析、通用OCR、通用版面解析、通用表格识别、公式识别、印章文本识别涉及的17个模型整合为6条模型产线，通过极简的Python API一键调用，快速体验模型效果。此外...', 'cite_index': 4, 'published_at': 1742140800.0, 'site_name': 'PyPI', 'site_icon': 'https://cdn.deepseek.com/site-icons/pypi.org', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/article/4615393', 'title': '深度评测：GPU云服务器平台对比与推荐指南', 'snippet': '2.3 腾讯云CVM：性价比与易用性平衡 - 优势： - GN10Xp实例（A100）价格较AWS低35%，支持分钟级计费。 - 独创“GPU共享池”功能，允许多用户按需分配显存，降低闲置成本。', 'cite_index': 5, 'published_at': 1761840000.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://ccidnet.com/news/1019049.jhtml', 'title': '文心4.5衍生模型PaddleOCR-VL发布并开源 登顶OCR综合性能全球第一-赛迪网', 'snippet': '据了解，PaddleOCR-VL其核心模型参数仅0.9B，轻量高效，能够在极低计算开销下，精准识别文本、手写汉字、表格、公式、图表等复杂元素，支持109 种语言，覆盖中文、英语、法语、日语、俄语、阿拉伯语、西班牙语等多语场景，广泛适用于政企文档管理、知识检索、档案数字化...', 'cite_index': 6, 'published_at': 1760630400.0, 'site_name': '赛迪网', 'site_icon': 'https://cdn.deepseek.com/site-icons/ccidnet.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/article/4605893', 'title': '五大GPU云平台深度测评：谁才是性价比之王？（附羊毛攻略）', 'snippet': '简介：本文从性能、价格、生态、稳定性四大维度对比五大主流GPU云平台，结合开发者真实需求给出推荐，并附赠独家优惠获取方式 ... 以ResNet-50模型训练为例，使用单块NVIDIA A100 GPU比CPU方案快40倍以上。但自建GPU集群存在成本高（单卡价格5-15万元）...', 'cite_index': 7, 'published_at': 1761840000.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/article/3803444', 'title': '12款开源OCR PDF识别框架深度解析与选型指南', 'snippet': '1. Tesseract OCR 5.3+ 技术特性：LSTM深度学习模型+传统特征提取双引擎，支持100+语言训练。PDF处理需配合pdf2image或PyMuPDF进行图像转换。', 'cite_index': 8, 'published_at': 1758816000.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://cn.hostease.com/blog/server/gpu-server/gpu-server-price-by-gpu-count-1-2-4-8/', 'title': 'GPU服务器多少钱一台？从1卡到8卡，价格和能力差距一次说清', 'snippet': '实例配套规格不同 - 网络与存储能力不同 - 区域供需关系不同 所以在做选型时，我更建议你： 用“整体实例能力 + 总价”来对比，而不是只盯着GPU数量。', 'cite_index': 9, 'published_at': 1769443200.0, 'site_name': 'Hostease', 'site_icon': 'https://cdn.deepseek.com/site-icons/hostease.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.chinaz.com/ainews/22059.shtml', 'title': '百度发布全球领先文档解析模型 PaddleOCR-VL，重塑OCR技术格局！', 'snippet': 'PaddleOCR-VL 的核心模型参数仅为0.9B，具有轻量高效的特点，能够在极低的计算开销下，精准识别包括文本、手写汉字、表格、公式及图表等复杂元素。该模型支持109种语言...', 'cite_index': 10, 'published_at': 1760630400.0, 'site_name': 'CHINAZ', 'site_icon': 'https://cdn.deepseek.com/site-icons/chinaz.com', 'query_indexes': [0], 'is_hidden': False}]}"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 194,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "有大量的OCR扫描资料，但是手写笔记没有多少，我需要把这些资料给AI知识库然后针对我的薄弱点进行强化，手写笔记的需求以后针对错题找知识缺漏用。我该部署什么模型？"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 200,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "{'type': 'SEARCH', 'results': [{'url': 'https://www.amd.com/en/developer/resources/technical-articles/2026/unlocking-high-performance-document-parsing-of-paddleocr-vl-1-5-.html', 'title': 'Unlocking High-Performance Document Parsing of PaddleOCR-VL-1.5 on AMD GPUs with ROCm Software', 'snippet': 'With this release, user can deploy PaddleOCR-VL-1.5 on AMD GPUs from day one, this provides low-latency ... In this blog, we present a comprehensive guide to help users seamlessly adopt PaddleOCR-VL -1.5 on AMD GPUs. We will first introduce the core strengths of PaddleOCR-VL-1.5...', 'cite_index': 1, 'published_at': 1769616000.0, 'site_name': 'AMD', 'site_icon': 'https://cdn.deepseek.com/site-icons/amd.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://browse-export.arxiv.org/abs/2601.21957', 'title': 'PaddleOCR-VL-1.5: Towards a Multi-Task 0.9B VLM for Robust In-the-Wild Document Parsing', 'snippet': 'Abstract:We introduce PaddleOCR-VL-1.5, an upgraded model achieving a new state-of-the-art (SOTA) accuracy of 94.5% on OmniDocBench v1.5. ... and illumination, we propose the Real5-OmniDocBench benchmark.', 'cite_index': 2, 'published_at': 1769616000.0, 'site_name': 'arxiv.org', 'site_icon': 'https://cdn.deepseek.com/site-icons/arxiv.org', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/doc/AIHC/s/tlibetvq7', 'title': '功能发布记录', 'snippet': '快速在百舸部署apollo 智驾BEV模型全流程仿真验证环境（BEV模型训练、训练模型导出、推理），快速部署无缝对接 Apollo 自动驾驶系统 - 支持快速部署Qwen3-VL、GLM-4、GLM-Z1、PaddleOCR-VL、gemma-3等系列模型', 'cite_index': 3, 'published_at': 1770566400.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://www.bilibili.com/opus/1168393827974643729', 'title': 'Day 0支持落地：PaddleOCR‑VL‑1.5在 AMD GPU上基于ROCm 7.0成功运行', 'snippet': '我们将首先介绍 PaddleOCR-VL-1.5 的核心能力，包括其 SOTA 性能和关键技术特性；随后给出两种部署方式：适合快速体验的一键 Jupyter Notebook，以及适合自定义生产流程的 Docker 手动部署；然后分别说明两种推理后端（原生 PaddlePaddle 与 vLLM）的使用方法，以满足不同生产需求...', 'cite_index': 4, 'published_at': 1770825600.0, 'site_name': 'B站', 'site_icon': 'https://cdn.deepseek.com/site-icons/bilibili.com', 'query_indexes': [0, 1], 'is_hidden': False}, {'url': 'http://www.bianews.com/news/details?id=231154', 'title': '性能超越DeepSeek-OCR2，百度发布并开源新一代SOTA OCR模型', 'snippet': '相比2025年10月发布的上一代模型，PaddleOCR-VL-1.5新增印章识别、文本检测与识别等能力，优化了生僻字、古籍文献、多语种表格、下划线与复选框等复杂结构识别，新增藏语、孟加拉语支持。模型还支持跨页表格自动合并和跨页段落标题识别。', 'cite_index': 5, 'published_at': 1769702400.0, 'site_name': '鞭牛士', 'site_icon': 'https://cdn.deepseek.com/site-icons/bianews.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://siliconflow.cn/news/vo57ggecfisw5shjlyztz1r8', 'title': '硅基流动', 'snippet': '作为登录硅基流动 AI 云的第 153 个模型，PaddleOCR-VL-1.5 可免费调用。这位高效的文档解析伙伴将帮助企业与用户以更低成本使用高性能文档解析能力，其卓越的精度与强大的适应性，直接转化为处理效率的倍增与人工复核工作量的锐减，切实提升工作效益。', 'cite_index': 6, 'published_at': 1769961600.0, 'site_name': '硅基流动SiliconFlow', 'site_icon': 'https://cdn.deepseek.com/site-icons/siliconflow.cn', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://ai.baidu.com/ai-doc/AISTUDIO/Cmkz2m0ma', 'title': 'PaddleOCR-VL-1.5_API', 'snippet': '2026年1月29日，我们在PaddleOCR-VL的基础上发布了PaddleOCR-VL-1.5。PaddleOCR-VL-1.5不仅以94.5%精度大幅刷新了评测集OmniDocBench v1.5...', 'cite_index': 7, 'published_at': 1770220800.0, 'site_name': '百度AI', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.qbitai.com/2026/01/374455.html', 'title': '性能超越DeepSeek-OCR2，百度发布并开源新一代SOTA OCR模型', 'snippet': '该模型以仅0.9B参数的轻量架构，在全球权威文档解析评测榜单OmniDocBench V1.5中取得全球综合性能第一成绩，整体精度达到94.5%，超过Gemini-3-Pro、DeepSeek-OCR2、Qwen3-VL-235B-A22B、GPT-5.2等模型。', 'cite_index': 8, 'published_at': 1769702400.0, 'site_name': '量子位', 'site_icon': 'https://cdn.deepseek.com/site-icons/qbitai.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://blog.csdn.net/weixin_42509507/article/details/156998808', 'title': 'PaddleOCR-VL快速部署：云服务器环境配置指南', 'snippet': '本技术博客将围绕PaddleOCR-VL-WEB 的实际部署流程，详细介绍如何在云服务器环境中完成从镜像部署到网页端推理的完整配置路径，帮助开发者快速实现本地化或云端服务上线。', 'cite_index': 9, 'published_at': 1768492800.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/csdn.net', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://blog.csdn.net/weixin_31961675/article/details/157244653', 'title': 'PaddleOCR-VL-WEB私有化部署指南｜109种语言SOTA模型一键启动', 'snippet': 'PaddleOCR-VL-WEB私有化部署指南｜109种语言SOTA模型一键启动 ... 它不是简单打包一个模型，而是把整个文档解析流水线完整集成：从图像输入 → 版面检测 → 元素分类 → 多语言识别 → 结构化输出，全链路闭环，真正实现“开箱即用”。', 'cite_index': 10, 'published_at': 1769011200.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/csdn.net', 'query_indexes': [0], 'is_hidden': False}]}"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 253,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "我的本地算力完全不可用，一切计算均为云端，我需要选择哪家云服务商更好？"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 259,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "{'type': 'SEARCH', 'results': [{'url': 'https://www.163.com/dy/article/KL18F40I055673VY.html?spss=dy_author', 'title': 'PaddleOCR-VL-1.5开源，新增文本定位与印章识别能力', 'snippet': 'PaddleOCR-VL-1.5不仅以94.5%精度大幅刷新了评测集OmniDocBench v1.5，更创新性地支持了异形框定位，在扫描、倾斜、弯折、屏幕拍摄及复杂光照等真实场景中均表现优异。此外...', 'cite_index': 1, 'published_at': 1770220800.0, 'site_name': '网易', 'site_icon': 'https://cdn.deepseek.com/site-icons/163.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.bilibili.com/opus/1168393827974643729', 'title': 'Day 0支持落地：PaddleOCR‑VL‑1.5在 AMD GPU上基于ROCm 7.0成功运行', 'snippet': '我们将首先介绍 PaddleOCR-VL-1.5 的核心能力 ... 以及适合自定义生产流程的 Docker 手动部署；然后分别说明两种推理后端（原生 PaddlePaddle 与 vLLM）的使用方法，以满足不同生产需求，并给出性能对比和详细配置说明。', 'cite_index': 2, 'published_at': 1770825600.0, 'site_name': 'B站', 'site_icon': 'https://cdn.deepseek.com/site-icons/bilibili.com', 'query_indexes': [4], 'is_hidden': False}, {'url': 'https://www.amd.com/en/developer/resources/technical-articles/2026/unlocking-high-performance-document-parsing-of-paddleocr-vl-1-5-.html', 'title': 'Unlocking High-Performance Document Parsing of PaddleOCR-VL-1.5 on AMD GPUs with ROCm Software', 'snippet': 'We’re excited to share that AMD achieves Day 0 support for Baidu’s latest PaddleOCR-VL-1.5 model, successfully running it on AMD Instinct™ MI Series GPUs using the AMD ROCm™ software release 7.0.', 'cite_index': 3, 'published_at': 1769616000.0, 'site_name': 'AMD', 'site_icon': 'https://cdn.deepseek.com/site-icons/amd.com', 'query_indexes': [4], 'is_hidden': False}, {'url': 'https://ai.baidu.com/ai-doc/AISTUDIO/Cmkz2m0ma', 'title': 'PaddleOCR-VL-1.5_API', 'snippet': '2026年1月29日，我们在PaddleOCR-VL的基础上发布了PaddleOCR-VL-1.5。PaddleOCR-VL-1.5不仅以94.5%精度大幅刷新了评测集OmniDocBench v1.5，更创新性地支持了异形框定位，使得PaddleOCR-VL-1.5 在扫描...', 'cite_index': 4, 'published_at': 1770220800.0, 'site_name': '百度AI', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [4], 'is_hidden': False}, {'url': 'https://sigmaintell.com/news.php?cid=26&id=23460', 'title': '百度开源全新OCR模型 PaddleOCR-VL-1.5', 'snippet': '目前，PaddleOCR-VL-1.5 已全面开源，开发者可通过GitHub、Hugging Face获取，并在 PaddleOCR 官网进行在线体验或通过百度智能云千帆平台调用API接口 ... PaddleOCR-VL-1.5具备优秀的工程化和部署友好性...', 'cite_index': 5, 'published_at': 1769875200.0, 'site_name': 'Sigmaintell', 'site_icon': 'https://cdn.deepseek.com/site-icons/sigmaintell.com', 'query_indexes': [4], 'is_hidden': False}, {'url': 'https://blog.csdn.net/weixin_45449540/article/details/158870935', 'title': '飞桨星河社区月度报告（2026年2月）', 'snippet': '同时支持线上平台与API接口调用，适配PaddleOCR-VL-1.5、PaddleOCR-VL、PP-StructureV3、 PP-OCRv5多个核心模型。 【API调用体验优化】：在调用页面新增OCR额度可视化能力，实时展示当日当前模型的可解析页数...', 'cite_index': 6, 'published_at': 1772985600.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/csdn.net', 'query_indexes': [4], 'is_hidden': False}, {'url': 'https://xinsanban.10jqka.com.cn/20260204/c674544490.shtml', 'title': '并行科技MaaS平台获授百度“文心大模型技术服务平台深度合作伙伴” 同步接入PaddleOCR-VL-1.5_新三板频道_同花顺金融服务网', 'snippet': '并行科技MaaS平台获授百度“文心大模型技术服务平台深度合作伙伴” 同步接入PaddleOCR-VL-1.5  来源： 并行科技官微 2026-02-04 15:47:37 0  导  读  1月23日，文心Moment大会2026·上海站在上海张江科学会堂隆重召开，本次大会以技术创新、场景落地与生态协同为核心议题，汇聚了众多行业专家、产业代表、高校学者及AI技术生态开发者。并行科技受邀出席大会，', 'cite_index': 7, 'published_at': 1770134400.0, 'site_name': '同花顺', 'site_icon': 'https://cdn.deepseek.com/site-icons/10jqka.com.cn', 'query_indexes': [4], 'is_hidden': False}, {'url': 'https://www.wsisp.com/helps/67355.html', 'title': 'PaddleOCR-VL跨平台指南：Windows/Mac/Linux全兼容方案', 'snippet': '你是不是也遇到过这样的情况？早上在MacBook上处理客户合同，中午用公司Windows电脑开会，晚上回家又想用Linux主机跑点数据。结果发现——每个平台的OCR工具都不一样，配置方式五花八门，模型版本还对不上号。更头疼的是，文档一换设备就识别错乱，公式变乱码，表格直接“飞”出框外。  别急，今天我要分享的这个方案，彻底解决了跨平台OCR的痛点：PaddleOCR-VL。它不是普通的文字识别工具', 'cite_index': 8, 'published_at': 1769529600.0, 'site_name': '网硕互联', 'site_icon': 'https://cdn.deepseek.com/site-icons/wsisp.com', 'query_indexes': [4], 'is_hidden': False}]}"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 317,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "我需要网页界面直接上传文件然后下载转换好的文件，中间点过程越少越好，花费也越低越好，我是备考不是学习技术，能用就行。虽然我是计算机考研备考，但是目前前沿的知识和我需要学习的关联较小，我只需要调用现有工具"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 323,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "{'type': 'SEARCH', 'results': [{'url': 'https://ai.paratera.com/document/maas_service_agreement', 'title': '并行智算云产品文档中心_Maas Service Agreement', 'snippet': '2.2. 并行科技MaaS平台和服务计费规则及详细价格将在并行科技MaaS平台官网相关页面予以列明或约定，账单、使用量以并行智算云系统记录为准，且以当时有效的模式和标准计费。', 'cite_index': 1, 'published_at': None, 'site_name': '并行科技', 'site_icon': 'https://cdn.deepseek.com/site-icons/paratera.com', 'query_indexes': [1], 'is_hidden': False}]}"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 365,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "目前先尝试一千页的扫描件，大小大概500Mb，我可以上传到哪里？"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 371,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "{'type': 'SEARCH', 'results': [{'url': 'https://www.yun88.com/qa/358.html', 'title': '云服务腾讯云怎样满足不同规模企业对轻量级 OCR 的需求？-云巴巴', 'snippet': '小微企业（如个体商户、小型工作室）每日 OCR 识别量通常低于 1000 次，腾讯云的 “入门版” 轻量级 OCR 完全能覆盖：支持身份证、发票等常见场景识别，按次计费，无需预付年费，开通后即开即用。某花店用其识别客户订单截图中的地址信息...', 'cite_index': 1, 'published_at': None, 'site_name': '云巴巴', 'site_icon': 'https://cdn.deepseek.com/site-icons/yun88.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://app.xunjiepdf.com/faq', 'title': '常见问题 - 迅捷PDF转换器在线免费版', 'snippet': '1.在线上传文件是否限制文件大小? 答：在线版PDF转换器转换文件仅限于2M以内文件（除视频文件20M以内外），如需转换更大文件、转换更多格式文件，请使用客户端或开通VIP。', 'cite_index': 2, 'published_at': None, 'site_name': '迅捷办公', 'site_icon': 'https://cdn.deepseek.com/site-icons/xunjiepdf.com', 'query_indexes': [2], 'is_hidden': False}]}"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 414,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "我需要快速处理，我可以部署云服务器，不想部署只是如果有更优解就不部署，以满足需求为主，需求是把大量的扫描版考研资料变成可以喂知识库的文档，选择一个最快的方案"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 420,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "{'type': 'SEARCH', 'results': [{'url': 'https://www.ai-indeed.com/encyclopedia/16749.html', 'title': 'ocr能提取多页pdf吗？能力边界、实现方式与落地方案', 'snippet': '结论：OCR能提取多页PDF。但要先判断PDF类型：若是原生文字PDF可优先用“文本解析/结构化抽取”直接读；若是扫描版PDF（图片）则需要逐页OCR。多页提取的难点不在“能不能”，而在批量效率、版面结构保真、表格/公式/印章处理、以及合规与可追溯。', 'cite_index': 1, 'published_at': 1773244800.0, 'site_name': '实在RPA', 'site_icon': 'https://cdn.deepseek.com/site-icons/ai-indeed.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://deepwiki.com/PaddlePaddle/PaddleOCR/2.2-pp-structurev3-document-parsing', 'title': 'PaddleOCR-VL Vision-Language Model | PaddlePaddle/PaddleOCR | DeepWiki', 'snippet': 'The model is under continuous development. As of January 2026, PaddleOCR-VL-1.5 is the current default (pipeline_version=\"v1.5\"), achieving 94.5% accuracy on OmniDocBench v1.5 and adding...', 'cite_index': 2, 'published_at': 1772208000.0, 'site_name': 'DeepWiki', 'site_icon': 'https://cdn.deepseek.com/site-icons/deepwiki.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://cloud.tencent.com.cn/developer/information/%E8%87%AA%E5%AE%9A%E4%B9%89ocr', 'title': '自定义ocr - 腾讯云开发者社区', 'snippet': '最近作者项目中用到了身份证识别跟营业执照的OCR识别，就研究了一下百度云跟腾讯云的OCR产品接口。...1.腾讯云OCR ---- 收费：身份证OCR和营业执照OCR接口，每个接口每个月各有1000次的免费调用', 'cite_index': 3, 'published_at': 1767196800.0, 'site_name': 'Tencent', 'site_icon': 'https://cdn.deepseek.com/site-icons/tencent.com.cn', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://cloud.baidu.com/doc/OCR/s/Fls06fa15', 'title': '智能文档分析平台', 'snippet': '支持文档格式转换的在线工具和接口调用两种使用方式。 首次进入在线工具-文档格式转换 页面即可自动领取免费资源，或者在文字识别控制台 也可以自动领取免费资源。个人认证 200 页，企业认证 200 页...', 'cite_index': 4, 'published_at': 1770307200.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://ai.baidu.com/ai-doc/AISTUDIO/Cmkz2m0ma', 'title': 'PaddleOCR-VL-1.5_API', 'snippet': 'PaddleOCR-VL-1.5 服务化部署调用示例及 API 介绍 ... 2026年1月29日，我们在PaddleOCR-VL的基础上发布了PaddleOCR-VL-1.5。PaddleOCR-VL-1.5不仅以94.5%精度大幅刷新了评测集OmniDocBench', 'cite_index': 5, 'published_at': 1770220800.0, 'site_name': '百度AI', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://ecweb.ecer.com/topic/cn/detail-259818-businesses_weigh_cost_vs_performance_in_ocr_cloud_services.html', 'title': 'OCR文字识别效果相近价格悬殊选对云服务省钱又高效', 'snippet': '本文揭示了腾讯云和百度云OCR文字识别价格差异背后的服务策略和服务质量差异，并提供了选择OCR云服务的实用建议，帮助用户根据自身需求选择最合适的解决方案，实现省钱又高效的目标。', 'cite_index': 6, 'published_at': 1772726400.0, 'site_name': 'Ecer', 'site_icon': 'https://cdn.deepseek.com/site-icons/ecer.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://mixpeek.com/curated-lists/best-document-ai-platforms', 'title': 'Best Document AI Platforms in 2026 - Tested & Ranked | Mixpeek', 'snippet': \"layout analysis, table extraction, and document search. Tested on invoices ... Google Document AI Google Cloud's document processing service with pre-trained processors for common document types. Offers OCR, form parsing, and specialized processors for invoices, receipts, and contracts.\", 'cite_index': 7, 'published_at': None, 'site_name': 'Mixpeek', 'site_icon': 'https://cdn.deepseek.com/site-icons/mixpeek.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.bilibili.com/opus/1168393827974643729', 'title': 'Day 0支持落地：PaddleOCR‑VL‑1.5在 AMD GPU上基于ROCm 7.0成功运行', 'snippet': '我们将首先介绍 PaddleOCR-VL-1.5 的核心能力，包括其 SOTA 性能和关键技术特性；随后给出两种部署方式：适合快速体验的一键 Jupyter Notebook，以及适合自定义生产流程的 Docker 手动部署；然后分别说明两种推理后端（原生 PaddlePaddle 与 vLLM）的使用方法，以满足不同生产需求...', 'cite_index': 8, 'published_at': 1770825600.0, 'site_name': 'B站', 'site_icon': 'https://cdn.deepseek.com/site-icons/bilibili.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://juejin.cn/s/ocr%E6%96%87%E5%AD%97%E8%AF%86%E5%88%AB%E6%94%B6%E8%B4%B9%E6%A0%87%E5%87%86', 'title': 'ocr文字识别收费标准-掘金', 'snippet': '对于一些常见的OCR服务，如百度OCR、腾讯OCR等，其收费标准会根据使用次数、调用频率以及识别的文本和图片数量等参数进行计费。如果需要购买大量的OCR识别服务，可以试着与服务商联系，看是否可以获得一些折扣。同时...', 'cite_index': 9, 'published_at': None, 'site_name': '掘金', 'site_icon': 'https://cdn.deepseek.com/site-icons/juejin.cn', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://cloud.tencent.com/developer/mcp/server/11761', 'title': '文字识别 OCR-文档抽取(多模态版) MCP - 腾讯云', 'snippet': '支持通用文字、卡证文字、票据单据、特定场景等多场景下的印刷体、手写体文字识别，同时支持票据核验功能，支持提供定制化服务，可以有效地代替人工录入信息。', 'cite_index': 10, 'published_at': 1757952000.0, 'site_name': '腾讯云', 'site_icon': 'https://cdn.deepseek.com/site-icons/tencent.com', 'query_indexes': [0], 'is_hidden': False}]}"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 442,
+      "line": "## 🚀 最快路径：百度智能云「文档解析(PaddleOCR-VL)」API",
+      "context_before": [
+        "我直接给你**最终方案**，不需要再纠结：",
+        ""
+      ],
+      "context_after": [
+        "",
+        "### 为什么选它？"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 510,
+      "line": "## 💡 为什么这是“最快方案”？",
+      "context_before": [
+        "你直接把Markdown文件扔进AI知识库（比如Obsidian、ChatGPT、Kimi等），就可以针对薄弱点提问了。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "| 方案 | 准备时间 | 成本 | 技术要求 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 519,
+      "line": "## 📥 1000页文件怎么传？",
+      "context_before": [
+        "你作为计算机考研人，代码基础肯定有，这5分钟绝对比折腾服务器快得多。而且这是**官方出品**，有问题直接看文档或提工单，比自己排查快多了。",
+        ""
+      ],
+      "context_after": [
+        "API支持直接传Base64，但500MB的Base64会很大。建议：",
+        "1. 如果文件小于100MB，直接转Base64传"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 524,
+      "line": "## 需要我帮你把完整的Python调用脚本写出来吗？",
+      "context_before": [
+        "2. 如果超过100MB，用分页处理或联系客服申请更大配额[citation:5]",
+        ""
+      ],
+      "context_after": [
+        "你只需要告诉我：",
+        "- 你的PDF是单文件500MB，还是多个小文件？"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 533,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "租服务器的服务器算力是多少？看起来按小时付费还比较合算，这个文档在服务器要跑多久？"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 539,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "{'type': 'SEARCH', 'results': [{'url': 'https://cloud.baidu.com/article/3795059', 'title': '带GPU云服务器怎么选？高性价比方案深度解析', 'snippet': 'NVIDIA T4：基于Turing架构，专为推理优化，提供16GB GDDR6显存，功耗仅70W。腾讯云GN7实例搭载T4，在BERT推理场景下延迟比CPU降低8倍。 - AMD MI250X：采用CDNA2架构，配备128GB HBM2e显存，双精度性能达11.5 TFLOPS...', 'cite_index': 1, 'published_at': 1758816000.0, 'site_name': '百度智能云', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://developer.aliyun.com:443/article/879583', 'title': '搭载 NVIDIA A10 GPU的阿里云gn7i服务器开启，AI性能提升2-3倍！', 'snippet': 'Gn7i实例的单精度浮点计算能力是T4实例的385%，支持混合精度，提供优秀的计算能力，可广泛应用于互联网、安防、工业等行业的AI图像识别、语音识别、语义识别、行为识别等场景；还集成优秀的图形渲染能力，适用于设计、制造、建造设计等行业，以及云游戏运营商等...', 'cite_index': 2, 'published_at': 1648310400.0, 'site_name': '阿里云开发者社区', 'site_icon': 'https://cdn.deepseek.com/site-icons/aliyun.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://blog.csdn.net/sexy19910923/article/details/157547564', 'title': '实测碾压！PaddleOCR-VL-1.5 来了：这可能是目前最实用的文档解析工具', 'snippet': '与追求通用对话能力的超大规模 VLM 不同，PaddleOCR-VL-1.5 选择了 0.9B 的参数规模，这使其能够保持极高的推理速度并支持端侧甚至浏览器级别的部署 。通过将 NaViT 动态分辨率编码器与轻量化语言解码器相结合...', 'cite_index': 3, 'published_at': 1769702400.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/csdn.net', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://deepwiki.com/PaddlePaddle/PaddleOCR/2.2-pp-structurev3-document-parsing', 'title': 'PaddleOCR-VL Vision-Language Model | PaddlePaddle/PaddleOCR | DeepWiki', 'snippet': 'The model is under continuous development. As of January 2026, PaddleOCR-VL-1.5 is the current default (pipeline_version=\"v1.5\"), achieving 94.5% accuracy on OmniDocBench v1.5 and adding...', 'cite_index': 4, 'published_at': 1772208000.0, 'site_name': 'DeepWiki', 'site_icon': 'https://cdn.deepseek.com/site-icons/deepwiki.com', 'query_indexes': [3, 2], 'is_hidden': False}, {'url': 'https://cloud.tencent.cn/developer/information/12.12%20%E8%AE%A1%E7%AE%97%E5%9E%8BGPU%E4%BA%91%E6%9C%8D%E5%8A%A1%E5%99%A8%E6%8E%A8%E8%8D%90-ask', 'title': '12.12 计算型GPU云服务器推荐', 'snippet': '性能卓越可靠：提供强大的单双精度浮点运算能力，单机峰值计算能力最高突破单精度浮点运算125.6 TFLOPS，双精度浮点运算62.4 TFLOPS。', 'cite_index': 5, 'published_at': 1737216000.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/tencent.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://intl.cloud.tencent.com/document/product/560/76772', 'title': 'tencent cloud', 'snippet': 'The PNV4 and GN7 GPU computing instances are equipped with A10 and T4 GPUs, respectively. They provide high performance-per-watt single-precision floating-point computing capabilities, making them widely used in online and offline inference scenarios.', 'cite_index': 6, 'published_at': 1768492800.0, 'site_name': '腾讯官网', 'site_icon': 'https://cdn.deepseek.com/site-icons/tencent.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.321.net/Help/773366.html', 'title': '阿里云GPU服务器政策深度解析：选型与成本优化指南', 'snippet': '1）GN7i系列（NVIDIA A10） - 基础配置：32核CPU+188GB内存+4*A10 GPU - 典型应用 ... AI时代的GPU云服务器 深度优化的GPU算力为模型推理、图形处理提供更强性能支持', 'cite_index': 7, 'published_at': 1762790400.0, 'site_name': '321', 'site_icon': 'https://cdn.deepseek.com/site-icons/321.net', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.bilibili.com/opus/1168393827974643729', 'title': 'Day 0支持落地：PaddleOCR‑VL‑1.5在 AMD GPU上基于ROCm 7.0成功运行', 'snippet': 'PaddleOCR-VL-1.5 是 PaddleOCR-VL 系列的最新版本，在充分继承并优化 1.0 版本能力的基础上，在权威文档解析基准 OmniDocBench v1.5 上取得了 94.5% 的高精度表现，超过了多款主流通用大模型与专用文档解析模型。作为全球首个支持不规则检测框定位的文档解析模型...', 'cite_index': 8, 'published_at': 1770825600.0, 'site_name': 'B站', 'site_icon': 'https://cdn.deepseek.com/site-icons/bilibili.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://www.tencentcloud.com/zh/document/product/560/76772', 'title': 'tencent cloud', 'snippet': 'GPU 计算型实例 PNV4、GN7 分别搭载 A10、T4 GPU，提供高性能功耗比的单精度浮点运算能力，广泛应用于在线和离线推理业务场景。', 'cite_index': 9, 'published_at': 1768492800.0, 'site_name': 'Tencent Cloud', 'site_icon': 'https://cdn.deepseek.com/site-icons/tencentcloud.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://developer.alibaba.com/docs/doc.htm?treeId=608&articleId=112466&docType=1', 'title': '淘宝开放平台', 'snippet': 'GPU计算型实例规格族gn7i gn7i的特点如下： - 依托第三代神龙架构，提供稳定可预期的超高性能。同时通过芯片快速路径加速手段，完成存储、网络性能以及计算稳定性的数量级提升。', 'cite_index': 10, 'published_at': None, 'site_name': 'Alibaba.com', 'site_icon': 'https://cdn.deepseek.com/site-icons/alibaba.com', 'query_indexes': [1], 'is_hidden': False}]}"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 600,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "租服务器，租阿里云的服务器，以及给我部署的脚本"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 606,
+      "line": "## ❓ unknown",
+      "context_before": [
+        "---",
+        ""
+      ],
+      "context_after": [
+        "",
+        "{'type': 'SEARCH', 'results': [{'url': 'https://developer.aliyun.com/article/1714433', 'title': '2026最新阿里云GPU服务器租赁价目表：AI 推理 / 训练算力费用与场景汇总', 'snippet': 'A10卡GN7i | NVIDIA A10 | 32核188G | 3213.99元/1个月 | 最高搭载4*NVIDIA A10-24G卡；适用人工智能算法的训练应用、AI推理、科学计算等业务场景', 'cite_index': 1, 'published_at': 1772553600.0, 'site_name': '阿里云开发者社区', 'site_icon': 'https://cdn.deepseek.com/site-icons/aliyun.com', 'query_indexes': [0, 1], 'is_hidden': False}, {'url': 'https://www.amd.com/en/developer/resources/technical-articles/2026/unlocking-high-performance-document-parsing-of-paddleocr-vl-1-5-.html', 'title': 'Unlocking High-Performance Document Parsing of PaddleOCR-VL-1.5 on AMD GPUs with ROCm Software', 'snippet': 'With this release, user can deploy PaddleOCR-VL-1.5 on AMD GPUs from day one, this provides low-latency, and high-throughput document parsing ... In this blog, we present a comprehensive guide to help users ... -1.5 on AMD GPUs.', 'cite_index': 2, 'published_at': 1769616000.0, 'site_name': 'AMD', 'site_icon': 'https://cdn.deepseek.com/site-icons/amd.com', 'query_indexes': [2, 3], 'is_hidden': False}, {'url': 'https://developer.aliyun.com/article/1716048', 'title': 'AI服务器怎么收费？阿里云AI云服务器支持NVIDIA A10、V100、T4、P4、P100 GPU卡费用清单', 'snippet': '简介： 阿里云AI服务器提供NVIDIA A10/V100/T4/P4/P100等GPU实例，支持CPU+GPU/FPGA/TPU等多种异构架构，适用于AI训练、推理、科学计算等场景。价格从1503.5元/月起...', 'cite_index': 3, 'published_at': 1773158400.0, 'site_name': '阿里云开发者社区', 'site_icon': 'https://cdn.deepseek.com/site-icons/aliyun.com', 'query_indexes': [0, 1], 'is_hidden': False}, {'url': 'https://www.bilibili.com/opus/1168393827974643729', 'title': 'Day 0支持落地：PaddleOCR‑VL‑1.5在 AMD GPU上基于ROCm 7.0成功运行', 'snippet': '我们将首先介绍 PaddleOCR-VL-1.5 的核心能力，包括其 SOTA 性能和关键技术特性；随后给出两种部署方式：适合快速体验的一键 Jupyter Notebook，以及适合自定义生产流程的 Docker 手动部署；然后分别说明两种推理后端（原生 PaddlePaddle 与 vLLM）的使用方法，以满足不同生产需求...', 'cite_index': 4, 'published_at': 1770825600.0, 'site_name': 'B站', 'site_icon': 'https://cdn.deepseek.com/site-icons/bilibili.com', 'query_indexes': [2, 3], 'is_hidden': False}, {'url': 'https://aliyunfuwuqi.com/gpu/8364/', 'title': '阿里云GPU服务器收费价格多少钱？2026年最新版收费清单', 'snippet': 'A10 GPU计算型实例gn7i：32核188G，优惠价格3203.99元1个月； - T4 GPU计算型实例gn6i：4核15G，收费价格1681元1个月； - V100 GPU计算型实例gn6v：8核32G，费用3817元1个月...', 'cite_index': 5, 'published_at': 1767542400.0, 'site_name': '阿里云服务器', 'site_icon': 'https://cdn.deepseek.com/site-icons/aliyunfuwuqi.com', 'query_indexes': [0, 1], 'is_hidden': False}, {'url': 'https://developer.aliyun.com/group/ecs/?userCode=mvsk1hl5&lanfino=VaSUAlXxR', 'title': '云服务器ECS', 'snippet': '2026年阿里云推出多个不同类型的活动：云资源产品直降，轻量应用服务器低至38元/年；“99计划”提供经济型e实例和通用算力型u1实例，分别为99元/年和199元/年，且新购续费同价；弹性计算爆款直降活动覆盖多规格实例，企业用户可享高端实例折扣...', 'cite_index': 6, 'published_at': None, 'site_name': '阿里云开发者社区', 'site_icon': 'https://cdn.deepseek.com/site-icons/aliyun.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.vps345.com/23961.html', 'title': 'PaddleOCR-VL部署（cuda12.0/cuda12.1/cuda12.2、使用docker、服务端及客户端在同一容器、手动安装paddlepaddle、vlm服务端、flash_attn）', 'snippet': '1. 创建并使用虚拟环境paddlevlm ... 通过 paddleocr install_genai_server_deps 安装的 vLLM 与 SGLang 均为 CUDA 12.8 版本，请确保本地 GPU 驱动与之兼容。 ## 2. 安装flash_attn', 'cite_index': 7, 'published_at': 1769529600.0, 'site_name': 'vps345.com', 'site_icon': 'https://cdn.deepseek.com/site-icons/vps345.com', 'query_indexes': [2, 3], 'is_hidden': False}, {'url': 'https://www.321.net/Search/258712/', 'title': '阿里云a10服务器', 'snippet': '￥3203.99/月 ... GPU云服务器 深度优化的GPU算力为模型推理、图形处理提供更强性能支持 ￥6929.25/月 AI 算力,安全可靠,灵活弹性,85折', 'cite_index': 8, 'published_at': None, 'site_name': '321', 'site_icon': 'https://cdn.deepseek.com/site-icons/321.net', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.321.net/Search/328333/2/', 'title': 'teams最新价格表', 'snippet': 'A10 GPU计算型实例gn7i GPU云服务器（elastic GPU service，EGS）是阿里云推出的安全稳定，可按需弹性使用的GPU算力平台，专为满足人工智能计算、图形渲染、科学仿真等高性能计算场景需求而设计。EGS持续集成各类最新GPU加速芯片...', 'cite_index': 9, 'published_at': None, 'site_name': '321', 'site_icon': 'https://cdn.deepseek.com/site-icons/321.net', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://deepwiki.com/PaddlePaddle/PaddleOCR/2.2-pp-structurev3-document-parsing', 'title': 'PaddleOCR-VL Vision-Language Model | PaddlePaddle/PaddleOCR | DeepWiki', 'snippet': 'As of January 2026, PaddleOCR-VL-1.5 is the current default (pipeline_version=\"v1.5\"), achieving 94.5% accuracy on OmniDocBench v1.5 and adding...', 'cite_index': 10, 'published_at': 1772208000.0, 'site_name': 'DeepWiki', 'site_icon': 'https://cdn.deepseek.com/site-icons/deepwiki.com', 'query_indexes': [3], 'is_hidden': False}]}"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 620,
+      "line": "## 🖥️ 第一步：租服务器（选配置）",
+      "context_before": [
+        "没问题，既然你决定用阿里云，咱们就一步到位，把服务器租好、环境配好、服务跑起来。整个过程你只需要**复制粘贴我给你的命令**，预计15分钟内就能看到Web界面。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "根据你之前的需求——**1000页、500MB、理工科资料**，我帮你选了**性价比最高**的配置："
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 635,
+      "line": "## 🐳 第二步：一键部署脚本（复制粘贴）",
+      "context_before": [
+        "> **小提示**：新用户可能有免费额度或优惠券，记得领一下[citation:5][citation:6]。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "登录到你的服务器（用XShell或阿里云网页的“远程连接”），然后**逐行复制粘贴**下面的命令："
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 679,
+      "line": "## ⚙️ 关键参数调优（适合理工科）",
+      "context_before": [
+        "你会看到一个上传界面，直接上传你的PDF，稍等片刻就能下载**Markdown格式**的结果[citation:7][citation:10]。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "在上传前，建议在Web界面或配置中勾选/添加以下参数，针对你的**理工科资料（公式、表格、扫描歪斜）** 优化[citation:2][citation:10]："
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\考研资料上传AI知识库.md",
+      "line_number": 694,
+      "line": "## 💰 跑完记得关机",
+      "context_before": [
+        "```",
+        ""
+      ],
+      "context_after": [
+        "",
+        "处理完1000页资料后，**务必在阿里云控制台“停止”实例**，否则会继续扣费。按量付费实例停止后不再计费。"
+      ]
+    }
+  ],
+  "total_matches": 30,
+  "files_searched": 1,
+  "truncated": false
+}

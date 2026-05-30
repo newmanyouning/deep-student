@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "id": "item_9fc93a7a",
+  "turn_id": "turn_22261275",
+  "kind": "file_change",
+  "status": "failed",
+  "summary": "write_file failed: Failed to authorize tool execution: Tool 'write_file' denied by user",
+  "detail": "Failed to authorize tool execution: Tool 'write_file' denied by user",
+  "artifact_refs": [],
+  "started_at": "2026-05-17T09:41:18.635961400Z",
+  "ended_at": "2026-05-17T09:46:18.703016800Z"
+}

@@ -1,0 +1,839 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 23,
+      "line": "| CV工程师梗解析.md | 人文与知识 |",
+      "context_before": [
+        "| API缓存命中未命中解释.md | AI与编程开发 |",
+        "| BMI70高血压患者健康隐患解析.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| Caudate Sonnet简介及结构解析.md | 人文与知识 |",
+        "| Claude Code使用指南.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 24,
+      "line": "| Caudate Sonnet简介及结构解析.md | 人文与知识 |",
+      "context_before": [
+        "| BMI70高血压患者健康隐患解析.md | 健康与医学 |",
+        "| CV工程师梗解析.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| Claude Code使用指南.md | AI与编程开发 |",
+        "| Claude Code国内源切换与升级指南.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 36,
+      "line": "| DNA不会通过呼吸释放主要来自细胞脱落.md | 人文与知识 |",
+      "context_before": [
+        "| DHA与充足睡眠提升情绪平静感.md | 健康与医学 |",
+        "| DHA补充过量影响睡眠调整建议.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| DVDVCDDC的时候区别.md | 游戏与娱乐 |",
+        "| DeepSeek API模型版本.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 46,
+      "line": "| Effective Sparse Adversarial Attacks on SNNs.md | 人文与知识 |",
+      "context_before": [
+        "| EA与育碧游戏公司对比.md | 游戏与娱乐 |",
+        "| Edge收藏夹文件位置及备份方法.md | 计算机与操作系统 |"
+      ],
+      "context_after": [
+        "| Excel VBA代码存储位置与编辑工具.md | AI与编程开发 |",
+        "| Excel分析工具重构方案设计.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 56,
+      "line": "| KDE桌面环境及社区简介.md | 人文与知识 |",
+      "context_before": [
+        "| HuggingFace模型下载方法.md | AI与编程开发 |",
+        "| Java项目构建工具及基本结构介绍.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| LLVM与GDB简介及用途.md | 人文与知识 |",
+        "| MCP含义解释.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 57,
+      "line": "| LLVM与GDB简介及用途.md | 人文与知识 |",
+      "context_before": [
+        "| Java项目构建工具及基本结构介绍.md | AI与编程开发 |",
+        "| KDE桌面环境及社区简介.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| MCP含义解释.md | AI与编程开发 |",
+        "| Mac mini双系统安装方案.md | 苹果生态与设备 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 68,
+      "line": "| NFT与数字水印关系解析.md | 人文与知识 |",
+      "context_before": [
+        "| Mac运行Python项目解决步骤.md | 苹果生态与设备 |",
+        "| Mac隐藏文件显示方法.md | 苹果生态与设备 |"
+      ],
+      "context_after": [
+        "| NMD与TMD系统对比解析.md | 人文与知识 |",
+        "| NSPro手柄连接电脑鼠标异常移动解决方法.md | 游戏与娱乐 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 69,
+      "line": "| NMD与TMD系统对比解析.md | 人文与知识 |",
+      "context_before": [
+        "| Mac隐藏文件显示方法.md | 苹果生态与设备 |",
+        "| NFT与数字水印关系解析.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| NSPro手柄连接电脑鼠标异常移动解决方法.md | 游戏与娱乐 |",
+        "| Nano Banana是谷歌Gemini模型昵称.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 85,
+      "line": "| Towards Effective and Spares Adv.md | 人文与知识 |",
+      "context_before": [
+        "| Safari收藏网页方法.md | 计算机与操作系统 |",
+        "| Switch合家欢游戏推荐.md | 游戏与娱乐 |"
+      ],
+      "context_after": [
+        "| UGC社区含义解释.md | 人文与知识 |",
+        "| Ubuntu中文输入法安装指南.md | 计算机与操作系统 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 86,
+      "line": "| UGC社区含义解释.md | 人文与知识 |",
+      "context_before": [
+        "| Switch合家欢游戏推荐.md | 游戏与娱乐 |",
+        "| Towards Effective and Spares Adv.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| Ubuntu中文输入法安装指南.md | 计算机与操作系统 |",
+        "| Ubuntu安装md阅读工具指南.md | 计算机与操作系统 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 96,
+      "line": "| VR与AR眼镜区别及技术解析.md | 人文与知识 |",
+      "context_before": [
+        "| VBA代码问题分析.md | AI与编程开发 |",
+        "| VBA数据类型种类.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| Vim快速删除多行方法.md | 计算机与操作系统 |",
+        "| WPS VBA语法兼容性分析.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 123,
+      "line": "| chat_f8f7ecbe.md | 人文与知识 |",
+      "context_before": [
+        "| cc-mini参数错误排查.md | AI与编程开发 |",
+        "| cc-mini工具调用错误解决.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| chat_ff27521e.md | 人文与知识 |",
+        "| clash机场推荐.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 124,
+      "line": "| chat_ff27521e.md | 人文与知识 |",
+      "context_before": [
+        "| cc-mini工具调用错误解决.md | AI与编程开发 |",
+        "| chat_f8f7ecbe.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| clash机场推荐.md | AI与编程开发 |",
+        "| ex在x1泰勒展开式.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 139,
+      "line": "| 中国紫外线最强城市及防护指南.md | 人文与知识 |",
+      "context_before": [
+        "| 与低共情者沟通技巧与分析.md | 职业与职场 |",
+        "| 中医扎四缝疗法解析.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| 中国青年报电子版可以在哪里阅读.md | 人文与知识 |",
+        "| 中文分词技术方案深度解析.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 140,
+      "line": "| 中国青年报电子版可以在哪里阅读.md | 人文与知识 |",
+      "context_before": [
+        "| 中医扎四缝疗法解析.md | 健康与医学 |",
+        "| 中国紫外线最强城市及防护指南.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 中文分词技术方案深度解析.md | AI与编程开发 |",
+        "| 中文分词技术深度解析与工程性能分析.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 144,
+      "line": "| 中美时差及各时区换算指南.md | 人文与知识 |",
+      "context_before": [
+        "| 中文分词技术深度解析与工程性能分析.md | AI与编程开发 |",
+        "| 中文版Claude Code网页入口.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 串行ATA20协议介绍.md | 人文与知识 |",
+        "| 为什么电影院会卖爆米花.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 145,
+      "line": "| 串行ATA20协议介绍.md | 人文与知识 |",
+      "context_before": [
+        "| 中文版Claude Code网页入口.md | AI与编程开发 |",
+        "| 中美时差及各时区换算指南.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 为什么电影院会卖爆米花.md | 人文与知识 |",
+        "| 九十年代VR实现与光波调制解调.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 146,
+      "line": "| 为什么电影院会卖爆米花.md | 人文与知识 |",
+      "context_before": [
+        "| 中美时差及各时区换算指南.md | 人文与知识 |",
+        "| 串行ATA20协议介绍.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 九十年代VR实现与光波调制解调.md | 人文与知识 |",
+        "| 乳腺脂肪瘤BI-RADS 3级无需手术.md | 健康与医学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 147,
+      "line": "| 九十年代VR实现与光波调制解调.md | 人文与知识 |",
+      "context_before": [
+        "| 串行ATA20协议介绍.md | 人文与知识 |",
+        "| 为什么电影院会卖爆米花.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 乳腺脂肪瘤BI-RADS 3级无需手术.md | 健康与医学 |",
+        "| 二次元形象描述生成.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 149,
+      "line": "| 二次元形象描述生成.md | 人文与知识 |",
+      "context_before": [
+        "| 九十年代VR实现与光波调制解调.md | 人文与知识 |",
+        "| 乳腺脂肪瘤BI-RADS 3级无需手术.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| 二次元文化中重女概念解析.md | 人文与知识 |",
+        "| 二次元重女含义及特征解析.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 150,
+      "line": "| 二次元文化中重女概念解析.md | 人文与知识 |",
+      "context_before": [
+        "| 乳腺脂肪瘤BI-RADS 3级无需手术.md | 健康与医学 |",
+        "| 二次元形象描述生成.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 二次元重女含义及特征解析.md | 人文与知识 |",
+        "| 云服务器GPU占用查看命令.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 151,
+      "line": "| 二次元重女含义及特征解析.md | 人文与知识 |",
+      "context_before": [
+        "| 二次元形象描述生成.md | 人文与知识 |",
+        "| 二次元文化中重女概念解析.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 云服务器GPU占用查看命令.md | AI与编程开发 |",
+        "| 五菱mini刹车片检查更换指南.md | 生活与消费 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 159,
+      "line": "| 何以笙箫默故事梗概及核心主题.md | 人文与知识 |",
+      "context_before": [
+        "| 低能量人群心态调整指南.md | 职业与职场 |",
+        "| 低血压不能吃镁补剂吗在吃DHA修复大脑的时候不会因为缺镁影响修.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| 余震人名与嚼大果梗解析.md | 人文与知识 |",
+        "| 你的671b的模型要多大的显存.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 160,
+      "line": "| 余震人名与嚼大果梗解析.md | 人文与知识 |",
+      "context_before": [
+        "| 低血压不能吃镁补剂吗在吃DHA修复大脑的时候不会因为缺镁影响修.md | 健康与医学 |",
+        "| 何以笙箫默故事梗概及核心主题.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 你的671b的模型要多大的显存.md | 人文与知识 |",
+        "| 依赖更新调研后续AI提示词.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 161,
+      "line": "| 你的671b的模型要多大的显存.md | 人文与知识 |",
+      "context_before": [
+        "| 何以笙箫默故事梗概及核心主题.md | 人文与知识 |",
+        "| 余震人名与嚼大果梗解析.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 依赖更新调研后续AI提示词.md | AI与编程开发 |",
+        "| 修复PyInstaller打包命令.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 180,
+      "line": "| 分配与匹配认知背景分析.md | 人文与知识 |",
+      "context_before": [
+        "| 冰箱冷藏牛肉变质处理建议.md | 生活与消费 |",
+        "| 冲牙器选购指南及推荐.md | 生活与消费 |"
+      ],
+      "context_after": [
+        "| 创建激活Python虚拟环境命令.md | AI与编程开发 |",
+        "| 初等变换对矩阵特征值和迹的影响.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 193,
+      "line": "| 南极仙翁的师傅是谁.md | 人文与知识 |",
+      "context_before": [
+        "| 单位mvms-2转换为mvg的数值需要怎么计算.md | 数学与自然科学 |",
+        "| 南孚电池外膜撕开后果.md | 生活与消费 |"
+      ],
+      "context_after": [
+        "| 去除妙控键盘香水味的有效方法.md | 生活与消费 |",
+        "| 双屏安卓掌机应用推荐及使用技巧.md | 游戏与娱乐 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 205,
+      "line": "| 告诉我你是怎么做到在保证性能与o1持平的基础上大幅度减小算力.md | 人文与知识 |",
+      "context_before": [
+        "| 向量数据库与Redis区别.md | AI与编程开发 |",
+        "| 吞咽鱼油不适处理建议.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| 哲学三问的探讨与意义.md | 人文与知识 |",
+        "| 四线电阻测量方法及线色含义.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 206,
+      "line": "| 哲学三问的探讨与意义.md | 人文与知识 |",
+      "context_before": [
+        "| 吞咽鱼油不适处理建议.md | 健康与医学 |",
+        "| 告诉我你是怎么做到在保证性能与o1持平的基础上大幅度减小算力.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 四线电阻测量方法及线色含义.md | 硬件与工程 |",
+        "| 回避型伴侣的情感支持困境.md | 职业与职场 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 214,
+      "line": "| 基督教教派及中国合法教派介绍.md | 人文与知识 |",
+      "context_before": [
+        "| 土豆内部变红是否可食用解析.md | 生活与消费 |",
+        "| 在柳州有哪家医院的精神科医生可以诊断ADHD.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| 塑料绳编织床垫结构解析.md | 生活与消费 |",
+        "| 处理PaddleOCR安装警告.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 238,
+      "line": "| 官方渠道获取军事武器信息指南.md | 人文与知识 |",
+      "context_before": [
+        "| 安卓应用在Linux上的运行方法.md | 计算机与操作系统 |",
+        "| 安卓模拟器运存需求及建议.md | 计算机与操作系统 |"
+      ],
+      "context_after": [
+        "| 实时调试错误翻译.md | AI与编程开发 |",
+        "| 实验室老鼠寿命及影响因素解析.md | 健康与医学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 249,
+      "line": "| 寻找深度思考的网络路径.md | 人文与知识 |",
+      "context_before": [
+        "| 富文本格式数据详解.md | 计算机与操作系统 |",
+        "| 对话总结提示词功能详解.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 小米粥设计融合手机品牌元素.md | 生活与消费 |",
+        "| 居家物品整理收纳方案.md | 生活与消费 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 260,
+      "line": "| 形式化语言与自动机理论书籍推荐.md | 人文与知识 |",
+      "context_before": [
+        "| 康复期精神力悬置与应对策略.md | 健康与医学 |",
+        "| 开源项目编译版本信息解析.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 循环冗余校验码计算方法详解.md | 数学与自然科学 |",
+        "| 微笑曲线理论及应用解析.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 262,
+      "line": "| 微笑曲线理论及应用解析.md | 人文与知识 |",
+      "context_before": [
+        "| 形式化语言与自动机理论书籍推荐.md | 人文与知识 |",
+        "| 循环冗余校验码计算方法详解.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 快捷键分析报告生成.md | AI与编程开发 |",
+        "| 快捷键完全指南生成.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 281,
+      "line": "| 探讨反智主义及其应对策略.md | 人文与知识 |",
+      "context_before": [
+        "| 拉取GitHub项目更新方法.md | AI与编程开发 |",
+        "| 换股合并的定义与特点解析.md | 职业与职场 |"
+      ],
+      "context_after": [
+        "| 提示词工程完全指南生成.md | AI与编程开发 |",
+        "| 撤销与吊销医师资格证的区别.md | 职业与职场 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 284,
+      "line": "| 政治经济学视角下的极限概念分析.md | 人文与知识 |",
+      "context_before": [
+        "| 提示词工程完全指南生成.md | AI与编程开发 |",
+        "| 撤销与吊销医师资格证的区别.md | 职业与职场 |"
+      ],
+      "context_after": [
+        "| 教育学的学术领域与研究领域概述.md | 人文与知识 |",
+        "| 数学分析初等数学复习资料.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 285,
+      "line": "| 教育学的学术领域与研究领域概述.md | 人文与知识 |",
+      "context_before": [
+        "| 撤销与吊销医师资格证的区别.md | 职业与职场 |",
+        "| 政治经济学视角下的极限概念分析.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 数学分析初等数学复习资料.md | 数学与自然科学 |",
+        "| 数学证明中错误与无意义的区别.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 294,
+      "line": "| 日语夫目前犯含义解析.md | 人文与知识 |",
+      "context_before": [
+        "| 无线电波传播无需介质.md | 数学与自然科学 |",
+        "| 无需器械的腰部减脂运动方案.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| 旧版卸载窗口打开方法.md | 计算机与操作系统 |",
+        "| 早醒与日间嗜睡的改善方法.md | 健康与医学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 324,
+      "line": "| 桂皮的制作工艺与来源.md | 人文与知识 |",
+      "context_before": [
+        "| 树莓派安装Java项目打包与运行问题解决方案.md | AI与编程开发 |",
+        "| 树莓派远程连接Mac.md | 苹果生态与设备 |"
+      ],
+      "context_after": [
+        "| 梦境解析自我价值与人际连接.md | 职业与职场 |",
+        "| 检查登录态逻辑提示词.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 327,
+      "line": "| 欧盟目击测试实验室授权解释.md | 人文与知识 |",
+      "context_before": [
+        "| 梦境解析自我价值与人际连接.md | 职业与职场 |",
+        "| 检查登录态逻辑提示词.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 氢气在高压下可转变为金属氢.md | 数学与自然科学 |",
+        "| 水冷液成分及使用建议.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 337,
+      "line": "| 深入理解概念切入角度.md | 人文与知识 |",
+      "context_before": [
+        "| 泳池尿液污染检测与管理方法.md | 职业与职场 |",
+        "| 浮点数阶码偏置值设计解析.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 清华MAIC硬件配置建议.md | 职业与职场 |",
+        "| 温湿度表电流信号周期性跳变分析.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 356,
+      "line": "| 现在我感到不知道做什么请告诉我一些稍微专业一点的某个领域的知识.md | 人文与知识 |",
+      "context_before": [
+        "| 猫少量食用草莓注意事项.md | 生活与消费 |",
+        "| 现代CPU组成及工作原理详解.md | 硬件与工程 |"
+      ],
+      "context_after": [
+        "| 瑞舒伐他汀片治疗高胆固醇血症.md | 健康与医学 |",
+        "| 生成macPython问题解答提示词.md | 苹果生态与设备 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 361,
+      "line": "| 甲骨文财经机构信息查询.md | 人文与知识 |",
+      "context_before": [
+        "| 用与非门与非门与门构造异或门.md | 硬件与工程 |",
+        "| 用户与高功能回避型智者构建认知共生关系通过材料学反制物理知识霸.md | 职业与职场 |"
+      ],
+      "context_after": [
+        "| 电子信息专业教材推荐汇总.md | 人文与知识 |",
+        "| 电子秒表里面的计时元件有晶振吗.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 362,
+      "line": "| 电子信息专业教材推荐汇总.md | 人文与知识 |",
+      "context_before": [
+        "| 用户与高功能回避型智者构建认知共生关系通过材料学反制物理知识霸.md | 职业与职场 |",
+        "| 甲骨文财经机构信息查询.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 电子秒表里面的计时元件有晶振吗.md | 硬件与工程 |",
+        "| 电源屏蔽线磁环频率范围解析.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 376,
+      "line": "| 社会事件分析的多维度视角.md | 人文与知识 |",
+      "context_before": [
+        "| 磁盘分区与健康检测工具推荐.md | 计算机与操作系统 |",
+        "| 磁盘转换错误解决指南.md | 计算机与操作系统 |"
+      ],
+      "context_after": [
+        "| 社区上传模型名称解释.md | AI与编程开发 |",
+        "| 秦始皇命令AI证哥德巴赫猜想.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 378,
+      "line": "| 秦始皇命令AI证哥德巴赫猜想.md | 人文与知识 |",
+      "context_before": [
+        "| 社会事件分析的多维度视角.md | 人文与知识 |",
+        "| 社区上传模型名称解释.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 秦始皇证明哥德巴赫猜想.md | 人文与知识 |",
+        "| 稀疏与稠密模型区别及应用场景.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 379,
+      "line": "| 秦始皇证明哥德巴赫猜想.md | 人文与知识 |",
+      "context_before": [
+        "| 社区上传模型名称解释.md | AI与编程开发 |",
+        "| 秦始皇命令AI证哥德巴赫猜想.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 稀疏与稠密模型区别及应用场景.md | AI与编程开发 |",
+        "| 程序员推荐无线蓝牙双模机械键盘.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 383,
+      "line": "| 穿越计算机的迷雾的作者李忠的学校是哪里主要教什么有哪些著作.md | 人文与知识 |",
+      "context_before": [
+        "| 程序员推荐无线蓝牙双模机械键盘.md | 硬件与工程 |",
+        "| 空调能效标识SEER参数解析.md | 生活与消费 |"
+      ],
+      "context_after": [
+        "| 笔记本合盖外接显示器设置.md | 计算机与操作系统 |",
+        "| 类银河恶魔城游戏推荐及核心设计解析.md | 游戏与娱乐 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 395,
+      "line": "| 经典RPG作品三十年演变历程.md | 人文与知识 |",
+      "context_before": [
+        "| 组相联与全相联Cache命中率对比.md | 硬件与工程 |",
+        "| 终端换行问题解决.md | 计算机与操作系统 |"
+      ],
+      "context_after": [
+        "| 经期不适缓解方法与就医建议.md | 健康与医学 |",
+        "| 经期补充剂推荐与注意事项.md | 健康与医学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 398,
+      "line": "| 给我deepseek的官方文档链接.md | 人文与知识 |",
+      "context_before": [
+        "| 经期不适缓解方法与就医建议.md | 健康与医学 |",
+        "| 经期补充剂推荐与注意事项.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| 给我一个现代游戏类型的分类要稍微详细一点的.md | 人文与知识 |",
+        "| 给我一些常见衣物洗涤标签形状和对应的含义.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 399,
+      "line": "| 给我一个现代游戏类型的分类要稍微详细一点的.md | 人文与知识 |",
+      "context_before": [
+        "| 经期补充剂推荐与注意事项.md | 健康与医学 |",
+        "| 给我deepseek的官方文档链接.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 给我一些常见衣物洗涤标签形状和对应的含义.md | 人文与知识 |",
+        "| 维特根斯坦逻辑哲学论可视化网站推荐.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 400,
+      "line": "| 给我一些常见衣物洗涤标签形状和对应的含义.md | 人文与知识 |",
+      "context_before": [
+        "| 给我deepseek的官方文档链接.md | 人文与知识 |",
+        "| 给我一个现代游戏类型的分类要稍微详细一点的.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 维特根斯坦逻辑哲学论可视化网站推荐.md | 人文与知识 |",
+        "| 维生素C与铁剂服用建议.md | 健康与医学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 401,
+      "line": "| 维特根斯坦逻辑哲学论可视化网站推荐.md | 人文与知识 |",
+      "context_before": [
+        "| 给我一个现代游戏类型的分类要稍微详细一点的.md | 人文与知识 |",
+        "| 给我一些常见衣物洗涤标签形状和对应的含义.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 维生素C与铁剂服用建议.md | 健康与医学 |",
+        "| 编译器和解释器区别联系.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 406,
+      "line": "| 美国床高历史与文化原因解析.md | 人文与知识 |",
+      "context_before": [
+        "| 网友见面安全注意事项.md | 职业与职场 |",
+        "| 罗汉果黑点粉末泡茶安全性判断.md | 生活与消费 |"
+      ],
+      "context_after": [
+        "| 翻译what could be more resonable.md | 人文与知识 |",
+        "| 考研数学心态调节与解题策略.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 407,
+      "line": "| 翻译what could be more resonable.md | 人文与知识 |",
+      "context_before": [
+        "| 罗汉果黑点粉末泡茶安全性判断.md | 生活与消费 |",
+        "| 美国床高历史与文化原因解析.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 考研数学心态调节与解题策略.md | 数学与自然科学 |",
+        "| 考研资料上传AI知识库.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 420,
+      "line": "| 花滑的服装为什么叫考斯滕.md | 人文与知识 |",
+      "context_before": [
+        "| 芬太尼过量导致姿势异常原因分析.md | 健康与医学 |",
+        "| 芯片设计前置课程学习路径.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 苹果M2与华为麒麟T92B芯片对比分析.md | 硬件与工程 |",
+        "| 苹果M3芯片与M2芯片对比分析.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 430,
+      "line": "| 虚拟偶像与现实情感的交织现象.md | 人文与知识 |",
+      "context_before": [
+        "| 藕粉怎样比较好吃.md | 生活与消费 |",
+        "| 藻油与花茶同时服用的注意事项.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| 蛙泳打腿后酸痛恢复运动建议.md | 健康与医学 |",
+        "| 血液制品分类及制备工艺概述.md | 人文与知识 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 432,
+      "line": "| 血液制品分类及制备工艺概述.md | 人文与知识 |",
+      "context_before": [
+        "| 虚拟偶像与现实情感的交织现象.md | 人文与知识 |",
+        "| 蛙泳打腿后酸痛恢复运动建议.md | 健康与医学 |"
+      ],
+      "context_after": [
+        "| 规则引擎变更引发逻辑漏洞解析.md | AI与编程开发 |",
+        "| 规格化数偏置值的作用解析.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 438,
+      "line": "| 解析无色无味剧毒老实人.md | 人文与知识 |",
+      "context_before": [
+        "| 解决Redis安装问题.md | AI与编程开发 |",
+        "| 解决模型下载Python版本问题.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 解析诗句彼阳晚意初生东曦.md | 人文与知识 |",
+        "| 计算机时钟信号来源与作用解析.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 439,
+      "line": "| 解析诗句彼阳晚意初生东曦.md | 人文与知识 |",
+      "context_before": [
+        "| 解决模型下载Python版本问题.md | AI与编程开发 |",
+        "| 解析无色无味剧毒老实人.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 计算机时钟信号来源与作用解析.md | 硬件与工程 |",
+        "| 计量不确定度的精确定义解析.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 447,
+      "line": "| 论文阅读方法与工具推荐.md | 人文与知识 |",
+      "context_before": [
+        "| 计量校准在电池与盐雾实验中的贡献.md | 职业与职场 |",
+        "| 训练方式与分词关系.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 请问什么是元认知能力AI模型如何判断用户的元认知能力请给我一.md | 人文与知识 |",
+        "| 购买定制玻璃试管指南.md | 硬件与工程 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 448,
+      "line": "| 请问什么是元认知能力AI模型如何判断用户的元认知能力请给我一.md | 人文与知识 |",
+      "context_before": [
+        "| 训练方式与分词关系.md | AI与编程开发 |",
+        "| 论文阅读方法与工具推荐.md | 人文与知识 |"
+      ],
+      "context_after": [
+        "| 购买定制玻璃试管指南.md | 硬件与工程 |",
+        "| 超声波手术刀原理及压电陶瓷作用.md | 数学与自然科学 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 475,
+      "line": "| 陈祥榕烈士牺牲经过及精神传承.md | 人文与知识 |",
+      "context_before": [
+        "| 防晒喷雾与防晒霜防护效果对比.md | 生活与消费 |",
+        "| 阿里云服务器PaddleOCR使用指南.md | AI与编程开发 |"
+      ],
+      "context_after": [
+        "| 零基础自学游泳准备指南.md | 健康与医学 |",
+        "| 需求文档问题分析.md | AI与编程开发 |"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\domain_index.md",
+      "line_number": 484,
+      "line": "| 领导说话说实话的潜台词解析.md | 人文与知识 |",
+      "context_before": [
+        "| 项目重构方案.md | AI与编程开发 |",
+        "| 顾樵教授的物理学贡献与著作.md | 数学与自然科学 |"
+      ],
+      "context_after": [
+        "| 风险投资定义及运作流程详解.md | 职业与职场 |",
+        "| 食品检测中千分位的单位解析.md | 数学与自然科学 |"
+      ]
+    }
+  ],
+  "total_matches": 64,
+  "files_searched": 1,
+  "truncated": false
+}

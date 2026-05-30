@@ -1,0 +1,202 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2370,
+      "line": "  - 来源文件：`01_AI与编程开发/开源项目编译版本信息解析.md`",
+      "context_before": [
+        "",
+        "- **[开源项目非官方编译提示原理]** — 开源程序自编译版本的About页面显示非官方编译提示、编译时间和平台，是项目通过条件编译宏（如OFFICIAL_BUILD）实现的版本区分机制"
+      ],
+      "context_after": [
+        "  - 核心解释：源代码中用 #ifdef OFFICIAL_BUILD 条件判断：官方构建时传 -D OFFICIAL_BUILD 参数定义该宏则显示简洁版本信息；普通用户编译时不传该参数则执行 #else 分支，显示非官方编译提示 + __DATE__/__TIME__（编译器内置宏自动替换为编译时刻）+ 编译平台信息。贡献者信息作为代码仓库一部分始终显示。这样设计有四个目的：安全和信任（防止篡改识别）、故障排查（提供编译环境线索）、责任界定（维护者只对官方版本负责）、鼓励使用官方版本。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2374,
+      "line": "  - 来源文件：`01_AI与编程开发/开源项目编译版本信息解析.md`",
+      "context_before": [
+        "",
+        "- **[JAR文件本质与跨平台原理]** — JAR(Java ARchive)本质是ZIP压缩包，包含编译后的.class字节码文件、资源文件和META-INF/MANIFEST.MF清单，通过JVM实现跨平台运行"
+      ],
+      "context_after": [
+        "  - 核心解释：JAR文件不是直接在CPU上运行的机器码，需要Java运行时环境(JRE)作为中介。其跨平台性依赖于JVM——在不同操作系统上有不同实现但向上提供统一字节码执行环境。运行条件：目标计算机安装合适版本JRE且JAR使用兼容Java版本编译（如Java 17编译的JAR需要JRE 17+）。MANIFEST.MF中Main-Class属性指定入口类，若无则需用 java -cp 显式指定。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2378,
+      "line": "  - 来源文件：`01_AI与编程开发/开源项目编译版本信息解析.md`",
+      "context_before": [
+        "",
+        "- **[JAR文件执行流程详解]** — 执行 java -jar app.jar 时，操作系统启动java.exe→JVM初始化→读取MANIFEST.MF找主类→类加载器加载字节码→解释执行+JIT编译→程序运行"
+      ],
+      "context_after": [
+        "  - 核心解释：操作系统通过PATH找到java可执行文件启动JVM；JVM作为ZIP读取器打开JAR，解析META-INF/MANIFEST.MF找到Main-Class入口；ClassLoader动态加载主类和依赖类的.class文件；字节码验证器进行安全检查后，解释器逐条执行字节码指令，JIT编译器将热点代码编译为本地机器码加速；双击JAR时Windows用javaw.exe（无控制台窗口）启动，通过注册表文件关联。不同Java版本可能不兼容，表现为 UnsupportedClassVersionError。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2382,
+      "line": "  - 来源文件：`01_AI与编程开发/开源项目编译版本信息解析.md`",
+      "context_before": [
+        "",
+        "- **[JAR与原生可执行文件对比]** — JAR依赖JVM但跨平台，EXE/ELF/Mach-O是原生机器码直接由OS执行但不可跨平台"
+      ],
+      "context_after": [
+        "  - 核心解释：JAR格式为ZIP+字节码，需要JVM作为中间层；Windows EXE为PE格式+机器码直接CPU执行；Linux ELF和macOS Mach-O同理。JAR优势是跨平台和安全沙盒（可选），劣势是需要额外运行时环境和解释执行带来的性能开销。简单JAR所有类在单一文件中，复杂应用使用主JAR+ClassPath指定多个依赖JAR。JAR文件后缀可改为.zip用压缩软件直接查看内部结构。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2386,
+      "line": "  - 来源文件：`01_AI与编程开发/大模型带宽与token限制解析.md`",
+      "context_before": [
+        "",
+        "- **[大模型带宽与Token限制的学者比喻]** — 大模型可类比为博学但读写速度有限且健忘的学者：参数=长期记忆（知识深度），上下文窗口=短期记忆（草稿纸尺寸），带宽=读写速度"
+      ],
+      "context_after": [
+        "  - 核心解释：带宽指数据传输速率（模型推理时显存与计算核心间的搬运速度），是限制模型生成速度的常见瓶颈。Token限制是上下文窗口的大小上限——对话历史超出窗口后，早期内容被擦除（长文本遗忘）。参数与上下文长度有关联但非直接因果：限制主要来自注意力机制的计算复杂度（O(n²)），参数量越大模型自身占用空间越多，留给上下文的显存空间反而可能变少。三者相互制约：参数决定学识深度，上下文窗口决定单次工作广度，带宽决定思考表达速度。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2390,
+      "line": "  - 来源文件：`01_AI与编程开发/大模型带宽与token限制解析.md`",
+      "context_before": [
+        "",
+        "- **[大模型带宽的两种单位]** — 显存带宽以GB/s或TB/s（字节/秒）衡量GPU内数据搬运，网络带宽以Gbps或Tb/s（比特/秒）衡量服务器间数据传输"
+      ],
+      "context_after": [
+        "  - 核心解释：显存带宽是核心指标——H100约3.35 TB/s，RTX 4090约1008 GB/s（1TB/s级）；网络带宽用于多卡分布式训练——AI集群常用400Gbps到800Gbps的InfiniBand网络，GB200 NVL72机架内使用1.8TB/s NVLink带宽。1字节=8比特，因此网络带宽除以8后才与显存带宽单位一致。大模型推理通常是Memory Bound（显存带宽受限）而非Compute Bound，生成速度约等于显存带宽除以模型体积。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2394,
+      "line": "  - 来源文件：`01_AI与编程开发/大模型带宽与token限制解析.md`",
+      "context_before": [
+        "",
+        "- **[影响大模型带宽的三层硬件]** — GPU显存HBM(最核心)→芯片间NVLink互联→跨服务器InfiniBand网络，三者构成数据搬运的分层架构"
+      ],
+      "context_after": [
+        "  - 核心解释：(1)GPU显存颗粒HBM：离计算核心最近的存储，类型（HBM3e>HBM3>GDDR6X>GDDR6）直接决定显存带宽上限，H200的HBM3e带宽超4TB/s；(2)芯片间NVLink互联：连接同一服务器内多块GPU，速度快延迟低，让多卡像一张超大号显卡工作；(3)网络设备InfiniBand/RoCE：连接不同服务器的集群通信，InfiniBand是AI集群黄金标准（延迟极低），配合NVIDIA NCCL通信库实现数千张卡间高效数据同步。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2398,
+      "line": "  - 来源文件：`01_AI与编程开发/大模型带宽与token限制解析.md`",
+      "context_before": [
+        "",
+        "- **[Token限制与注意力机制内存墙]** — 上下文长度限制的根本原因是注意力机制的计算复杂度和显存占用量随序列长度急剧增长，形成内存墙瓶颈"
+      ],
+      "context_after": [
+        "  - 核心解释：Transformer注意力机制的计算复杂度为O(n²)（n为序列长度），处理长文本时KV Cache显存占用线性增长。这形成了内存墙——即使硬件显存物理上能容纳更长上下文，计算和带宽开销也呈平方级增长。解决方案包括：FlashAttention（减少显存读写）、GQA/MQA（减少KV头数）、滑动窗口注意力、RingAttention等。更大模型参数量虽然能学习更复杂的长距离理解能力，但需要更先进硬件和更长训练周期，且大参数量本身占用更多显存。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2402,
+      "line": "  - 来源文件：`01_AI与编程开发/Excel分析工具重构方案设计.md`",
+      "context_before": [
+        "",
+        "- **[Excel分析工具重构分层架构]** — 从WPS COM+VBA注入的现有架构向分层架构演进：UI层-控制器层-服务层-WPS桥接外观层-WPS应用，引入Service Layer和Facade模式解耦业务逻辑"
+      ],
+      "context_after": [
+        "  - 核心解释：新增services/层承载6个核心服务（ExcelAnalysisService、DependencyService、HeaderFooterService、BatchOperationService、TemplateService、FormatCheckService），每个服务依赖WPSFacade外观类。重构wps_bridge为外观模式：WPSFacade提供connect/disconnect/execute_vba等高层接口，内部管理WPSConnector和VBAInjector协作。控制器只负责协调和UI回调，业务逻辑下沉到服务层。新增VBAExtractor实现BaseExtractor接口，彻底解决VBAInjector缺少extract方法的问题。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2406,
+      "line": "  - 来源文件：`01_AI与编程开发/Excel分析工具重构方案设计.md`",
+      "context_before": [
+        "",
+        "- **[Excel工具重构资源路径管理]** — 通过path_helper工具统一资源路径管理，解决PyInstaller打包后的template.xls等VBA模板文件找不到的问题"
+      ],
+      "context_after": [
+        "  - 核心解释：get_resource_path()方法判断sys.frozen是否为True来区分打包环境和开发环境：打包环境使用sys._MEIPASS作为基路径，开发环境使用os.path.abspath。所有传给VBA的文件路径必须使用绝对路径。在.spec中确保vba_modules/*.bas被包含为data。get_user_data_dir()返回~/.excel_analyzer用于日志、缓存和模板存储。此外全局异常钩子在main.py启动时注册，捕获所有未处理异常写入error.log并友好弹窗。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2410,
+      "line": "  - 来源文件：`01_AI与编程开发/Excel分析工具重构方案设计.md`",
+      "context_before": [
+        "",
+        "- **[Excel工具重构六阶段实施计划]** — 5个工作日的分阶段重构：Phase1代码清理-Phase2桥接层外观化-Phase3服务层创建-Phase4异常统一-Phase5控制器适配-Phase6打包验证"
+      ],
+      "context_after": [
+        "  - 核心解释：Phase1(0.5天)移除xlwings/openpyxl死代码并修复VBA路径；Phase2(1天)重构wps_bridge为WPSFacade外观模式+BaseExtractor接口；Phase3(1.5天)创建6个服务类并迁移业务逻辑；Phase4(0.5天)全局异常钩子+用户友好错误映射；Phase5(1天)更新MainWindow/BatchController等控制器只调用服务；Phase6(0.5天)更新.spec+回归测试+文档。风险应对：保留ExcelCompatibilityLayer作为可选降级，利用test_regression.py作为每阶段基线回归测试。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2414,
+      "line": "  - 来源文件：`01_AI与编程开发/DuckDuckGo MCP 配置方法.md`",
+      "context_before": [
+        "",
+        "- **[DuckDuckGo MCP Server配置方式]** — duckduckgo-mcp-server支持命令行参数和环境变量两种配置方式，配置在启动时一次性读取，运行时无法动态修改"
+      ],
+      "context_after": [
+        "  - 核心解释：命令行参数方式（推荐）：`uvx duckduckgo-mcp-server --safe-search strict --region us-en --fetch-backend httpx`，可用`--help`查看所有参数。环境变量方式：`DUCKDUCKGO_SAFE_SEARCH`（strict/moderate/off）、`DUCKDUCKGO_REGION`（us-en/cn-zh/jp-jp/wt-wt/none）、`DUCKDUCKGO_FETCH_BACKEND`（httpx/requests）。两者同时使用时命令行参数优先级更高。修改配置的唯一方式是Ctrl+C停止进程后重新启动，环境变量对已运行进程无效。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2418,
+      "line": "  - 来源文件：`01_AI与编程开发/DuckDuckGo MCP 配置方法.md`",
+      "context_before": [
+        "",
+        "- **[MCP客户端集成配置DuckDuckGo Server]** — 在Claude Desktop等MCP客户端中，通过JSON配置文件的args数组传递duckduckgo-mcp-server的启动参数实现永久配置"
+      ],
+      "context_after": [
+        "  - 核心解释：以Claude Desktop的claude_desktop_config.json为例，在mcpServers.duckduckgo下配置command为uvx，args数组依次写`--index`、`https://pypi.tuna.tsinghua.edu.cn/simple`（国内镜像加速）、`duckduckgo-mcp-server`以及各配置参数如`--safe-search strict`、`--region us-en`。修改配置文件后需重启客户端，客户端会自动用新参数启动 MCP 服务器。这比每次终端手动设置环境变量更方便且不易出错。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2423,
+      "line": "  - 来源文件：`01_AI与编程开发/对话总结提示词功能详解.md`",
+      "context_before": [
+        "",
+        "- **[对话总结提示词核心机制]** — 对话总结提示词是一种记忆锚点机制，通过语义提炼将对话核心要素压缩为精炼提示词，实现跨对话记忆延续"
+      ],
+      "context_after": [
+        "  - 核心解释：当对话接近最大长度前，AI提取核心问题、关键结论、用户特殊要求，生成结构化提示词。下次发送该提示词即可调取记忆片段。最佳时机在15-20轮对话时生成，总结仅保留核心逻辑不存储敏感数据。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2427,
+      "line": "  - 来源文件：`01_AI与编程开发/对话总结提示词功能详解.md`",
+      "context_before": [
+        "",
+        "- **[智能压缩与认知密码机制]** — AI采用语义提炼而非简单复制进行压缩，提示词中嵌入反常识组合词作为认知钩子实现自动解压"
+      ],
+      "context_after": [
+        "  - 核心解释：提示词按模块化分类（拖延症根源、破解策略、认知升级、生理调节、统计学习）。认知密码如\"唾液孵化\"\"5分钟虫洞曲率\"作为触发词，AI在新对话中遇到任一密码即可解压完整历史信息。三重验证机制：时间锁匹配、认知指纹检测、神经刀哈希完整性校验。",
+        ""
+      ]
+    }
+  ],
+  "total_matches": 15,
+  "files_searched": 1,
+  "truncated": false
+}

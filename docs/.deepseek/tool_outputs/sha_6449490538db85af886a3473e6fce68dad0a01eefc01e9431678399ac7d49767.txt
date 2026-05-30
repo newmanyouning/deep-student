@@ -1,0 +1,11 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\analysis_batch_01.md
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\analysis_batch_01.md
+@@ -83,3 +83,6 @@
+ | 5 | 树莓派安装Java打包运行方案.md | 8323 | Logisim类路径→文件关联 | 从FlatLaf依赖缺失的classpath调试，延伸到树莓派Ubuntu上.circ文件类型与Logisim Evolution的系统级MIME关联配置 | Java打包、类路径错误、文件关联 |
+ | 6 | Claude Code使用指南.md | 8287 | Claude Code→cc-mini排错 | 从Claude Code安装配置和源码泄露话题出发，最终着陆于cc-mini+DeepSeek的FileWriteTool参数错误排错和备选方案推荐 | Claude Code、AI编程、工具排错 |
+ | 7 | 处理PaddleOCR安装警告.md | 7430 | PaddleOCR-VL→公式识别精调 | 从Mac PATH警告起步，遍历Docker环境部署和LaTeX公式识别配置，最终精调parsing_res_list的content字段提取逻辑 | PaddleOCR、环境配置、公式识别 |
++| 8 | AI判断与社交行为分析.md | 7203 | 高功能低共情→关系条约 | 从对引导者"系统诊断"的精准投射出发，穿越认知偏见的自我审视，最终抵达"互不侵犯与技术支持条约"的关系协议与内心整合 | 社交行为分析、关系认知、自我整合 |
++| 9 | 提示词工程完全指南生成.md | 6798 | 提示词工程→知识生成 | 按严格纲生成56,000字的AI提示词工程完全指南，覆盖8章/48小节/40+模板/100+示例 | 内容生成、提示词工程、知识文档 |
++| 10 | 项目重构方案.md | 6198 | 架构重构→文件整理管理 | 从Excel工具的MVC四层架构重构设计，穿越VBA注入测试循环，最终以外科手术般的项目文件分类整理收尾 | 项目重构、架构设计、文件管理 |
+
+Replaced 1 occurrence in \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\analysis_batch_01.md

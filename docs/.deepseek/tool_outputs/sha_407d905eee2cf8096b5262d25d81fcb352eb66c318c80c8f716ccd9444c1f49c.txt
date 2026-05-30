@@ -1,0 +1,51 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\project_progress.md" total_lines="248" shown_lines="200-248" truncated="false">
+   200│   3. Python操作WPS写入执行VBA代码.md (~37KB) — 5条：COM ProgID、VBComponents动态注入、删除重建替换策略、单元格数据交换、UTF-8/UTF-16编码链路
+   201│   4. 阿里云服务器PaddleOCR使用指南.md (~33KB) — 5条：命令行三合一识别、Python API结果解析、阈值调优、Docker容器进入流程、三类错误排查
+   202│ 
+   203│ ## 处理策略
+   204│ 1. 每轮启动4个子代理,每代理1个文件或1个文件分块
+   205│ 2. 子代理负责读取和提取，主代理负责写入合并
+   206│ 3. 先处理中文件(10-50KB)，每轮4个，共需9轮；再处理大文件(>50KB)，每块按40KB切割
+   207│ 4. 大文件处理：用 `read_file` 按 start_line 分块读取，每块启动一个子代理
+   208│ 5. project_progress.md 记录进度，knowledge_cache.md 存储知识点
+   209│ 
+   210│ ## 下一步具体执行（恢复后直接执行）
+   211│ 
+   212│ ### Step 1: 读取本进度文件
+   213│ ```bash
+   214│ 从 project_progress.md 了解当前状态
+   215│ ```
+   216│ 
+   217│ ### Step 2: 查看 knowledge_cache.md 末尾确认最后写入位置
+   218│ ```bash
+   219│ 确认 knowledge_cache.md 的行数，确保追加位置正确
+   220│ ```
+   221│ 
+   222│ ### Step 3: 启动4个子代理处理下一批中文件
+   223│ ```markdown
+   224│ 下一批待处理的中文件（第8批）：
+   225│ 1. 01_AI与编程开发/解决Redis安装问题.md (22958B)
+   226│ 2. 01_AI与编程开发/中文分词技术方案深度解析.md (20941B)
+   227│ 3. 01_AI与编程开发/规则引擎变更引发逻辑漏洞解析.md (20789B)
+   228│ 4. 01_AI与编程开发/容器与虚拟机区别解析.md (20458B)
+   229│ ```
+   230│ 
+   231│ ### Step 4: 等待子代理完成，提取知识点
+   232│ ```markdown
+   233│ 用 agent_eval block=true timeout_ms=120000 等待每个子代理
+   234│ ```
+   235│ 
+   236│ ### Step 5: 写入 knowledge_cache.md
+   237│ ```markdown
+   238│ 将所有知识点追加到 knowledge_cache.md 末尾
+   239│ 更新 project_progress.md 中的统计数字和文件列表
+   240│ ```
+   241│ 
+   242│ ### 重复直到中文件全部处理完毕，然后处理31个大文件
+   243│ 
+   244│ ## 关键路径和文件
+   245│ - **工作目录**: C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md
+   246│ - **知识库文件**: knowledge_cache.md (当前1956行，AI与编程开发章节尾部)
+   247│ - **进度文件**: project_progress.md
+   248│ - **源文件目录**: 01_AI与编程开发/
+</file>

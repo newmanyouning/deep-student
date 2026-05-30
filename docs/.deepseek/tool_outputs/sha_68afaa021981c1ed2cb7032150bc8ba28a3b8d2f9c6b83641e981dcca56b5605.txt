@@ -1,0 +1,102 @@
+<file path="01_AI与编程开发\快捷键完全指南生成.md" total_lines="3061" shown_lines="2962-3061" truncated="false">
+  2962│ 1. `Ctrl + Shift + Del`
+  2963│ 2. `⌘ + 单击链接`
+  2964│ 3. Windows：`Ctrl + Shift + R` 或 `Ctrl + F5`；macOS：`⌘ + Option + R`
+  2965│ 4. `Shift + Esc`
+  2966│ 5. `Ctrl + Enter`（Windows）或 `⌘ + Return`（macOS）
+  2967│ 
+  2968│ #### 第七章答案
+  2969│ 1. `F4`
+  2970│ 2. 切换单元格引用的绝对/相对模式（如 `A1` → `$A$1` → `A$1` → `$A1`）
+  2971│ 3. 按 `B` 键
+  2972│ 4. `Ctrl + J`（通过复制新建图层）
+  2973│ 5. `Ctrl + M`（WPS 特有）
+  2974│ 
+  2975│ #### 第八章答案
+  2976│ 1. 历史命令列表（弹出菜单）
+  2977│ 2. `Ctrl + W`
+  2978│ 3. 插入上一条命令的最后一个参数
+  2979│ 4. 按 `Ctrl + Z` 挂起，然后输入 `bg` 放到后台，输入 `fg` 恢复前台
+  2980│ 5. `Alt + Shift + D`
+  2981│ 
+  2982│ #### 第九章答案
+  2983│ 1. `Win + +`（加号）
+  2984│ 2. 按 `⌘ + Option + Esc` 打开强制退出窗口，选中应用按回车；或按住 `⌘ + Shift + Option + Esc` 3 秒
+  2985│ 3. 粘滞键允许依次按下组合键（如先按 Ctrl 再按 Alt 再按 Del）。开启：按 5 次 Shift
+  2986│ 4. 恢复模式（Recovery Mode），可修复磁盘、重装系统
+  2987│ 5. `Win + Ctrl + Shift + B`
+  2988│ 
+  2989│ #### 第十章答案
+  2990│ 1. `⌘ + Z`
+  2991│ 2. Windows 没有原生“隐藏应用”功能，但可以使用第三方工具（如 AutoHotkey 模拟 `Win + H` 发送最小化命令）
+  2992│ 3. `F11` 或 `⌘ + F3`（部分键盘）
+  2993│ 4. `⌘ + Option + Esc`
+  2994│ 5. Windows：`Ctrl + Shift + R`；macOS：`⌘ + Option + R`
+  2995│ 
+  2996│ #### 第十一章答案
+  2997│ 1. `Ctrl + Alt + C`（^ 代表 Ctrl，! 代表 Alt）
+  2998│ 2. 在 Karabiner-Elements 的 “Simple Modifications” 中添加 `caps_lock` → `escape`
+  2999│ 3. 创建键盘快捷键（如 `⌘ + Option + 左箭头`），动作选择 “Snap Window Left Half”
+  3000│ 4. `#n::Run "notepad.exe"`
+  3001│ 5. （开放答案）例如：每天重复输入邮箱地址 → 使用 AutoHotkey 热字符串 `::mail::` 展开
+  3002│ 
+  3003│ #### 第十二章答案
+  3004│ 1. `Option` 键（默认）
+  3005│ 2. 系统设置 → 键盘 → 将 F1、F2 等键用作标准功能键
+  3006│ 3. PowerToys 键盘管理器
+  3007│ 4. 因为 macOS 键盘的 `⌘` 键位置对应 Windows 键盘的 `Win` 键，而 `Option` 键对应 `Alt` 键。Windows 默认将 `Win` 作为系统键，`Alt` 作为菜单键，导致映射错位
+  3008│ 5. Windows 使用 OpenArk；macOS 使用 ShortcutDetective
+  3009│ 
+  3010│ #### 第十三章答案
+  3011│ 1. 认知阶段、关联阶段、自主阶段、泛化阶段
+  3012│ 2. CheatSheet
+  3013│ 3. 复制、粘贴、剪切、撤销、重做、全选、保存
+  3014│ 4. 间隔重复（Spaced Repetition）
+  3015│ 5. 每天 8 小时 × 3600 秒/小时 = 28800 秒；每 2 秒一次操作，每天 14400 次操作；节省 2 秒/次，每天节省 28800 秒 = 8 小时！实际上不可能这么高频，但假设每 5 分钟一次快捷键操作（96 次/天），每次节省 2 秒，每天节省 192 秒 ≈ 3.2 分钟，一年约 19 小时
+  3016│ 
+  3017│ ### 附录 B：推荐工具与资源
+  3018│ 
+  3019│ **Windows**：
+  3020│ - [PowerToys](https://github.com/microsoft/PowerToys)（微软官方，含键盘管理器、批量重命名等）
+  3021│ - [AutoHotkey](https://www.autohotkey.com)（自动化脚本）
+  3022│ - [ShareX](https://getsharex.com)（开源截图和录屏）
+  3023│ - [KeyRocket](https://keyrocket.app)（快捷键学习工具，付费）
+  3024│ 
+  3025│ **macOS**：
+  3026│ - [Karabiner-Elements](https://karabiner-elements.pqrs.org)（键盘重映射）
+  3027│ - [BetterTouchTool](https://folivora.ai)（触控板+键盘自定义）
+  3028│ - [CheatSheet](https://www.cheatsheetapp.com)（长按 ⌘ 显示快捷键）
+  3029│ - [Rectangle](https://rectangleapp.com)（免费窗口管理，模拟 Windows 贴靠）
+  3030│ - [CleanShot X](https://cleanshot.com)（专业截图录屏，付费）
+  3031│ 
+  3032│ **跨平台**：
+  3033│ - [Anki](https://apps.ankiweb.net)（间隔重复学习）
+  3034│ - [ShortcutFoo](https://www.shortcutfoo.com)（在线快捷键训练）
+  3035│ 
+  3036│ ### 附录 C：版本差异补充说明
+  3037│ 
+  3038│ - **Windows 11 vs Windows 10**：`Win + Z`（贴靠布局）为 Windows 11 新增；`Win + W` 在 Win10 中是 Windows Ink 工作区，Win11 中是小组件
+  3039│ - **macOS Ventura (13) 及更高**：系统设置界面大改，部分快捷键路径变化；台前调度（Stage Manager）引入
+  3040│ - **Office 365 vs Office 2019**：Office 365 支持 `Ctrl + Shift + V`（粘贴纯文本），旧版可能不支持
+  3041│ - **Chrome vs Edge**：两者快捷键几乎完全相同，Edge 多了一些侧边栏相关的快捷键（`Ctrl + Shift + E` 打开侧边栏搜索）
+  3042│ 
+  3043│ ---
+  3044│ 
+  3045│ ## 文档结束语
+  3046│ 
+  3047│ 这份《Windows 与 macOS 快捷键完全指南》至此完成。文档总字数约 **58,000 字**，包含超过 **1,200 项快捷键**，覆盖了从入门到精通的全部内容。
+  3048│ 
+  3049│ 快捷键的本质不是“记住”，而是“忘记”——忘记快捷键本身，让手指自动执行。当你不再需要思考“我应该按哪个键”时，你就真正掌握了它们。
+  3050│ 
+  3051│ 希望这份指南能成为你桌边的常备参考。效率的提升不在于一次革命，而在于每天几百次的细微优化。
+  3052│ 
+  3053│ **祝你键盘如飞，效率倍增！**
+  3054│ 
+  3055│ ---
+  3056│ 
+  3057│ *文档生成日期：2026年4月*  
+  3058│ *版本：1.0*  
+  3059│ *最后更新：完整版*
+  3060│ 
+  3061│ ---
+</file>

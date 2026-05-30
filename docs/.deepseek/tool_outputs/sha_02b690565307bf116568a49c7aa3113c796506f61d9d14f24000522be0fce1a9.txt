@@ -1,0 +1,48 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_a2d76113 (general) status=Completed
+  objective: 你是知识提取子代理。你的唯一任务是读取并分析以下文件，提取出所有可用的知识点。
+
+文件路径: 01_AI与编程开发/Ollama模型下载报错解析.md
+
+要求：
+1. 使用 read_file 读取该文件的全部内容
+2. 从文件中提取所有有价值的知识点（概念解释、操作步骤、配置方法、问题解决等）
+3. 每个知识点用以下格式输出：
+
+```
+### 知识点N: [标题]
+[清晰的知识点描述，包含关键细节、步骤、参数等]
+```
+
+4...
+  result: 文件已完整读取。以下是提取的所有知识点：
+
+### 知识点1: Ollama 模型下载报错 "max retries exceeded: connection reset by peer" 的含义
+Ollama 在拉取模型（如 `deepseek-coder:6.7b`）时，若下载到中途（例如 44%）中断，出现错误提示 `Error: max retries exceeded: Get "..." read tcp ... connection reset by peer`。该错误的含义是：Ollama 在多次重试下载同一数据块后仍失败（"max retries exceeded"），根本原因是 TCP 连接被远程服务器主动重置（"connection reset by peer"），即服务器端突然关闭了连接。出错链接指向 Cloudflare R2 存储（Ollama 的模型存储后端），URL 中包含 blob 哈希、AWS4-HMAC-SHA256 签名认证参数等。
+
+### 知识点2: Ollama 下载报错的常见原因
+1. **网络不稳定**：Wi-Fi 信号弱、网络波动大，导致连接中断。
+2. **服务器端临时问题**：Ollama 使用的 Cloudflare R2 存储可能出现瞬时故障或高负载。
+3. **IPv6 连接问题**：客户端使用 IPv6 地址连接服务器的 IPv6 地址时，某些网络环境下 IPv6 路由可能不稳定或被阻断。
+4. **防火墙或代理干扰**：本地防火墙、VPN 或代理软件可能中断大型文件下载连接。
+5. **DNS 解析问题**：域名解析到的 IP 可能不可达。
+
+### 知识点3: Ollama 下载报错的解决方法
+提供 6 种解决途径：
+1. **直接重试下载**：再次运行 `ollama run <模型名>`，Ollama 支持断点续传，临时问题通常可解决。
+2. **检查网络连接**：确保网络稳定，可尝试 ping 或 curl 测试存储域名（如 `dd20bb891979d25aebc8bec07b2b3bbc.r2.cloudflarestorage.com`）的连通性；Wi-Fi 用户可切换有线网络或换热点。
+3. **禁用 IPv6 或调整优先级**：macOS 在"系统设置"→"网络"→选择当前网络→"详细信息"→"TCP/IP"→将"配置 IPv6"改为"仅限本地链接"或"关闭"；或者在终端临时禁用 IPv6：`sudo networksetup -setv6off Wi-Fi`（将 Wi-Fi 换成实际网络服务名）。
+4. **关闭代理/VPN**：某些代理可能干扰大型文件传输。
+5. **更换 DNS**：改为公共 DNS，如 `114.114.114.114` 或 `8.8.8.8`，避免 DNS 解析到不稳定节点。
+6. **使用镜像加速**：如果多次失败，可配置 Ollama 镜像（如国内镜像站），具体参考 Ollama 官方文档或社区提供的镜像地址。
+
+### 知识点4: 使用 `ollama show` 命令查看模型提示词与详细信息
+通过 `ollama show` 命令配合不同参数，可查看模型的提示词模板、系统提示词、参数配置和 Modelfile 等详细信息。常用命令如下：
+
+| 命令 | 作用 | 示例 |
+| :--- | :--- | :--- |
+| `ollama show --template <模型名>` | 查看模型的提示词模板 | `ollama show --template deepseek-coder:6.7b` |
+| `ollama show --system <模型名>` | 查看模型内置的系统提示词 | `ollama sh...
+  stats: steps=3, duration_ms=24178

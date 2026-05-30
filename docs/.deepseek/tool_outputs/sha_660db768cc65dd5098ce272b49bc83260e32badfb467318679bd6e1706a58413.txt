@@ -1,0 +1,104 @@
+<file path="01_AI与编程开发\树莓派安装Java项目打包与运行问题解决方案.md" total_lines="8323" shown_lines="1-100" truncated="true" next_start_line="101">
+     1│ # 树莓派安装Java项目打包与运行问题解决方案
+     2│ 对话ID: 9be019f9-a4b0-44c0-ba60-87837d73d018
+     3│ 创建时间: 2026-01-17T21:59:13.874000+08:00
+     4│ 更新时间: 2026-01-26T13:22:06.534000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ 在安装ubuntu的树莓派5上如何打包一个java项目的源码成为一个安装包并安装，运行测试中出现这个代码，我应该怎么解决？Exception in thread "main" java.lang.NoClassDefFoundError: com/formdev/flatlaf/FlatLightLaf
+     9│ 	at com.cburch.logisim.Main.main(Main.java:40)
+    10│ Caused by: java.lang.ClassNotFoundException: com.formdev.flatlaf.FlatLightLaf
+    11│ 
+    12│ ---
+    13│ 
+    14│ ## ❓ unknown
+    15│ 
+    16│ 这个错误表明在运行时找不到FlatLaf这个库。FlatLaf是一个用于Java Swing的外观库。要解决这个问题，我们需要确保在打包时将依赖的库（包括FlatLaf）一起打包，并且在运行时能够找到它们。
+    17│ 
+    18│  在Java项目中，通常我们使用构建工具（如Maven或Gradle）来管理依赖。但是，如果项目没有使用构建工具，我们需要手动将依赖的jar包包含到classpath中。
+    19│ 
+    20│  这里假设你的Java项目已经可以编译并运行，只是打包后出现这个问题。我们可以通过以下步骤来解决：
+    21│ 
+    22│  1. 确保你已经在项目中包含了FlatLaf的jar包，或者通过Maven/Gradle等构建工具引入了依赖。
+    23│ 
+    24│  2. 打包时，将所有依赖的jar包一起打包到一个可运行的jar中（例如使用“uber jar”或“fat jar”），或者创建一个包含所有依赖jar的目录，并在运行指定classpath。
+    25│ 
+    26│  3. 在运行jar文件时，确保classpath包含了所有需要的jar包。
+    27│ 
+    28│  针对树莓派5上的Ubuntu系统，我们可以采用以下步骤：
+    29│ 
+    30│  步骤1：如果项目使用Maven，可以在pom.xml中确保FlatLaf依赖被正确引入，并使用Maven的打包插件创建一个包含所有依赖的jar。
+    31│ 
+    32│  如果项目使用Gradle，也有类似的插件。
+    33│ 
+    34│  如果项目没有使用构建工具，那么我们需要手动收集所有依赖的jar包，包括FlatLaf的jar，然后使用以下命令运行：
+    35│ 
+    36│  java -cp ".:./lib/*" com.cburch.logisim.Main
+    37│ 
+    38│  这里假设我们将所有依赖的jar包放在lib目录下。
+    39│ 
+    40│  步骤2：如何打包？
+    41│ 
+    42│  对于没有构建工具的项目，我们可以创建一个目录，将项目的类和依赖的库组织起来，然后编写一个启动脚本。
+    43│ 
+    44│  但是，更常见的是使用构建工具。这里我假设你的项目是Logisim，它是一个使用Java Swing的项目，并且使用了FlatLaf。
+    45│ 
+    46│  如果你有Maven项目，可以在pom.xml中添加以下插件来创建可运行的jar：
+    47│ 
+    48│  ```xml
+    49│  <build>
+    50│    <plugins>
+    51│      <plugin>
+    52│        <groupId>org.apache.maven.plugins</groupId>
+    53│        <artifactId>maven-assembly-plugin</artifactId>
+    54│        <executions>
+    55│          <execution>
+    56│            <phase>package</phase>
+    57│            <goals>
+    58│              <goal>single</goal>
+    59│            </goals>
+    60│            <configuration>
+    61│              <archive>
+    62│                <manifest>
+    63│                  <mainClass>com.cburch.logisim.Main</mainClass>
+    64│                </manifest>
+    65│              </archive>
+    66│              <descriptorRefs>
+    67│                <descriptorRef>jar-with-dependencies</descriptorRef>
+    68│              </descriptorRefs>
+    69│            </configuration>
+    70│          </execution>
+    71│        </executions>
+    72│      </plugin>
+    73│    </plugins>
+    74│  </build>
+    75│  ```
+    76│ 
+    77│  然后运行`mvn package`，将会生成一个包含所有依赖的jar文件。
+    78│ 
+    79│  步骤3：如果已经有一个包含所有依赖的jar，那么直接运行即可。
+    80│ 
+    81│  如果问题仍然存在，那么可能是FlatLaf的jar包没有正确打包进去。你可以检查生成的jar文件中是否包含了FlatLaf的类。
+    82│ 
+    83│  另外，你也可以尝试在命令行中明确指定classpath，例如：
+    84│ 
+    85│  java -cp "your-application.jar:flatlaf-2.0.jar" com.cburch.logisim.Main
+    86│ 
+    87│  但是，如果你已经生成了包含所有依赖的jar，那么应该不需要额外指定。
+    88│ 
+    89│  如果上述方法都不能解决问题，那么可能是你的项目在运行时动态加载类，而FlatLaf不在classpath中。在这种情况下，你需要确保FlatLaf的jar在classpath中。
+    90│ 
+    91│  对于树莓派上的安装包，你可能需要创建一个deb包或者简单的压缩包，包含所有依赖和启动脚本。
+    92│ 
+    93│  总结：首先确保FlatLaf被正确引入到项目中，然后打包时包含所有依赖，最后确保运行时的classpath正确。
+    94│ 
+    95│  如果你能提供更多关于你的项目结构和打包方式的信息，我可以给出更具体的建议。
+    96│ 这个错误表明FlatLaf库在运行时没有被找到。这是一个典型的类路径（classpath）问题。以下是几种解决方案：
+    97│ 
+    98│ ## 解决方案
+    99│ 
+   100│ ### 方案1：使用Maven/Gradle管理依赖（推荐）
+
+[TRUNCATED] Showing lines 1-100 of 8323. To continue, call read_file with path="01_AI与编程开发\树莓派安装Java项目打包与运行问题解决方案.md" start_line=101 max_lines=100
+</file>

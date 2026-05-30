@@ -1,0 +1,32 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_da167270 (general) status=Completed
+  objective: 你是知识提取助手。请读取文件 `01_AI与编程开发/解决Redis安装问题.md`（位于当前工作目录），提取其中可复用的知识点。
+
+输出格式要求（每条知识一个条目）：
+- **[核心概念/技术名称]** — 一句话摘要
+  - 来源文件：解决Redis安装问题.md
+  - 核心解释：详细的技术解释，包含具体操作步骤、关键参数、注意事项
+
+提取原则：
+- 每条知识应有独立价值，可脱离原文件单独使用
+- 优先提取：通用技术原理、可...
+  result: - **Windows MSI 安装失败通用排查：通过 %TEMP% 日志定位真实错误原因**
+  - 来源文件：解决Redis安装问题.md
+  - 核心解释：当 Windows 安装程序（MSI）报出"Setup Wizard ended prematurely"等笼统错误时，真正的错误原因不会显示在弹窗中，而是被写入临时目录的日志文件。排查步骤：① 打开文件资源管理器，在地址栏输入 `%TEMP%` 并回车；② 按修改时间倒序排序，查找类似 `Memurai_*.log` 或 `msi*.log` 的日志文件；③ 用记事本打开，搜索关键字 "Error" 或 "Failed"；④ 根据日志中的具体错误代码（如 `Error 1935` 通常表示缺少某个程序集组件）对症下药。这是诊断 Windows 安装问题的"黄金法则"，适用于任何 MSI 安装程序的异常排查。
+
+- **Windows 上运行 Redis 的推荐方案：WSL 2 安装原生 Redis**
+  - 来源文件：解决Redis安装问题.md
+  - 核心解释：Windows 没有官方的原生 Redis 安装包，第三方兼容方案（如 Memurai）常有安装权限、依赖缺失等问题。最稳定、最主流的方案是使用 WSL 2（Windows Subsystem for Linux 2）。完整步骤：① 以普通用户身份打开 PowerShell，执行 `wsl --install`；② 重启电脑后自动进入 Ubuntu 终端；③ 执行 `sudo apt update && sudo apt install redis-server` 完成安装；④ 之后在 Windows 终端输入 `wsl` 即可进入 Linux 环境使用 `redis-cli`。该方案优势：与 Linux 服务器环境一致、不存在 Windows 安装权限问题、一次安装后 Redis 可作为服务自动运行。
+
+- **Windows 跨驱动器 cd 切换目录的正确方法：`cd /d` 参数**
+  - 来源文件：解决Redis安装问题.md
+  - 核心解释：在 Windows 命令提示符（CMD）中，普通的 `cd` 命令只能在当前驱动器内切换目录。如果要从 C 盘切换到 D 盘，`cd "D:\某个文件夹"` 并不会报错，但也不会实际切换——它只是在当前盘寻找名为 "D:\某个文件夹" 的目录（显然不存在）。正确做法有两种：① 加 `/d` 参数：`cd /d "D:\网页下载"`，一步跨盘切换；② 分步操作：先输入 `D:` 回车切换到 D 盘根目录，再执行 `cd \网页下载`。注意：切勿在 `C:\Windows\System32>` 等系统核心目录下执行安装或删除操作。
+
+- **Windows 以管理员身份运行程序的三种方法及排错**
+  - 来源文件：解决Redis安装问题.md
+  - 核心解释：当软件安装需要写入系统目录或注册服务时，必须以管理员权限运行。方法一（最直接）：右键点击 .exe 或 .msi 文件 → 选择"以管理员身份运行" → 在弹出的 UAC（用户账户控制）窗口中点击"是"。方法二（持久设置）：右键 → 属性 → 兼容性选项卡 → 勾选"以管理员身份运行此程序" → 应用，之后双击即可自动以管理员权限启动。方法三（命令行）：以管理员身份打开 CMD，`cd` 到文件所在目录，执行 `start 文件名.exe`。如果右键菜单中找不到该选项：先检查账户类型是否为"管理员"（控制面板 → 用户账户），若是管理员但选项隐藏，按住 Shift 键再右键点击文件即可强制显示"以管理员身份运行"选项；若为标准用户账户，则无法进行需要系统级权限的安装。
+
+- **Windows 安装失败的常...
+  stats: steps=3, duration_ms=103552

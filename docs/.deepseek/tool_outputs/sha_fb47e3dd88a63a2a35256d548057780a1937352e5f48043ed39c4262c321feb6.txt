@@ -1,0 +1,46 @@
+--- a/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_chunk_plan.py
++++ b/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_chunk_plan.py
+@@ -0,0 +1,41 @@
++import os, sys
++
++path = sys.argv[1] if len(sys.argv) > 1 else r'01_AI与编程开发\Git本地文件夹版本控制教程.md'
++size = os.path.getsize(path)
++print(f'文件: {path}')
++print(f'文件大小: {size} bytes ({size/1024:.1f} KB)')
++
++with open(path, encoding='utf-8') as f:
++    lines = f.readlines()
++
++# 找所有 ## 标题位置
++headers = []
++for i, line in enumerate(lines):
++    if line.startswith('## '):
++        headers.append((i+1, line.strip()))
++
++print(f'总行数: {len(lines)}')
++print(f'## 标题数: {len(headers)}')
++
++# 按约40KB分块
++avg_line = size / len(lines)
++target_lines_per_chunk = int(40000 / avg_line)
++print(f'平均行字节: {avg_line:.1f}')
++print(f'目标每块行数: ~{target_lines_per_chunk}')
++
++# 找最佳分块点
++chunks = []
++chunk_start = 1
++for i, (lineno, header) in enumerate(headers):
++    if lineno - chunk_start >= target_lines_per_chunk:
++        chunks.append((chunk_start, lineno - 1))
++        chunk_start = lineno
++if chunk_start <= len(lines):
++    chunks.append((chunk_start, len(lines)))
++
++print(f'\n分块方案 ({len(chunks)} 块):')
++for i, (start, end) in enumerate(chunks):
++    chunk_lines = lines[start-1:end]
++    csize = sum(len(l.encode('utf-8')) for l in chunk_lines)
++    first = chunk_lines[0].strip()[:80] if chunk_lines else '(empty)'
++    print(f'  块{i+1}: 行{start}-{end}, 大小{csize/1024:.1f}KB, 首行: {first}')
+
+Created C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_chunk_plan.py (1370 bytes)

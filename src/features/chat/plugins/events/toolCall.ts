@@ -318,7 +318,7 @@ const toolCallEventHandler: EventHandler = {
       console.log('[ToolCall] onEnd - toolName:', block.toolName, '-> stripped:', toolName, 'unwrappedResult:', unwrappedResult);
       
       // workspace_create 成功后，自动设置当前工作区 ID 并创建状态块
-      if (toolName === 'workspace_create' && unwrappedResult) {
+      if (toolName === 'chat_v2_workspace_create' && unwrappedResult) {
         const workspaceResult = unwrappedResult as { workspace_id?: string; status?: string; message?: string };
         console.log('[ToolCall] workspace_create result:', workspaceResult);
         if (workspaceResult.workspace_id && workspaceResult.status === 'created') {
@@ -501,7 +501,7 @@ const toolCallEventHandler: EventHandler = {
         }
       }
 
-      if (toolName === 'workspace_create_agent' && unwrappedResult) {
+      if (toolName === 'chat_v2_workspace_create_agent' && unwrappedResult) {
         const agentResult = unwrappedResult as {
           agent_session_id?: string;
           workspace_id?: string;

@@ -23,7 +23,7 @@ use super::chatanki_executor::{
     calculate_complexity_level, ensure_field_extraction_rules, import_builtin_templates_if_empty,
     normalize_template_fields,
 };
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -176,11 +176,11 @@ impl TemplateDesignerExecutor {
     /// 获取数据库引用（优先 main_db，回退 anki_db）
     fn get_db(
         ctx: &ExecutionContext,
-    ) -> Result<&std::sync::Arc<crate::database::Database>, String> {
+    ) -> ToolResult<&std::sync::Arc<crate::database::Database>> {
         ctx.main_db
             .as_ref()
             .or(ctx.anki_db.as_ref())
-            .ok_or_else(|| "数据库不可用，请稍后重试或检查应用状态".to_string())
+            .ok_or_else(|| ToolError::Execution("数据库不可用，请稍后重试或检查应用状态".into()))
     }
 
     /// 发射错误并返回 failure ToolResultInfo
@@ -272,18 +272,18 @@ impl TemplateDesignerExecutor {
     /// - 键不存在 → Ok(None)
     /// - 键存在且是字符串 → Ok(Some(string))
     /// - 键存在但类型错误 → Err
-    fn extract_opt_str(val: &Value, camel: &str, snake: &str) -> Result<Option<String>, String> {
+    fn extract_opt_str(val: &Value, camel: &str, snake: &str) -> ToolResult<Option<String>> {
         let v = val.get(camel).or_else(|| val.get(snake));
         match v {
             None => Ok(None),
             Some(v) if v.is_null() => Ok(None),
             Some(v) => match v.as_str() {
                 Some(s) => Ok(Some(s.to_string())),
-                None => Err(format!(
+                None => Err(ToolError::InvalidArgs(format!(
                     "字段 '{}' 必须是字符串，实际收到 {}。请传入字符串值",
                     camel,
                     value_type_label(v)
-                )),
+                ))),
             },
         }
     }
@@ -294,18 +294,18 @@ impl TemplateDesignerExecutor {
         val: &Value,
         camel: &str,
         snake: &str,
-    ) -> Result<Option<String>, String> {
+    ) -> ToolResult<Option<String>> {
         let v = val.get(camel).or_else(|| val.get(snake));
         match v {
             None => Ok(None),
             Some(v) if v.is_null() => Ok(None),
             Some(Value::String(s)) => Ok(Some(s.to_string())),
             Some(Value::Number(n)) => Ok(Some(n.to_string())),
-            Some(v) => Err(format!(
+            Some(v) => Err(ToolError::InvalidArgs(format!(
                 "字段 '{}' 必须是字符串或数字，实际收到 {}。请传入版本号字符串（如 \"1.0.0\"）",
                 camel,
                 value_type_label(v)
-            )),
+            ))),
         }
     }
 
@@ -316,35 +316,35 @@ impl TemplateDesignerExecutor {
         camel: &str,
         snake: &str,
         default: &str,
-    ) -> Result<String, String> {
+    ) -> ToolResult<String> {
         let v = val.get(camel).or_else(|| val.get(snake));
         match v {
             None => Ok(default.to_string()),
             Some(v) if v.is_null() => Ok(default.to_string()),
             Some(v) => match v.as_str() {
                 Some(s) => Ok(s.to_string()),
-                None => Err(format!(
+                None => Err(ToolError::InvalidArgs(format!(
                     "字段 '{}' 必须是字符串，实际收到 {}。请传入字符串值",
                     camel,
                     value_type_label(v)
-                )),
+                ))),
             },
         }
     }
 
     /// 从 JSON 中提取可选布尔字段（支持双命名）。
-    fn extract_opt_bool(val: &Value, camel: &str, snake: &str) -> Result<Option<bool>, String> {
+    fn extract_opt_bool(val: &Value, camel: &str, snake: &str) -> ToolResult<Option<bool>> {
         let v = val.get(camel).or_else(|| val.get(snake));
         match v {
             None => Ok(None),
             Some(v) if v.is_null() => Ok(None),
             Some(v) => match v.as_bool() {
                 Some(b) => Ok(Some(b)),
-                None => Err(format!(
+                None => Err(ToolError::InvalidArgs(format!(
                     "字段 '{}' 必须是布尔值，实际收到 {}。请传入 true 或 false",
                     camel,
                     value_type_label(v)
-                )),
+                ))),
             },
         }
     }
@@ -353,33 +353,29 @@ impl TemplateDesignerExecutor {
     /// - 键不存在 → Ok(default_val)
     /// - 键存在且是字符串数组 → Ok(parsed)
     /// - 键存在但不是数组或元素不是字符串 → Err
-    fn extract_fields(val: &Value, required: bool) -> Result<Vec<String>, String> {
+    fn extract_fields(val: &Value, required: bool) -> ToolResult<Vec<String>> {
         let v = val.get("fields");
         match v {
             None | Some(&Value::Null) => {
-                if required {
-                    Ok(vec![])
-                } else {
-                    Ok(vec![])
-                }
+                Ok(vec![])
             }
             Some(v) => {
                 let arr = v.as_array().ok_or_else(|| {
-                    format!(
+                    ToolError::InvalidArgs(format!(
                         "fields 必须是字符串数组，实际收到 {}。请传入如 [\"Front\", \"Back\"]",
                         value_type_label(v)
-                    )
+                    ))
                 })?;
                 let mut result = Vec::with_capacity(arr.len());
                 for (i, item) in arr.iter().enumerate() {
                     match item.as_str() {
                         Some(s) => result.push(s.to_string()),
                         None => {
-                            return Err(format!(
+                            return Err(ToolError::InvalidArgs(format!(
                                 "fields[{}] 必须是字符串，实际收到 {}。所有字段名必须是字符串",
                                 i,
                                 value_type_label(item)
-                            ));
+                            )));
                         }
                     }
                 }
@@ -392,27 +388,27 @@ impl TemplateDesignerExecutor {
     /// - 键不存在 → Ok(None)
     /// - 键存在且是字符串数组 → Ok(Some(parsed))
     /// - 键存在但类型错误 → Err
-    fn extract_opt_fields(val: &Value) -> Result<Option<Vec<String>>, String> {
+    fn extract_opt_fields(val: &Value) -> ToolResult<Option<Vec<String>>> {
         let v = val.get("fields");
         match v {
             None | Some(&Value::Null) => Ok(None),
             Some(v) => {
                 let arr = v.as_array().ok_or_else(|| {
-                    format!(
+                    ToolError::InvalidArgs(format!(
                         "fields 必须是字符串数组，实际收到 {}。请传入如 [\"Front\", \"Back\"]",
                         value_type_label(v)
-                    )
+                    ))
                 })?;
                 let mut result = Vec::with_capacity(arr.len());
                 for (i, item) in arr.iter().enumerate() {
                     match item.as_str() {
                         Some(s) => result.push(s.to_string()),
                         None => {
-                            return Err(format!(
+                            return Err(ToolError::InvalidArgs(format!(
                                 "fields[{}] 必须是字符串，实际收到 {}。所有字段名必须是字符串",
                                 i,
                                 value_type_label(item)
-                            ));
+                            )));
                         }
                     }
                 }
@@ -425,23 +421,19 @@ impl TemplateDesignerExecutor {
     fn extract_rules(
         val: &Value,
         required: bool,
-    ) -> Result<HashMap<String, FieldExtractionRule>, String> {
+    ) -> ToolResult<HashMap<String, FieldExtractionRule>> {
         let v = val
             .get("fieldExtractionRules")
             .or_else(|| val.get("field_extraction_rules"));
         match v {
             None | Some(&Value::Null) => {
-                if required {
-                    Ok(HashMap::new())
-                } else {
-                    Ok(HashMap::new())
-                }
+                Ok(HashMap::new())
             }
             Some(v) => serde_json::from_value(v.clone()).map_err(|e| {
-                format!(
+                ToolError::InvalidArgs(format!(
                     "fieldExtractionRules 格式错误: {}。请确保每个规则包含 field_type, is_required, description 字段",
                     e
-                )
+                ))
             }),
         }
     }
@@ -449,7 +441,7 @@ impl TemplateDesignerExecutor {
     /// 从 JSON 中提取可选 fieldExtractionRules（用于 update patch）。
     fn extract_opt_rules(
         val: &Value,
-    ) -> Result<Option<HashMap<String, FieldExtractionRule>>, String> {
+    ) -> ToolResult<Option<HashMap<String, FieldExtractionRule>>> {
         let v = val
             .get("fieldExtractionRules")
             .or_else(|| val.get("field_extraction_rules"));
@@ -458,10 +450,10 @@ impl TemplateDesignerExecutor {
             Some(v) => {
                 let rules: HashMap<String, FieldExtractionRule> =
                     serde_json::from_value(v.clone()).map_err(|e| {
-                        format!(
+                        ToolError::InvalidArgs(format!(
                             "fieldExtractionRules 格式错误: {}。请确保每个规则包含 field_type, is_required, description 字段",
                             e
-                        )
+                        ))
                     })?;
                 Ok(Some(rules))
             }
@@ -473,7 +465,7 @@ impl TemplateDesignerExecutor {
     // ------------------------------------------------------------------
 
     /// 将 JSON Value 解析为 CreateTemplateRequest
-    fn parse_create_request(val: &Value) -> Result<CreateTemplateRequest, String> {
+    fn parse_create_request(val: &Value) -> ToolResult<CreateTemplateRequest> {
         let name = Self::extract_str_or(val, "name", "name", "")?;
         let description = Self::extract_str_or(val, "description", "description", "")?;
         let author = Self::extract_opt_str(val, "author", "author")?;
@@ -513,7 +505,7 @@ impl TemplateDesignerExecutor {
     }
 
     /// 将 JSON Value 解析为 UpdateTemplateRequest（兼容 camelCase 和 snake_case）
-    fn parse_update_request(val: &Value) -> Result<UpdateTemplateRequest, String> {
+    fn parse_update_request(val: &Value) -> ToolResult<UpdateTemplateRequest> {
         let name = Self::extract_opt_str(val, "name", "name")?;
         let description = Self::extract_opt_str(val, "description", "description")?;
         let author = Self::extract_opt_str(val, "author", "author")?;
@@ -559,29 +551,29 @@ impl TemplateDesignerExecutor {
     /// - 如果是对象，直接返回
     /// - 如果是 JSON 字符串，尝试解析为对象
     /// - 其他类型返回错误
-    fn normalize_patch_value(raw: &Value) -> Result<Value, String> {
+    fn normalize_patch_value(raw: &Value) -> ToolResult<Value> {
         match raw {
             Value::Object(_) => Ok(raw.clone()),
             Value::String(s) => {
                 let parsed: Value = serde_json::from_str(s).map_err(|e| {
-                    format!(
+                    ToolError::InvalidArgs(format!(
                         "patch 是字符串但不是合法 JSON：{}。请传入对象或可解析的 JSON 字符串",
                         e
-                    )
+                    ))
                 })?;
                 if parsed.is_object() {
                     Ok(parsed)
                 } else {
-                    Err(format!(
+                    Err(ToolError::InvalidArgs(format!(
                         "patch JSON 必须是对象，实际为 {}。请传入如 {{\"expectedVersion\":\"1.0.0\"}} 的对象",
                         value_type_label(&parsed)
-                    ))
+                    )))
                 }
             }
-            other => Err(format!(
+            other => Err(ToolError::InvalidArgs(format!(
                 "patch 必须是对象，实际收到 {}。请传入对象（不要传数组/数字）",
                 value_type_label(other)
-            )),
+            ))),
         }
     }
 
@@ -589,29 +581,29 @@ impl TemplateDesignerExecutor {
     /// - 如果是对象，直接返回
     /// - 如果是 JSON 字符串，尝试解析为对象
     /// - 其他类型返回错误
-    fn normalize_template_value(raw: &Value) -> Result<Value, String> {
+    fn normalize_template_value(raw: &Value) -> ToolResult<Value> {
         match raw {
             Value::Object(_) => Ok(raw.clone()),
             Value::String(s) => {
                 let parsed: Value = serde_json::from_str(s).map_err(|e| {
-                    format!(
+                    ToolError::InvalidArgs(format!(
                         "template 是字符串但不是合法 JSON：{}。请传入对象或可解析的 JSON 字符串",
                         e
-                    )
+                    ))
                 })?;
                 if parsed.is_object() {
                     Ok(parsed)
                 } else {
-                    Err(format!(
+                    Err(ToolError::InvalidArgs(format!(
                         "template JSON 必须是对象，实际为 {}。请传入模板对象",
                         value_type_label(&parsed)
-                    ))
+                    )))
                 }
             }
-            other => Err(format!(
+            other => Err(ToolError::InvalidArgs(format!(
                 "template 必须是对象，实际收到 {}。请传入模板对象",
                 value_type_label(other)
-            )),
+            ))),
         }
     }
 
@@ -703,7 +695,7 @@ impl TemplateDesignerExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args: TemplateListArgs = match serde_json::from_value(call.arguments.clone()) {
             Ok(a) => a,
             Err(e) => {
@@ -717,7 +709,7 @@ impl TemplateDesignerExecutor {
 
         let db = match Self::get_db(ctx) {
             Ok(db) => db,
-            Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+            Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
         };
 
         let mut all_templates = match db.get_all_custom_templates() {
@@ -798,7 +790,7 @@ impl TemplateDesignerExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args: TemplateGetArgs = match serde_json::from_value(call.arguments.clone()) {
             Ok(a) => a,
             Err(e) => {
@@ -809,7 +801,7 @@ impl TemplateDesignerExecutor {
 
         let db = match Self::get_db(ctx) {
             Ok(db) => db,
-            Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+            Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
         };
 
         match db.get_custom_template_by_id(&args.template_id) {
@@ -876,7 +868,7 @@ impl TemplateDesignerExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args: TemplateValidateArgs = match serde_json::from_value(call.arguments.clone()) {
             Ok(a) => a,
             Err(e) => {
@@ -887,7 +879,7 @@ impl TemplateDesignerExecutor {
 
         let normalized_template = match Self::normalize_template_value(&args.template) {
             Ok(v) => v,
-            Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+            Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
         };
 
         let req = match Self::parse_create_request(&normalized_template) {
@@ -895,7 +887,7 @@ impl TemplateDesignerExecutor {
             Err(e) => {
                 let output = json!({
                     "valid": false,
-                    "errors": [e],
+                    "errors": [e.to_string()],
                     "warnings": [],
                 });
                 return Ok(Self::emit_success(call, ctx, output, start_time));
@@ -918,7 +910,7 @@ impl TemplateDesignerExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args: TemplateCreateArgs = match serde_json::from_value(call.arguments.clone()) {
             Ok(a) => a,
             Err(e) => {
@@ -929,12 +921,12 @@ impl TemplateDesignerExecutor {
 
         let normalized_template = match Self::normalize_template_value(&args.template) {
             Ok(v) => v,
-            Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+            Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
         };
 
         let req = match Self::parse_create_request(&normalized_template) {
             Ok(r) => r,
-            Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+            Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
         };
 
         // 校验
@@ -946,7 +938,7 @@ impl TemplateDesignerExecutor {
 
         let db = match Self::get_db(ctx) {
             Ok(db) => db,
-            Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+            Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
         };
 
         match db.create_custom_template(&req) {
@@ -998,7 +990,7 @@ impl TemplateDesignerExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args: TemplateUpdateArgs = match serde_json::from_value(call.arguments.clone()) {
             Ok(a) => a,
             Err(e) => {
@@ -1074,7 +1066,7 @@ impl TemplateDesignerExecutor {
 
         let db = match Self::get_db(ctx) {
             Ok(db) => db,
-            Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+            Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
         };
 
         // 检查模板是否存在
@@ -1187,7 +1179,7 @@ impl TemplateDesignerExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args: TemplateForkArgs = match serde_json::from_value(call.arguments.clone()) {
             Ok(a) => a,
             Err(e) => {
@@ -1198,7 +1190,7 @@ impl TemplateDesignerExecutor {
 
         let db = match Self::get_db(ctx) {
             Ok(db) => db,
-            Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+            Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
         };
 
         // 获取源模板
@@ -1291,7 +1283,7 @@ impl TemplateDesignerExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args: TemplatePreviewArgs = match serde_json::from_value(call.arguments.clone()) {
             Ok(a) => a,
             Err(e) => {
@@ -1306,7 +1298,7 @@ impl TemplateDesignerExecutor {
         {
             let db = match Self::get_db(ctx) {
                 Ok(db) => db,
-                Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+                Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
             };
             match db.get_custom_template_by_id(tid) {
                 Ok(Some(t)) => (
@@ -1328,7 +1320,7 @@ impl TemplateDesignerExecutor {
         } else if let Some(ref draft_raw) = args.template {
             let draft = match Self::normalize_template_value(draft_raw) {
                 Ok(v) => v,
-                Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+                Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
             };
             let front = draft
                 .get("frontTemplate")
@@ -1350,7 +1342,7 @@ impl TemplateDesignerExecutor {
                 .to_string();
             let fields = match Self::extract_fields(&draft, false) {
                 Ok(f) => f,
-                Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+                Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
             };
             (front, back, css, fields, None)
         } else {
@@ -1394,7 +1386,7 @@ impl TemplateDesignerExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args: TemplateDeleteArgs = match serde_json::from_value(call.arguments.clone()) {
             Ok(a) => a,
             Err(e) => {
@@ -1405,7 +1397,7 @@ impl TemplateDesignerExecutor {
 
         let db = match Self::get_db(ctx) {
             Ok(db) => db,
-            Err(e) => return Ok(Self::emit_failure(call, ctx, &e, start_time)),
+            Err(e) => return Ok(Self::emit_failure(call, ctx, &e.to_string(), start_time)),
         };
 
         // 1. 检查模板是否存在
@@ -1475,7 +1467,7 @@ impl ToolExecutor for TemplateDesignerExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         log::info!(
             "[TemplateDesignerExecutor] execute: tool_name={}, tool_call_id={}, session_id={}, message_id={}",
@@ -1499,10 +1491,10 @@ impl ToolExecutor for TemplateDesignerExecutor {
             "template_fork" => self.execute_fork(call, ctx, start_time).await,
             "template_preview" => self.execute_preview(call, ctx, start_time).await,
             "template_delete" => self.execute_delete(call, ctx, start_time).await,
-            _ => Err(format!(
+            _ => Err(ToolError::InvalidArgs(format!(
                 "Unsupported template designer tool: {}",
                 stripped_name
-            )),
+            ))),
         }
     }
 

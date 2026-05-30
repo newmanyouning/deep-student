@@ -1,0 +1,40 @@
+# DeepSeek API模型版本
+对话ID: c95d95f6-d93d-4fdc-b229-037eda863b98
+创建时间: 2026-04-07T15:12:57.152000+08:00
+更新时间: 2026-04-07T15:14:04.346000+08:00
+
+## ❓ unknown
+
+DeepSeek官方API平台的云端模型是什么版本的？
+
+---
+
+## ❓ unknown
+
+用户想知道DeepSeek官方API平台提供的云端模型版本。我需要提供最新的信息。为了全面获取信息，我需要同时进行多项搜索，涵盖不同关键词和可能的发布时间。
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+{'type': 'TOOL_SEARCH'}
+搜索结果显示了一些相关信息。为了全面了解DeepSeek API的模型版本，我们需要同时打开多个相关的链接。这些链接包括：结果0、结果1、结果2、结果3、结果4、结果5、结果6、结果7、结果8。
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+这些信息显示，DeepSeek API 目前提供的模型版本有 V3.2、V3.1、V3 等。此外，还有关于 V4 的消息。我的回答将基于这些信息进行组织。
+根据截至2026年4月的信息，DeepSeek官方API平台当前主要提供**DeepSeek-V3.2**作为主力模型，同时支持**DeepSeek-R1**（推理模型）等系列版本。
+
+*   **📌 主要版本**：目前的主力模型是2025年12月1日升级的**DeepSeek-V3.2**[reference:0]。网页和App在2026年2月已开始测试百万级上下文新结构，但官方API服务当时仍是V3.2版本，上下文为**128K**，暂未跟进此升级[reference:1][reference:2]。
+*   **⚙️ 其他版本**：API还提供了实验性版本（如**DeepSeek-V3.2-Exp**）供测试[reference:3]、专用推理模型**DeepSeek-R1**[reference:4]、针对特定任务（如编程）的临时版本（如**DeepSeek-V3.2-Speciale**，目前可能已停止服务）[reference:5][reference:6]，以及V3.1和V3系列版本[reference:7][reference:8]。
+*   **📝 如何调用**：通过官方API（`api.deepseek.com`）调用时，使用 `deepseek-chat` 对应非思考模式（快速响应），使用 `deepseek-reasoner` 对应思考模式（展示推理过程）[reference:9]。
+
+模型版本信息在不断更新，最准确和最新的列表，建议随时查阅官方的 **API 更新日志**[reference:10][reference:11]。
+
+---

@@ -1,0 +1,154 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" total_lines="8287" shown_lines="3000-3149" truncated="true" next_start_line="3150">
+  3000│ 
+  3001│ 在你正确安装 `cc-mini` 之后，之前启动 `api_server.py` 时出现的 `找不到 cc-mini 命令` 错误就会消失。  
+  3002│ 
+  3003│ 重新启动 API 服务器：
+  3004│ 
+  3005│ ```bash
+  3006│ cd /Users/mac/cc-mini
+  3007│ python3 api_server.py
+  3008│ ```
+  3009│ 
+  3010│ 你应该能看到正常的启动信息：
+  3011│ 
+  3012│ ```
+  3013│ 🚀 cc-mini API 服务器已启动
+  3014│ 📡 服务地址: http://127.0.0.1:8230
+  3015│ ...
+  3016│ ```
+  3017│ 
+  3018│ ---
+  3019│ 
+  3020│ ## 💡 补充说明
+  3021│ 
+  3022│ - **为什么不能直接使用当前目录的源码？**  
+  3023│   `install.sh` 会将 `cc-mini` 打包成一个可执行的命令行工具，并处理好所有依赖。直接运行 `python3 src/core/main.py` 可能会因为缺少环境配置（如虚拟环境、PYTHONPATH）而失败。所以务必通过 `install.sh` 安装。
+  3024│ 
+  3025│ - **如果你已经运行过 `install.sh` 但仍然报错**  
+  3026│   大概率是 PATH 没有包含 `~/.local/bin`。请重新执行上面的 `echo ... >> ~/.zshrc` 和 `source ~/.zshrc`，然后关闭终端重新打开，再试。
+  3027│ 
+  3028│ - **`api_server.py` 的查找逻辑**  
+  3029│   脚本会依次查找：
+  3030│   1. 当前 PATH 中的 `cc-mini`
+  3031│   2. `~/.local/bin/cc-mini`
+  3032│   3. 当前 Python 虚拟环境下的 `cc-mini`  
+  3033│   只要上述任何一个位置存在，就能正常工作。
+  3034│ 
+  3035│ ---
+  3036│ 
+  3037│ ## 🧪 测试整体流程
+  3038│ 
+  3039│ 安装并启动 API 服务器后，可以在另一个终端中测试：
+  3040│ 
+  3041│ ```bash
+  3042│ curl -X POST http://127.0.0.1:8230/v1/messages \
+  3043│   -H "Content-Type: application/json" \
+  3044│   -d '{"model":"cc-mini","messages":[{"role":"user","content":"hello"}],"max_tokens":100}'
+  3045│ ```
+  3046│ 
+  3047│ 如果返回一个 JSON 响应（即使内容可能很简单），说明 API 服务器与 cc-mini 已经成功对接。
+  3048│ 
+  3049│ 最后，按照之前说明修改 VSCode 的 `settings.json`，重启 VSCode，就可以在 Claude Code 插件中使用本地的 cc-mini 了。
+  3050│ 
+  3051│ ---
+  3052│ 
+  3053│ ## ❓ unknown
+  3054│ 
+  3055│ mac@macdeMac-mini cc-mini % bash install.sh
+  3056│ 
+  3057│ ╔══════════════════════════════════════════╗
+  3058│ ║        cc-mini  installer                ║
+  3059│ ╚══════════════════════════════════════════╝
+  3060│ 
+  3061│ [cc-mini] Using Python 3.13.12 (python3.13)
+  3062│ [cc-mini] Cloning cc-mini into /Users/mac/.cc-mini ...
+  3063│ [cc-mini] Creating virtual environment ...
+  3064│ [cc-mini] Installing dependencies ...
+  3065│ WARNING: Connection timed out while downloading.
+  3066│ WARNING: Attempting to resume incomplete download (262 kB/478 kB, attempt 1)
+  3067│ 
+  3068│ [cc-mini] cc-mini installed successfully!
+  3069│ 
+  3070│ [cc-mini] /Users/mac/.local/bin is not in your PATH.
+  3071│   Add it by running one of:
+  3072│ 
+  3073│     echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc && source ~/.bashrc
+  3074│     echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc  && source ~/.zshrc
+  3075│ 
+  3076│   Set your API key first:
+  3077│     export ANTHROPIC_API_KEY=sk-ant-...
+  3078│ 
+  3079│   Installed to:  /Users/mac/.cc-mini
+  3080│   Launcher:      /Users/mac/.local/bin/cc-mini
+  3081│ 
+  3082│ ---
+  3083│ 
+  3084│ ## ❓ unknown
+  3085│ 
+  3086│ 我们注意到安装过程中出现了网络超时警告（WARNING: Connection timed out while downloading.），但最终脚本显示安装成功。接下来需要将 `~/.local/bin` 添加到 PATH，并设置 API 密钥（或配置 cc-mini 使用国内模型）。请执行以下步骤。
+  3087│ 
+  3088│ ---
+  3089│ 
+  3090│ ## ✅ 完成安装并配置
+  3091│ 
+  3092│ ### 1. 添加 `~/.local/bin` 到 PATH（macOS 使用 zsh）
+  3093│ 
+  3094│ ```bash
+  3095│ echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+  3096│ source ~/.zshrc
+  3097│ ```
+  3098│ 
+  3099│ ### 2. 验证 `cc-mini` 命令是否可用
+  3100│ 
+  3101│ ```bash
+  3102│ cc-mini --help
+  3103│ ```
+  3104│ 
+  3105│ 应该显示帮助信息。如果仍然提示 `command not found`，请重新打开终端或执行 `source ~/.zshrc` 后再试。
+  3106│ 
+  3107│ ### 3. 配置 cc-mini 使用你想要的云端模型
+  3108│ 
+  3109│ 由于你不需要 Claude API，而是使用国内大模型（如阿里 Qwen、智谱 GLM 等），请按以下方式配置：
+  3110│ 
+  3111│ **方法一：使用环境变量（临时，适合测试）**
+  3112│ 
+  3113│ ```bash
+  3114│ export CC_MINI_PROVIDER=openai
+  3115│ export OPENAI_API_KEY="你的API密钥"
+  3116│ export OPENAI_BASE_URL="https://你的服务地址/v1"
+  3117│ export CC_MINI_MODEL="你想用的模型名称"
+  3118│ ```
+  3119│ 
+  3120│ **方法二：创建配置文件（永久）**
+  3121│ 
+  3122│ 创建 `~/.config/cc-mini/config.toml`（如果目录不存在则先创建 `mkdir -p ~/.config/cc-mini`）：
+  3123│ 
+  3124│ ```toml
+  3125│ provider = "openai"
+  3126│ 
+  3127│ [openai]
+  3128│ api_key = "你的API密钥"
+  3129│ base_url = "https://你的服务地址/v1"
+  3130│ model = "你想用的模型名称"
+  3131│ max_tokens = 64000
+  3132│ effort = "medium"
+  3133│ ```
+  3134│ 
+  3135│ > 请替换 `你的API密钥`、`你的服务地址`、`你想用的模型名称` 为实际值。
+  3136│ 
+  3137│ ### 4. 启动 API 服务器
+  3138│ 
+  3139│ ```bash
+  3140│ cd /Users/mac/cc-mini
+  3141│ python3 api_server.py
+  3142│ ```
+  3143│ 
+  3144│ 此时应该不会再报 `找不到 cc-mini 命令` 的错误，而是正常启动在 `8230` 端口。
+  3145│ 
+  3146│ ### 5. 测试 API 服务器
+  3147│ 
+  3148│ 在另一个终端执行：
+  3149│ 
+
+[TRUNCATED] Showing lines 3000-3149 of 8287. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" start_line=3150 max_lines=150
+</file>

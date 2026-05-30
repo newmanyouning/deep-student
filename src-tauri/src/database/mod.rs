@@ -4235,7 +4235,7 @@ impl Database {
     }
 
     /// 更新Anki卡片
-    pub fn update_anki_card(&self, card: &AnkiCard) -> Result<()> {
+    pub fn enhanced_anki_update_card(&self, card: &AnkiCard) -> Result<()> {
         let conn = self.get_conn_safe()?;
         let updated_at = chrono::Utc::now().to_rfc3339();
         conn.execute(
@@ -4262,14 +4262,14 @@ impl Database {
     }
 
     /// 删除Anki卡片
-    pub fn delete_anki_card(&self, card_id: &str) -> Result<()> {
+    pub fn enhanced_anki_delete_card(&self, card_id: &str) -> Result<()> {
         let conn = self.get_conn_safe()?;
         conn.execute("DELETE FROM anki_cards WHERE id = ?1", params![card_id])?;
         Ok(())
     }
 
     /// 删除文档任务及其所有卡片
-    pub fn delete_document_task(&self, task_id: &str) -> Result<()> {
+    pub fn enhanced_anki_delete_document_task(&self, task_id: &str) -> Result<()> {
         let conn = self.get_conn_safe()?;
         // 由于设置了ON DELETE CASCADE，删除任务会自动删除关联的卡片
         conn.execute("DELETE FROM document_tasks WHERE id = ?1", params![task_id])?;
@@ -4277,7 +4277,7 @@ impl Database {
     }
 
     /// 删除整个文档会话（所有任务和卡片）
-    pub fn delete_document_session(&self, document_id: &str) -> Result<()> {
+    pub fn enhanced_anki_delete_document_session(&self, document_id: &str) -> Result<()> {
         let conn = self.get_conn_safe()?;
         // 由于设置了ON DELETE CASCADE，删除任务会自动删除关联的卡片
         conn.execute(
@@ -5528,7 +5528,7 @@ impl Database {
 
     /// 🔧 Phase 1: 恢复卡住的制卡任务
     /// 将 Processing/Streaming 状态超过 1 小时的任务重置为 Pending
-    pub fn recover_stuck_document_tasks(&self) -> Result<u32> {
+    pub fn enhanced_anki_recover_stuck_tasks(&self) -> Result<u32> {
         let conn = self.get_conn_safe()?;
         let count = conn.execute(
             r#"UPDATE document_tasks
@@ -5541,7 +5541,7 @@ impl Database {
     }
 
     /// 🔧 Phase 1: 按 document_id 分组汇总任务信息（用于任务管理页面）
-    pub fn list_document_sessions(&self, limit: u32) -> Result<Vec<serde_json::Value>> {
+    pub fn enhanced_anki_list_document_sessions(&self, limit: u32) -> Result<Vec<serde_json::Value>> {
         let conn = self.get_conn_safe()?;
         // 确保 source_session_id 列存在（兼容旧数据库）
         let _ = conn.execute(
@@ -5591,7 +5591,7 @@ impl Database {
     }
 
     /// 🔧 Phase 2: 卡片库统计数据（用于任务管理页面统计卡片）
-    pub fn get_anki_stats(&self) -> Result<serde_json::Value> {
+    pub fn enhanced_anki_get_stats(&self) -> Result<serde_json::Value> {
         let conn = self.get_conn_safe()?;
         let total_cards: i64 =
             conn.query_row("SELECT COUNT(*) FROM anki_cards", [], |r| r.get(0))?;
@@ -5657,7 +5657,7 @@ impl Database {
         Ok(cards)
     }
 
-    pub fn list_anki_library_cards(
+    pub fn enhanced_anki_list_library_cards(
         &self,
         _subject: Option<&str>,
         template_id: Option<&str>,

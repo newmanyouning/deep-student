@@ -1,0 +1,50 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_compare_and_update.py
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_compare_and_update.py
+@@ -0,0 +1,45 @@
++import json, os
++
++base = r'C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md'
++
++# Load old
++with open(os.path.join(base, '_scan_result.json'), 'r', encoding='utf-8') as f:
++    old_data = json.load(f)
++old_paths = {e['path']: e['lines'] for e in old_data['all']}
++
++# Load new
++with open(os.path.join(base, '_scan_new.json'), 'r', encoding='utf-8') as f:
++    new_data = json.load(f)
++new_paths = {e['path']: e['lines'] for e in new_data['all']}
++
++old_set = set(old_paths.keys())
++new_set = set(new_paths.keys())
++
++removed = old_set - new_set
++added = new_set - old_set
++changed = {p for p in old_set & new_set if old_paths[p] != new_paths[p]}
++
++print(f'Old total: {len(old_paths)}')
++print(f'New total: {len(new_paths)}')
++print(f'Removed: {len(removed)}')
++print(f'Added: {len(added)}')
++print(f'Lines changed: {len(changed)}')
++
++if removed:
++    print('\n--- REMOVED ---')
++    for p in sorted(removed):
++        print(f'  {p} ({old_paths[p]} lines)')
++if added:
++    print('\n--- ADDED ---')
++    for p in sorted(added):
++        print(f'  {p} ({new_paths[p]} lines)')
++if changed:
++    print('\n--- LINE COUNT CHANGED ---')
++    for p in sorted(changed):
++        print(f'  {p}: {old_paths[p]} -> {new_paths[p]}')
++if not (removed or added or changed):
++    print('\nNo differences found.')
++
++# Replace old with new
++os.replace(os.path.join(base, '_scan_new.json'), os.path.join(base, '_scan_result.json'))
++print('\n_scan_result.json updated.')
+
+Created \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_compare_and_update.py (1420 bytes)

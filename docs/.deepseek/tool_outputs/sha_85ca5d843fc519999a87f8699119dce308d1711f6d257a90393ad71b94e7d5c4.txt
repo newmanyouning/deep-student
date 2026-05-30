@@ -1,0 +1,37 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_4e16c792 (general) status=Completed
+  objective: 你是一个知识提取专家。请读取文件 `01_AI与编程开发/WPS插件开发与加载指南.md`，提取其中有价值的、可复用的知识点。
+
+要求：
+1. 先读取整个文件内容
+2. 提取3-8条知识点，每个知识点需要是独立、完整、有实用价值的
+3. 每条知识点的格式如下（输出纯文本，不要加额外的标记）：
+   - **[知识点标题]** — 一句话简介
+     - 来源文件：WPS插件开发与加载指南.md
+     - 核心解释：2-4句详...
+  result: 基于对全文的阅读，以下是提取的知识点：
+
+- **[WPS插件类型与个人版兼容性对照]** — 了解不同WPS插件在个人专业版上的加载能力差异
+  - 来源文件：WPS插件开发与加载指南.md
+  - 核心解释：WPS插件主要有四种类型：WPS加载项（Web技术，基于HTML/CSS/JS，个人版完全支持）、COM加载项（传统COM组件，个人版有白名单限制，可能无法加载）、VBA宏（个人版不支持，仅专业增强版/企业版提供）、JS宏（WPS内置，所有版本均可用）。其中WPS加载项是官方主推的开发方式，也是个人版用户开发插件的最佳选择。
+
+- **[wpsjs命令行工具链：创建、调试与发布]** — 掌握wpsjs这一官方开发工具的核心生命周期
+  - 来源文件：WPS插件开发与加载指南.md
+  - 核心解释：wpsjs是WPS官方提供的命令行开发工具，通过`npm install -g wpsjs`全局安装。使用`wpsjs create <项目名>`可快速创建项目模板，过程中会引导选择插件适用的组件（文字/表格/演示）和前端框架（原生JS或Vue）。`wpsjs debug`命令会自动打开WPS并加载插件，支持热更新；`wpsjs build`打包源码，`wpsjs publish`生成可分发的发布文件。
+
+- **[WPS加载项的离线打包与本地安装]** — 掌握插件自用分发的两种安装方式
+  - 来源文件：WPS插件开发与加载指南.md
+  - 核心解释：开发完成后，运行`wpsjs build`并选择离线模式，会在项目中生成`wps-addon-build`目录和`.7z`离线安装包。安装方式有两种：方式一（推荐）通过运行`wpsjs publish`生成的`publish.html`页面点击安装；方式二（手动配置）将解压后的插件文件夹放入`%AppData%\kingsoft\wps\jsaddons`，并创建`jsplugins.xml`配置文件，同时在WPS安装目录的`oem.ini`中添加`[Server]`节指定插件列表路径。
+
+- **[通过oem.ini和jsplugins.xml手动注册插件]** — 理解WPS加载项的手动加载机制
+  - 来源文件：WPS插件开发与加载指南.md
+  - 核心解释：WPS通过`oem.ini`和`jsplugins.xml`两个配置文件实现插件的加载注册。`jsplugins.xml`存放在`%AppData%\kingsoft\wps\jsaddons\`下，定义插件的名称、类型、路径和版本；`oem.ini`位于WPS安装目录（如`...\office6\cfgs\`），通过`[Server]`节的`JSPluginsServer`字段指向`jsplugins.xml`的路径，并需在`[Support]`节设置`JsApiPlugin=true`。修改配置文件后重启WPS，插件即可出现在加载项或开发工具选项卡中。
+
+- **[WPS加载项通过JS API操作表格的核心能力]** — 掌握通过JavaScript读写单元格公式和内容的关键API用法
+  - 来源文件：WPS插件开发与加载指南.md
+  - 核心解释：WPS加载项通过WPS JS API可以完整地读写Excel工作簿。通过读取单元格的`Formula`属性获取公式字符串，解析其中的单元格引用（如`A1`、`$B$2`）构建依赖图谱；修改后再将新公式字符串写回`Formula`属性，WPS表格引擎会自动重新计算使修改生效。此外，通过JavaScript遍历工作簿和工作表，可以实现批量修改页眉页脚、跨工作簿读写特定单元格数据等操作。
+
+- **[AI辅助WPS加载项开发的环境架构]** — 搭建"AI API + ...
+  stats: steps=4, duration_ms=19288

@@ -1,0 +1,40 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md
+@@ -989,3 +989,35 @@
+ - **[Ubuntu MD阅读工具]** — 推荐Typora（图形所见即所得）、Glow（终端渲染Markdown）、ReText（Linux原生轻量编辑）。
+   - 来源文件：Ubuntu安装md阅读工具指南.md
+   - 核心解释：Snap包安装：sudo snap install glow（终端阅读）或 apt安装ReText。
++
++- **[Ubuntu GPU/CPU监控]** — 推荐htop（CPU/内存）、nvidia-smi（NVIDIA GPU）、nvtop（GPU交互界面）、dstat（综合资源监控）。
++  - 来源文件：Ubuntu实时监控GPUCPU命令.md
++  - 核心解释：nvidia-smi -l 1 每秒刷新，htop交互式进程管理。
++
++- **[Ubuntu安装deb包]** — sudo dpkg -i package.deb（本地安装），sudo apt install ./package.deb（自动处理依赖）。
++  - 来源文件：Ubuntu控制台安装应用包方法.md
++  - 核心解释：dpkg -i遇到依赖问题用 sudo apt install -f 修复。
++
++- **[Ubuntu文件夹压缩]** — tar -czvf archive.tar.gz /path/to/folder（最常用），zip -r archive.zip /path/to/folder（跨平台兼容）。
++  - 来源文件：Ubuntu文件夹压缩方法.md
++  - 核心解释：tar.gz压缩率更高，zip跨平台兼容性好。
++
++- **[Ubuntu键盘检测命令]** — lsusb（USB设备列表）、cat /proc/bus/input/devices（输入设备详情）、xinput list（X下输入设备）。
++  - 来源文件：Ubuntu系统有线键盘连接检查指南.md
++  - 核心解释：xinput —id id 查看设备属性，evemu-describe显示键盘事件细节。
++
++- **[Vim删除多行方法]** — 可视模式选中后d删除，或命令模式:3,5d（删除3-5行）、:.,+3d（从当前行删4行）、dd删除单行。
++  - 来源文件：Vim快速删除多行方法.md
++  - 核心解释：ggdG删除全文，光标移动到首行后再dG删除到末尾。
++
++- **[Win11微信通知设置]** — Win11任务栏通知需同时开启微信内新消息通知和系统设置中的应用通知权限。
++  - 来源文件：Windows 11微信通知设置指南.md
++  - 核心解释：通过系统设置>通知和操作>微信管理通知，确保开启弹窗横幅。
++
++- **[Windows MD阅读器]** — 推荐Typora（所见即所得付费）、VSCode+预览（免费强大）、MarkText（开源免费）、Windows记事本新增Markdown支持。
++  - 来源文件：Windows MD文件阅读器推荐.md
++  - 核心解释：2025年Win11记事本原生支持Markdown预览和语法高亮。
++
++- **[Windows SSH下载文件]** — scp username@host:/remote/path local/path（命令行），WinSCP（图形界面），从远程下载到本地。
++  - 来源文件：Windows SSH下载文件方法.md
++  - 核心解释：PowerShell直接支持scp命令，无需额外安装工具。
+
+Replaced 1 occurrence in \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md

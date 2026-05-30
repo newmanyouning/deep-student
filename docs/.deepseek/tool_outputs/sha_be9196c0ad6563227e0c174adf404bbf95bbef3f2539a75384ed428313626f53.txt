@@ -1,0 +1,76 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\7B内图像生成模型推荐.md" total_lines="1074" shown_lines="1001-1074" truncated="false">
+  1001│ IPv6问题在某些网络环境下也可能导致此错误[reference:7][reference:8]。你可以尝试临时在终端执行以下命令来禁用IPv6：
+  1002│ ```bash
+  1003│ # 临时禁用IPv6
+  1004│ sudo sysctl -w net.inet6.ip6.auto_linklocal=0
+  1005│ ```
+  1006│ 或者，更好的方法是修改你的网络设置。你可以在 **“系统设置” > “网络”** 中找到你正在使用的网络（如Wi-Fi），点击“详细信息” > “TCP/IP”，然后将“配置IPv6”改为“仅本地链接”或“手动”。
+  1007│ 
+  1008│ ---
+  1009│ 
+  1010│ 按顺序尝试这些方法，大概率能解决问题。如果所有方法都无效，很可能是你当前网络环境的问题，可以尝试切换网络（如手机热点）再试。希望能顺利帮到你！
+  1011│ 
+  1012│ ---
+  1013│ 
+  1014│ ## ❓ unknown
+  1015│ 
+  1016│ 我想要下载一个Q3量化的版本，发现这个命令不行wget https://modelscope.cn/api/v1/models/unsloth/Qwen-Image-GGUF/repo?Revision=master&FilePath=qwen-image-Q3_K_M.gguf -O qwen-image-Q3_K_M.gguf
+  1017│ [1] 2950
+  1018│ zsh: no matches found: https://modelscope.cn/api/v1/models/unsloth/Qwen-Image-GGUF/repo?Revision=master
+  1019│ 
+  1020│ ---
+  1021│ 
+  1022│ ## ❓ unknown
+  1023│ 
+  1024│ 用户想下载Q3量化版本的模型，但之前的命令失败了。我需要提供正确的下载方法。为了全面获取信息，我需要同时进行多项搜索，涵盖不同的关键词和可能的来源。
+  1025│ {'type': 'TOOL_SEARCH'}
+  1026│ {'type': 'TOOL_SEARCH'}
+  1027│ {'type': 'TOOL_SEARCH'}
+  1028│ {'type': 'TOOL_SEARCH'}
+  1029│ {'type': 'TOOL_SEARCH'}
+  1030│ 搜索结果显示，用户遇到了zsh的“no matches found”错误，这很可能是因为URL中的问号被zsh误解了。为了解决这个问题，我们需要提供正确的下载方法。搜索结果中，一条结果提供了Hugging Face上Q3_K_M模型的链接。另外，一条结果可能包含关于ModelScope下载的更多信息。一条结果可能包含关于ComfyUI的教程。为了全面获取信息，我们需要同时打开这些相关的链接。
+  1031│ {'type': 'TOOL_OPEN'}
+  1032│ {'type': 'TOOL_OPEN'}
+  1033│ {'type': 'TOOL_OPEN'}
+  1034│ 打开的页面显示，Hugging Face上提供了qwen-image-Q3_K_M.gguf文件的直接下载链接。页面也提供了解决zsh错误的方法。另一个页面是关于ComfyUI和Qwen-Image的教程，其中提到了GGUF插件的安装。我的回答将涵盖以下几个部分：首先是关于zsh错误及其解决方法；然后是下载量化模型文件的方法，包括使用wget命令和推荐从Hugging Face下载；接着是文件放置位置；最后是总结。
+  1035│ 你遇到的错误，核心原因是命令里的 URL 包含了 `?`，而 zsh（macOS 的默认 Shell）会把它当作通配符，而不是 URL 的一部分。
+  1036│ 
+  1037│ 解决很简单，只需要用英文双引号把整个 URL 包起来，就能防止 zsh 错误解析[reference:0]。
+  1038│ 
+  1039│ ---
+  1040│ 
+  1041│ ### 1. 使用双引号重新执行 `wget` 命令
+  1042│ 
+  1043│ 请在你的终端中，执行以下命令：
+  1044│ 
+  1045│ ```bash
+  1046│ wget "https://modelscope.cn/api/v1/models/unsloth/Qwen-Image-GGUF/repo?Revision=master&FilePath=qwen-image-Q3_K_M.gguf" -O qwen-image-Q3_K_M.gguf
+  1047│ ```
+  1048│ 加上引号后，命令应该就能顺利执行了。
+  1049│ 
+  1050│ ### 2. 备选方案：从 Hugging Face 下载
+  1051│ 
+  1052│ 如果上面的链接速度不理想，或者之后出现问题，你也可以从 Hugging Face 下载，这里通常也提供相同的量化版本[reference:1][reference:2]。
+  1053│ 
+  1054│ ```bash
+  1055│ wget "https://huggingface.co/city96/Qwen-Image-gguf/resolve/main/qwen-image-Q3_K_M.gguf?download=true" -O qwen-image-Q3_K_M.gguf
+  1056│ ```
+  1057│ 
+  1058│ **两个链接都能下载到 Q3_K_M 版本，文件大小约为 9.68 GB**[reference:3]。你可以选择网络连接更快的一个下载。
+  1059│ 
+  1060│ ---
+  1061│ 
+  1062│ ### 💡 文件放置位置
+  1063│ 
+  1064│ 下载完成后，需要把它移动到 ComfyUI 的 `unet` 模型目录里：
+  1065│ 
+  1066│ ```bash
+  1067│ mv qwen-image-Q3_K_M.gguf /Users/mac/ComfyUI/models/unet/
+  1068│ ```
+  1069│ 
+  1070│ 如果提示没有找到 `models/unet/` 这个文件夹，需要先用 `mkdir -p` 命令创建它[reference:4]。
+  1071│ 
+  1072│ 执行完成这些步骤后，Q3_K_M 量化模型的下载和准备工作就完成了。接下来，你就可以在 ComfyUI 的节点中加载它来生成图像了。如果在加载或使用中遇到任何问题，随时可以再来问我。
+  1073│ 
+  1074│ ---
+</file>

@@ -1,0 +1,28 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_03965624 (explore) status=Completed
+  objective: 你是知识提取代理。请读取文件 `01_AI与编程开发/Excel工具开发与打包.md`（共649行），完整阅读后提取3-6条核心知识点。
+
+每条知识点格式：
+```
+- **[简短标题]** — 一句话概述。
+  - 来源文件：Excel工具开发与打包.md
+  - 核心解释：3-5句话详细解释这个概念/技术/方法的要点。要包含具体的技术细节、参数、命令等。
+```
+
+重点关注：技术实现细节、可复用的代码模式、配置/命令、最佳实践...
+  result: - **[openpyxl 双模式加载：data_only=False 保留公式与格式]** — 用 `openpyxl.load_workbook(file_path, data_only=False)` 加载 Excel 时可同时获取公式文本和单元格样式，配合 pandas 只做数据展示，形成"格式引擎+数据引擎"的分离架构。
+  - 来源文件：Excel工具开发与打包.md
+  - 核心解释：`openpyxl.load_workbook()` 的 `data_only` 参数决定读取的是公式本身（`False`）还是公式计算后的缓存值（`True`）。设置为 `False` 后，可通过 `cell.data_type == 'f'` 判断是否为公式单元格，通过 `cell.has_style` 判断是否有自定义样式，并进一步提取 `cell.font`、`cell.fill`、`cell.border`、`cell.alignment`、`cell.number_format` 和 `cell.comment.text`。与 pandas 的 `pd.read_excel()` 配合使用时，pandas 负责快速展示行列数据（`df.iterrows()`），openpyxl 负责在后台线程中提取格式元数据存入字典 `cell_formats[sheet_name][cell.coordinate]`，避免了主线程阻塞。
+
+- **[正则表达式提取 Excel 公式中的单元格引用]** — 使用 `re.findall(r'([A-Z]+[0-9]+)', formula)` 从公式字符串中解析出所有被引用的单元格坐标，构建依赖关系图。
+  - 来源文件：Excel工具开发与打包.md
+  - 核心解释：遍历 `ws.iter_rows()` 返回的每个单元格，当 `cell.data_type == 'f'` 或 `cell.value` 以 `=` 开头时，对该公式字符串应用正则 `([A-Z]+[0-9]+)` 提取所有列号+行号的引用（如 A1、B2、$A$1 中去掉 $ 符号的部分）。提取结果存入 `formula_dependencies[sheet_name][cell.coordinate]`，结构为 `{'formula': 原始公式, 'dependencies': [引用列表], 'value': 当前值}`。该模式支持后续的依赖关系展示和手动修改依赖源功能——修改时通过 `new_formula.replace(old_ref, new_ref)` 逐对替换引用坐标，再写回 `ws[cell].value`。
+
+- **[openpyxl 工作表页眉页脚属性遍历]** — 通过访问 Worksheet 对象的 `oddHeader`/`oddFooter`/`evenHeader`/`evenFooter`/`firstHeader`/`firstFooter` 六个属性提取完整的页面设置信息。
+  - 来源文件：Excel工具开发与打包.md
+  - 核心解释：openpyxl 的 Worksheet 对象在打开 `.xlsx` 文件后直接暴露这六个与打印页面布局相关的属性。代码中先使用 `hasattr(ws, 'oddHeader')` 做兼容性检查，然后按"奇数页/偶数页/首页"三种场景分别读取页眉和页脚。奇数页对应 `oddHeader` 和 `oddFooter`，偶数页对应 `evenHeader` 和 `evenFooter`，首页对应 `firstHeader` 和 `firstFooter`。对于包含打印设置的检测报告模板，这些属性可用于完整复现原始文档的页面布局。
+
+- **[tki...
+  stats: steps=5, duration_ms=86638

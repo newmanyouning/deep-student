@@ -1,0 +1,204 @@
+<file path="01_AI与编程开发\提示词工程完全指南生成.md" total_lines="6798" shown_lines="3667-3866" truncated="true" next_start_line="3867">
+  3667│ 
+  3668│ **模板3：营销文案翻译（创译）**
+  3669│ ```markdown
+  3670│ <task>
+  3671│ 将以下{{source_lang}}营销文案进行创译（Transcreation），适配{{target_market}}市场。
+  3672│ </task>
+  3673│ 
+  3674│ <source_copy>
+  3675│ {{marketing_text}}
+  3676│ </source_copy>
+  3677│ 
+  3678│ <brand_guidelines>
+  3679│ - 品牌调性：{{brand_tone}}
+  3680│ - 核心信息：{{core_messages|join(', ')}}
+  3681│ - 禁用词：{{forbidden_words}}
+  3682│ - 必含元素：{{mandatory_elements}}
+  3683│ </brand_guidelines>
+  3684│ 
+  3685│ <market_insights>
+  3686│ - 目标市场：{{target_market}}
+  3687│ - 文化敏感点：{{cultural_sensitivities}}
+  3688│ - 本地竞争者话术：{{competitor_messaging}}
+  3689│ - 有效motivators：{{effective_motivators}}（如：家庭价值观/社会地位/性价比）
+  3690│ </market_insights>
+  3691│ 
+  3692│ <transcreation_principles>
+  3693│ ### 不是直译，而是再创作
+  3694│ 目标：在保留品牌核心信息和情感基调的前提下，让文案像本地原创一样自然、有说服力。
+  3695│ 
+  3696│ ### 调整尺度指南
+  3697│ 
+  3698│ | 元素 | 保留程度 | 调整方式 |
+  3699│ |------|---------|---------|
+  3700│ | 品牌名和标志 | 100% | 不变 |
+  3701│ | 核心承诺 | 90% | 用本地化表达方式 |
+  3702│ | 情感基调 | 80% | 适配本地情感触发点 |
+  3703│ | 具体例子 | 50% | 替换为本地相关案例 |
+  3704│ | 幽默/双关 | 0-30% | 完全重写或删除 |
+  3705│ 
+  3706│ ### 具体策略
+  3707│ #### 标题创译
+  3708│ 提供3个版本：
+  3709│ 1. 功能导向型："[具体好处]"
+  3710│ 2. 情感导向型："[情感共鸣]"
+  3711│ 3. 好奇导向型："[制造悬念]"
+  3712│ 
+  3713│ #### 口号适配
+  3714│ 原文口号：{{original_slogan}}
+  3715│ - 直译：{{literal}}（不推荐，原因：{{reason}}）
+  3716│ - 创译版本1：{{adapted1}}
+  3717│ - 创译版本2：{{adapted2}}
+  3718│ - 创译版本3：{{adapted3}}
+  3719│ 
+  3720│ #### 文化元素替换
+  3721│ | 原文元素 | 目标市场问题 | 替换方案 |
+  3722│ |---------|-------------|---------|
+  3723│ | {{element1}} | {{issue1}} | {{replacement1}} |
+  3724│ | {{element2}} | {{issue2}} | {{replacement2}} |
+  3725│ </transcreation_principles>
+  3726│ 
+  3727│ <output_format>
+  3728│ ### 创译版本（最终推荐）
+  3729│ [完整的本地化文案]
+  3730│ 
+  3731│ ### 改写说明
+  3732│ 逐段解释：
+  3733│ - 原文：[原文段落]
+  3734│ - 创译：[本地化版本]
+  3735│ - 改动理由：[为什么这样改]
+  3736│ - 保留的核心：[传达了什么品牌信息]
+  3737│ 
+  3738│ ### A/B测试建议
+  3739│ 提供2个变体，测试不同角度：
+  3740│ - 变体A：强调{{angle_a}}
+  3741│ - 变体B：强调{{angle_b}}
+  3742│ 
+  3743│ ### 法律合规检查
+  3744│ - [ ] 没有虚假宣传
+  3745│ - [ ] 符合当地广告法
+  3746│ - [ ] 没有贬低竞争对手
+  3747│ - [ ] 证言/数据有依据
+  3748│ </output_format>
+  3749│ ```
+  3750│ 
+  3751│ **模板4：多语言SEO翻译**
+  3752│ ```markdown
+  3753│ <task>
+  3754│ 将以下内容翻译并优化，以适配{{target_lang}}的搜索引擎优化。
+  3755│ </task>
+  3756│ 
+  3757│ <source_content>
+  3758│ {{content}}
+  3759│ </source_content>
+  3760│ 
+  3761│ <seo_requirements>
+  3762│ - 目标关键词：{{primary_keyword}}（搜索量：{{volume}}，难度：{{difficulty}}）
+  3763│ - 次要关键词：{{secondary_keywords|join(', ')}}
+  3764│ - 目标排名位置：前{{target_rank}}名
+  3765│ - 当前排名（如有）：{{current_rank}}
+  3766│ </seo_requirements>
+  3767│ 
+  3768│ <market_research>
+  3769│ ### 关键词本地化
+  3770│ | 源语言关键词 | 直译 | 本地常用搜索词 | 搜索量 | 选择 |
+  3771│ |-------------|------|--------------|--------|------|
+  3772│ | {{kw1}} | {{literal1}} | {{local1}} | {{vol1}} | {{choice1}} |
+  3773│ 
+  3774│ ### 搜索意图分析
+  3775│ 目标关键词的搜索意图：{{search_intent}}（信息性/导航性/交易性）
+  3776│ 内容类型应匹配：{{content_type}}
+  3777│ 
+  3778│ ### 竞争分析
+  3779│ 前3名排名页面的共同特征：
+  3780│ - 字数：{{word_count_range}}
+  3781│ - 结构：{{structure_pattern}}
+  3782│ - 反向链接：{{backlink_count}}
+  3783│ - 特色：{{features}}
+  3784│ </market_research>
+  3785│ 
+  3786│ <translation_seo_guidelines>
+  3787│ ### 关键词整合
+  3788│ - 目标密度：{{keyword_density}}%（自然出现，不堆砌）
+  3789│ - 必须出现位置：
+  3790│   - H1标题：至少1次
+  3791│   - 前100字：至少1次
+  3792│   - H2副标题：至少1次
+  3793│   - 图片alt文本：至少1次
+  3794│   - URL slug：如可能
+  3795│ 
+  3796│ ### 语义相关词
+  3797│ 自然融入以下LSI关键词：
+  3798│ {{lsi_keywords|join(', ')}}
+  3799│ 
+  3800│ ### 本地化优化
+  3801│ - 数字/日期格式：{{date_format}}
+  3802│ - 货币单位：{{currency}}
+  3803│ - 度量衡：{{units}}
+  3804│ - 本地地址/电话：如有，替换为本地信息
+  3805│ 
+  3806│ ### 结构保留与优化
+  3807│ - 保持H1/H2/H3结构
+  3808│ - 列表和表格保持不变
+  3809│ - 内部链接：翻译锚文本，但保持URL
+  3810│ - 外部链接：如引用本地来源，可替换
+  3811│ </translation_seo_guidelines>
+  3812│ 
+  3813│ <output_format>
+  3814│ ### SEO翻译版本
+  3815│ [完整内容，已整合关键词]
+  3816│ 
+  3817│ ### SEO检查表
+  3818│ - [ ] 主关键词在H1中出现
+  3819│ - [ ] 主关键词在前100字出现
+  3820│ - [ ] 关键词密度在{{min_density}}-{{max_density}}%之间
+  3821│ - [ ] 使用了{{num_lsi}}个LSI关键词
+  3822│ - [ ] 图片有alt文本
+  3823│ - [ ] Meta description长度{{meta_length}}字符，包含关键词
+  3824│ - [ ] URL建议：{{url_suggestion}}
+  3825│ 
+  3826│ ### 翻译记忆库更新
+  3827│ 为以下短语创建翻译记忆条目：
+  3828│ | 源语言 | 目标语言 | 领域 |
+  3829│ |--------|---------|------|
+  3830│ | {{phrase1}} | {{trans1}} | SEO |
+  3831│ 
+  3832│ ### 性能预测
+  3833│ 预计排名提升：{{predicted_improvement}}
+  3834│ 需配合的站外SEO：{{off_page_recommendations}}
+  3835│ </output_format>
+  3836│ ```
+  3837│ 
+  3838│ **模板5：字幕翻译**
+  3839│ ```markdown
+  3840│ <task>
+  3841│ 将以下视频字幕从{{source_lang}}翻译成{{target_lang}}，适配阅读速度和口语化。
+  3842│ </task>
+  3843│ 
+  3844│ <subtitle_info>
+  3845│ - 视频类型：{{video_type}}（电影/纪录片/培训视频/短视频）
+  3846│ - 目标观众：{{audience}}
+  3847│ - 平均语速：{{speaking_rate}}字/分钟
+  3848│ - 字幕长度限制：{{max_chars}}字符/行，{{max_lines}}行
+  3849│ - 时间轴：提供起始和结束时间码
+  3850│ </subtitle_info>
+  3851│ 
+  3852│ <source_subtitles>
+  3853│ ```
+  3854│ [时间码] 原文内容
+  3855│ [00:00:05.120] --> [00:00:08.000]
+  3856│ This is a complex sentence with multiple clauses, but the speaker says it quickly.
+  3857│ 
+  3858│ [00:00:08.500] --> [00:00:12.000]
+  3859│ And now another line, with cultural reference that might not translate.
+  3860│ ```
+  3861│ </source_subtitles>
+  3862│ 
+  3863│ <translation_constraints>
+  3864│ ### 阅读速度限制
+  3865│ - 目标语平均阅读速度：{{reading_speed}}字/秒
+  3866│ - 每个字幕最大字数：{{max_words}}字
+
+[TRUNCATED] Showing lines 3667-3866 of 6798. To continue, call read_file with path="01_AI与编程开发\提示词工程完全指南生成.md" start_line=3867 max_lines=200
+</file>

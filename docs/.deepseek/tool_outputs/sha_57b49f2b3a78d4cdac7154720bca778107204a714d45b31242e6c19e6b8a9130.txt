@@ -1,0 +1,45 @@
+# 苹果电脑尺寸对比
+对话ID: 17b3b5d5-8167-4934-9e28-229f7503a6ed
+创建时间: 2026-03-18T14:18:18.984000+08:00
+更新时间: 2026-03-18T14:18:55.452000+08:00
+
+## ❓ unknown
+
+mac mini m1和m4版本都尺寸有什么区别？
+
+---
+
+## ❓ unknown
+
+{'type': 'SEARCH', 'results': [{'url': 'https://news.pconline.com.cn/1384/13841207.html', 'title': '苹果新款Mac mini登场：搭载M1自研芯片，5299元起', 'snippet': '但这也丝毫不影响Mac mini保持着197×197×36mm的规格，甚至重量还从1.3kg减到1.2kg，内部采用单风扇设计，在芯片上方还有一个散热片，进一步释放M1芯片的性能热量。', 'cite_index': 1, 'published_at': 1605024000.0, 'site_name': '太平洋科技', 'site_icon': 'https://cdn.deepseek.com/site-icons/pconline.com.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://istore.lt/en/mac-mini-m4-10c-cpu-24gb-512gb-10c-gpu-mac-os.html', 'title': 'Mac mini M4 10C CPU, 24GB, 512GB, 10C GPU, MAC OS', 'snippet': 'Dimensions | Height: 127 mm - Width: 127 mm - Thickness: 50 mm Weight | 700 g Warranty | 24 months – for private persons, 12 months – for companies', 'cite_index': 2, 'published_at': None, 'site_name': 'iStore.lt', 'site_icon': 'https://cdn.deepseek.com/site-icons/istore.lt', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.macrumors.com/guide/m1-vs-m2-vs-m4-mac-mini/', 'title': "M1 vs. M2. vs. M4 Mac Mini Buyer's Guide: 25+ Upgrades Compared", 'snippet': 'Height: 1.41 inches (3.58 cm) | Height: 1.41 inches (3.58 cm) | Height: 2.0 inches (5.0 cm) Width: 7.75 inches (19.70 cm) | Width: 7.75 inches (19.70 cm) | Width...', 'cite_index': 3, 'published_at': 1730217600.0, 'site_name': 'MacRumors', 'site_icon': 'https://cdn.deepseek.com/site-icons/macrumors.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://nb.zol.com.cn/756/7562659.html?via=index', 'title': '苹果官网现身国行Mac mini 最全规格在此', 'snippet': '国行Mac mini搭载Apple M1芯片，其拥有8个核心，有4个性能核心和4个能效核心组成 ... 产品尺寸方面，高3.6cm、宽19.7cm、长19.7cm，重1.2kg。 Mac mini 最后着重提一句，国行Mac mini提供电源线。', 'cite_index': 4, 'published_at': 1605024000.0, 'site_name': '中关村在线笔记本', 'site_icon': 'https://cdn.deepseek.com/site-icons/zol.com.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.macworld.com/article/2504251', 'title': 'M4 Mac mini is smaller, mightier, and can connect three displays', 'snippet': 'Apple has reduced the size of the Mac mini; it now measures 5 by 5 by 2 inches (12.7 by 12.7 by 5 centimeters), down from the previous 7.75 by 7.75', 'cite_index': 5, 'published_at': 1730131200.0, 'site_name': 'Macworld', 'site_icon': 'https://cdn.deepseek.com/site-icons/macworld.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.ithome.com/0/806/265.htm#:~:text=IT%E4%B9%8B%E5%AE%B6%2010%20%E6%9C%88,%E5%94%AE%E4%BB%B7%E4%B8%BA3%2C749%20%E5%85%83%E3%80%82', 'title': '苹果史上最小电脑 2024 款 Mac mini 正式发布：搭载 M4 / Pro 芯片 + 16GB 起步内存，4499 元起', 'snippet': '搭载 M4 芯片的新款 Mac mini 相比 M1 机型，CPU 提速最高可达 1.8 倍，GPU 提速最高可达 2.2 倍 ... 相比同等价位的 PC 台式电脑畅销机型，Mac mini 的尺寸规格仅为其 1/20，速度却最高快达 6 倍。', 'cite_index': 6, 'published_at': 1730131200.0, 'site_name': 'IT之家', 'site_icon': 'https://cdn.deepseek.com/site-icons/ithome.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://news.pconline.com.cn/1384/13840025.html', 'title': '苹果自研M1入驻Mac mini迷你机：性能5倍于桌面PC、价格便宜1000元', 'snippet': '换“芯”的Mac mini完全保持了以往的身材 197×197×36mm ，重量还从1.3kg减轻到 1.2kg ，内部主动风扇散热。 背部接口的四个雷电3/USB 3变成了两个雷电3/USB4，支持雷电3 40Gbps、USB 3.1 10Gbps...', 'cite_index': 7, 'published_at': 1605024000.0, 'site_name': '太平洋科技', 'site_icon': 'https://cdn.deepseek.com/site-icons/pconline.com.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.digitaltrends.com/computing/apples-m4-mac-mini-14-years-later-reborn/', 'title': '14 years later, the Mac mini has finally been reborn', 'snippet': 'Mac mini M4 | Mac mini M4 Pro ---|--- Dimensions | 5 x 5 x 2 inches | 5 x 5 x 2 inches Weight | 1.5 pounds | 1.6 pounds CPU | M4 (10-core) | M4 Pro (12-core)', 'cite_index': 8, 'published_at': 1730131200.0, 'site_name': 'Digital Trends', 'site_icon': 'https://cdn.deepseek.com/site-icons/digitaltrends.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.croma.com/unboxed/apple-m4-mac-mini-launched-with-apple-intelligence-support', 'title': 'Apple launches new Mac mini with M4 chipset | Croma Unboxed', 'snippet': 'It now measures 5 by 5 inches, and despite its size, it has a 1.8x faster CPU and 2.2x faster GPU compared to the Mac mini M1 model. If you want to get the ... it, read on to see its specifications and features.', 'cite_index': 9, 'published_at': 1730217600.0, 'site_name': 'Croma', 'site_icon': 'https://cdn.deepseek.com/site-icons/croma.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://ee.ofweek.com/2020-11/ART-8220-2801-30468852.html', 'title': '苹果推出首款自研芯片M1：入驻迷你机 便宜1000元', 'snippet': '换“芯”的Mac mini完全保持了以往的身材197×197×36mm,重量还从1．3kg减轻到1．2kg,内部主动风扇散热。 背部接口的四个雷电3/USB 3变成了两个雷电3/USB4,支持雷电3 40Gbps、USB 3．1 10Gbps...', 'cite_index': 10, 'published_at': 1605024000.0, 'site_name': 'OFweek电子工程网', 'site_icon': 'https://cdn.deepseek.com/site-icons/ofweek.com', 'query_indexes': [0], 'is_hidden': False}]}
+嗯，用户想知道Mac mini M1和M4版本的尺寸区别，这是个简单直接的产品对比问题，应该给出清晰的尺寸数据对比。
+
+我计划从两个版本的尺寸、重量、体积对比入手，用数据直观展示差异。如果搜索结果充分，可以做成对比表格方便用户一目了然，再补充一些设计变化的说明。
+
+看搜索结果，多个来源都提供了M1版本的尺寸数据，19.7cm见方、3.6cm高、1.2kg重[citation:1][citation:4][citation:7]，这些信息一致且权威性较好，来自太平洋科技和中关村在线等科技媒体。
+
+关于M4版本，有多个搜索结果给出了详细规格：12.7cm见方、5cm高、0.67kg重[citation:2][citation:3][citation:5]。MacRumors的对比指南非常详尽[citation:3]，包含完整的尺寸对比表，权威性较高。Macworld和Digital Trends的报道[citation:5][citation:8]也是知名科技媒体。iStore虽然是零售商网站[citation:2]，但产品参数准确可信。IT之家的中文报道[citation:6]提供了本地化视角。
+
+其他几个关于M1发布的网页[citation:1][citation:7][citation:10]信息重复，OFweek[citation:10]权威性稍低但不影响尺寸数据的准确性。
+
+考虑到用户需要直观对比，我准备先给出核心结论——M4版本变矮变胖、体积缩小一半，然后用表格呈现具体尺寸重量数据，最后简要说明设计变化背后的散热和接口改进[citation:3][citation:5]，这样既有数据对比又有实际意义解读。
+Mac mini 从 M1 升级到 M4 版本，外观设计上变化很大。**M4 版变得小巧但略厚，总体积减少了超过一半**。
+
+具体尺寸对比如下：
+
+### 📏 尺寸重量对比
+
+| 版本 | 长与宽 | 高度 | 重量 | 体积 |
+| :--- | :--- | :--- | :--- | :--- |
+| **M4 版 (2024)** | **12.7 厘米** [citation:2][citation:3][citation:5] | **5.0 厘米** [citation:2][citation:3][citation:5] | **0.67 千克** [citation:2][citation:3] | **约 0.8 升** |
+| **M1 版 (2020)** | **19.7 厘米** [citation:1][citation:3][citation:4] | **3.6 厘米** [citation:1][citation:3][citation:4] | **1.2 千克** [citation:1][citation:3][citation:4] | **约 1.4 升** |
+
+简单来说，M4 版的桌面占地面积不到 M1 版的一半，虽然稍微高了一点，但整体更紧凑。变轻了近一半，移动起来也更方便 [citation:3][citation:8]。
+
+### 💡 设计变化解读
+*   **为性能“增高”**：高度从 3.6cm 增至 5.0cm，主要是为了容纳全新的散热系统。空气从底部进入，能更好地为 M4 芯片散热，保证性能释放 [citation:3]。
+*   **接口布局更新**：M4 版正面新增了 2 个 USB-C 接口和音频口，方便临时插拔，但取消了大家熟悉的 USB-A 接口 [citation:3][citation:5]。
+
+如果你还想了解它们在性能或接口上的具体差异，随时都可以问我。
+
+---

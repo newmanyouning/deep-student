@@ -48,6 +48,7 @@ import { ApiKeyField } from './ApiKeyField';
 import { showGlobalNotification } from '@/components/UnifiedNotification';
 import { CustomScrollArea } from '@/components/custom-scroll-area';
 import { 
+import { settingsApi } from '@/api/settingsApi';
   PRESET_MCP_SERVERS, 
   presetToMcpConfig, 
   CATEGORY_LABELS,
@@ -1697,10 +1698,8 @@ function ToolPermissionsSection({ toolsByServer }: {
   const handleToggleGlobalBypass = useCallback(async (checked: boolean) => {
     const newVal = checked;
     try {
-      await invoke('save_setting', {
-        key: 'tool_approval.global_bypass',
-        value: newVal ? 'true' : 'false',
-      });
+      await settingsApi.save('tool_approval.global_bypass', newVal ? 'true' : 'false',
+      );
       setGlobalBypass(newVal);
       showGlobalNotification(
         'success',

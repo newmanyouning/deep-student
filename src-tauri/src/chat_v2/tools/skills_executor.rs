@@ -19,8 +19,8 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
-use crate::chat_v2::event_types;
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
+use crate::chat_v2::events::event_types;
 use crate::chat_v2::repo::ChatV2Repo;
 use crate::chat_v2::types::{ReplaySkillPayloadSnapshot, ToolCall, ToolResultInfo};
 
@@ -155,7 +155,7 @@ impl ToolExecutor for SkillsExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = std::time::Instant::now();
         let stripped_name = Self::strip_prefix(&call.name);
 

@@ -1,0 +1,50 @@
+<file path="01_AI与编程开发/树莓派5安装Ubuntu的Java版本选择指南.md" total_lines="397" shown_lines="350-397" truncated="false">
+   350│ │   ├── 发行版无关的通用格式
+   351│ │   │   └── 架构分支：
+   352│ │   │       ├── x86_64 → .tar.gz, .tar.xz, .run
+   353│ │   │       ├── ARM64 → .tar.gz, .tar.xz, .run
+   354│ │   │       └── ARM32 → .tar.gz, .tar.xz, .run
+   355│ │   ├── Debian/Ubuntu (基于.deb)
+   356│ │   │   ├── x86_64 → .deb (amd64)
+   357│ │   │   ├── ARM64 → .deb (arm64)
+   358│ │   │   └── ARM32 → .deb (armhf)
+   359│ │   └── Red Hat/CentOS/Fedora (基于.rpm)
+   360│ │       ├── x86_64 → .rpm (x86_64)
+   361│ │       ├── ARM64 → .rpm (aarch64)
+   362│ │       └── ARM32 → .rpm (armhfp)
+   363│ │
+   364│ ├── macOS
+   365│ │   ├── x86_64 (Intel)
+   366│ │   │   ├── 包格式：.dmg, .pkg, .tar.gz
+   367│ │   │   └── 示例：macOS Intel 版
+   368│ │   └── ARM64 (Apple Silicon, M1/M2/M3)
+   369│ │       ├── 包格式：.dmg, .pkg, .tar.gz (通用二进制或独立)
+   370│ │       └── 示例：macOS Apple Silicon 版
+   371│ │
+   372│ ├── Android
+   373│ │   └── 主要架构：
+   374│ │       ├── ARM64 (arm64-v8a) → .apk
+   375│ │       ├── ARM32 (armeabi-v7a) → .apk
+   376│ │       └── x86_64 (x86_64) → .apk (少见)
+   377│ │
+   378│ └── 其他类Unix (如 FreeBSD)
+   379│     ├── x86_64 → .txz, .pkg
+   380│     └── ARM64 → .txz, .pkg
+   381│ ```
+   382│ 
+   383│ > **关键原则**：  
+   384│ > 1. **操作系统**必须匹配（例如 .exe 不能用于 Linux）。  
+   385│ > 2. **芯片架构**必须匹配（例如 ARM64 的安装包不能在 x86_64 电脑上运行）。  
+   386│ > 3. 包格式需与操作系统的包管理工具兼容（Linux 中 .deb 用于 Debian/Ubuntu，.rpm 用于 Red Hat/Fedora）。
+   387│ 
+   388│ ### **针对你的树莓派5**
+   389│ - 操作系统：**Ubuntu（Linux 发行版）**
+   390│ - 芯片架构：**ARM64（aarch64）**
+   391│ - 推荐包格式：
+   392│   - 简单安装：`sudo apt install openjdk-17-jdk`（系统自动匹配架构）
+   393│   - 手动安装：下载 **Linux + aarch64 + .tar.gz** 或 **Linux + arm64 + .deb** 包
+   394│ 
+   395│ 有了这个树状图，以后遇到任何软件下载页面，你都能迅速定位正确的版本。
+   396│ 
+   397│ ---
+</file>

@@ -1,0 +1,12 @@
+<file path="knowledge_cache.md" total_lines="2513" shown_lines="2504-2513" truncated="false">
+  2504│   - 来源文件：`01_AI与编程开发/OCR一页A4文档token消耗.md`
+  2505│   - 核心解释：GLM-OCR是0.9B轻量级专业OCR模型，架构为自研CogViT编码器+轻量跨模态层+GLM-0.5B解码器，支持完全免费私有化部署。DeepSeek-OCR使用两阶段架构：阶段一融合窗口化SAM视觉Transformer和16x卷积压缩器，阶段二用DeepSeek-3B-MoE解码器(每token激活约5.7亿参数)。两者均支持PDF转Markdown格式输出，自动保留表格和公式结构。
+  2506│ 
+  2507│ - **[Clash机场选型参考]** — 付费机场按价位分为入门(尔湾云11元/月、疾风云12元/月)、中度(FATCAT肥猫云20元/月)、稳定(悠兔29元/月)、高端(E-IX 45元/月全IEPL专线)四个层级
+  2508│   - 来源文件：`01_AI与编程开发/clash机场推荐.md`
+  2509│   - 核心解释：尔湾云适合新手入门，解锁主流流媒体和ChatGPT；FATCAT采用IEPL专线升级性价比高，Netflix和ChatGPT支持友好；悠兔使用中转+IPLC专线混合网络；E-IX全球节点、解锁能力完备。选择原则：警惕免费节点(窃取隐私风险)、优先月付测试、关注流媒体和AI服务解锁能力。
+  2510│ 
+  2511│ - **[Mac翻墙客户端选择]** — macOS主流代理客户端包括Clash Verge(开源免费)、ClashX Pro(App Store)、Shadowrocket(付费)、FlClash等
+  2512│   - 来源文件：`01_AI与编程开发/clash机场推荐.md`
+  2513│   - 核心解释：Clash Verge是Clash Meta内核的图形化客户端，支持TUN模式、系统代理、规则分流；ClashX Pro增加服务器管理和实时监控功能；Shadowrocket支持Shadowsocks/V2Ray/SOCKS5多协议且界面简洁。macOS上安装后若提示"已损坏"需运行`sudo xattr -r -c /Applications/应用名.app`解除隔离。iOS端因系统限制无免费Clash客户端，最常用付费Shadowrocket。
+</file>

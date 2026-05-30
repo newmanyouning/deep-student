@@ -1,0 +1,52 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\06_苹果生态与设备\Mac大写锁定键功能恢复.md" total_lines="50" shown_lines="1-50" truncated="false">
+     1│ # Mac大写锁定键功能恢复
+     2│ 对话ID: c6851f47-d94a-40e3-8fb1-8df4e2f3bbbb
+     3│ 创建时间: 2026-03-25T22:33:56.713000+08:00
+     4│ 更新时间: 2026-03-25T23:20:06.192000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ mac键盘的大写锁定键变成了输入法切换键如何更改？
+     9│ 
+    10│ ---
+    11│ 
+    12│ ## ❓ unknown
+    13│ 
+    14│ {'type': 'SEARCH', 'results': [{'url': 'https://support.apple.com/zh-cn/guide/mac-help/mchlp2214/11.0/mac', 'title': '在 Mac 上更改“键盘”中的“输入法”偏好设置', 'snippet': '将自动选择此选项。 使用大写锁定键切换[拉丁输入法和当前输入法] 选择以能在非拉丁输入法（如中文或韩文）和拉丁输入法（如法文或英文）之间快速切换。', 'cite_index': 1, 'published_at': None, 'site_name': 'Apple Support', 'site_icon': 'https://cdn.deepseek.com/site-icons/apple.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://g.pconline.com.cn/x/1907/19079411.html', 'title': 'mac键盘大写按哪个键', 'snippet': '当你需要连续输入多个大写字母时，可以按下Caps Lock键，此时键盘上的大写指示灯会亮起，表示大写锁定已开启。此时，你可以直接输入字母，而无需每次都按住Shift键。要关闭大写锁定...', 'cite_index': 2, 'published_at': 1743350400.0, 'site_name': '太平洋科技', 'site_icon': 'https://cdn.deepseek.com/site-icons/pconline.com.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://support.apple.com/zh-cn/guide/mac-help/mchl84525d76/mac', 'title': '在 Mac 上更改“输入法”设置', 'snippet': '使用大写锁定键切换[拉丁输入法和当前输入法] 打开即可在非拉丁输入法（如中文或韩文）和拉丁输入法（如法文或英文）之间快速切换。 此选项仅在你添加了非拉丁输入法时才会显示...', 'cite_index': 3, 'published_at': None, 'site_name': 'Apple Support', 'site_icon': 'https://cdn.deepseek.com/site-icons/apple.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://baike.baidu.com/item/caps%20lock/1188824?fr=ge_ala', 'title': 'caps lock', 'snippet': 'macOS系统默认短按该键切换中英文输入法，长按则激活大写锁定并显示⇪图标，同时按住Shift键可实现小写输入。大多数键盘配备指示灯显示当前状态，紧凑型或游戏键盘可能调整其位置但功能不变 [2-3] [5-6]。', 'cite_index': 4, 'published_at': 1759507200.0, 'site_name': '百度百科', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://support.apple.com/zh-cn/guide/chinese-input-method/cim119a8d473/104/mac/15.0', 'title': '在 Mac 上切换到中文或粤语输入法', 'snippet': '选取苹果菜单 >“系统设置”，然后点按边栏中的“键盘” （你可能需要向下滚动）。前往“文字输入”，点按“编辑”，然后打开“使用大写锁定键切换‘[上次所用的拉丁输入法]’输入法”。', 'cite_index': 5, 'published_at': None, 'site_name': 'Apple Support', 'site_icon': 'https://cdn.deepseek.com/site-icons/apple.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://g.pconline.com.cn/x/1862/18620700.html', 'title': '苹果电脑如何大写', 'snippet': '苹果电脑也配备了“Caps Lock”键，用于实现大写锁定功能。这个键通常位于键盘的左下角，紧邻“Tab”键和左“Shift”键。当你按下“Caps Lock”键时，键盘上的大写锁定指示灯会亮起，表示此时输入的字母将全部为大写。要取消大写锁定...', 'cite_index': 6, 'published_at': 1735401600.0, 'site_name': '太平洋科技', 'site_icon': 'https://cdn.deepseek.com/site-icons/pconline.com.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://g.pconline.com.cn/x/1860/18608994.html', 'title': 'mac如何切换输入法', 'snippet': '设置方法为：打开“系统偏好设置”中的“键盘”选项，选择“输入法”标签页，然后拖动输入法列表中的项目，将常用的输入法移到最上方，并勾选“使用大写锁定键切换‘美国’英文输入法和上一个使用的输入法”或“选择上一个使用的输入法”等选项，根据个人习惯进行设置。', 'cite_index': 7, 'published_at': 1735228800.0, 'site_name': '太平洋科技', 'site_icon': 'https://cdn.deepseek.com/site-icons/pconline.com.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://wapbaike.baidu.com/item/caps%20lock/1188824?fromtitle=%E5%A4%A7%E5%86%99%E9%94%81%E5%AE%9A&fromid=6638486', 'title': 'caps lock_百度百科', 'snippet': '按下Caps Lock后，默认切换中英文，长按大写锁定，指示灯亮，输入框的右侧会出现⇪的图标。短按一下即可关闭大写锁定。其余功能与Windows类似，在Caps Lock模式下按住shift可以实现小写。', 'cite_index': 8, 'published_at': 1767715200.0, 'site_name': '百度百科', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://g.pconline.com.cn/x/1641/16418213.html', 'title': '苹果系统capslock键不能切换大小写怎么办【解决办法】', 'snippet': '进入键盘设置，点击上部的“ 输入法 ”选项 打开输入法设置后， 取消“使用大写键锁定切换“ABC”输入模式”前面的勾选 然后点击左上角的红色叉号，关闭系统偏好设置即可', 'cite_index': 9, 'published_at': 1690819200.0, 'site_name': '太平洋科技', 'site_icon': 'https://cdn.deepseek.com/site-icons/pconline.com.cn', 'query_indexes': [0, 1], 'is_hidden': False}, {'url': 'https://support.apple.com/zh-cn/guide/mac-help/mchlp1011/10.15/mac/10.15', 'title': '在 Mac 上更改修饰键的行为', 'snippet': '在 Mac 上，选取苹果菜单 >“系统偏好设置”，点按“键盘”，然后点按“键盘”。 点按“修饰键”，点按每个要更改的修饰键的弹出式菜单，然后选取一项操作。', 'cite_index': 10, 'published_at': None, 'site_name': 'Apple Support', 'site_icon': 'https://cdn.deepseek.com/site-icons/apple.com', 'query_indexes': [1], 'is_hidden': False}]}
+    15│ 嗯，用户问的是Mac键盘大写锁定键变成了输入法切换键怎么改回来，这是个很常见的Mac使用问题。用户应该是习惯了传统的Caps Lock功能，不太适应macOS将短按该键改为切换输入法的设计。
+    16│ 
+    17│ 我需要告诉用户如何把Caps Lock改回原本的大写锁定功能，同时也应该提醒用户如果只是想要原来的切换逻辑，可以用长按的方式临时使用大写锁定。
+    18│ 
+    19│ 来看看搜索结果。Apple官方支持页面有好几个相关的内容[citation:1][citation:3][citation:5]，权威性很高，详细说明了在系统设置中取消"使用大写锁定键切换输入法"这个选项就可以恢复大写锁定功能。还有一个搜索结果图文并茂地展示了具体的操作步骤[citation:9]，从点击苹果菜单到进入系统设置、键盘、文字输入、编辑，最后取消勾选，流程很清晰。
+    20│ 
+    21│ 关于Caps Lock键原本的功能，有几个搜索结果都有说明[citation:2][citation:4][citation:6]，长按该键直到绿灯亮起就可以输入连续大写字母。另外有些科技媒体的文章也提到了类似的设置方法[citation:7]，和官方说明一致。
+    22│ 
+    23│ 还有一个搜索结果是关于更改修饰键行为的[citation:10]，这和用户的问题不太一样，用户要恢复功能而不是重新映射按键，所以不采用。
+    24│ 
+    25│ 我准备分两步来回答：先给出最直接的解决方案，就是在系统设置里找到并取消那个切换输入法的选项；然后补充说明，如果只是偶尔需要输入大写，其实长按Caps Lock键也能实现，不用特意去改设置。这样既解决了核心问题，也提供了另一种更简单的使用方式。
+    26│ 在 macOS 中，`Caps Lock` 键默认被设置为切换输入法的快捷键，这是系统为了方便在多语言间输入而设计的[citation:4][citation:8]。要把它改回原本的大写锁定功能，只需在系统设置中关闭一个选项即可，操作很简单。
+    27│ 
+    28│ ### ⚙️ 具体操作步骤
+    29│ 
+    30│ 请按照以下步骤操作，就能恢复 `Caps Lock` 键的大写锁定功能：
+    31│ 
+    32│ 1.  **打开系统设置**：点击屏幕左上角的 **苹果菜单** (🍎) > **系统设置**。
+    33│ 2.  **进入键盘设置**：在设置窗口的边栏中，找到并点击 **“键盘”**。
+    34│ 3.  **编辑输入法选项**：在主窗口区域，找到“文字输入”部分，点击其右侧的 **“编辑”** 按钮[citation:3]。
+    35│ 4.  **关闭切换功能**：在弹出的窗口中，找到 **“使用大写锁定键切换‘ABC’输入法”** 或类似名称的选项，**取消勾选**它[citation:1][citation:3][citation:9]。
+    36│ 5.  **完成**：关闭设置窗口即可。之后，`Caps Lock` 键就恢复为传统的大写锁定功能了。
+    37│ 
+    38│ > **不同系统的差异**：如果你使用的是较旧的macOS版本（例如macOS Monterey及更早），入口名称可能为“系统偏好设置”，路径则是“键盘” > “输入法”，同样取消勾选相关选项即可[citation:1][citation:9]。
+    39│ 
+    40│ ### 💡 恢复后的使用提示
+    41│ 
+    42│ 将 `Caps Lock` 恢复为传统功能后，它的使用方法如下：
+    43│ 
+    44│ *   **开启大写锁定**：**按下** `Caps Lock` 键，键盘指示灯会亮起（如果有），之后输入的字母将全为大写。
+    45│ *   **关闭大写锁定**：再次**按下** `Caps Lock` 键即可。
+    46│ *   **临时输入大写**：在需要临时输入一个大写字母时，可以**按住** `Shift` 键再按字母键[citation:2][citation:6]。
+    47│ 
+    48│ 如果你并不想完全禁用这个功能，只是偶尔需要输入连续大写字母，其实可以**长按** `Caps Lock` 键直到绿灯亮起，这样也能临时输入大写字母，松开后它又会变回输入法切换键[citation:4][citation:8]。
+    49│ 
+    50│ ---
+</file>

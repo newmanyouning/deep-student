@@ -1,0 +1,195 @@
+<file path="01_AI与编程开发\项目重构方案.md" total_lines="6198" shown_lines="501-700" truncated="true" next_start_line="701">
+   501│ class TestWPSVBAIntegration(unittest.TestCase):
+   502│     @classmethod
+   503│     def setUpClass(cls):
+   504│         cls.connector = WPSConnector()
+   505│         cls.connector.connect()
+   506│         cls.injector = VBAInjector(cls.connector.app)
+   507│     
+   508│     def test_extract_cells(self):
+   509│         result = self.injector.extract_all_cells_data(TEST_WORKBOOK)
+   510│         self.assertTrue(result['success'])
+   511│         self.assertIn('cells', result)
+   512│ ```
+   513│ 
+   514│ ---
+   515│ 
+   516│ ## 四、实施步骤与里程碑
+   517│ 
+   518│ ### 阶段 1：代码清理与基线建立（1 天）
+   519│ 1. 删除所有 Excel 回退分支，统一 WPS ProgID。
+   520│ 2. 移除 `main_window` 中业务逻辑代码。
+   521│ 3. 为所有 UI 控件设置 `objectName` 并验证。
+   522│ 4. 提交重构前最后一个可运行版本（备份）。
+   523│ 
+   524│ ### 阶段 2：控制器与 VBA 核心修复（2 天）
+   525│ 1. 从备份中恢复 `BatchController` 完整实现。
+   526│ 2. 确保所有控制器方法内部调用 `VBAInjector`。
+   527│ 3. 修复 `VBAInjector.extract_*` 方法的路径处理。
+   528│ 4. 强制 `open_file_path` 使用 `ThreadedVBAParser`。
+   529│ 
+   530│ ### 阶段 3：日志与异常体系完善（1 天）
+   531│ 1. 集成全局异常处理器。
+   532│ 2. 在 WPS 连接、VBA 注入、解析线程中添加详细日志。
+   533│ 3. 统一日志目录与格式。
+   534│ 
+   535│ ### 阶段 4：打包配置与验证（1 天）
+   536│ 1. 更新 `.spec` 文件，添加缺失的 `hiddenimports` 和 `datas`。
+   537│ 2. 编写并测试 `wps_compatibility_hook.py`。
+   538│ 3. 生成 EXE，并在 **纯净 Windows 虚拟机（仅安装 WPS）** 中运行。
+   539│ 
+   540│ ### 阶段 5：真实环境集成测试（2 天）
+   541│ 1. 编写基于 `unittest` 的集成测试套件。
+   542│ 2. 在至少两台不同 WPS 版本的机器上执行测试。
+   543│ 3. 修复测试中发现的所有问题。
+   544│ 
+   545│ ### 阶段 6：文档与交付（1 天）
+   546│ 1. 更新 `用户操作手册.md`（强调仅支持 WPS）。
+   547│ 2. 生成 `重构完成报告.md`，记录变更点与验证结果。
+   548│ 
+   549│ ---
+   550│ 
+   551│ ## 五、风险与应对
+   552│ 
+   553│ | 风险 | 可能性 | 影响 | 应对措施 |
+   554│ |------|--------|------|----------|
+   555│ | WPS 不同版本 ProgID 变化 | 中 | 高 | 动态检测可用 ProgID，并在日志中记录推荐值 |
+   556│ | 用户未启用“信任 VBA 工程对象模型” | 高 | 中 | 启动时主动检测，提供图文指引弹窗 |
+   557│ | 打包后 VBA 模块路径错误 | 中 | 高 | 使用 `pkgutil.get_data` 或 `sys._MEIPASS` 获取资源路径 |
+   558│ | 部分复杂格式 WPS 无法解析 | 低 | 中 | 在日志中记录不支持的属性，UI 显示“受限”标记 |
+   559│ | 多线程 COM 调用崩溃 | 中 | 高 | 严格使用 `CoInitialize`/`CoUninitialize` 包裹，避免跨线程传递 COM 对象 |
+   560│ 
+   561│ ---
+   562│ 
+   563│ ## 六、验收标准
+   564│ 
+   565│ 1. **环境强制**：在未安装 Microsoft Excel 的纯净 Windows 11 + WPS 2019 环境中，程序可正常启动并完成所有菜单功能。
+   566│ 2. **VBA 链路**：打开任意 `.xls` 文件，`logs/debug.log` 中可见完整的 VBA 注入与执行记录。
+   567│ 3. **按钮响应**：所有菜单栏、工具栏、对话框按钮点击后均有明确业务响应（弹窗、进度条、数据刷新）。
+   568│ 4. **异常友好**：任何 COM 或 VBA 错误均以 Qt 消息框提示，并写入 `error.log`，无 JIT 调试器弹窗。
+   569│ 5. **模板功能**：保存模板后再加载，依赖树、格式信息、页眉页脚数据完全一致。
+   570│ 
+   571│ ---
+   572│ 
+   573│ ## 七、附录
+   574│ 
+   575│ ### 7.1 关键文件清单（重构后）
+   576│ ```
+   577│ 项目根目录/
+   578│ ├── main.py
+   579│ ├── ExcelAnalyzer.spec
+   580│ ├── wps_compatibility_hook.py
+   581│ ├── xlwings_runtime_hook.py
+   582│ ├── vba_modules/
+   583│ │   └── parsing/
+   584│ │       ├── ExtractAllCellsData.vba
+   585│ │       ├── ExtractAllFormats.vba
+   586│ │       ├── ExtractHeadersFooters.vba
+   587│ │       └── ExtractFormulaDependencies.vba
+   588│ ├── src/
+   589│ │   ├── controllers/
+   590│ │   │   ├── batch_controller.py
+   591│ │   │   ├── template_controller.py
+   592│ │   │   ├── wps_controller.py
+   593│ │   │   └── ui_state_controller.py
+   594│ │   ├── ui/
+   595│ │   │   ├── ui_main_window.py
+   596│ │   │   └── main_window.py
+   597│ │   ├── wps_bridge/
+   598│ │   │   ├── wps_connector.py
+   599│ │   │   ├── vba_injector.py
+   600│ │   │   └── wps_detector.py
+   601│ │   ├── logic/
+   602│ │   │   ├── vba_parser.py
+   603│ │   │   └── batch_header_footer_handler.py
+   604│ │   ├── data/
+   605│ │   │   └── template_manager.py
+   606│ │   └── utils/
+   607│ │       └── debug_tools.py
+   608│ ├── config.json
+   609│ ├── template.xls
+   610│ └── test_image.png
+   611│ ```
+   612│ 
+   613│ ### 7.2 参考命令
+   614│ ```powershell
+   615│ # 打包命令
+   616│ pyinstaller --clean --noconfirm ExcelAnalyzer.spec
+   617│ 
+   618│ # 运行集成测试（需管理员权限）
+   619│ python -m pytest tests/integration/ -v --wps-mode
+   620│ 
+   621│ # 查看实时日志
+   622│ Get-Content "$env:USERPROFILE\.excel_analyzer\logs\debug.log" -Wait
+   623│ ```
+   624│ 
+   625│ ---
+   626│ 
+   627│ 本重构方案严格遵循你提出的 **WPS 强制、VBA 核心、测试真实** 三大原则，所有改动均基于现有文档中暴露的真实问题设计。按此方案执行后，工具将成为一款稳定、专业的 WPS 深度分析工具。
+   628│ 
+   629│ ---
+   630│ 
+   631│ ## ❓ unknown
+   632│ 
+   633│ 你是一个AI提示词专家，请基于以上情况编写让AI分步执行的重构步骤，上下文窗口为128K，仅输出不含换行和引号等特殊符号的提示词文本。
+   634│ 
+   635│ ---
+   636│ 
+   637│ ## ❓ unknown
+   638│ 
+   639│ 你是Ai提示词专家。根据重构日志和重构完成报告的第一步成果，结合重构要求继续生成提示词指导AI完成下一步重构工作。仅输出不含换行和引号的一段提示词。
+   640│ 
+   641│ ---
+   642│ 
+   643│ ## ❓ unknown
+   644│ 
+   645│ 你是Ai提示词专家。根据重构日志和重构完成报告的第一步成果，结合重构要求继续生成提示词指导AI完成下一步重构工作。尽量分步精细单步操作不超过128K上下文窗口。仅输出不含换行和引号的一段提示词。
+   646│ 
+   647│ ---
+   648│ 
+   649│ ## ❓ unknown
+   650│ 
+   651│ 你是AI提示词专家。基于此重构日志，需要继续推进重构工作，要求生成一段不包含换行和引号的提示词文本指导AI完成重构工作。仅输出提示词。
+   652│ 
+   653│ ---
+   654│ 
+   655│ ## ❓ unknown
+   656│ 
+   657│ 你是AI提示词专家。基于此重构日志，需要继续推进重构工作，要求生成一段不包含换行和引号的提示词文本指导AI完成重构工作。要求单步分步详细，不超过128K上下文窗口。仅输出提示词。
+   658│ 
+   659│ ---
+   660│ 
+   661│ ## ❓ unknown
+   662│ 
+   663│ 你是AI提示词专家。基于此重构日志，需要继续推进重构工作，要求生成一段不包含换行和引号的提示词文本指导AI完成重构工作。要求单步分步详细，输出的一段提示词步骤不超过128K上下文窗口，一段提示词仅完成一项任务，下一项任务根据上一步完成情况生成提示词进行工作。仅输出提示词。
+   664│ 
+   665│ ---
+   666│ 
+   667│ ## ❓ unknown
+   668│ 
+   669│ 我们需将之前分析的重构方案转化为一个无换行、无引号等特殊符号的纯文本提示词，适合直接复制给大模型执行。提示词需要分步列出重构任务，涵盖导入路径统一、基础设施层建设、打包优化、服务层抽象、测试迁移等。要求仅输出提示词文本，不能有换行符、引号或其他特殊符号，只用一个连续的字符串。要基于提供的文档内容，明确起始时间为2026年4月4日，AI开发声明。
+   670│ 基于以上文档记录，请严格遵循以下重构步骤执行任务，起始时间2026年4月4日，AI开发声明适用。第一步，统一项目根目录导入路径，修改sys.path使项目根为唯一根，将src和modules目录合并至app、ui、controllers、services、infrastructure、data新结构中，全局替换所有from ..和from src.为绝对导入如from services.xxx。第二步，重构基础设施层，创建infrastructure/com_bridge/office_application.py实现单例连接池与线程安全的COM初始化及清理，支持Ket.Application和Excel.Application多级Fallback，并增加结构化日志记录每次COM操作。第三步，优化打包配置，在build/hooks/下编写hook-pandas.py自动收集pandas._libs，精简ExcelAnalyzer.spec中的hiddenimports，利用--exclude-module排除matplotlib、scipy及未使用的PyQt5子模块，并将vba_modules和config.json映射至包内路径。第四步，业务逻辑服务化抽象，定义services/parser/base.py接口IParser，实现VBAAdapter和FallbackAdapter，修改控制器仅依赖IParser服务，并引入infrastructure/events事件总线解耦UI与业务线程的直接信号连接。第五步，迁移测试文件，将根目录散落test_*.py移至tests/unit和tests/integration目录，为OfficeConnector和VBAInjector编写Mock测试用例。第六步，清理旧代码，将modules目录标记为legacy并逐步迁移内部逻辑至services层后删除。第七步，使用PyInstaller基于新spec文件打包生成EXE，验证体积小于45MB且所有WPS与Excel功能正常。执行过程必须保持分支refactor/architecture-v2，每步完成后进行语法验证并记录日志。
+   671│ 
+   672│ ---
+   673│ 
+   674│ ## ❓ unknown
+   675│ 
+   676│ 我们需基于已完成的目录结构移动和导入修复，生成下一步重构的提示词。要求严格遵循WPS环境强制调用，移除所有Excel回退，精简打包，并确保测试不可绕开。提示词需紧凑无换行无引号，内容涵盖后续代码清理、VBA锁定、测试环境搭建及打包优化步骤。
+   677│ 请基于已完成的重构目录结构（refactor_architecture_v2），执行深度WPS强制锁定重构：第一步，修改app/main.py在QApplication实例化前调用infrastructure.com_bridge.wps_detector强制检测Ket.Application或ET.Application，失败则弹窗报错并退出；第二步，定位ui/windows/main_window.py的open_file_path方法，删除else分支中所有ThreadedExcelParser回退逻辑，强制仅实例化services.parser.vba_parser.ThreadedVBAParser；第三步，扫描services/batch_processor目录下所有批处理类，将占位pass替换为基于infrastructure.com_bridge.wps_connector.WPSConnector的实际实现，移除所有Excel.Application字符串；第四步，修改infrastructure.com_bridge.wps_connector.py中ProgID列表为仅保留Ket.Application与ET.Application，删除Excel.Application条目；第五步，修复services.parser.vba_parser.py中parse_workbook路径处理，确保传入infrastructure.com_bridge.vba_injector.VBAInjector的workbook_path为os.path.abspath绝对路径；第六步，更新根目录ExcelAnalyzer_Enforced.spec打包配置，datas仅保留vba_modules、services、ui、controllers、infrastructure、app及config.json，hiddenimports删除pandas及其子模块、openpyxl、xlrd、xlwings相关全部依赖，binaries仅保留pywin32系统DLL，excludes显式排除pandas、numpy、openpyxl、matplotlib、scipy；第七步，编写WPS纯净环境自动化验收脚本tests/test_wps_enforced.py，在无Microsoft Excel的Windows虚拟机中验证启动阻断、核心解析、页眉页脚图片、批量处理四阶段功能，所有测试不得包含任何非WPS调用回退；第八步，生成重构验证报告refactor_wps_enforced_report.md记录修改文件清单、打包体积对比及测试结论。
+   678│ 
+   679│ ---
+   680│ 
+   681│ ## ❓ unknown
+   682│ 
+   683│ 我们需基于已有重构日志和完成报告，明确当前已做到将原项目按新架构移动文件并修复导入，但尚未实现之前提到的“强制WPS环境、剔除Excel回退、精简打包配置、纯VBA解析”等深层功能重构。下一步应指导AI进行功能层面的强制WPS改造，并最终打包测试。需要将提示词设计为分步但整体连贯的一段文字，无换行和引号。重点突出：清理代码中的Excel回退逻辑、强制WPS ProgID、移除openpyxl/pandas等依赖、精简spec文件、进行隔离环境验收测试。
+   684│ 请根据重构日志和重构完成报告确认当前已完成项目目录结构重组与导入修复，现需在refactor_architecture_v2分支内继续执行功能层面强制WPS环境重构，要求严格遵循操作步骤且每步产出验证结果：第一步，定位app/main.py增加启动阶段WPS可用性硬性检查，调用infrastructure.com_bridge.wps_detector检测Ket.Application和ET.Application若失败则弹窗提示并退出进程禁止进入主界面；第二步，修改ui/windows/main_window.py中open_file_path方法删除所有ThreadedExcelParser回退代码块仅保留并强制实例化services.parser.vba_parser.ThreadedVBAParser且将VBA解析失败视为致命错误抛出异常；第三步，修改infrastructure/com_bridge/wps_connector.py的连接ProgID优先级列表移除Excel.Application仅保留Ket.Application和ET.Application确保COM连接绝对不落入微软Excel；第四步，全面清理services目录下所有解析器文件包括excel_parser.py和excel_parser_enhanced.py中的openpyxl、pandas、xlrd导入及使用逻辑但保留文件结构以备后续参考同时移除batch_processor中任何依赖Python库而非COM的实现；第五步，修正services/parser/vba_parser.py内部调用VBAInjector时传入的workbook_path必须使用os.path.abspath转换为绝对路径解决之前测试报告中路径错误问题；第六步，更新controllers/batch_controller.py中各菜单对应方法占位实现为基于WPSConnector和VBAInjector的真实批处理操作而非pass或伪代码；第七步，在项目根目录创建新的精简版ExcelAnalyzer_Enforced_WPS.spec文件其中datas仅保留vba_modules、src等效新路径infrastructure等必要资源，hiddenimports中删除pandas及其全部子模块、openpyxl、xlrd、xlwings、matplotlib、scipy仅保留PyQt5核心、win32com、pythoncom、json、logging，binaries中只保留pywintypes相关DLL移除xlwings相关文件，同时excludes显式排除pandas等避免自动收集；第八步，编写批处理脚本rebuild_and_package.bat执行清理旧构建、运行pyinstaller ExcelAnalyzer_Enforced_WPS.spec --clean --noconfirm并输出最终exe路径和大小；第九步，生成一份强制WPS验收测试清单test_plan_enforced_wps.md包含干净Windows虚拟机仅安装WPS无Office环境下的启动阻断测试、模板解析测试、页眉页脚图片功能测试、批量操作测试及错误日志验证；第十步，汇总所有改动形成WPS强制重构完成报告并更新重构日志.md文档记录时间戳和验证结论。以上每步完成后必须进行最小化语法验证并确认导入路径与新架构一致。
+   685│ 
+   686│ ---
+   687│ 
+   688│ ## ❓ unknown
+   689│ 
+   690│ 我们需生成一段纯文本、无换行、无引号的提示词，用于指导AI按照之前确立的WPS+VBA强制重构方案继续推进。内容要涵盖架构调整、控制器恢复、VBA链路
+[TRUNCATED] Showing lines 501-700 of 6198. To continue, call read_file with path="01_AI与编程开发\项目重构方案.md" start_line=701 max_lines=200
+
+[TRUNCATED] The selected range exceeded 16KB. Continue with a smaller max_lines value.
+</file>

@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use serde_json::{json, Value};
 use tauri::Emitter;
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -20,12 +20,12 @@ pub const WORKSPACE_WORKER_READY_EVENT: &str = "workspace_worker_ready";
 pub const WORKSPACE_NAMESPACE: &str = "workspace";
 
 pub mod tool_names {
-    pub const CREATE: &str = "workspace_create";
-    pub const CREATE_AGENT: &str = "workspace_create_agent";
+    pub const CREATE: &str = "chat_v2_workspace_create";
+    pub const CREATE_AGENT: &str = "chat_v2_workspace_create_agent";
     pub const SEND: &str = "workspace_send";
     pub const QUERY: &str = "workspace_query";
-    pub const SET_CONTEXT: &str = "workspace_set_context";
-    pub const GET_CONTEXT: &str = "workspace_get_context";
+    pub const SET_CONTEXT: &str = "chat_v2_workspace_set_context";
+    pub const GET_CONTEXT: &str = "chat_v2_workspace_get_context";
     pub const UPDATE_DOCUMENT: &str = "workspace_update_document";
     pub const READ_DOCUMENT: &str = "workspace_read_document";
 }
@@ -49,12 +49,13 @@ impl WorkspaceToolExecutor {
     }
 
     #[inline]
-    fn ensure_workspace_member(&self, workspace_id: &str, session_id: &str) -> Result<(), String> {
+    fn ensure_workspace_member(&self, workspace_id: &str, session_id: &str) -> ToolResult<()> {
         self.coordinator
             .ensure_member_or_creator(workspace_id, session_id)
+            .map_err(ToolError::Execution)
     }
 
-    async fn execute_create(&self, args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    async fn execute_create(&self, args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let name = args.get("name").and_then(|v| v.as_str()).map(String::from);
         let workspace = self
             .coordinator
@@ -92,11 +93,11 @@ impl WorkspaceToolExecutor {
         &self,
         args: &Value,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let workspace_id = args
             .get("workspace_id")
             .and_then(|v| v.as_str())
-            .ok_or("workspace_id is required")?;
+            .ok_or(ToolError::InvalidArgs("workspace_id is required".into()))?;
         let skill_id = args
             .get("skill_id")
             .and_then(|v| v.as_str())
@@ -130,17 +131,17 @@ impl WorkspaceToolExecutor {
         let chat_v2_db = ctx
             .chat_v2_db
             .as_ref()
-            .ok_or("chat_v2_db not available for creating agent session")?;
+            .ok_or(ToolError::Execution("chat_v2_db not available for creating agent session".into()))?;
 
         let conn = chat_v2_db
             .get_conn_safe()
-            .map_err(|e| format!("Failed to get db connection: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get db connection: {}", e)))?;
 
         // 构建 Agent 的初始 System Prompt
         let workspace_info = self
             .coordinator
             .get_workspace(workspace_id)?
-            .ok_or_else(|| format!("Workspace not found: {}", workspace_id))?;
+            .ok_or_else(|| ToolError::NotFound(format!("Workspace not found: {}", workspace_id)))?;
 
         let workspace_name = workspace_info
             .name
@@ -243,7 +244,7 @@ impl WorkspaceToolExecutor {
         };
 
         ChatV2Repo::create_session_with_conn(&conn, &session)
-            .map_err(|e| format!("Failed to create agent session: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to create agent session: {}", e)))?;
 
         // 2. 在工作区中注册 Agent 元数据
         // 注意：MCP 工具调用时 system_prompt 已存储在 session metadata 中
@@ -357,15 +358,15 @@ impl WorkspaceToolExecutor {
         }))
     }
 
-    async fn execute_send(&self, args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    async fn execute_send(&self, args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let workspace_id = args
             .get("workspace_id")
             .and_then(|v| v.as_str())
-            .ok_or("workspace_id is required")?;
+            .ok_or(ToolError::InvalidArgs("workspace_id is required".into()))?;
         let content = args
             .get("content")
             .and_then(|v| v.as_str())
-            .ok_or("content is required")?;
+            .ok_or(ToolError::InvalidArgs("content is required".into()))?;
         let target_id = args.get("target_session_id").and_then(|v| v.as_str());
         let msg_type_str = args
             .get("message_type")
@@ -380,7 +381,7 @@ impl WorkspaceToolExecutor {
             _ => MessageType::Task,
         };
         if target_id.is_some() && matches!(message_type, MessageType::Broadcast) {
-            return Err("Broadcast message must not specify target_session_id".to_string());
+            return Err(ToolError::InvalidArgs("Broadcast message must not specify target_session_id".into()));
         }
 
         let message = self.coordinator.send_message(
@@ -398,21 +399,23 @@ impl WorkspaceToolExecutor {
         }))
     }
 
-    async fn execute_query(&self, args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    async fn execute_query(&self, args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let workspace_id = args
             .get("workspace_id")
             .and_then(|v| v.as_str())
-            .ok_or("workspace_id is required")?;
+            .ok_or(ToolError::InvalidArgs("workspace_id is required".into()))?;
         self.coordinator
-            .ensure_member_or_creator(workspace_id, &ctx.session_id)?;
+            .ensure_member_or_creator(workspace_id, &ctx.session_id)
+            .map_err(ToolError::Execution)?;
         let query_type = args
             .get("query_type")
             .and_then(|v| v.as_str())
             .unwrap_or("agents");
         let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(50) as usize;
 
-        let serialize_agents = || -> Result<Value, String> {
-            let agents = self.coordinator.list_agents(workspace_id)?;
+        let serialize_agents = || -> ToolResult<Value> {
+            let agents = self.coordinator.list_agents(workspace_id)
+                .map_err(ToolError::Execution)?;
             Ok(json!({
                 "agents": agents.iter().map(|a| json!({
                     "session_id": a.session_id,
@@ -423,8 +426,9 @@ impl WorkspaceToolExecutor {
             }))
         };
 
-        let serialize_messages = || -> Result<Value, String> {
-            let messages = self.coordinator.list_messages(workspace_id, limit)?;
+        let serialize_messages = || -> ToolResult<Value> {
+            let messages = self.coordinator.list_messages(workspace_id, limit)
+                .map_err(ToolError::Execution)?;
             Ok(json!({
                 "messages": messages.iter().map(|m| json!({
                     "id": m.id,
@@ -437,8 +441,9 @@ impl WorkspaceToolExecutor {
             }))
         };
 
-        let serialize_documents = || -> Result<Value, String> {
-            let docs = self.coordinator.list_documents(workspace_id)?;
+        let serialize_documents = || -> ToolResult<Value> {
+            let docs = self.coordinator.list_documents(workspace_id)
+                .map_err(ToolError::Execution)?;
             Ok(json!({
                 "documents": docs.iter().map(|d| json!({
                     "id": d.id,
@@ -449,8 +454,9 @@ impl WorkspaceToolExecutor {
             }))
         };
 
-        let serialize_context = || -> Result<Value, String> {
-            let contexts = self.coordinator.list_context(workspace_id)?;
+        let serialize_context = || -> ToolResult<Value> {
+            let contexts = self.coordinator.list_context(workspace_id)
+                .map_err(ToolError::Execution)?;
             Ok(json!({
                 "context": contexts.iter().map(|c| json!({
                     "key": c.key,
@@ -480,7 +486,7 @@ impl WorkspaceToolExecutor {
                 }
                 Ok(Value::Object(merged))
             }
-            _ => Err(format!("Unknown query_type: {}", query_type)),
+            _ => Err(ToolError::InvalidArgs(format!("Unknown query_type: {}", query_type))),
         }
     }
 
@@ -488,19 +494,20 @@ impl WorkspaceToolExecutor {
         &self,
         args: &Value,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let workspace_id = args
             .get("workspace_id")
             .and_then(|v| v.as_str())
-            .ok_or("workspace_id is required")?;
+            .ok_or(ToolError::InvalidArgs("workspace_id is required".into()))?;
         let key = args
             .get("key")
             .and_then(|v| v.as_str())
-            .ok_or("key is required")?;
+            .ok_or(ToolError::InvalidArgs("key is required".into()))?;
         let value = args.get("value").cloned().unwrap_or(Value::Null);
 
         self.coordinator
-            .set_context(workspace_id, key, value.clone(), &ctx.session_id)?;
+            .set_context(workspace_id, key, value.clone(), &ctx.session_id)
+            .map_err(ToolError::Execution)?;
 
         Ok(json!({
             "key": key,
@@ -512,19 +519,20 @@ impl WorkspaceToolExecutor {
         &self,
         args: &Value,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let workspace_id = args
             .get("workspace_id")
             .and_then(|v| v.as_str())
-            .ok_or("workspace_id is required")?;
+            .ok_or(ToolError::InvalidArgs("workspace_id is required".into()))?;
         let key = args
             .get("key")
             .and_then(|v| v.as_str())
-            .ok_or("key is required")?;
+            .ok_or(ToolError::InvalidArgs("key is required".into()))?;
 
         self.ensure_workspace_member(workspace_id, &ctx.session_id)?;
 
-        match self.coordinator.get_context(workspace_id, key)? {
+        match self.coordinator.get_context(workspace_id, key)
+            .map_err(ToolError::Execution)? {
             Some(ctx) => Ok(json!({
                 "key": ctx.key,
                 "value": ctx.value,
@@ -543,19 +551,19 @@ impl WorkspaceToolExecutor {
         &self,
         args: &Value,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let workspace_id = args
             .get("workspace_id")
             .and_then(|v| v.as_str())
-            .ok_or("workspace_id is required")?;
+            .ok_or(ToolError::InvalidArgs("workspace_id is required".into()))?;
         let title = args
             .get("title")
             .and_then(|v| v.as_str())
-            .ok_or("title is required")?;
+            .ok_or(ToolError::InvalidArgs("title is required".into()))?;
         let content = args
             .get("content")
             .and_then(|v| v.as_str())
-            .ok_or("content is required")?;
+            .ok_or(ToolError::InvalidArgs("content is required".into()))?;
         let doc_type_str = args
             .get("doc_type")
             .and_then(|v| v.as_str())
@@ -575,7 +583,8 @@ impl WorkspaceToolExecutor {
             ctx.session_id.clone(),
         );
 
-        self.coordinator.save_document(workspace_id, &doc)?;
+        self.coordinator.save_document(workspace_id, &doc)
+            .map_err(ToolError::Execution)?;
 
         Ok(json!({
             "document_id": doc.id,
@@ -588,19 +597,20 @@ impl WorkspaceToolExecutor {
         &self,
         args: &Value,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let workspace_id = args
             .get("workspace_id")
             .and_then(|v| v.as_str())
-            .ok_or("workspace_id is required")?;
+            .ok_or(ToolError::InvalidArgs("workspace_id is required".into()))?;
         let doc_id = args
             .get("document_id")
             .and_then(|v| v.as_str())
-            .ok_or("document_id is required")?;
+            .ok_or(ToolError::InvalidArgs("document_id is required".into()))?;
 
         self.ensure_workspace_member(workspace_id, &ctx.session_id)?;
 
-        match self.coordinator.get_document(workspace_id, doc_id)? {
+        match self.coordinator.get_document(workspace_id, doc_id)
+            .map_err(ToolError::Execution)? {
             Some(doc) => Ok(json!({
                 "id": doc.id,
                 "title": doc.title,
@@ -639,7 +649,7 @@ impl ToolExecutor for WorkspaceToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start = Instant::now();
         let tool_name = Self::strip_namespace(&call.name);
 
@@ -655,7 +665,7 @@ impl ToolExecutor for WorkspaceToolExecutor {
             tool_names::GET_CONTEXT => self.execute_get_context(&call.arguments, ctx).await,
             tool_names::UPDATE_DOCUMENT => self.execute_update_document(&call.arguments, ctx).await,
             tool_names::READ_DOCUMENT => self.execute_read_document(&call.arguments, ctx).await,
-            _ => Err(format!("Unknown workspace tool: {}", tool_name)),
+            _ => Err(ToolError::InvalidArgs(format!("Unknown workspace tool: {}", tool_name))),
         };
 
         let duration_ms = start.elapsed().as_millis() as u64;
@@ -685,15 +695,16 @@ impl ToolExecutor for WorkspaceToolExecutor {
                 Ok(result)
             }
             Err(error) => {
+                let error_msg = error.to_string();
                 // 🔧 修复：发射工具调用错误事件
-                ctx.emit_tool_call_error(&error);
+                ctx.emit_tool_call_error(&error_msg);
 
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    error,
+                    error_msg,
                     duration_ms,
                 );
 

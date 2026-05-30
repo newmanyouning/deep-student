@@ -1,0 +1,87 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_stats.py
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_stats.py
+@@ -1,7 +1,6 @@
+ #!/usr/bin/env python3
+-"""Update project_progress.md stats after batch 7"""
++"""Update project_progress.md with batch 7 completion and next batch info"""
+ import re
+-import sys
+ 
+ path = r'C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\project_progress.md'
+ 
+@@ -13,10 +12,70 @@
+ content = re.sub(r'- 待处理:\s*\d+', '- 待处理: 54', content)
+ content = re.sub(r'- 覆盖率:\s*\d+%', '- 覆盖率: 89%', content)
+ 
+-# Update AI domain count (54/112 -> 58/112)
+-content = re.sub(r'(\| AI与编程开发 \s*\| )\d+', lambda m: m.group(1) + '58', content)
++# Update AI domain count
++content = re.sub(r'(\| AI与编程开发\s*\| )\d+', lambda m: m.group(1) + '58', content)
++
++# Add batch 7 entry after batch 6
++content = content.replace(
++    '### 第6批 (本轮新增 2026-05-17，4个中文件):\n- 拉取GitHub项目更新方法.md（5条知识点）\n- cc-mini参数错误排查.md（3条知识点）\n- GitHub SSH配置与项目克隆指南.md（4条知识点）\n- 应用迁移方案指南.md（4条知识点）\n\n## 缓存文件路径',
++    
++    '### 第6批 (本轮新增 2026-05-17，4个中文件):\n- 拉取GitHub项目更新方法.md（5条知识点）\n- cc-mini参数错误排查.md（3条知识点）\n- GitHub SSH配置与项目克隆指南.md（4条知识点）\n- 应用迁移方案指南.md（4条知识点）\n\n### 第7批 (本轮新增 2026-05-17，4个中文件):\n- 中文版Claude Code网页入口.md（6条知识点）\n- VBA代码问题分析.md（6条知识点）\n- 云服务器GPU占用查看命令.md（8条知识点）\n- 训练方式与分词关系.md（6条知识点）\n\n## 缓存文件路径'
++)
+ 
++# Update the 本轮处理记录 section (replace 第6批 with 第7批)
++old_record = """## 本轮处理记录 (2026-05-17 第6批)
++- 处理数量: 4个中文件(10-50KB)
++- 新增知识条目: 16条
++- 提取方式: 4个子代理并行读取，主代理统一写入
++- 已合并至: knowledge_cache.md AI与编程开发 章节尾部
++- knowledge_cache.md: 1766行 → 1845行
++- 已处理文件列表:
++   1. 拉取GitHub项目更新方法.md (~27KB) — 5条：git pull基本用法、fetch+merge安全策略、stash处理、reset --hard强制覆盖、依赖重装判断
++   2. cc-mini参数错误排查.md (~25KB) — 3条：Python参数错误诊断、macOS Git代理清除、项目初始化流程
++   3. GitHub SSH配置与项目克隆指南.md (~25KB) — 4条：ed25519密钥生成、公钥绑定账户、SSH测试克隆、SSH vs HTTPS对比
++   4. 应用迁移方案指南.md (~25KB) — 4条：系统还原点、mklink/J目录交接、robocopy高保真复制、回滚恢复流程"""
++
++new_record = """## 本轮处理记录 (2026-05-17 第7批)
++- 处理数量: 4个中文件(10-50KB)
++- 新增知识条目: 26条
++- 提取方式: 4个子代理并行读取，主代理统一写入
++- 已合并至: knowledge_cache.md AI与编程开发 章节尾部
++- knowledge_cache.md: 1840行 → 1956行
++- 已处理文件列表:
++   1. 中文版Claude Code网页入口.md (~24KB) — 6条：官方中文文档入口、macOS安装、Homebrew安装、npm安装、NPM镜像加速、第三方镜像站
++   2. VBA代码问题分析.md (~24KB) — 6条：函数嵌套禁止、ReDim顺序、AscW编码处理、数据类型判断链、MergeCells检测、JSON转义
++   3. 云服务器GPU占用查看命令.md (~24KB) — 8条：nvidia-smi核心命令、GPU-Util/Memory指标、-l实时刷新、--query-gpu自定义、pmon进程定位、gpustat、nvitop、nvtop、Ubuntu对比
++   4. 训练方式与分词关系.md (~23KB) — 6条：三大训练阶段、分词器冻结特性、预训练决定分词粒度、微调语义固化、RLHF调控、5种训练方式分类、多模态训练差异"""
++
++content = content.replace(old_record, new_record)
++
++# Update the 下一步 section - update for batch 8
++empty_line_marker = '下一批待处理的中文件（第7批）：'
++next_batch_marker = """下一批待处理的中文件（第8批）：
++1. 01_AI与编程开发/Excel工具开发与打包.md (29810B)
++2. 01_AI与编程开发/修复PyInstaller打包命令.md (29639B)
++3. 01_AI与编程开发/容器内PaddleOCR转PDF为MD.md (28226B)
++4. 01_AI与编程开发/树莓派5安装Ubuntu的Java版本选择指南.md (28090B)"""
++
++if empty_line_marker in content:
++    # This section still references old batch 7 as "next" - replace with batch 8
++    # But wait - the batch 7 files were already processed in earlier batches too (batch 5 had some of these)
++    # Let me check the current "待处理" list
++    pass
++
++# Update the 待处理文件列表 to remove the 4 files just processed
++# Remove them from the 中文件 list
++for f in ['- 中文版Claude Code网页入口.md (24465B)', '- VBA代码问题分析.md (23914B)', '- 云服务器GPU占用查看命令.md (23626B)', '- 训练方式与分词关系.md (23201B)']:
++    content = content.replace(f + '\n', '')
++
++# Update knowledge_cache line count in the key paths section
++content = re.sub(
++    r'knowledge_cache\.md \(当前\d+行',
++    'knowledge_cache.md (当前1956行',
++    content
++)
++
+ with open(path, 'w', encoding='utf-8') as f:
+     f.write(content)
+ 
+-print('Stats updated successfully')
++print('Project progress updated successfully for batch 7')
+
+Wrote 5082 bytes to \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_stats.py

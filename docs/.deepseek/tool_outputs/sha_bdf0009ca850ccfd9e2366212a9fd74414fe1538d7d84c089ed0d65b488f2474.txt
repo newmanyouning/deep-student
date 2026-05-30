@@ -1,0 +1,29 @@
+<file path="knowledge_cache.md" total_lines="1391" shown_lines="1365-1391" truncated="false">
+  1365│   - 核心解释：G2S将连续梯度转为{-1,0,+1}三元脉冲扰动，GT在梯度全零时随机翻转维持攻击。
+  1366│ 
+  1367│ ## AI与编程开发
+  1368│ 
+  1369│ - **[2026年TTS模型推荐]** — 开源6款+商业4款TTS模型对比，Qwen3-TTS（3秒克隆/2.12%中文WER/97ms延迟/6-8GB显存）为首选。
+  1370│   - 来源文件：2026年TTS模型推荐.md
+  1371│   - 核心解释：Mac Mini M1部署可选tts-router、MLX优化版、Docker三种方案。
+  1372│ 
+  1373│ - **[AI项目token消耗估算]** — 极简项目800-1500token，常规小项目3000-6000token，含前端5000-10000token。
+  1374│   - 来源文件：AI项目token消耗估算.md
+  1375│   - 核心解释：仅发送需修改的函数可省98%token，只发关键错误信息可省99%。
+  1376│ 
+  1377│ - **[API缓存机制]** — 缓存命中(Cache Hit)直接返回极快，未命中(Cache Miss)需查询后端再写入缓存后返回。
+  1378│   - 来源文件：API缓存命中未命中解释.md
+  1379│   - 核心解释：三大问题：穿透/击穿/雪崩；LLM场景有提示词前缀缓存。
+  1380│ 
+  1381│ - **[Claude Desktop与Code配置隔离]** — Desktop用GUI配置，Claude Code用~/.claude/JSON配置，互不通用。
+  1382│   - 来源文件：Claude Desktop 与配置管理解析.md
+  1383│   - 核心解释：ModelScope MCP三种配置方案和CC-Switch一键切换工具。
+  1384│ 
+  1385│ - **[Docker部署模型优势]** — 解决依赖地狱、环境隔离、GPU透传性能损耗<3%、快速回滚切换。
+  1386│   - 来源文件：Docker部署模型优势解析.md
+  1387│   - 核心解释：生产环境Docker必选，个人学习conda更轻量。
+  1388│ 
+  1389│ - **[DeepSeek对话批量导出]** — 无官方一键导出功能，推荐DS随心转浏览器插件或API脚本批量导出。
+  1390│   - 来源文件：DeepSeek对话批量导出方法.md
+  1391│   - 核心解释：插件支持Word/PDF/Excel多格式导出，API需遍历session列表。
+</file>

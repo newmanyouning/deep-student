@@ -1,0 +1,77 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 5,
+      "line": "## 游戏与娱乐",
+      "context_before": [],
+      "context_after": []
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 127,
+      "line": "## 苹果生态与设备",
+      "context_before": [],
+      "context_after": []
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 233,
+      "line": "## 硬件与工程",
+      "context_before": [],
+      "context_after": []
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 351,
+      "line": "## 生活与消费",
+      "context_before": [],
+      "context_after": []
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 509,
+      "line": "## 数学与自然科学",
+      "context_before": [],
+      "context_after": []
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 671,
+      "line": "## 职业与职场",
+      "context_before": [],
+      "context_after": []
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 741,
+      "line": "## 健康与医学",
+      "context_before": [],
+      "context_after": []
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 959,
+      "line": "## 计算机与操作系统",
+      "context_before": [],
+      "context_after": []
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 1177,
+      "line": "## 人文与知识",
+      "context_before": [],
+      "context_after": []
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 1367,
+      "line": "## AI与编程开发",
+      "context_before": [],
+      "context_after": []
+    }
+  ],
+  "total_matches": 10,
+  "files_searched": 1,
+  "truncated": false
+}

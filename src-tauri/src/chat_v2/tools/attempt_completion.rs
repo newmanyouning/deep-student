@@ -84,11 +84,11 @@ pub fn get_schema() -> Value {
 // ============================================================================
 
 /// 解析参数
-pub fn parse_params(arguments: &Value) -> Result<AttemptCompletionParams, String> {
+pub fn parse_params(arguments: &Value) -> ToolResult<AttemptCompletionParams> {
     let result = arguments
         .get("result")
         .and_then(|v| v.as_str())
-        .ok_or("缺少必需参数: result")?
+        .ok_or(ToolError::InvalidArgs("缺少必需参数: result".to_string()))?
         .to_string();
 
     let command = arguments
@@ -146,7 +146,7 @@ pub fn is_attempt_completion(tool_name: &str) -> bool {
 use async_trait::async_trait;
 use std::time::Instant;
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolExecutor, ToolError, ToolResult, ToolSensitivity};
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
 
@@ -181,7 +181,7 @@ impl ToolExecutor for AttemptCompletionExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start = Instant::now();
 
         // 发射开始事件

@@ -1,0 +1,40 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_extract_batch.py
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_extract_batch.py
+@@ -1,22 +1,16 @@
+ import json
++import os
+ 
+-with open(r'C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_scan_result.json', 'r', encoding='utf-8') as f:
++os.chdir(r'C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md')
++with open('_scan_result.json', 'r', encoding='utf-8') as f:
+     data = json.load(f)
+-
+-all_items = data['all']
+-print('Total entries:', len(all_items))
+-
+-batch = all_items[150:200]
+-out_lines = []
+-for i, item in enumerate(batch):
+-    idx = 150 + i
+-    out_lines.append(f'{idx}|{item["path"]}|{item["lines"]}')
+-
+-with open(r'C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_batch_06_targets.txt', 'w', encoding='utf-8') as f:
+-    f.write('\n'.join(out_lines))
+-
+-print('Written', len(out_lines), 'entries to _batch_06_targets.txt')
+-
+-# Also print them
+-for line in out_lines:
+-    print(line)
++all_entries = data['all']
++print('Total entries:', len(all_entries))
++batch = all_entries[250:300]
++print('Batch count:', len(batch))
++with open('_batch_08_targets.txt', 'w', encoding='utf-8') as out:
++    for i, entry in enumerate(batch):
++        idx = 250 + i
++        line = f"[{idx}] {entry['path']} | lines={entry['lines']}"
++        print(line)
++        out.write(line + '\n')
+
+Wrote 551 bytes to \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_extract_batch.py

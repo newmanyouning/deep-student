@@ -24,7 +24,7 @@ use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use serde_json::{json, Value};
 use std::time::Duration;
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -107,16 +107,16 @@ impl AcademicSearchExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         if ctx.is_cancelled() {
-            return Err("arXiv search cancelled".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         let query = call
             .arguments
             .get("query")
             .and_then(|v| v.as_str())
-            .ok_or("Missing required parameter 'query'")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing required parameter 'query'".to_string()))?;
 
         let max_results = call
             .arguments
@@ -188,7 +188,7 @@ impl AcademicSearchExecutor {
 
         // 回退：通过 OpenAlex 搜索 arXiv 论文
         if ctx.is_cancelled() {
-            return Err("arXiv search cancelled".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         log::info!("[AcademicSearch] Using OpenAlex fallback for arXiv search");
@@ -240,7 +240,7 @@ impl AcademicSearchExecutor {
         categories: &[String],
         sort_by: &str,
         ctx: &ExecutionContext,
-    ) -> Result<Vec<Value>, String> {
+    ) -> ToolResult<Vec<Value>> {
         let mut query_parts = Vec::new();
 
         if !query.trim().is_empty() {
@@ -274,7 +274,7 @@ impl AcademicSearchExecutor {
         }
 
         if query_parts.is_empty() {
-            return Err("No search criteria".to_string());
+            return Err(ToolError::InvalidArgs("No search criteria".to_string()));
         }
 
         let final_query = query_parts.join("+AND+");
@@ -294,10 +294,10 @@ impl AcademicSearchExecutor {
         let response = if let Some(cancel_token) = ctx.cancellation_token() {
             tokio::select! {
                 result = self.arxiv_client.get(&url).send() => {
-                    result.map_err(|e| format!("arXiv request failed: {}", e))?
+                    result.map_err(|e| ToolError::Execution(format!("arXiv request failed: {}", e)))?
                 }
                 _ = cancel_token.cancelled() => {
-                    return Err("cancelled".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
@@ -305,23 +305,23 @@ impl AcademicSearchExecutor {
                 .get(&url)
                 .send()
                 .await
-                .map_err(|e| format!("arXiv request failed: {}", e))?
+                .map_err(|e| ToolError::Execution(format!("arXiv request failed: {}", e)))?
         };
 
         if !response.status().is_success() {
-            return Err(format!("HTTP {}", response.status().as_u16()));
+            return Err(ToolError::Execution(format!("HTTP {}", response.status().as_u16())));
         }
 
         let xml_text = response
             .text()
             .await
-            .map_err(|e| format!("read body failed: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("read body failed: {}", e)))?;
 
         Self::parse_arxiv_atom(&xml_text)
     }
 
     /// 解析 arXiv Atom XML 响应
-    fn parse_arxiv_atom(xml: &str) -> Result<Vec<Value>, String> {
+    fn parse_arxiv_atom(xml: &str) -> ToolResult<Vec<Value>> {
         let mut reader = Reader::from_str(xml);
         reader.config_mut().trim_text(true);
 
@@ -522,7 +522,7 @@ impl AcademicSearchExecutor {
                 }
                 Ok(Event::Eof) => break,
                 Err(e) => {
-                    return Err(format!("Failed to parse arXiv XML: {}", e));
+                    return Err(ToolError::Execution(format!("Failed to parse arXiv XML: {}", e)));
                 }
                 _ => {}
             }
@@ -541,16 +541,16 @@ impl AcademicSearchExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         if ctx.is_cancelled() {
-            return Err("Scholar search cancelled".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         let query = call
             .arguments
             .get("query")
             .and_then(|v| v.as_str())
-            .ok_or("Missing required parameter 'query'")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing required parameter 'query'".to_string()))?;
 
         let max_results = call
             .arguments
@@ -643,9 +643,9 @@ impl AcademicSearchExecutor {
         filters: &[String],
         sort_by: &str,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         if ctx.is_cancelled() {
-            return Err("OpenAlex search cancelled".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 构建请求参数
@@ -669,7 +669,7 @@ impl AcademicSearchExecutor {
         }
 
         let url = reqwest::Url::parse_with_params(OPENALEX_API_URL, &params)
-            .map_err(|e| format!("Failed to build OpenAlex URL: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to build OpenAlex URL: {}", e)))?;
 
         log::debug!("[AcademicSearch] OpenAlex URL: {}", url);
 
@@ -677,10 +677,10 @@ impl AcademicSearchExecutor {
         let response = if let Some(cancel_token) = ctx.cancellation_token() {
             tokio::select! {
                 result = self.openalex_client.get(url.as_str()).send() => {
-                    result.map_err(|e| format!("OpenAlex API request failed: {}", e))?
+                    result.map_err(|e| ToolError::Execution(format!("OpenAlex API request failed: {}", e)))?
                 }
                 _ = cancel_token.cancelled() => {
-                    return Err("OpenAlex search cancelled".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
@@ -688,23 +688,23 @@ impl AcademicSearchExecutor {
                 .get(url.as_str())
                 .send()
                 .await
-                .map_err(|e| format!("OpenAlex API request failed: {}", e))?
+                .map_err(|e| ToolError::Execution(format!("OpenAlex API request failed: {}", e)))?
         };
 
         let status = response.status();
         if !status.is_success() {
             let body = response.text().await.unwrap_or_default();
-            return Err(format!(
+            return Err(ToolError::Execution(format!(
                 "OpenAlex API returned HTTP {}: {}",
                 status.as_u16(),
                 body.chars().take(500).collect::<String>()
-            ));
+            )));
         }
 
         let body: Value = response
             .json()
             .await
-            .map_err(|e| format!("Failed to parse OpenAlex response: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to parse OpenAlex response: {}", e)))?;
 
         // 提取论文列表
         let raw_papers = body
@@ -899,7 +899,7 @@ impl ToolExecutor for AcademicSearchExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let tool_name = strip_tool_namespace(&call.name);
 
@@ -915,7 +915,7 @@ impl ToolExecutor for AcademicSearchExecutor {
         let result = match tool_name {
             "arxiv_search" => self.execute_arxiv_search(call, ctx).await,
             "scholar_search" => self.execute_scholar_search(call, ctx).await,
-            _ => Err(format!("Unknown academic search tool: {}", tool_name)),
+            _ => Err(ToolError::NotFound(format!("Unknown academic search tool: {}", tool_name))),
         };
 
         let duration = start_time.elapsed().as_millis() as u64;
@@ -956,7 +956,7 @@ impl ToolExecutor for AcademicSearchExecutor {
                 Ok(result)
             }
             Err(e) => {
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
 
                 log::warn!(
                     "[AcademicSearch] Tool {} failed: {} ({}ms)",
@@ -970,7 +970,7 @@ impl ToolExecutor for AcademicSearchExecutor {
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    e,
+                    e.to_string(),
                     duration,
                 );
 

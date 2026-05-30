@@ -1,0 +1,40 @@
+--- a/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_next.py
++++ b/C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_next.py
+@@ -0,0 +1,35 @@
++#!/usr/bin/env python3
++"""Update next batch info in project_progress.md"""
++path = r'C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\project_progress.md'
++
++with open(path, 'r', encoding='utf-8') as f:
++    content = f.read()
++
++# Update the 下一步 section (batch 7 -> batch 8)
++old_next = '下一批待处理的中文件（第7批）：\n'
++old_next += '1. 01_AI与编程开发/中文版Claude Code网页入口.md (24465B)\n'
++old_next += '2. 01_AI与编程开发/VBA代码问题分析.md (23914B)\n'
++old_next += '3. 01_AI与编程开发/云服务器GPU占用查看命令.md (23626B)\n'
++old_next += '4. 01_AI与编程开发/训练方式与分词关系.md (23201B)'
++
++new_next = '下一批待处理的中文件（第8批）：\n'
++new_next += '1. 01_AI与编程开发/解决Redis安装问题.md (22958B)\n'
++new_next += '2. 01_AI与编程开发/中文分词技术方案深度解析.md (20941B)\n'
++new_next += '3. 01_AI与编程开发/规则引擎变更引发逻辑漏洞解析.md (20789B)\n'
++new_next += '4. 01_AI与编程开发/容器与虚拟机区别解析.md (20458B)'
++
++content = content.replace(old_next, new_next)
++
++# Also update the 待处理 list
++for f in [
++    '- 中文版Claude Code网页入口.md (24465B)',
++    '- VBA代码问题分析.md (23914B)',
++    '- 云服务器GPU占用查看命令.md (23626B)',
++    '- 训练方式与分词关系.md (23201B)'
++]:
++    content = content.replace(f + '\n', '')
++
++with open(path, 'w', encoding='utf-8') as f:
++    f.write(content)
++
++print('Next batch section updated successfully')
+
+Created C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_update_next.py (1528 bytes)

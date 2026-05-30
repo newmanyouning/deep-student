@@ -1,0 +1,74 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_8f4f14db (explore) status=Completed
+  objective: 你是知识提取子代理。请读取文件 `01_AI与编程开发/Git本地文件夹版本控制教程.md` 的 **第801-1575行**，提取其中所有的技术知识点。
+
+要求：
+- 每条知识点包含：标题（简洁概括）、核心要点（3-5句话，用中文）、关键代码/命令（如有）
+- 忽略对话中的闲聊、重复内容、无意义交互
+- 合并相似主题，避免知识点碎片化
+- 每条知识点以 `### 知识点标题` 开头
+- 添加 `**标签**:` 行标注领域标签
+...
+  result: 现在我已读取了第801-1575行的完整内容。下面提取并整理技术知识点：
+
+---
+
+### 查找 Git 仓库根目录
+
+**核心要点**：当处于 Git 仓库的任意子目录中时，可以通过 `git rev-parse --show-toplevel` 直接获取仓库根目录的绝对路径，这是最简单可靠的方法。此外也可以通过 Shell 脚本向上遍历父目录，逐级检测 `.git` 文件夹是否存在来定位仓库根目录，适用于自动化场景或非 Git 环境中快速排查。
+
+**关键代码/命令**：
+```bash
+git rev-parse --show-toplevel
+```
+```bash
+while [ ! -d .git ] && [ "$PWD" != "/" ]; do cd ..; done
+```
+
+**标签**: `Git 基础`, `Shell 脚本`
+
+---
+
+### Git 钩子机制与存放位置
+
+**核心要点**：Git 钩子（hooks）是存放在 `.git/hooks/` 目录下的可执行脚本，在特定 Git 事件（如提交前、提交后、推送前）自动触发。常见钩子包括 `pre-commit`（提交前）、`post-commit`（提交后）、`pre-push`（推送前）、`post-checkout`（检出后）。钩子文件本质是 Shell 脚本，去掉 `.sample` 后缀并赋予执行权限即可激活。但钩子仅在 Git 操作时触发，无法实现"文件修改即自动提交"的需求。
+
+**关键代码/命令**：
+```bash
+ls .git/hooks/
+chmod +x .git/hooks/post-commit
+```
+
+**标签**: `Git 钩子`, `自动化`
+
+---
+
+### 基于文件监控的自动提交方案（Shell 脚本）
+
+**核心要点**：实现"修改即提交"需要文件系统监控工具配合 Git 命令。跨平台方案包括：macOS 使用 `fswatch`、Linux 使用 `inotifywait`、通用兼容方案使用 `find -newer` 轮询。脚本逻辑为：持续监听文件变更事件 → 等待短暂防抖时间（避免频繁触发）→ 检查 `git diff --quiet` 确认有未提交变更 → 执行 `git add . && git commit`。需配合 `.gitignore` 排除日志、临时文件等。
+
+**关键代码/命令**：
+```bash
+# 检查是否有未提交修改
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    git add .
+    git commit -m "自动提交: $(date '+%Y-%m-%d %H:%M:%S')" --quiet
+fi
+# 后台运行
+nohup ./git-auto-commit.sh > .auto-commit.log 2>&1 &
+```
+
+**标签**: `文件监控`, `Shell 脚本`, `Git 自动化`
+
+---
+
+### Node.js 文件监控自动提交（chokidar）
+
+**核心要点**：Node.js 的 `chokidar` 库提供了跨平台且稳定的文件监控能力。配置 `ignored` 忽略隐藏文件、`awaitWriteFinish` 等待写入完成后再触发事件，通过防抖函数（debounce）合并短时间内的多次变更，避免产生过多提交。通过 `child_process.exec` 依次执行 `git add .` 和 `git commit`。
+
+**关键代码/命令**：
+```javascript
+const watcher = chokidar.watch(watch...
+  stats: steps=3, duration_ms=251831

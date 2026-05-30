@@ -1,0 +1,64 @@
+<file path="project_progress.md" total_lines="216" shown_lines="155-216" truncated="false">
+   155│ 
+   156│ ## 缓存文件路径
+   157│ knowledge_cache.md: C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md
+   158│ 
+   159│ ## 本轮处理记录 (2026-05-17 第4批)
+   160│ - 处理数量: 4个中文件(10-50KB)
+   161│ - 新增知识条目: 22条
+   162│ - 提取方式: 4个子代理并行读取，主代理统一写入
+   163│ - 已合并至: knowledge_cache.md AI与编程开发 章节尾部
+   164│ - knowledge_cache.md: 1589行 → 1691行
+   165│ - 已处理文件列表:
+   166│   1. WPS VBA语法兼容性分析.md (~38KB) — 6条：WPS与标准VBA对象模型差异、不支持的高级功能、版本授权差异、Office 365功能差异、核心文档体系、CHM转文本方案
+   167│   2. WPS插件开发与加载指南.md (~37KB) — 6条：插件类型兼容性对照、wpsjs工具链、离线打包安装、oem.ini/jsplugins.xml注册、JS API操作表格、AI辅助开发架构
+   168│   3. Python操作WPS写入执行VBA代码.md (~37KB) — 5条：COM ProgID、VBComponents动态注入、删除重建替换策略、单元格数据交换、UTF-8/UTF-16编码链路
+   169│   4. 阿里云服务器PaddleOCR使用指南.md (~33KB) — 5条：命令行三合一识别、Python API结果解析、阈值调优、Docker容器进入流程、三类错误排查
+   170│ 
+   171│ ## 处理策略
+   172│ 1. 每轮启动4个子代理,每代理1个文件或1个文件分块
+   173│ 2. 子代理负责读取和提取，主代理负责写入合并
+   174│ 3. 先处理中文件(10-50KB)，每轮4个，共需9轮；再处理大文件(>50KB)，每块按40KB切割
+   175│ 4. 大文件处理：用 `read_file` 按 start_line 分块读取，每块启动一个子代理
+   176│ 5. project_progress.md 记录进度，knowledge_cache.md 存储知识点
+   177│ 
+   178│ ## 下一步具体执行（恢复后直接执行）
+   179│ 
+   180│ ### Step 1: 读取本进度文件
+   181│ ```bash
+   182│ 从 project_progress.md 了解当前状态
+   183│ ```
+   184│ 
+   185│ ### Step 2: 查看 knowledge_cache.md 末尾确认最后写入位置
+   186│ ```bash
+   187│ 确认 knowledge_cache.md 的行数，确保追加位置正确
+   188│ ```
+   189│ 
+   190│ ### Step 3: 启动4个子代理处理下一批中文件
+   191│ ```markdown
+   192│ 下一批待处理的中文件（第5批）：
+   193│ 1. 01_AI与编程开发/Excel工具开发与打包.md (29810B)
+   194│ 2. 01_AI与编程开发/修复PyInstaller打包命令.md (29639B)
+   195│ 3. 01_AI与编程开发/容器内PaddleOCR转PDF为MD.md (28226B)
+   196│ 4. 01_AI与编程开发/树莓派5安装Ubuntu的Java版本选择指南.md (28090B)
+   197│ ```
+   198│ 
+   199│ ### Step 4: 等待子代理完成，提取知识点
+   200│ ```markdown
+   201│ 用 agent_eval block=true timeout_ms=120000 等待每个子代理
+   202│ ```
+   203│ 
+   204│ ### Step 5: 写入 knowledge_cache.md
+   205│ ```markdown
+   206│ 将所有知识点追加到 knowledge_cache.md 末尾
+   207│ 更新 project_progress.md 中的统计数字和文件列表
+   208│ ```
+   209│ 
+   210│ ### 重复直到中文件全部处理完毕，然后处理31个大文件
+   211│ 
+   212│ ## 关键路径和文件
+   213│ - **工作目录**: C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md
+   214│ - **知识库文件**: knowledge_cache.md (当前1689行，AI与编程开发章节尾部)
+   215│ - **进度文件**: project_progress.md
+   216│ - **源文件目录**: 01_AI与编程开发/
+</file>

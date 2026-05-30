@@ -1,0 +1,397 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 12,
+      "line": "---",
+      "context_before": [
+        "#仅输出AI提示词文本",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 20,
+      "line": "---",
+      "context_before": [
+        "#仅输出AI提示词文本",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 32,
+      "line": "---",
+      "context_before": [
+        "提示词应该",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 51,
+      "line": "---",
+      "context_before": [
+        "以下是根据最新调研结果撰写的 AI 提示词，可直接复制使用：",
+        ""
+      ],
+      "context_after": [
+        "",
+        "# 依赖工具重大更新——二次核查结果与修改指引"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 75,
+      "line": "---",
+      "context_before": [
+        "**证据来源**：官方 GitHub 仓库显示最新版本为 v2.0.0，`@dagrejs/dagre` 是接收更新的 NPM 包[reference:0]。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "### 2. 🟠 第5项 ESLint——调研结论部分修正"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 91,
+      "line": "---",
+      "context_before": [
+        "**证据来源**：存在可用的 ESInint v8→v9 codemod，能处理配置转换和破坏性变更[reference:1]。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "### 3. 🔴 第8项 LiteLLM 模型名——调研结论**严重错误**，必须立即修正"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 125,
+      "line": "---",
+      "context_before": [
+        "- 阿里云官方模型列表显示实际 API 名称是 `qwen3.6-max-preview`[reference:6][reference:7]。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## 验证无问题、可保持不变的调研结论（3项）"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 142,
+      "line": "---",
+      "context_before": [
+        "- 调研结论“代码已使用 v5 API，非 v4 兼容层”正确。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## 需要补充风险的调研结论（1项）"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 153,
+      "line": "---",
+      "context_before": [
+        "  2. 影响评估表结论改为：**“⚠️ 暂不升级，等待 ESlint 9 统一升级；升级时需处理 `ban-types` 等规则变化。”**",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## 执行要求"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 173,
+      "line": "---",
+      "context_before": [
+        "4. **调研报告需注明调研日期为 2026-05-10**，并注明本二次核查的复核人标识。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 181,
+      "line": "---",
+      "context_before": [
+        "#仅输出提示词文本",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 245,
+      "line": "---",
+      "context_before": [
+        "- 无模型名不存在（`model not found`）错误",
+        ""
+      ],
+      "context_after": [
+        "",
+        "### 测试用例 2：PDF 管理手册分段与解析"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 268,
+      "line": "---",
+      "context_before": [
+        "- LLM 返回合法的 JSON，包含实体和关系，无空响应或超时",
+        ""
+      ],
+      "context_after": [
+        "",
+        "### 测试用例 3：DOC 程序文件分段与解析"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 284,
+      "line": "---",
+      "context_before": [
+        "- DOC 分段正常，LLM 解析成功",
+        ""
+      ],
+      "context_after": [
+        "",
+        "### 测试用例 4：全链路关联数据提取与汇总"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 303,
+      "line": "---",
+      "context_before": [
+        "- 数据符合前端 `@antv/g6` v5 的渲染格式",
+        ""
+      ],
+      "context_after": [
+        "",
+        "### 测试用例 5：前端渲染与交互验证"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 328,
+      "line": "---",
+      "context_before": [
+        "- 交互功能正常",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## 测试环境与配置清单"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 379,
+      "line": "---",
+      "context_before": [
+        "```",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 386,
+      "line": "---",
+      "context_before": [
+        "#仅输出提示词文本",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 539,
+      "line": "---",
+      "context_before": [
+        "```",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 656,
+      "line": "---",
+      "context_before": [
+        "#仅输出提示词文本",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 679,
+      "line": "---",
+      "context_before": [
+        "本地 MinerU v3.0.4 冷启动需加载 VLM 模型（>7 分钟），测试中未能完成本地解析。现决定改用 MinerU 云端 API（mineru.net）进行文档解析。请根据以下调研内容执行修改。",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## 调研结果：MinerU 云端 API 关键信息"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 778,
+      "line": "---",
+      "context_before": [
+        "```",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## 修改指令"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 867,
+      "line": "---",
+      "context_before": [
+        "- 优先级：🔴 高（本地 MinerU 启动失败，云端 API 是当前唯一可用方案）",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## 注意事项"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 877,
+      "line": "---",
+      "context_before": [
+        "5. **原有兼容**：如项目中保留了本地 MinerU 作为备选方案，需在代码中实现云端/本地模式切换逻辑（通过环境变量 `MINERU_API_MODE` 控制）",
+        ""
+      ],
+      "context_after": [
+        "",
+        "请按优先级执行："
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 885,
+      "line": "---",
+      "context_before": [
+        "```",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 892,
+      "line": "---",
+      "context_before": [
+        "#仅输出提示词文本",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 1036,
+      "line": "---",
+      "context_before": [
+        "```",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 1043,
+      "line": "---",
+      "context_before": [
+        "#仅输出提示词文本进行这一步操作",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 1050,
+      "line": "---",
+      "context_before": [
+        "#仅输出提示词文本进行这一步操作",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+      "line_number": 1259,
+      "line": "---",
+      "context_before": [
+        "```",
+        ""
+      ],
+      "context_after": [
+        "",
+        "## ❓ unknown"
+      ]
+    }
+  ],
+  "total_matches": 30,
+  "files_searched": 1,
+  "truncated": false
+}

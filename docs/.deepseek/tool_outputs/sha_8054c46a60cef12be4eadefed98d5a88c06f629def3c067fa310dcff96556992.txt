@@ -1,0 +1,24 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\树莓派5 Ubuntu Fcitx输入法问题解决.md" total_lines="677" shown_lines="1-20" truncated="true" next_start_line="21">
+     1│ # 树莓派5 Ubuntu Fcitx输入法问题解决
+     2│ 对话ID: 87f230a8-598f-46ae-a54d-29d86f99892a
+     3│ 创建时间: 2026-01-17T23:51:49.636000+08:00
+     4│ 更新时间: 2026-01-18T00:28:46.294000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ 树莓派5安装ubuntu之后，在系统方面是可以使用中文输入，但是所有的图形窗口无法切换输入法，该如何解决？之前运行过# 将以下三行关键环境变量追加到 ~/.profile 文件末尾
+     9│ echo 'export GTK_IM_MODULE=fcitx' >> ~/.profile
+    10│ echo 'export QT_IM_MODULE=fcitx' >> ~/.profile
+    11│ echo 'export XMODIFIERS=@im=fcitx' >> ~/.profile
+    12│ 安装过# 更新软件包列表并安装输入法框架、配置工具和谷歌拼音引擎[citation:2][citation:4][citation:6]
+    13│ sudo apt update
+    14│ sudo apt install fcitx fcitx-configtool fcitx-googlepinyin -y，我该怎么办
+    15│ 
+    16│ ---
+    17│ 
+    18│ ## ❓ unknown
+    19│ 
+    20│ 根据您提供的信息，您已经安装了fcitx输入法框架和谷歌拼音引擎，并且设置了环境变量。但是图形窗口无法切换输入法，这可能是由于环境变量没有生效，或者缺少一些必要的配置步骤。
+
+[TRUNCATED] Showing lines 1-20 of 677. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\树莓派5 Ubuntu Fcitx输入法问题解决.md" start_line=21 max_lines=20
+</file>

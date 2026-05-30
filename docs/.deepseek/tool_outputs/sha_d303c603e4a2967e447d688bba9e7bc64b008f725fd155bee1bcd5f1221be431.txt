@@ -1,0 +1,39 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_ec2388c4 (general) status=Completed
+  objective: 你是一个知识提取专家。请读取文件 `01_AI与编程开发/WPS VBA语法兼容性分析.md`，提取其中有价值的、可复用的知识点。
+
+要求：
+1. 先读取整个文件内容
+2. 提取3-8条知识点，每个知识点需要是独立、完整、有实用价值的
+3. 每条知识点的格式如下（输出纯文本，不要加额外的标记）：
+   - **[知识点标题]** — 一句话简介
+     - 来源文件：WPS VBA语法兼容性分析.md
+     - 核心解释：2...
+  result: 文件已完整读取。现在提取知识点。
+
+- **[WPS VBA与标准VBA：语法相同但对象模型不同]** — WPS VBA的基础语法与标准VB完全兼容，但对象模型差异巨大，是兼容性问题的根源
+  - 来源文件：WPS VBA语法兼容性分析.md
+  - 核心解释：WPS VBA的控制结构（如`If...Then...Else`、`For...Next`、`Do...Loop`）与微软VBA完全一致，但其对象模型并未完全实现微软Office VBA中的所有对象和方法。例如，`Application.FileDialog`对象在WPS中完全不可用，许多属性是只读的或设置后会"静默失败"（代码不报错但无效果）。这意味着在Excel VBA中能运行的代码，在WPS中可能直接报错或行为异常。
+
+- **[WPS VBA不支持的高级功能与组件]** — WPS VBA环境受限，不支持许多高级COM组件和ActiveX控件
+  - 来源文件：WPS VBA语法兼容性分析.md
+  - 核心解释：WPS VBA不支持调用`.NET`互操作或`XMLHTTP`等高级COM组件，也不支持ActiveX控件。事件模型不完整，`WithEvents`的事件绑定支持有限，部分事件（如`Workbook_BeforeSave`）可能完全不会被触发。这些限制意味着依赖外部库或高级事件驱动的代码通常无法在WPS中正常运行。
+
+- **[WPS不同版本的VBA授权差异]** — WPS个人版不含VBA功能，仅专业版/增强版和WPS 365商业应用版提供正版VBA支持
+  - 来源文件：WPS VBA语法兼容性分析.md
+  - 核心解释：WPS个人版默认不包含VBA环境，无法直接使用宏功能，需要安装第三方插件才能获得有限支持。WPS专业版/增强版内置完整VBA组件，而WPS 365则需要购买商业应用版套餐才能获得正版VBA授权。个人用户自行安装VBA插件可能存在法律合规风险，企业用户应优先考虑商业授权版本。
+
+- **[WPS VBA与Office 365的功能差异清单]** — WPS VBA主要支持旧版对象模型，不支持动态数组公式和新函数
+  - 来源文件：WPS VBA语法兼容性分析.md
+  - 核心解释：WPS VBA的对象模型以旧版为主，不支持Office 365中的动态数组公式（`Range.Formula2`）和新函数（如`XLOOKUP`）。此外，WPS的宏录制功能可能不完善，VBA执行复杂任务时可能稍慢，VBA编辑器也可能缺少智能提示（IntelliSense）或代码折叠等功能。这些差异在将Office 365 VBA代码迁移到WPS时需要特别注意。
+
+- **[WPS VBA核心开发文档体系]** — WPS VBA开发可参考三份CHM核心文档和社区流传的API V9帮助文档
+  - 来源文件：WPS VBA语法兼容性分析.md
+  - 核心解释：WPS VBA开发的核心官方文档是三份CHM离线帮助文件：`ET.CHM`（WPS表格，涵盖Workbook、Worksheet、Range等对象）、`WPS.CHM`（WPS文字，涵盖Application、Document等对象）、`WPP.CHM`（WPS演示，涵盖Presentation、Slide等对象）。另外，社区流传的《WPS API V9 开发帮助文档》也是重要参考。这些文档通常可在金山开发者社区、GitCode等平台免费获取。
+
+- **[CHM文档无法直接被AI解析的解决方案]** — CHM是编译二进制格式，需转换为纯文本或Markdown后才能被云端AI正确解析
+  - 来源文件：WPS VBA语法兼容性分析.md
+  - 核心解释：CHM文件是编译后的二进制格式，主流AI API...
+  stats: steps=4, duration_ms=77789

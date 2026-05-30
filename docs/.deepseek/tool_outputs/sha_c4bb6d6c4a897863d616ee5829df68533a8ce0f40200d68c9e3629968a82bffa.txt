@@ -1,0 +1,130 @@
+<file path="01_AI与编程开发/Claude Desktop 与配置管理解析.md" total_lines="328" shown_lines="201-328" truncated="false">
+   201│ 
+   202│ ---
+   203│ 
+   204│ ## ❓ unknown
+   205│ 
+   206│ 我的claude code接入了GLM模型，现在打算更换deepseek模型，想要迁移MCP工具，使得模型可以联网搜索获取网页内容进行编码，我需要怎么做
+   207│ 
+   208│ ---
+   209│ 
+   210│ ## ❓ unknown
+   211│ 
+   212│ 用户需要将Claude Code从GLM模型迁移到DeepSeek模型，并保留MCP工具，特别是需要联网搜索和获取网页内容的功能。我需要提供迁移指南、MCP工具配置（特别是联网搜索）以及DeepSeek API配置。为了全面获取信息，我将同时进行多项搜索，涵盖迁移指南、MCP配置、联网搜索工具和DeepSeek API配置等不同方面。
+   213│ {'type': 'TOOL_SEARCH'}
+   214│ 搜索结果显示了一些相关资源。为了全面获取信息，我们需要同时打开这些结果。
+   215│ {'type': 'TOOL_OPEN'}
+   216│ {'type': 'TOOL_OPEN'}
+   217│ {'type': 'TOOL_OPEN'}
+   218│ {'type': 'TOOL_OPEN'}
+   219│ {'type': 'TOOL_OPEN'}
+   220│ {'type': 'TOOL_OPEN'}
+   221│ {'type': 'TOOL_OPEN'}
+   222│ {'type': 'TOOL_OPEN'}
+   223│ 这些结果提供了多种配置方式。为了全面了解并整合信息，我们需要同时打开多个相关链接。
+   224│ {'type': 'TOOL_OPEN'}
+   225│ {'type': 'TOOL_OPEN'}
+   226│ {'type': 'TOOL_OPEN'}
+   227│ {'type': 'TOOL_OPEN'}
+   228│ {'type': 'TOOL_OPEN'}
+   229│ {'type': 'TOOL_OPEN'}
+   230│ {'type': 'TOOL_OPEN'}
+   231│ 这些结果提供了多种方法。接下来，我将组织回答，内容涵盖：迁移概览、模型切换方法、MCP工具联网配置、以及方案对比与推荐。
+   232│ 要把 Claude Code 从 GLM 模型迁移到 DeepSeek，并给它添加联网搜索和获取网页内容的能力，主要有两大步操作：一是**切换模型**，二是**配置 MCP 联网工具**。这两个步骤相对独立，可以分步进行。
+   233│ 
+   234│ ### ⚙️ 第一步：将底层模型切换为 DeepSeek
+   235│ 
+   236│ 核心是修改 Claude Code 的配置文件，让它指向 DeepSeek 的 API。
+   237│ 
+   238│ 1.  **获取 DeepSeek API Key**：前往 [DeepSeek 开放平台](https://platform.deepseek.com/api_keys) 注册并创建你的 API Key[reference:0]。
+   239│ 2.  **修改配置文件**：用文本编辑器打开你的 Claude Code 配置文件（取决于你的操作系统和安装方式），找到 `env` 部分，替换为以下内容[reference:1][reference:2]：
+   240│ 
+   241│     ```json
+   242│     "env": {
+   243│       "ANTHROPIC_BASE_URL": "https://api.deepseek.com/anthropic",
+   244│       "ANTHROPIC_AUTH_TOKEN": "你的DeepSeek API Key",
+   245│       "API_TIMEOUT_MS": "3000000",
+   246│       "ANTHROPIC_MODEL": "deepseek-v4-pro",
+   247│       "ANTHROPIC_SMALL_FAST_MODEL": "deepseek-v4-flash"
+   248│     }
+   249│     ```
+   250│ 
+   251│     *   `ANTHROPIC_BASE_URL`：告诉 Claude Code 去访问 DeepSeek 的 API。
+   252│     *   `ANTHROPIC_AUTH_TOKEN`：填写你的 DeepSeek API Key。
+   253│     *   `ANTHROPIC_MODEL`：指定默认使用的模型，推荐使用最新的 `deepseek-v4-pro`。
+   254│     *   `ANTHROPIC_SMALL_FAST_MODEL`：为轻量级任务指定 `deepseek-v4-flash` 这个更快、更便宜的模型[reference:3][reference:4]。
+   255│ 3.  **保存并重启**：保存配置文件，然后重启 Claude Code 即可生效。
+   256│ 
+   257│ > **小技巧**：如果你熟悉命令行，也可以直接使用 `claude mcp add` 命令来动态添加模型，无需手动编辑 JSON 文件[reference:5]。
+   258│ 
+   259│ ### 🌐 第二步：为 Claude Code 配置 MCP 联网工具
+   260│ 
+   261│ 完成模型切换后，接下来配置“联网搜索”和“获取网页内容”的能力。以下是三种主流方案，可根据你的具体需求选择。
+   262│ 
+   263│ #### **方案一：Firecrawl MCP（全功能商用抓取）**
+   264│ 如果你需要获取结构化的网页内容，并能处理复杂的网站，推荐使用 Firecrawl[reference:6]。
+   265│ *   **配置方法**：在终端执行以下命令[reference:7][reference:8]：
+   266│     ```bash
+   267│     claude mcp add firecrawl -e FIRECRAWL_API_KEY=你的Firecrawl_API_Key -- npx -y firecrawl-mcp
+   268│     ```
+   269│ *   **验证配置**：输入 `/mcp` 命令，查看 `websearch` 状态是否为 `connected`[reference:9][reference:10]。
+   270│ 
+   271│ #### **方案二：`kosyak-fetch-mcp`（轻量级网页抓取）**
+   272│ 如果你需要的是一款高性能、支持多种内容的抓取工具，`kosyak-fetch-mcp` 是绝佳选择，它专为 AI 优化，能输出干净 Markdown 并支持 PDF 转文本[reference:11]。
+   273│ *   **配置方法**：在配置文件中添加以下内容[reference:12]：
+   274│     ```json
+   275│     {
+   276│       "mcpServers": {
+   277│         "fetch": {
+   278│           "type": "stdio",
+   279│           "command": "npx",
+   280│           "args": ["-y", "kosyak-fetch-mcp"]
+   281│         }
+   282│       }
+   283│     }
+   284│     ```
+   285│     *(注：在 Windows 上，请将 `"command"` 的值 `"npx"` 替换为 `"npx.cmd"`)*[reference:13]。
+   286│ 
+   287│ #### **方案三：`mcp-multi-model`（集成方案，一劳永逸）**
+   288│ 如果你希望在一个 MCP 服务器中同时集成 DeepSeek 模型和联网搜索能力，`mcp-multi-model` 提供了一站式的解决方案[reference:14]。
+   289│ *   **配置方法**：在配置文件中添加以下内容[reference:15][reference:16]：
+   290│     ```json
+   291│     {
+   292│       "mcpServers": {
+   293│         "multi-model": {
+   294│           "command": "npx",
+   295│           "args": ["-y", "mcp-multi-model"],
+   296│           "env": {
+   297│             "DEEPSEEK_API_KEY": "你的DeepSeek_API_Key"
+   298│           }
+   299│         }
+   300│       }
+   301│     }
+   302│     ```
+   303│     这个 MCP 服务器会提供 `ask_deepseek`、`ask_kimi` 等工具，其中 Kimi 模型本身就具备中文联网搜索能力[reference:17]。
+   304│ 
+   305│ ### 📊 方案对比与推荐
+   306│ 
+   307│ 为了方便你决策，这里将上述方案的特点对比一下：
+   308│ 
+   309│ | 方案 | 核心能力 | 技术门槛 | 推荐场景 | 成本 |
+   310│ | :--- | :--- | :--- | :--- | :--- |
+   311│ | **Firecrawl MCP** | 商业级网页抓取，处理复杂网站能力强[reference:18] | 需注册Firecrawl账号 | 对数据质量有高要求的专业开发 | **收费**（有免费额度） |
+   312│ | **`kosyak-fetch-mcp`** | 轻量/高性能抓取，输出Markdown，支持PDF[reference:19] | 简单JSON配置 | 快速抓取网页、代码文档等 | **免费** |
+   313│ | **`mcp-multi-model`** | 模型路由+联网搜索一站式集成[reference:20] | 简单JSON配置 | 希望在一个工具内完成模型与搜索管理的用户 | **免费** |
+   314│ 
+   315│ *   对于**日常编码和轻量级搜索**，免费的 **`kosyak-fetch-mcp`** 是首选。
+   316│ *   如果你的项目需要高质量的**网络数据提取**，并且**有预算**，那么 **Firecrawl MCP** 是更专业的选择。
+   317│ *   如果你不仅需要联网搜索，还希望随时切换调用 **Kimi、Gemini** 等其他模型来执行不同任务，**`mcp-multi-model`** 的集成方案最省心。
+   318│ 
+   319│ ### 🚀 进阶工具：CC-Switch 一键切换
+   320│ 
+   321│ 如果你在未来需要频繁在 GLM、DeepSeek 等多个模型间切换，推荐使用 **CC-Switch**[reference:21]。它本质上是一个**配置管理器，并非模型路由器**[reference:22]。
+   322│ 
+   323│ *   **优势**：通过可视化面板一键切换各类模型，无需手动编辑 JSON 文件，能极大减少配置错误和重启操作[reference:23]。
+   324│ *   **适用场景**：作为增强工具，适合多模型重度用户快速切换模型，让手动管理配置文件成为历史[reference:24]。
+   325│ 
+   326│ 完成上述配置后，你的 Claude Code 就可以在 DeepSeek 的驱动下使用 MCP 联网工具了。你是主要用它来做日常的网页内容抓取和代码生成，还是有特定需要处理复杂网站（比如需要绕过 Cloudflare 防护）的抓取任务？告诉我你的具体使用场景，我可以帮你评估一下 `kosyak-fetch-mcp` 和 Firecrawl 哪款更适合你。
+   327│ 
+   328│ ---
+</file>

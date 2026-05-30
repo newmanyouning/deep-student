@@ -1,0 +1,42 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md
+@@ -955,3 +955,37 @@
+ - **[非霍奇金淋巴瘤]** — 起源于淋巴细胞的恶性肿瘤，占淋巴瘤90%，以无痛性淋巴结肿大为早期表现，可累及全身各器官。
+   - 来源文件：非霍奇金淋巴瘤症状及预后分析.md
+   - 核心解释：早期5年生存率60-90%，晚期预后差，免疫化疗为主要治疗手段。
++
++## 计算机与操作系统
++
++- **[64位操作系统优势]** — 64位可寻址更大内存（超4GB），一次处理64位数据更快，需64位CPU配合支持。
++  - 来源文件：64位操作系统和操作系统支持6.md
++  - 核心解释：64位系统兼容32位应用，但性能优于32位系统。
++
++- **[Edge收藏夹文件位置]** — 位于%LocalAppData%\Packages\Microsoft.Edge...\LocalState\Bookmarks，可通过内置导出功能备份为HTML。
++  - 来源文件：Edge收藏夹文件位置及备份方法.md
++  - 核心解释：可用设置>导入或导出功能导出为HTML跨浏览器迁移。
++
++- **[PDF目录页码不一致原因]** — PDF目录链接指向PDF内部页码标签而非印刷页码，有前言的书籍目录页码偏差约在前言页数。
++  - 来源文件：PDF目录缩略图与页码不一致原因解析.md
++  - 核心解释：PDF页码逻辑与印刷页码不同是常见技术差异。
++
++- **[PowerShell 5.1卸载]** — 5.1是Win10默认组件，卸载后可能影响依赖它的功能，建议保留或通过Windows功能面板控制。
++  - 来源文件：PowerShell 51卸载指南.md
++  - 核心解释：可通过控制面板>卸载程序>启用或关闭Windows功能管理。
++
++- **[SSH远程操作原理]** — SSH建立远程shell会话，本地输入命令发送到远程服务器执行，输出回传到本地终端显示。
++  - 来源文件：SSH连接远程操作确认.md
++  - 核心解释：连接成功后本地终端相当于远程服务器的键盘/显示器。
++
++- **[Safari收藏网页]** — 点击分享按钮或右键菜单选"添加到个人收藏"，也可通过Command+D快捷键快速收藏。
++  - 来源文件：Safari收藏网页方法.md
++  - 核心解释：收藏管理在侧边栏的"书签"中。
++
++- **[Ubuntu输入法安装]** — 推荐Fcitx框架+搜狗输入法（配置方便），或IBus框架+ibus-libpinyin（开源稳定）。
++  - 来源文件：Ubuntu中文输入法安装指南.md
++  - 核心解释：安装命令：sudo apt install fcitx fcitx-pinyin 或 sudo apt install ibus ibus-libpinyin。
++
++- **[Ubuntu MD阅读工具]** — 推荐Typora（图形所见即所得）、Glow（终端渲染Markdown）、ReText（Linux原生轻量编辑）。
++  - 来源文件：Ubuntu安装md阅读工具指南.md
++  - 核心解释：Snap包安装：sudo snap install glow（终端阅读）或 apt安装ReText。
+
+Replaced 1 occurrence in \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md

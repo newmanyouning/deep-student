@@ -1,0 +1,154 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" total_lines="8287" shown_lines="1300-1449" truncated="true" next_start_line="1450">
+  1300│ `pywin32` 这个库能让Python直接调用WPS提供给开发者的“官方API”，是最原生的方法。你可以直接告诉WPS要打开哪个文件、要修改哪个单元格，就像有人在操作一样。因为这是WPS自己的“语言”，所以能100%保留它的所有私有特性[reference:7][reference:8]。
+  1301│ 
+  1302│ **提示词示例**：你可以这样对Claw Code说：“我需要一个Python脚本，使用`win32com.client`模块启动WPS程序，打开一个指定的Excel文件，将‘Sheet1’工作表的B2单元格值修改为‘已完成’，然后保存并关闭文件。”
+  1303│ 
+  1304│ 不过，使用这个方法有一些需要注意的地方，我会在下面说明。
+  1305│ 
+  1306│ ### 🌱 使用 openpyxl 库：轻量的开源选择
+  1307│ 
+  1308│ 如果WPS的公式和属性限制不那么严格，使用轻量级的`openpyxl`是完全可以的。它能保留通用公式和数据验证规则，很适合处理结构简单的文件[reference:9][reference:10]。
+  1309│ 
+  1310│ **提示词示例**：你可以说：“用Python写一个函数，使用`openpyxl`库读取`report.xlsx`文件，打印出每个工作表的名称，并提取A1单元格的公式和值。”
+  1311│ 
+  1312│ ---
+  1313│ 
+  1314│ ### 💡 不同工具的选择建议与注意事项
+  1315│ 
+  1316│ #### 需要提醒你注意的地方
+  1317│ 
+  1318│ *   **环境要求**：`xlwings`和`pywin32`方案都需要你的Windows电脑上**安装了WPS Office**。因为它们是通过控制真实的WPS程序来工作的。
+  1319│ *   **WPS版本兼容性**：在使用`pywin32`时，WPS的不同版本可能需要不同的调用名称，例如`et.Application`[reference:11]。如果你在运行时遇到错误，可以试试看这个调整。
+  1320│ *   **运行可见性**：`xlwings`在运行时，你可能会看到WPS程序窗口一闪而过。你可以通过代码设置让它在后台静默运行，不打扰你。
+  1321│ 
+  1322│ #### 如何进行选择
+  1323│ 
+  1324│ *   **追求“原汁原味”的保留**：如果文件里有很多复杂的WPS专有内容，那`xlwings`或`pywin32`是最可靠的选择。
+  1325│ *   **追求工具的“轻量与快速”**：如果你的文件比较简单，没有用到复杂的私有特性，那用`openpyxl`会更轻便，速度也更快。
+  1326│ 
+  1327│ ---
+  1328│ 
+  1329│ 了解了这些方案的区别后，你打算先尝试哪个方案呢？比如我们可以先按“推荐方案：xlwings”来生成一个简单的脚本，你用它打开一个测试文件试试效果？
+  1330│ 
+  1331│ ---
+  1332│ 
+  1333│ ## ❓ unknown
+  1334│ 
+  1335│ 我需要在mac上开发这个之后在windows上运行，我需要免费的库，mac的储存是512G，不需要过分担心程序的储存
+  1336│ 
+  1337│ ---
+  1338│ 
+  1339│ ## ❓ unknown
+  1340│ 
+  1341│ 用户想在Mac上开发一个工具，然后部署到Windows上运行。这个工具需要能够读取WPS格式的Excel文件，并且要保留WPS专用的公式和单元格属性。用户特别强调要使用免费的库，并且对存储空间没有顾虑。
+  1342│ 
+  1343│ 我需要提供关于跨平台开发（Mac到Windows）的免费库建议，这些库需要能够处理WPS专有格式。为了全面获取信息，我将同时进行多项搜索，涵盖跨平台打包、Mac和Windows兼容的Excel处理库，以及针对WPS专有格式的特定库。
+  1344│ {'type': 'TOOL_SEARCH'}
+  1345│ {'type': 'TOOL_SEARCH'}
+  1346│ {'type': 'TOOL_SEARCH'}
+  1347│ {'type': 'TOOL_SEARCH'}
+  1348│ {'type': 'TOOL_SEARCH'}
+  1349│ 搜索结果显示了一些相关资源。为了全面了解这些库，我们需要同时打开这些结果进行详细查看。
+  1350│ {'type': 'TOOL_OPEN'}
+  1351│ {'type': 'TOOL_OPEN'}
+  1352│ {'type': 'TOOL_OPEN'}
+  1353│ {'type': 'TOOL_OPEN'}
+  1354│ {'type': 'TOOL_OPEN'}
+  1355│ {'type': 'TOOL_OPEN'}
+  1356│ {'type': 'TOOL_OPEN'}
+  1357│ {'type': 'TOOL_OPEN'}
+  1358│ 这些搜索结果提供了关于各种Excel处理库的详细信息。我需要根据用户的需求（免费、跨平台、保留WPS专有功能）来组织回答。回答将涵盖库的选择、开发环境设置、打包以及提示词示例。
+  1359│ 要在 Mac 上开发一个能最终在 Windows 上运行，并且能最大程度保留 WPS 公式和属性的小工具，我们这次的方案要兼顾 **“开发兼容性”**和 **“运行时稳定性”**。
+  1360│ 
+  1361│ 核心思路是：**在 Mac 上开发和打包，但最终程序在 Windows 上运行时，调用的是 Windows 系统里的 WPS 程序本身**，这样就能100%保留你所有的专属格式。
+  1362│ 
+  1363│ ---
+  1364│ 
+  1365│ ### 💎 核心方案：跨平台“翻译官” xlwings
+  1366│ 
+  1367│ 综合你的所有需求，首选方案是 **`xlwings`**。它就像一座桥梁，让你的 Python 代码能指挥本地的 WPS 软件去干活[reference:0]。
+  1368│ 
+  1369│ *   **完全免费**：开源且免费，没有任何隐藏费用[reference:1][reference:2]。
+  1370│ *   **完美跨平台**：在 Mac 上开发时调用 AppleScript 指挥 Excel，打包后在 Windows 上运行时则自动切换到 COM 接口来指挥 WPS[reference:3][reference:4]。你写的同一套代码在两边都能无缝工作[reference:5]。
+  1371│ *   **对 WPS 最友好**：`openpyxl` 在处理 WPS 的 JS 宏时可能会被清除[reference:6][reference:7]，而 `xlwings` 能完整地保留它们[reference:8]。因为它直接操作文件，所以你在 WPS 里设置的任何特殊公式和数据验证也都能原封不动地保留下来。
+  1372│ 
+  1373│ > **`xlwings` 和 `pywin32` 的区别**：`pywin32` 只能在 Windows 上用，无法在 Mac 上开发和打包[reference:9]。`xlwings` 则完全解决了这个痛点，是真正的跨平台方案。
+  1374│ 
+  1375│ ### 🛠️ 核心开发流程指引
+  1376│ 
+  1377│ #### 1. 在 Mac 上设置开发环境
+  1378│ 在终端里依次执行下面的命令就行，如果中间遇到问题，可以把错误信息直接发给 AI 来帮你解决。
+  1379│ 
+  1380│ ```bash
+  1381│ # 1. 安装 xlwings 库
+  1382│ pip3 install xlwings
+  1383│ 
+  1384│ # 2. 创建你的项目文件夹
+  1385│ mkdir my_excel_tool
+  1386│ cd my_excel_tool
+  1387│ 
+  1388│ # 3. 新建一个 Python 文件
+  1389│ touch main.py
+  1390│ ```
+  1391│ 
+  1392│ 然后就可以用 VS Code 打开 `main.py` 开始写代码了。一个最简单的代码结构是这样的：
+  1393│ 
+  1394│ ```python
+  1395│ import xlwings as xw
+  1396│ import os
+  1397│ 
+  1398│ def process_excel(file_path):
+  1399│     # 启动 WPS/Excel 应用（在 Mac 上开发时会自动调用 Numbers/Excel）
+  1400│     # 在 Windows 上运行时，它会自动调用 WPS
+  1401│     app = xw.App(visible=True, add_book=False)
+  1402│     
+  1403│     try:
+  1404│         # 打开你的 Excel 文件
+  1405│         wb = app.books.open(file_path)
+  1406│         sheet = wb.sheets[0]
+  1407│         
+  1408│         # 在这里写入你的处理逻辑，比如读取、修改单元格
+  1409│         # 所有操作都会完整保留 WPS 的格式和公式
+  1410│         
+  1411│         # 保存并关闭
+  1412│         wb.save()
+  1413│         wb.close()
+  1414│     finally:
+  1415│         app.quit()
+  1416│ 
+  1417│ if __name__ == "__main__":
+  1418│     # 这里可以添加让用户选择文件的图形界面代码
+  1419│     input("请将 Excel 文件拖动到此窗口，按回车确认...")
+  1420│     process_excel(file_path)
+  1421│ ```
+  1422│ 
+  1423│ #### 2. 从 Mac 打包成 Windows 程序
+  1424│ 为了让打包好的 `.exe` 文件能在任何 Windows 电脑上直接运行（即使没装 Python），我们需要在 Mac 上使用 **`Nuitka`** 这个打包工具[reference:10]。
+  1425│ 
+  1426│ ```bash
+  1427│ # 1. 安装 Nuitka
+  1428│ pip3 install nuitka
+  1429│ 
+  1430│ # 2. 安装跨平台编译工具 MinGW-w64
+  1431│ brew install mingw-w64
+  1432│ 
+  1433│ # 3. 执行打包命令（在项目文件夹内运行）
+  1434│ python3 -m nuitka \
+  1435│     --standalone \
+  1436│     --follow-imports \
+  1437│     --mingw64 \
+  1438│     --windows-dependency-tool=pefile \
+  1439│     --output-dir=build \
+  1440│     main.py
+  1441│ ```
+  1442│ 打包成功后，在 `build` 文件夹里找到 `main.dist` 文件夹，里面的 `main.exe` 就是你需要的最终程序了[reference:11]。
+  1443│ 
+  1444│ ### 💡 开发提示与注意事项
+  1445│ 
+  1446│ *   **Windows 运行环境的依赖**：这个程序本质上是在后台调用你 Windows 电脑上安装的 **WPS Office 软件**来处理文件。因此，最终用户的电脑上**必须安装 WPS**[reference:12]。如果公司要求统一软件，这一点需要提前和IT部门确认好。
+  1447│ *   **`CLAUDE.md` 文件指引**：在项目根目录创建一个 `CLAUDE.md` 文件，把你的技术选型和关键需求写进去，AI 助手能更好地理解你的项目。例如：
+  1448│     > "这个项目使用 `xlwings` 库操作 Excel 文件，目标是兼容 WPS 的专有公式和属性。最终需要使用 `Nuitka` 在 macOS 上打包成 Windows 可执行文件。请在 `main.py` 中实现主要逻辑。"
+  1449│ 
+
+[TRUNCATED] Showing lines 1300-1449 of 8287. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" start_line=1450 max_lines=150
+</file>

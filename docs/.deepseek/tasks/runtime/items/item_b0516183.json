@@ -1,0 +1,32 @@
+{
+  "schema_version": 2,
+  "id": "item_b0516183",
+  "turn_id": "turn_d915bc2e",
+  "kind": "file_change",
+  "status": "completed",
+  "summary": "write_file: Tool `write_file` was deferred and has now been loaded.\n\nThe tool was not executed. Retry with the loaded schema.\n\nExpected fields:\n  content: string required\n  path: string required\n\nReceived fields:\n  content, path",
+  "detail": "Tool `write_file` was deferred and has now been loaded.\n\nThe tool was not executed. Retry with the loaded schema.\n\nExpected fields:\n  content: string required\n  path: string required\n\nReceived fields:\n  content, path",
+  "metadata": {
+    "event": "tool.schema_hydrated",
+    "tool": "write_file",
+    "executed": false,
+    "retry_required": true,
+    "reason": "deferred_tool_first_use",
+    "deferred_tool_loaded": true,
+    "tool_name": "write_file",
+    "expected_fields": [
+      "content",
+      "path"
+    ],
+    "received_fields": [
+      "content",
+      "path"
+    ],
+    "missing_required_fields": [],
+    "unexpected_fields": [],
+    "likely_corrections": []
+  },
+  "artifact_refs": [],
+  "started_at": "2026-05-17T09:40:25.525651300Z",
+  "ended_at": "2026-05-17T09:40:25.553888200Z"
+}

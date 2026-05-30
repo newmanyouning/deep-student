@@ -1,0 +1,107 @@
+Updated todo #18 to completed
+{
+  "items": [
+    {
+      "id": 1,
+      "content": "索引11: ADHD患者认知优化与创伤修复方案.md (6030行)",
+      "status": "completed"
+    },
+    {
+      "id": 2,
+      "content": "索引12: 早醒与日间嗜睡的改善方法.md (5480行)",
+      "status": "completed"
+    },
+    {
+      "id": 3,
+      "content": "索引13: 康复期精神力悬置与应对策略.md (5388行)",
+      "status": "completed"
+    },
+    {
+      "id": 4,
+      "content": "索引14: 技术讨论健康但情感共鸣不足.md (5298行)",
+      "status": "completed"
+    },
+    {
+      "id": 5,
+      "content": "索引15: 中文分词技术深度解析与工程性能分析.md (4877行)",
+      "status": "completed"
+    },
+    {
+      "id": 6,
+      "content": "索引16: 慢性睡眠剥夺及熬夜危害严重.md (4495行)",
+      "status": "completed"
+    },
+    {
+      "id": 7,
+      "content": "索引17: 维生素C与铁剂服用建议.md (4369行)",
+      "status": "completed"
+    },
+    {
+      "id": 8,
+      "content": "索引18: 长期睡眠不足的恢复与风险分析.md (4281行)",
+      "status": "completed"
+    },
+    {
+      "id": 9,
+      "content": "索引19: 与低共情者沟通技巧与分析.md (3931行)",
+      "status": "completed"
+    },
+    {
+      "id": 10,
+      "content": "索引20: 如何提高学习专注力减少分心.md (3613行)",
+      "status": "completed"
+    },
+    {
+      "id": 11,
+      "content": "索引21: 快捷键完全指南生成.md (3061行)",
+      "status": "completed"
+    },
+    {
+      "id": 12,
+      "content": "索引22: 连续性随机变量与联合分布解析.md (2912行)",
+      "status": "completed"
+    },
+    {
+      "id": 13,
+      "content": "索引23: PowerShell脚本打包错误修复.md (2847行)",
+      "status": "completed"
+    },
+    {
+      "id": 14,
+      "content": "索引24: 项目提示词生成请求.md (2680行)",
+      "status": "completed"
+    },
+    {
+      "id": 15,
+      "content": "索引25: 如何平衡虚拟与现实生活.md (2541行)",
+      "status": "completed"
+    },
+    {
+      "id": 16,
+      "content": "索引26: 清华MAIC硬件配置建议.md (2532行)",
+      "status": "completed"
+    },
+    {
+      "id": 17,
+      "content": "索引27: 汽车检测公司计量所发展策略.md (2485行)",
+      "status": "completed"
+    },
+    {
+      "id": 18,
+      "content": "索引28: 回避型伴侣的情感支持困境.md (2474行)",
+      "status": "completed"
+    },
+    {
+      "id": 19,
+      "content": "索引29: 解决模型下载Python版本问题.md (2302行)",
+      "status": "pending"
+    },
+    {
+      "id": 20,
+      "content": "索引30: 数学分析初等数学复习资料.md (2015行)",
+      "status": "pending"
+    }
+  ],
+  "completion_pct": 90,
+  "in_progress_id": null
+}

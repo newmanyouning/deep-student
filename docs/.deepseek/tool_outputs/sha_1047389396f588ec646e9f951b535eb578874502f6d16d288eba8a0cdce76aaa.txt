@@ -1,0 +1,24 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\修复PyInstaller打包命令.md" total_lines="496" shown_lines="1-20" truncated="true" next_start_line="21">
+     1│ # 修复PyInstaller打包命令
+     2│ 对话ID: 618bce38-2d18-4178-8bda-d0515ca69f39
+     3│ 创建时间: 2026-04-08T10:43:27.181000+08:00
+     4│ 更新时间: 2026-04-08T10:56:15.917000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ python -m PyInstaller --onefile --windowed --name ExcelAnalyzer --add-data src;src --add-data config.json;. --add-data template.xls;. --add-data test_image.png;. --hidden-import PyQt5 --hidden-import PyQt5.QtCore --hidden-import PyQt5.QtGui --hidden-import PyQt5.QtWidgets --hidden-import openpyxl --hidden-import pandas --hidden-import numpy --hidden-import xlwings --hidden-import xlwings.utils --hidden-import xlwings._xlwindows --hidden-import xlrd --hidden-import PIL --hidden-import PIL.Image --hidden-import pywintypes --hidden-import win32api --hidden-import win32com --hidden-import win32com.gen_py --hidden-import win32com.client --hidden-import win32com.server --hidden-import win32timezone --hidden-import pythoncom --hidden-import networkx --hidden-import networkx.algorithms --hidden-import json --hidden-import logging --hidden-import threading --hidden-import tempfile --collect-all PyQt5 --collect-all PIL --collect-all xlwings --collect-all win32com --exclude-module matplotlib --exclude-module scipy --runtime-tmpdir . --add-data xlwings_runtime_hook.py;. --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pywintypes313.dll;pywin32_system32" --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pythoncom313.dll;pywin32_system32" main.py
+     9│ usage: pyinstaller [-h] [-v] [-D] [-F] [--specpath DIR] [-n NAME] [--contents-directory CONTENTS_DIRECTORY]
+    10│                    [--add-data SOURCE:DEST] [--add-binary SOURCE:DEST] [-p DIR] [--hidden-import MODULENAME]
+    11│                    [--collect-submodules MODULENAME] [--collect-data MODULENAME] [--collect-binaries MODULENAME]
+    12│                    [--collect-all MODULENAME] [--copy-metadata PACKAGENAME] [--recursive-copy-metadata PACKAGENAME]
+    13│                    [--additional-hooks-dir HOOKSPATH] [--runtime-hook RUNTIME_HOOKS] [--exclude-module EXCLUDES]
+    14│                    [--splash IMAGE_FILE] [-d {all,imports,bootloader,noarchive}] [--optimize LEVEL]
+    15│                    [--python-option PYTHON_OPTION] [-s] [--noupx] [--upx-exclude FILE] [-c] [-w]
+    16│                    [--hide-console {minimize-early,minimize-late,hide-late,hide-early}]
+    17│                    [-i <FILE.ico or FILE.exe,ID or FILE.icns or Image or "NONE">] [--disable-windowed-traceback]
+    18│                    [--version-file FILE] [--manifest <FILE or XML>] [-m <FILE or XML>] [-r RESOURCE] [--uac-admin]
+    19│                    [--uac-uiaccess] [--argv-emulation] [--osx-bundle-identifier BUNDLE_IDENTIFIER]
+    20│                    [--target-architecture ARCH] [--codesign-identity IDENTITY] [--osx-entitlements-file FILENAME]
+
+[TRUNCATED] Showing lines 1-20 of 496. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\修复PyInstaller打包命令.md" start_line=21 max_lines=20
+</file>

@@ -1,0 +1,48 @@
+<file path="knowledge_cache.md" total_lines="1515" shown_lines="1470-1515" truncated="false">
+  1470│   - 来源文件：Claude Code版本对比表格.md
+  1471│   - 核心解释：v2.1.0引入Skills系统和子Agent执行，包含1096次代码提交。v2.1.75(3月13日)面向Max/Team/Enterprise开放Opus 4.6的1M上下文窗口。v2.1.90(4月1日)引入NO_FLICKER无闪烁渲染引擎。v2.1.116修复所有导致"降智"的漏洞。
+  1472│ 
+  1473│ - **[cc-mini工具调用参数缺失错误排查]** — 检查工具调用格式匹配、参数解析逻辑、依赖版本兼容性。
+  1474│   - 来源文件：cc-mini工具调用错误解决.md
+  1475│   - 核心解释：FileWriteTool.execute() missing required arguments错误的诊断命令：find . -type f -name "*.py" 获取项目结构、grep -r "FileWriteTool" 定位调用点、在虚拟环境中重装依赖。问题核心可能是工具调用的函数签名或参数解析方式变化。
+  1476│ 
+  1477│ - **[大模型API中转站（AI Gateway）]** — 统一格式接入多模型、配额管理控制成本、负载均衡+故障切换、统一审计。
+  1478│   - 来源文件：大模型API中转站概念与管理解析.md
+  1479│   - 核心解释：8个主流开源方案：New-API/One API适合商业化API分发（多租户/兑换码）；LiteLLM支持100+提供商标准化为OpenAI格式；APIPark面向企业API治理；Vercel AI Gateway云服务零加价。最大风险是第三方中转站可监听篡改请求，推荐自建。
+  1480│ 
+  1481│ - **[PaddleOCR模型更换六步法]** — 定位调用点→检查配置→修改路径→下载新模型→更新字典→测试验证。
+  1482│   - 来源文件：更换PaddleOCR模型指导.md
+  1483│   - 核心解释：全局搜索 PaddleOCR( 找到初始化代码，检查config.yaml或settings.py中det_model_dir/rec_model_dir/cls_model_dir参数。下载新模型后务必同步更新rec_char_dict_path字典文件（否则字符错乱）。建议手动指定路径而非依赖默认。
+  1484│ 
+  1485│ - **[国内编程模型上下文窗口对比表]** — 第一梯队Qwen3.6-Plus和DeepSeek达1M Token，豆包Seed-Code和Kimi K2为256K。
+  1486│   - 来源文件：国内编程模型上下文窗口对比.md
+  1487│   - 核心解释：智谱GLM系列128K-200K，百度文心快码128K-200K，CodeGeeX 128K。API错误码400提示"maximum context length is 131072 tokens"即128K。completion指模型输出token数，缩短可降低延迟但可能截断回答。
+  1488│ 
+  1489│ - **[Git克隆HTTP2帧层错误与curl 18 EOF解决方案]** — 核心命令 git config --global http.version HTTP/1.1 临时禁用HTTP2。
+  1490│   - 来源文件：解决Git克隆HTTP2错误.md
+  1491│   - 核心解释：大仓库克隆中断时增加 git config --global http.postBuffer 524288000（500MB），配合 --depth 1 浅克隆。其他方案：brew upgrade git、取消代理设置、改用SSH协议。
+  1492│ 
+  1493│ - **[MCP（模型上下文协议）架构与调用方式]** — 基于客户端-服务器模型的开放标准，使用JSON-RPC通信。
+  1494│   - 来源文件：MCP含义解释.md
+  1495│   - 核心解释：三组件：Host（如Claude Desktop）管理客户端和安全策略、Client一对一连接服务器、Server提供工具/资源/提示词等原语。用户通过JSON配置mcpServers添加服务；开发者用FastMCP快速创建服务器。相当于给AI大脑装上"USB接口"。
+  1496│ 
+  1497│ - **[编译器（笔译）与解释器（口译）的区别联系]** — 编译器一次性翻译完生成独立可执行文件；解释器逐句翻译并立即执行。
+  1498│   - 来源文件：编译器和解释器区别联系.md
+  1499│   - 核心解释：编译器执行快但平台依赖强，解释器跨平台好但每次需解释器在场。现代语言界限模糊：Java先编译为字节码再由JVM解释+JIT即时编译；PyInstaller可打包Python为exe但底层仍含解释器。C程序编译后无需编译器运行，Python程序始终需解释器。
+  1500│ 
+  1501│ - **[CrystalDiskInfo VS2026编译必备组件]** — 三个工作负载+两个关键单个组件。
+  1502│   - 来源文件：CrystalDiskInfo VS2026 编译组件指南.md
+  1503│   - 核心解释：①C++桌面开发；②Windows应用程序开发（原UWP开发，需在可选列表中勾选"通用Windows平台工具"）；③.NET桌面开发；④C++ ATL for latest v143和MFC for latest v143（x86与x64，最易遗漏/编译失败最常见原因）。
+  1504│ 
+  1505│ - **[cc-mini ReadTimeout错误排查]** — 错误源于httpx/httpcore读取LLM API流式响应超时，6步解决法。
+  1506│   - 来源文件：处理cc-mini超时错误.md
+  1507│   - 核心解释：①curl -v测试API连通性；②增加--timeout参数或配置request_timeout；③减小prompt长度和max_tokens；④关闭流式响应；⑤升级httpx和openai依赖；⑥检查HTTP_PROXY/HTTPS_PROXY环境变量和代理稳定性。
+  1508│ 
+  1509│ - **[WPS加载项AI开发环境准备清单]** — 基础环境+AI集成四种方式+辅助工具。
+  1510│   - 来源文件：WPS加载项AI开发环境准备.md
+  1511│   - 核心解释：基础环境需Node.js v20 LTS+VS Code+wpsjs脚手架。AI集成四种路径：调用云端API（需API Key+代理解决跨域）、本地部署开源模型（RTX 3060+Docker/FastAPI）、WPS AI官方接口（需申请权限）、COM加载项集成第三方。
+  1512│ 
+  1513│ - **[树莓派Linux Java应用图标主题集成]** — 7种方法从系统级到源码级解决Java Swing图标显示问题。
+  1514│   - 来源文件：树莓派Logisim图标显示问题解决方案.md
+  1515│   - 核心解释：方法包括①gtk-update-icon-cache更新图标缓存；②设置GTK_ICON_THEME/Yaru环境变量；③创建gtkrc配置文件指定图标主题；④_JAVA_OPTIONS='-Dswing.defaultlaf=com.sun.java.swing.plaf.gtk.GTKLookAndFeel'强制Swing使用GTK主题；⑤源码级替换图标资源后ant clean+ant重编译。
+</file>

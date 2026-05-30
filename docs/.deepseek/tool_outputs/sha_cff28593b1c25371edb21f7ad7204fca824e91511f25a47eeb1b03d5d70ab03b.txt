@@ -1,0 +1,54 @@
+<file path="09_硬件与工程/程序员推荐无线蓝牙双模机械键盘.md" total_lines="106" shown_lines="1-50" truncated="true" next_start_line="51">
+     1│ # 程序员推荐无线蓝牙双模机械键盘
+     2│ 对话ID: 988927d9-2cb5-4f2f-9366-b5358e5175ea
+     3│ 创建时间: 2026-01-26T19:16:09.040000+08:00
+     4│ 更新时间: 2026-01-26T19:30:37.189000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ 机械键盘有什么品牌的推荐吗？要求键盘带有小键盘，有无线接收器和蓝牙双模工作，是程序员
+     9│ 
+    10│ ---
+    11│ 
+    12│ ## ❓ unknown
+    13│ 
+    14│ {'type': 'SEARCH', 'results': [{'url': 'https://g.pconline.com.cn/best/youhui/15420990.html?ad=8967', 'title': '罗技（Logitech）大师系列 MX MECHANICAL高性能低噪无线双模迷你机械键盘 智能键盘 84键 段落青轴', 'snippet': '罗技（Logitech）大师系列 MX ... 智能键盘 84键 段落青轴 ... 键盘搭载疾速触发的机械矮轴，有青、红、茶三种轴体可供选择，拥有110键全尺寸和84键紧凑尺寸两种尺寸可选。弧面双色键帽舒适贴合指腹...', 'cite_index': 1, 'published_at': 1743868800.0, 'site_name': 'Pconline', 'site_icon': 'https://cdn.deepseek.com/site-icons/pconline.com.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://mgoods.taobao.com/t/jianpan_1910/2b8e14f0431aaa9549179fd5bd30444f.html', 'title': '25年必买！Keychron K10V2双模无线机械键盘避坑指南｜Win/Mac办公游戏全能王', 'snippet': '25年最值得入手的全场景机械键盘——Keychron K10V2，支持蓝牙5.3+2.4G双模连接，104键布局带透光字符，RGB背光可调，兼容Win/Mac系统。适合程序员、设计师、电竞玩家及多设备用户，尤其适合追求高效与颜值并存的轻办公人群。避坑提示...', 'cite_index': 2, 'published_at': 1756742400.0, 'site_name': 'Taobao', 'site_icon': 'https://cdn.deepseek.com/site-icons/taobao.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.itheat.com/activity/forum.php?mod=viewthread&tid=13351964', 'title': '雷柏V700DIY-98体验：98配列，超长续航，移动办公新选择', 'snippet': '今天小编就给大家带来雷柏一款新品——雷柏V700DIY-98客制化多模无线机械键盘，以其独特的定制性和出色的续航能力，带来不一样的办公体验。具体体验如何，让我们一起开箱看看吧！', 'cite_index': 3, 'published_at': 1752508800.0, 'site_name': '热点科技', 'site_icon': 'https://cdn.deepseek.com/site-icons/itheat.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://m.pcpop.com/article_6909867.html', 'title': '游戏和办公兼顾的机械键盘怎么选？日常游戏与程序员敲代码，一站式搞定双场景需求 游戏办公两不误！', 'snippet': '产品介绍：罗技K868，作为灵砚系列的旗舰款，以其全能的表现征服了无数用户的心。这款键盘采用了先进的Gasket结构搭配线性轴体，每一次敲击都如丝绸般流畅，无论是长时间码字还是激烈游戏对战，都能带来极致的手感体验。三模连接设计（有线...', 'cite_index': 4, 'published_at': 1765641600.0, 'site_name': '泡泡网', 'site_icon': 'https://cdn.deepseek.com/site-icons/pcpop.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://zc.mianyang.cn/zfcg/mallback//Product/Detail/400652?isSelf=1', 'title': '斐尔可（FILCO）FFBTR63MRL/ESG 「MINILA-R」 63键双模迷你啦 机械键盘 天空灰 红轴', 'snippet': '★同时支持蓝牙连接和USB连接的机械键盘。 ★蓝牙5.1，有效提高通信速度和稳定性，并降低功耗。 ★球形平面设计配备中型键帽 ... 指尖轻轻触碰，随即激发。高速键入...', 'cite_index': 5, 'published_at': None, 'site_name': 'Mianyang', 'site_icon': 'https://cdn.deepseek.com/site-icons/mianyang.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.jnnews.tv/shangxun/2025/12-15/9k69aV6D.html', 'title': '2025客制化机械键盘有哪些？哪个品牌比较好？罗技K868办公游戏全能之选', 'snippet': '一、罗技K868：旗舰级三模机械键盘 作为罗技2025年旗舰机型，K868延续了G系列的电竞基因，又强化了办公场景适配。采用航空级铝合金边框...', 'cite_index': 6, 'published_at': 1765728000.0, 'site_name': '济宁新闻网', 'site_icon': 'https://cdn.deepseek.com/site-icons/jnnews.tv', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.bilibili.com/opus/1095717608319090690', 'title': '雷柏V700DIY-98无线三模机械键盘评测：线性手感与静音输入的结合', 'snippet': '机械键盘采用97键位布局设计，相较于常见的104标准布局，仅压缩了编辑控制键区，完整保留了包括F1~F12功能键区与数字小键盘等区域，右上角还有三个按键，键位分布合理完全不会对日常办公游戏构成任何影响，同时有效减少了键盘的宽度，节省不少桌面空间。', 'cite_index': 7, 'published_at': 1753891200.0, 'site_name': '哔哩哔哩', 'site_icon': 'https://cdn.deepseek.com/site-icons/bilibili.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://m.pchome.net/article/content-2192190-app.html', 'title': 'NuPhy推出Node100机械键盘，分双版本全配列版本可选', 'snippet': 'Node100外壳采用ABS工程塑料，搭载96%配列的1800紧凑布局，既能保留完整数字键盘，又缩小横向体积，特别适合需要频繁用小键盘录入数据的用户。同时它还加入交互创新设计...', 'cite_index': 8, 'published_at': 1766678400.0, 'site_name': 'PCHOME', 'site_icon': 'https://cdn.deepseek.com/site-icons/pchome.net', 'query_indexes': [0], 'is_hidden': False}]}
+    15│ 好的，用户是程序员，需要带小键盘的无线/蓝牙双模机械键盘，这确实是个很实用的需求。我需要从这些搜索结果中筛选出完全符合用户要求的型号，并特别关注对程序员友好的设计特点。
+    16│ 
+    17│ 根据我看到的搜索结果，能同时满足小键盘和无线/蓝牙双模这两个核心条件的键盘其实不多。罗技MX Mechanical系列[citation:1]和Keychron K10V2[citation:2]都符合要求，其中罗技有110键全尺寸版本，Keychron是104键标准布局。它们都支持蓝牙和接收器双模连接，这对于程序员在多设备间切换会很方便。
+    18│ 
+    19│ 雷柏V700DIY-98[citation:3]虽然采用98配列并保留数字区，但它支持的是三模连接（有线、2.4G、蓝牙），不完全符合用户明确要求的双模。不过考虑到程序员使用场景，有线模式作为备用可能也有价值，我可以把它作为备选提及。
+    20│ 
+    21│ 搜索结果中还有一些明显不符合条件的产品需要排除，比如斐尔可MINILA-R只有63键[citation:5]，完全没有小键盘；罗技K868和K848[citation:4]虽然优秀但不完全符合双模要求；NuPhy Node100[citation:8]信息不够详细。
+    22│ 
+    23│ 考虑到用户可能在手机端阅读，为了获得更好的浏览体验，这里将采用更清晰的非表格形式（如列表或整合摘要）来展示信息。同时我会重点比较这些键盘对程序员特别重要的方面，比如多设备切换、轴体选择、系统兼容性等。Keychron对Mac的兼容性和可编程性[citation:2]可能对程序员很有吸引力，而罗技的智能背光和Flow技术[citation:1]则能提升多设备工作效率。
+    24│ 根据你的需求，我找到了几款同时满足 **“带数字小键盘”** 和 **“无线接收器+蓝牙双模”** 这两个核心条件的机械键盘，它们都很适合程序员使用。
+    25│ 
+    26│ 下面是这几款键盘的关键信息对比：
+    27│ 
+    28│ **1. 罗技 MX Mechanical**
+    29│ *   **配列/尺寸**：110键 全尺寸[citation:1]
+    30│ *   **连接模式**：蓝牙 + Logi Bolt接收器（双模）[citation:1]
+    31│ *   **关键特点**：智能背光，支持罗技Flow跨设备控制，多设备一键切换，矮轴设计[citation:1]
+    32│ *   **参考价格**：699元起[citation:1]
+    33│ 
+    34│ **2. Keychron K10 V2**
+    35│ *   **配列/尺寸**：104键 全尺寸[citation:2]
+    36│ *   **连接模式**：蓝牙5.3 + 2.4G接收器（双模）[citation:2]
+    37│ *   **关键特点**：原生兼容Win/Mac，支持QMK改键，全键热插拔，RGB背光[citation:2]
+    38│ *   **参考价格**：849元起[citation:2]
+    39│ 
+    40│ **3. 雷柏 V700DIY-98**
+    41│ *   **配列/尺寸**：98键 紧凑布局[citation:3]
+    42│ *   **连接模式**：有线 + 2.4G + 蓝牙5.0（三模）[citation:3]
+    43│ *   **关键特点**：客制化热插拔，Gasket结构静音，超长续航（关灯约800小时）[citation:3]
+    44│ *   **参考价格**：需查询电商平台
+    45│ 
+    46│ ### 🤔 如何选择适合你的键盘
+    47│ 
+    48│ 你可以根据自己的侧重点来做决定：
+    49│ 
+    50│ *   **追求高效多设备办公与智能体验**：优先考虑 **罗技 MX Mechanical**。它的**Logi Flow技术**能让你的键鼠在多个电脑间无缝切换、跨屏操作[citation:1]，这对需要同时操作多台电脑（如同时连接个人电脑和公司笔记本）的程序员来说效率提升明显。其**智能背光**和**矮轴设计**也兼顾了实用与便携[citation:1]。
+
+[TRUNCATED] Showing lines 1-50 of 106. To continue, call read_file with path="09_硬件与工程/程序员推荐无线蓝牙双模机械键盘.md" start_line=51 max_lines=50
+</file>

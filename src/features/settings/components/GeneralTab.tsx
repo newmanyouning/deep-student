@@ -20,6 +20,7 @@ import { debugMasterSwitch } from '@/debug-panel/debugMasterSwitch';
 import { isAndroid } from '@/utils/platform';
 import { getDefaultConfig, configFromPreset, type CopyFilterConfig } from '@/features/chat/hooks/useDevShowRawRequest';
 import type { VoiceInputAssignedModel } from '@/voice-input/types';
+import { settingsApi } from '@/api/settingsApi';
 
 const SENTRY_CONSENT_KEY = 'sentry_error_reporting_enabled';
 
@@ -223,7 +224,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                       setTopbarTopMargin(String(platformDefault));
                       return;
                     }
-                    await invoke('save_setting', { key: 'topbar.top_margin', value: String(numValue) });
+                    await settingsApi.save('topbar.top_margin', String(numValue) );
                     setTopbarTopMargin(String(numValue));
                     showGlobalNotification('success', t('settings:save_success'));
                     try {
@@ -326,7 +327,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               setShowRawRequest(newValue);
               if (!invoke) return;
               try {
-                await invoke('save_setting', { key: 'dev.show_raw_request', value: String(newValue) });
+                await settingsApi.save('dev.show_raw_request', String(newValue) );
                 showGlobalNotification('success', t('settings:save_notifications.saved', '已保存'));
                 try {
                   window.dispatchEvent(new CustomEvent('systemSettingsChanged', { detail: { showRawRequest: newValue } }));

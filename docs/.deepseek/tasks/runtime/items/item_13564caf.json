@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "id": "item_13564caf",
+  "turn_id": "turn_d915bc2e",
+  "kind": "command_execution",
+  "status": "failed",
+  "summary": "exec_shell failed: Failed to locate tool: Tool 'exec_shell' is not available in the current tool catalog. Verify mode/feature flags, or use tool_search_tool_bm25 with a short query.",
+  "detail": "Failed to locate tool: Tool 'exec_shell' is not available in the current tool catalog. Verify mode/feature flags, or use tool_search_tool_bm25 with a short query.",
+  "artifact_refs": [],
+  "started_at": "2026-05-17T09:46:21.580246500Z",
+  "ended_at": "2026-05-17T09:46:21.588344400Z"
+}

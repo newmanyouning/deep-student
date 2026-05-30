@@ -1,0 +1,154 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" total_lines="8287" shown_lines="5500-5649" truncated="true" next_start_line="5650">
+  5500│     #     "CC_MINI_MAX_TOKENS": "8192"
+  5501│     # })
+  5502│ 
+  5503│     try:
+  5504│         result = subprocess.run(
+  5505│             cmd,
+  5506│             capture_output=True,
+  5507│             text=True,
+  5508│             timeout=120,
+  5509│             env=env,
+  5510│             cwd=str(Path.home() / ".cc-mini")   # 建议切换到安装目录
+  5511│         )
+  5512│         if result.returncode != 0:
+  5513│             error_msg = result.stderr.strip() if result.stderr else "未知错误"
+  5514│             return f"cc-mini 执行出错 (退出码 {result.returncode}): {error_msg}"
+  5515│         output = result.stdout.strip()
+  5516│         return output if output else "(无输出)"
+  5517│     except subprocess.TimeoutExpired:
+  5518│         return "请求超时（超过120秒），请稍后重试"
+  5519│     except Exception as e:
+  5520│         return f"执行失败: {str(e)}"
+  5521│ ```
+  5522│ 
+  5523│ ---
+  5524│ 
+  5525│ ## ✅ 总结你需要保留和修改的地方
+  5526│ 
+  5527│ | 部分 | 操作 |
+  5528│ |------|------|
+  5529│ | `find_cc_mini()` 调用及外围 `try` | **保留不变** |
+  5530│ | 构建 `cmd` 列表 | **增加** `"--config", str(config_path)` |
+  5531│ | `subprocess.run` 的 `cwd` 参数 | 建议改为 `str(Path.home() / ".cc-mini")` |
+  5532│ | 环境变量 `env` | 保留从 `os.environ.copy()`，可以视情况额外添加 |
+  5533│ 
+  5534│ 这样既保留了原有的错误处理逻辑，又能确保 `cc-mini` 每次都使用你正确的配置文件，从而解决 VSCode 中调用时环境不一致的问题。
+  5535│ 
+  5536│ 如果你按照这个修改后仍然遇到问题，请把 API 服务器终端的完整输出（包括 `cc-mini` 的错误信息）发给我。
+  5537│ 
+  5538│ ---
+  5539│ 
+  5540│ ## ❓ unknown
+  5541│ 
+  5542│ (.venv) mac@macdeMac-mini cc-mini % python3 api_server.py               
+  5543│ INFO:     Will watch for changes in these directories: ['/Users/mac/cc-mini']
+  5544│ INFO:     Uvicorn running on http://127.0.0.1:8230 (Press CTRL+C to quit)
+  5545│ INFO:     Started reloader process [1367] using StatReload
+  5546│ INFO:     Started server process [1369]
+  5547│ INFO:     Waiting for application startup.
+  5548│ 
+  5549│ ==================================================
+  5550│ 🚀 cc-mini API 服务器已启动
+  5551│ ==================================================
+  5552│ 📡 服务地址: http://127.0.0.1:8230
+  5553│ 🔗 Claude API 端点: http://127.0.0.1:8230/v1/messages
+  5554│ ✅ 健康检查: http://127.0.0.1:8230/health
+  5555│ 
+  5556│ 按 Ctrl+C 停止服务器
+  5557│ ==================================================
+  5558│ 
+  5559│ INFO:     Application startup complete.
+  5560│ INFO:     127.0.0.1:49388 - "HEAD / HTTP/1.1" 404 Not Found
+  5561│ INFO:     127.0.0.1:49389 - "HEAD / HTTP/1.1" 404 Not Found
+  5562│ INFO:     127.0.0.1:49389 - "POST /v1/messages?beta=true HTTP/1.1" 500 Internal Server Error
+  5563│ ERROR:    Exception in ASGI application
+  5564│ Traceback (most recent call last):
+  5565│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+  5566│     result = await app(  # type: ignore[func-returns-value]
+  5567│              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5568│         self.scope, self.receive, self.send
+  5569│         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5570│     )
+  5571│     ^
+  5572│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+  5573│     return await self.app(scope, receive, send)
+  5574│            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5575│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/fastapi/applications.py", line 1163, in __call__
+  5576│     await super().__call__(scope, receive, send)
+  5577│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/applications.py", line 90, in __call__
+  5578│     await self.middleware_stack(scope, receive, send)
+  5579│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+  5580│     raise exc
+  5581│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+  5582│     await self.app(scope, receive, _send)
+  5583│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+  5584│     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  5585│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+  5586│     raise exc
+  5587│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+  5588│     await app(scope, receive, sender)
+  5589│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+  5590│     await self.app(scope, receive, send)
+  5591│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/routing.py", line 660, in __call__
+  5592│     await self.middleware_stack(scope, receive, send)
+  5593│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/routing.py", line 680, in app
+  5594│     await route.handle(scope, receive, send)
+  5595│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/routing.py", line 276, in handle
+  5596│     await self.app(scope, receive, send)
+  5597│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 134, in app
+  5598│     await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  5599│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+  5600│     raise exc
+  5601│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+  5602│     await app(scope, receive, sender)
+  5603│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 120, in app
+  5604│     response = await f(request)
+  5605│                ^^^^^^^^^^^^^^^^
+  5606│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 674, in app
+  5607│     raw_response = await run_endpoint_function(
+  5608│                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5609│     ...<3 lines>...
+  5610│     )
+  5611│     ^
+  5612│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/fastapi/routing.py", line 328, in run_endpoint_function
+  5613│     return await dependant.call(**values)
+  5614│            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5615│   File "/Users/mac/cc-mini/api_server.py", line 197, in chat_completion
+  5616│     response_text = await run_cc_mini(request.model, user_prompt, system_prompt, request.max_tokens)
+  5617│                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5618│   File "/Users/mac/cc-mini/api_server.py", line 122, in run_cc_mini
+  5619│     "--config", str(config_path)            # ← 新增：强制使用配置文件
+  5620│                     ^^^^^^^^^^^
+  5621│ NameError: name 'config_path' is not defined
+  5622│ INFO:     127.0.0.1:49393 - "POST /v1/messages?beta=true HTTP/1.1" 500 Internal Server Error
+  5623│ ERROR:    Exception in ASGI application
+  5624│ Traceback (most recent call last):
+  5625│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/uvicorn/protocols/http/h11_impl.py", line 410, in run_asgi
+  5626│     result = await app(  # type: ignore[func-returns-value]
+  5627│              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5628│         self.scope, self.receive, self.send
+  5629│         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5630│     )
+  5631│     ^
+  5632│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/uvicorn/middleware/proxy_headers.py", line 60, in __call__
+  5633│     return await self.app(scope, receive, send)
+  5634│            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  5635│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/fastapi/applications.py", line 1163, in __call__
+  5636│     await super().__call__(scope, receive, send)
+  5637│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/applications.py", line 90, in __call__
+  5638│     await self.middleware_stack(scope, receive, send)
+  5639│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 186, in __call__
+  5640│     raise exc
+  5641│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/middleware/errors.py", line 164, in __call__
+  5642│     await self.app(scope, receive, _send)
+  5643│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/middleware/exceptions.py", line 63, in __call__
+  5644│     await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  5645│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 53, in wrapped_app
+  5646│     raise exc
+  5647│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/starlette/_exception_handler.py", line 42, in wrapped_app
+  5648│     await app(scope, receive, sender)
+  5649│   File "/Users/mac/.cc-mini/.venv/lib/python3.13/site-packages/fastapi/middleware/asyncexitstack.py", line 18, in __call__
+
+[TRUNCATED] Showing lines 5500-5649 of 8287. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" start_line=5650 max_lines=150
+</file>

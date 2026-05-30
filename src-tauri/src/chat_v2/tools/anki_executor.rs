@@ -25,7 +25,7 @@ use tokio::sync::oneshot;
 use tokio::time::{timeout, Duration};
 
 // ★ 2026-01 改造：tool_ids 不再需要，Anki 工具名通过前缀匹配识别
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolExecutor, ToolError, ToolResult, ToolSensitivity};
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
 
@@ -91,7 +91,7 @@ impl ToolExecutor for AnkiToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
 
         log::debug!(
@@ -133,7 +133,7 @@ impl AnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         // 从参数中提取 documentId
         let document_id = call
             .arguments
@@ -182,7 +182,7 @@ impl AnkiToolExecutor {
 
         let tasks = db
             .get_tasks_for_document(&document_id)
-            .map_err(|e| format!("查询文档任务失败: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("查询文档任务失败: {}", e)))?;
         let total = tasks.len() as u32;
         let mut counts = serde_json::Map::new();
         let mut completed = 0u32;
@@ -266,7 +266,7 @@ impl AnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         #[derive(Debug, Deserialize)]
         #[serde(rename_all = "camelCase")]
         struct AnkiToolResultPayload {

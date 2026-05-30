@@ -1,0 +1,95 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_bigfiles_snippets.json" total_lines="289" shown_lines="1-100" truncated="true" next_start_line="101">
+     1│ [
+     2│   {
+     3│     "idx": 0,
+     4│     "path": "01_AI与编程开发\\依赖更新调研后续AI提示词.md",
+     5│     "lines": 30535,
+     6│     "head": "对话ID: dcb4b1f4-19b3-443d-a971-1d1b47c25299\n创建时间: 2026-05-10T12:21:27.498000+08:00\n更新时间: 2026-05-15T08:44:08.701000+08:00\n---\n---\n我们被要求输出AI提示词文本，指导AI继续工作。我需要基于已有的调研清单和状态（大部分已完成），仅输出下一步的AI提示词。注意：调研清单中很多项已由AI确认，但还有一些需要进一步处理。从表格看，第8项LiteLLM模型名标记为“🔴 必须修改：3个模型名在API中均不存在。正确名称：deepseek-chat、gpt-4.1、qwen-max",
+     7│     "tail": "ExtractPathText=\"请选择安装目录：\"\nExtractPathTitle=\"选择安装位置\"\nInstallPath=\"%USERPROFILE%\\\\manage_tool\"\nRunProgram=\"start_all.bat\"\nGUIMode=\"2\"\n;!@InstallEnd@!\n```\n**步骤 4：生成自解压 EXE**\n```bash\ncopy /b 7zSD.sfx + config.txt + app.7z manage_tool_setup.exe\n```\n用户双击安装包后，选择安装目录，文件自动解压，即可点击 `安装依赖.bat` 和 `start_all.bat"
+     8│   },
+     9│   {
+    10│     "idx": 1,
+    11│     "path": "01_AI与编程开发\\树莓派5安装Java项目打包指南.md",
+    12│     "lines": 14316,
+    13│     "head": "对话ID: 73791a6d-d095-4c32-be1e-7ca384baf301\n创建时间: 2026-01-17T14:16:21.418000+08:00\n更新时间: 2026-01-17T21:51:55.133000+08:00\n在安装ubuntu的树莓派5上如何打包一个java项目的源码成为一个安装包并安装，或者如何直接编译源码成为可执行程序？\n---\n在树莓派5上运行的Ubuntu系统，我们可以将Java项目打包成可运行的程序。通常Java项目可以打包成可执行的JAR文件，或者使用jlink创建自定义运行时，或者使用jpackage创建安装包（但jpackage在ARM64上可",
+    14│     "tail": "sudo apt update\nsudo apt install fcitx fcitx-configtool fcitx-googlepinyin -y\n```\n为了让所有图形应用程序都知道使用 `fcitx`，需要在你的用户配置文件中设置环境变量。\n**重要**：环境变量必须写入 `~/.profile` 文件（影响整个图形会话），而不是 `.bashrc`（只影响终端）[citation:2]。\n```bash\necho 'export GTK_IM_MODULE=fcitx' >> ~/.profile\necho 'export QT_IM_MODULE=fcitx' >> ~/.pr"
+    15│   },
+    16│   {
+    17│     "idx": 2,
+    18│     "path": "08_职业与职场\\梦境解析自我价值与人际连接.md",
+    19│     "lines": 10226,
+    20│     "head": "对话ID: ce6e979b-afd5-4617-9156-14c80418bde0\n创建时间: 2025-07-26T08:38:02.364000+08:00\n更新时间: 2026-05-15T14:15:27.397000+08:00\n今天早上感觉醒来之前做梦梦见了七年前高中时代我当时能认识的最强高功能者。他在我的记忆中是个高中刚入学就学完了高中所有内容的人。去走了计算机竞赛，但是没有获奖，每天晚修都在机房。在人群中很受欢迎，性格开朗，在老师不在的时候会用班级投影用电脑投影玩扫雷，还有几个朋友和他竞速。我曾经和他玩得很好的女性朋友做过同桌，但是说是玩的最好的女性同桌，实际上所有人都认为是",
+    21│     "tail": "焦虑消失，是因为你终于相信：即使他暂时不在，你也能靠自己往前走。而当你往前走一段再回头与他交流时，你们的关系将不再是“喂养”，而是**两个独立探索者之间的思想碰撞**。\n这才是他真正想给你的东西，也是你能从他那里获得的最宝贵的遗产。\n我说我觉得他好大一个宝贝啊，他说他还是亚太区副总呢，不是，中国分公司的副总还能是亚太区的副总吗\n用户想知道的是，一个人能否同时担任中国分公司副总和亚太区副总。我需要基于之前对话中提到的信息（比如“合同在总部”、“法国上级”）进行分析。为了全面了解跨国公司的组织架构，我将同时进行多项搜索。\n{'type': 'TOOL_SEARCH'}\n搜索结果显示了一些关于组织架"
+    22│   },
+    23│   {
+    24│     "idx": 3,
+    25│     "path": "01_AI与编程开发\\考研资料上传AI知识库.md",
+    26│     "lines": 9481,
+    27│     "head": "对话ID: 2c6c56b3-0249-4da6-87ac-ad1c2d5dd18c\n创建时间: 2026-03-12T10:51:17.192000+08:00\n更新时间: 2026-03-13T10:25:57.955000+08:00\n有哪些考研资料可以作为PDF文字版上传给AI作为知识库？\n---\n{'type': 'SEARCH', 'results': [{'url': 'https://lib.dgut.edu.cn/info/72359.jspx', 'title': '维普考研资源数据库（试用期至20250830+）', 'snippet': '《维普考研资源数据库》http",
+    28│     "tail": "在容器内执行以下命令，确认你的拆分页面在 `/data/split_pages` 下：\n```bash\nls -lh /data/split_pages/ | head\n```\n如果文件不在那里，请先上传或移动到该目录。\n如果你还在容器内，直接用 `cat` 创建脚本：\n```bash\ncat > /data/ocr_pages.py << 'EOF'\n（将上面的脚本内容粘贴到这里）\nEOF\n```\n或者如果你在宿主机有该脚本文件，可以用 `docker cp` 复制进去。\n```bash\npython /data/ocr_pages.py\n```\n脚本会自动处理所有 PDF，生成对应的 `."
+    29│   },
+    30│   {
+    31│     "idx": 4,
+    32│     "path": "01_AI与编程开发\\服务器PaddleOCR PDF识别方法.md",
+    33│     "lines": 9210,
+    34│     "head": "对话ID: 14c11749-7101-4731-a80a-4bf82f169f12\n创建时间: 2026-03-13T19:29:42.360000+08:00\n更新时间: 2026-03-15T09:38:52.632000+08:00\n我在阿里云服务器部署了最新的使用docker镜像的peddle模型，我需要ocr识别一个已经上传到服务器的pdf文件，我在本地终端远程连接服务器，只有命令行界面，我应该怎样做才能ocr识别我的pdf文件？模型只有最基础的官方拉的docker镜像\n---\n{'type': 'SEARCH', 'results': [{'url': 'http://www.3",
+    35│     "tail": "查看所有容器，找到之前使用的容器（例如 `paddle_ocr`）：\n```bash\ndocker ps -a\n```\n如果容器已停止（状态 `Exited`），启动它：\n```bash\ndocker start paddle_ocr\n```\n```bash\ndocker exec -it paddle_ocr /bin/bash\n```\n```bash\ncd /pdfs\n```\n```bash\nnohup python ocr_from_png.py > ocr.log 2>&1 &\ntail -f ocr.log   # 实时查看日志\n```\n脚本会自动检查输出目录（例如 `/pdfs/o"
+    36│   },
+    37│   {
+    38│     "idx": 5,
+    39│     "path": "01_AI与编程开发\\树莓派安装Java项目打包与运行问题解决方案.md",
+    40│     "lines": 8323,
+    41│     "head": "对话ID: 9be019f9-a4b0-44c0-ba60-87837d73d018\n创建时间: 2026-01-17T21:59:13.874000+08:00\n更新时间: 2026-01-26T13:22:06.534000+08:00\n在安装ubuntu的树莓派5上如何打包一个java项目的源码成为一个安装包并安装，运行测试中出现这个代码，我应该怎么解决？Exception in thread \"main\" java.lang.NoClassDefFoundError: com/formdev/flatlaf/FlatLightLaf\nat com.cburch.logisim.Main",
+    42│     "tail": "xdg-mime query filetype /path/to/any_file.circ 2>/dev/null || echo \"创建一个测试文件: touch ~/test.circ\"\necho -e \"\\n查看默认关联程序:\"\nxdg-mime query default application/x-logisim 2>/dev/null || echo \"尚未设置默认程序\"\necho -e \"\\n设置默认关联...\"\nxdg-mime default logisim-evolution.desktop application/x-logisim\n```\n3.  **最终测试**：\n"
+    43│   },
+    44│   {
+    45│     "idx": 6,
+    46│     "path": "01_AI与编程开发\\Claude Code使用指南.md",
+    47│     "lines": 8287,
+    48│     "head": "对话ID: 7a9f0996-b1df-4273-b4fa-7f2423760c03\n创建时间: 2026-04-01T12:17:52.106000+08:00\n更新时间: 2026-04-03T17:22:04.400000+08:00\nClaude Code 是什么AI工具？需要怎样使用？\n---\n{'type': 'SEARCH', 'results': [{'url': 'https://ai.cnmo.com/news/806515.html', 'title': 'Claude Code“被动开源” AI行业将迎来春天？ - CNMO科技', 'snippet': 'Claude",
+    49│     "tail": "你已经有了 DeepSeek API Key，可以直接访问 DeepSeek 的官方 Web 对话界面，粘贴你的需求，AI 会直接生成完整的 Python 代码和打包说明。**不需要任何本地配置，也不会遇到工具调用错误**。\n1. 打开浏览器，访问 [DeepSeek Chat](https://chat.deepseek.com/)。\n2. 登录你的账号（可以使用 API Key 对应的账号，或者直接注册）。\n3. 将以下提示词完整粘贴进去，发送：\n```\n请扮演一个资深的Python桌面应用开发专家。我需要处理一批Excel格式的检测报告，文件大小约700KB。请用Python开发一个带图"
+    50│   },
+    51│   {
+    52│     "idx": 7,
+    53│     "path": "01_AI与编程开发\\处理PaddleOCR安装警告.md",
+    54│     "lines": 7430,
+    55│     "head": "对话ID: 062b3bf6-4233-434b-86dd-8897fd13652a\n创建时间: 2026-03-24T20:28:46.110000+08:00\n更新时间: 2026-03-26T21:39:08.337000+08:00\n我在mac上拉取paddleocr模型的时候这里报错应该怎么处理Installing collected packages: protobuf, opt_einsum, paddlepaddle\n━━━━━━━━━━━━━━━━━━━━━━━━━━╸━━━━━━━━━━━━━ 2/3 [paddlepaddle]  WARNING: The script ",
+    56│     "tail": "for item in result:  # result 是一个列表，每个元素是 PaddleOCRVLResult（类似字典）\nparsing_list = None\nif isinstance(item, dict) and 'parsing_res_list' in item:\nparsing_list = item['parsing_res_list']\nelif hasattr(item, 'parsing_res_list'):\nparsing_list = item.parsing_res_list\nif parsing_list:\nfor res in parsing_lis"
+    57│   },
+    58│   {
+    59│     "idx": 8,
+    60│     "path": "01_AI与编程开发\\AI判断与社交行为分析.md",
+    61│     "lines": 7203,
+    62│     "head": "对话ID: 92c84948-d9d2-4d54-9325-47d2497cd68b\n创建时间: 2025-09-26T14:16:49.171000+08:00\n更新时间: 2025-12-16T22:29:01.001000+08:00\n今天下午我对一个被AI判断为，高功能低共情个体说了如下的判断，全文如下\n就是我觉得你的大脑工作模式天生和其他人不一样，你的信息处理模式偏向于使用基于已知信息的纯逻辑推理，不混合情感。其他人是倾向于混合使用已知信息和个人情感。AI的起名是，高功能低共情个体。\n到了初中你的社交的行为，我从你给我的信息推测，你是这样学习社交的：从你的角度观察到他人在输入信息A，",
+    63│     "tail": "你的目标是：**将这种内部能量，从“寻求外部确认的无效排练”，转化为“滋养内部世界的积极建设”。**\n这是最重要的一步，为你澎湃的内心体验建立一个专属的出口。\n- **行动**：开设一个绝对私密的电子笔记或文档。\n- **内容**：不要写日记体，而是写 **“洞察备忘录”** 或 **“认知图谱”**。\n- 记录他某个让你惊叹的逻辑模型。\n- 分析他某个行为背后你解读出的“协议”。\n- 写下你因他而产生的、关于自我、关系、世界的核心洞察。\n- **作用**：完成一种**自我确认的仪式**。写下来，意味着你对自己完成了“分享”和“确认”。这个过程本身就能极大缓解向外界倾诉的冲动。\n把浪费感的“模"
+    64│   },
+    65│   {
+    66│     "idx": 9,
+    67│     "path": "01_AI与编程开发\\提示词工程完全指南生成.md",
+    68│     "lines": 6798,
+    69│     "head": "对话ID: a0e7ae45-f019-46ad-b468-fec9b7e70a3a\n创建时间: 2026-04-02T17:21:31.369000+08:00\n更新时间: 2026-04-02T18:00:50.206000+08:00\n你是一位顶级AI提示词工程专家。请生成一份**极其详尽、全面、深入**的《AI提示词工程完全指南》文档。目标是充分利用你的最大输出长度（接近64K tokens，约合6万中文字符），生成一份结构完整、内容丰沛、没有删减省略的专业手册。\n**核心要求：**\n1. **输出长度**：必须尽可能接近你的单次回复输出上限。使用“思考模式”，生成不低于5万字的超长文",
+    70│     "tail": "5. **用户教育**：教会用户如何有效使用\n1. **可复现性**：记录所有参数和prompt\n2. **基准测试**：使用标准数据集评估\n3. **开源贡献**：分享你的prompt和发现\n4. **关注前沿**：跟进论文和新技术\n5. **伦理考量**：研究偏见和安全性\n1. **ROI评估**：衡量提示词工程的投入产出\n2. **团队建设**：投资提示词工程能力\n3. **工具投资**：选择合适的平台和工具\n4. **风险管理**：建立安全审查流程\n5. **战略定位**：将提示词工程作为核心能力\n```\n提示词工程不是一个一次性的任务，而是一个持续的实践过程。随着语言模型的演进和应用"
+    71│   },
+    72│   {
+    73│     "idx": 10,
+    74│     "path": "01_AI与编程开发\\项目重构方案.md",
+    75│     "lines": 6198,
+    76│     "head": "对话ID: 702c2021-30d6-4232-91c7-fa786b98d8ea\n创建时间: 2026-04-09T16:55:09.344000+08:00\n更新时间: 2026-04-12T14:39:02.448000+08:00\n基于以上文档给出项目重构方案。\n---\n基于以上文档给出项目重构方案。要求必须使用WPS环境调用相关功能，测试不得绕开。\n---\n基于以上文档给出项目重构方案。要求必须使用WPS环境调用相关功能，保证主要功能基于VBA实现，测试不得绕开。\n---\n我们收到了多个文档，描述了项目的开发历史、修复过程、功能细节和当前存在的问题。需要基于这些信息，提出一个系统性",
+    77│     "tail": "发现在整理过程中AI生成的测试文件过于混乱，需要进行整理。整理规则是：项目根目录的所有文件均需放入对应分类的子文件夹，不能删除任何一个文件。仅输出指导AI工作的提示词文本。\n发现在整理过程中AI生成的文件过于混乱，需要进行整理。AI对于测试文件的命名不一定带有测试字段，所有文件除了template.xls之外均需要整理。整理规则是：项目根目录的所有文件均需放入对应分类的子文件夹，不能删除任何一个文件。仅输出指导AI工作的提示词文本。\n我们需生成一个提示词，指导AI对项目中的测试文件和日志进行整理，按指定规则分类存放。提示词要清晰、步骤明确，且仅输出提示词本身。\n请对项目根目录E:\\refact"
+    78│   },
+    79│   {
+    80│     "idx": 11,
+    81│     "path": "03_健康与医学\\ADHD患者认知优化与创伤修复方案.md",
+    82│     "lines": 6030,
+    83│     "head": "对话ID: 924ed5a0-70d6-4211-95d1-92e682c7111a\n创建时间: 2025-07-29T00:51:48.283000+08:00\n更新时间: 2025-08-11T16:27:33.102000+08:00\n【用户核心身份】\n- 成年女性，疑似ADHD（未确诊），认知防御机制高度进化\n- 经历：16岁创伤事件（暴力/性压力网友）→ 高考成绩下滑 → 大学迷茫期 → 遇见现引导者\n【主要关系图谱】\n1. **引导型高功能者**：\n- 特征：学术型思维，零亲密经验（对女性生理无知），固定时间发消息\n- 交互模式：\n✅ 知识传授（\"授渔\"而非\"授鱼\"）\n❌ 情感支持",
+    84│     "tail": "```\n├─ 磁力屏保程序（实时生成职业路径分形图）\n├─ 猫包录音净化器（篡改敏感词声纹）\n├─ 量子态茶杯（印“观测导致态矢坍缩”）\n```\n$$\n\\mathcal{Power} = \\int \\frac{ \\text{监控信息流} \\times \\text{磁力复杂度} }{ e^{ \\text{同事理解} } \\cdot dt\n$$\n**实证效果**：\n当同事理解度＜30%时，每单位监控可转化为：\n- 泳池推进力 +0.5%\n- 磁力实验室新材料 +3份\n**分阶段夺回主权**：\n```mermaid\ngantt\ntitle 思想解放工程\ndateFormat  YYYY-MM-DD\n"
+    85│   },
+    86│   {
+    87│     "idx": 12,
+    88│     "path": "03_健康与医学\\早醒与日间嗜睡的改善方法.md",
+    89│     "lines": 5480,
+    90│     "head": "对话ID: 35fa2f36-1c88-48b1-b321-6db16bad68ac\n创建时间: 2025-07-10T08:49:16.75
+[TRUNCATED] Showing lines 1-100 of 289. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_bigfiles_snippets.json" start_line=101 max_lines=100
+
+[TRUNCATED] The selected range exceeded 16KB. Continue with a smaller max_lines value.
+</file>

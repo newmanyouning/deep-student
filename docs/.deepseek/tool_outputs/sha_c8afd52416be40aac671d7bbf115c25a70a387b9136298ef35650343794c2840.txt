@@ -1,0 +1,23 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_d84d0055 (explore) status=Completed
+  objective: 文件：01_AI与编程开发\C语言程序求两数和.md 提取知识点
+  result: The file has been fully read. Here is the structured report.
+
+### SUMMARY
+Read the file `01_AI与编程开发/C语言程序求两数和.md` (117 lines) and extracted all knowledge points. The file is a Q&A dialogue record covering a beginner C programming question: given code that assigns `a=10, b=20` then prints `printf("a+b=%d", a+b)`, the correct output is `a+b=30`. It also addresses a follow-up confusion about why some might see `a+b=10`, exploring three common C pitfalls that could yield that result.
+
+### EVIDENCE
+- `01_AI与编程开发/C语言程序求两数和.md:1-4` — Document header: title, dialogue ID `33bc49a6...`, creation time `2025-12-19T16:28:51`, update time `2025-12-19T16:30:27`.
+- `01_AI与编程开发/C语言程序求两数和.md:6-12` — The original question: C code `int a=0,b=0; a=10; b=20; printf("a+b=%d",a+b);` asks for execution result.
+- `01_AI与编程开发/C语言程序求两数和.md:16-35` — Detailed analysis concluding output is `a+b=30`. Explains `printf` format specifier `%d` is replaced by `a+b = 10+20 = 30`.
+- `01_AI与编程开发/C语言程序求两数和.md:39-41` — Follow-up question: "Why do some answers say `a+b=10`?"
+- `01_AI与编程开发/C语言程序求两数和.md:45-113` — Answer explaining three scenarios that could produce `a+b=10`: (1) variable re-assignment before `printf`, (2) variable shadowing via scope nesting ("就近原则"), (3) compound assignment or increment operators. Also provides a complete compilable code example and verification advice.
+
+**Extracted Knowledge Points:**
+
+1. **C语言变量声明与赋值** (`文件:8-12, 35`): 整型变量 `int a,b` 可在一行声明并初始化为0。变量可以被重新赋值（如 `a=10; b=20;`）。
+
+2. **printf格式输出与占位符`%d`** (`文件:24-26, 35`): `printf` 函数中 `%d` 是格式说明符（占位符），对应输出时被替换为整型表达式的值。`printf("a+b=%...
+  stats: steps=3, duration_ms=18720

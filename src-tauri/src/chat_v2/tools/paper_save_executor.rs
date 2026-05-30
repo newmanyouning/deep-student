@@ -21,7 +21,7 @@ use reqwest::header::{HeaderMap, HeaderValue, USER_AGENT};
 use serde_json::{json, Value};
 use std::time::Duration;
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -188,7 +188,7 @@ impl PaperSaveExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         // 🔧 诊断日志：在入口处记录 arguments 的原始类型和内容预览
         {
             let raw = call.arguments.to_string();
@@ -215,10 +215,10 @@ impl PaperSaveExecutor {
 
         // 截断错误检查（优先）
         if call.arguments.get("_truncation_error").is_some() {
-            return Err(
+            return Err(ToolError::Execution(
                 "Tool call arguments were truncated by LLM max_tokens limit. Please retry with a shorter prompt."
                     .to_string(),
-            );
+            ));
         }
 
         // 辅助函数：从 Value 中提取 papers 数组（处理 "papers" 值可能是 array / string / object 等各种类型）
@@ -313,12 +313,12 @@ impl PaperSaveExecutor {
                 s.len()
             );
             let parsed: Value = serde_json::from_str(s)
-                .map_err(|e| format!("Failed to parse arguments string: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("Failed to parse arguments string: {}", e)))?;
             papers_owned = extract_papers_from_value(&parsed).ok_or_else(|| {
-                format!(
+                ToolError::InvalidArgs(format!(
                     "After double-decode, still missing 'papers' (array). Parsed keys: {:?}",
                     parsed.as_object().map(|o| o.keys().collect::<Vec<_>>())
-                )
+                ))
             })?;
         } else {
             // 诊断日志：打印实际 arguments 结构
@@ -345,23 +345,23 @@ impl PaperSaveExecutor {
                 keys,
                 &raw[..raw.len().min(500)]
             );
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "Missing required parameter 'papers' (array). Got arguments type={}, keys={:?}",
                 type_name, keys
-            ));
+            )));
         }
 
         let papers = &papers_owned;
 
         if papers.is_empty() {
-            return Err("'papers' array is empty".to_string());
+            return Err(ToolError::InvalidArgs("'papers' array is empty".to_string()));
         }
         if papers.len() > MAX_BATCH_SIZE {
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "Batch size {} exceeds limit {}. Please split into multiple calls.",
                 papers.len(),
                 MAX_BATCH_SIZE
-            ));
+            )));
         }
 
         let folder_id = call
@@ -370,7 +370,7 @@ impl PaperSaveExecutor {
             .and_then(|v| v.as_str())
             .map(|s| s.to_string());
 
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
 
         // 初始化进度状态数组
         let mut progress: Vec<PaperProgressItem> = papers
@@ -452,7 +452,7 @@ impl PaperSaveExecutor {
         ctx: &ExecutionContext,
         progress: &mut Vec<PaperProgressItem>,
         idx: usize,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let url = paper.get("url").and_then(|v| v.as_str());
         let doi = paper.get("doi").and_then(|v| v.as_str());
         let arxiv_id = paper.get("arxiv_id").and_then(|v| v.as_str());
@@ -467,7 +467,7 @@ impl PaperSaveExecutor {
 
         let candidates = self.resolve_all_pdf_urls(url, doi, arxiv_id).await;
         if candidates.is_empty() {
-            return Err("No URL, arXiv ID, or DOI provided. At least one is required.".to_string());
+            return Err(ToolError::InvalidArgs("No URL, arXiv ID, or DOI provided. At least one is required.".to_string()));
         }
 
         // 将可用源列表写入进度（供前端手动切换）
@@ -487,7 +487,7 @@ impl PaperSaveExecutor {
 
         for (candidate_url, source_label) in &candidates {
             if ctx.is_cancelled() {
-                return Err("Download cancelled".to_string());
+                return Err(ToolError::Cancelled);
             }
 
             log::info!(
@@ -528,11 +528,11 @@ impl PaperSaveExecutor {
         let pdf_bytes = match pdf_bytes {
             Some(b) => b,
             None => {
-                return Err(format!(
+                return Err(ToolError::Execution(format!(
                     "All {} sources failed. Last error: {}",
                     candidates.len(),
                     last_error
-                ));
+                )));
             }
         };
 
@@ -552,7 +552,7 @@ impl PaperSaveExecutor {
         hasher.update(&pdf_bytes);
         let sha256 = format!("{:x}", hasher.finalize());
 
-        let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = vfs_db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         use crate::vfs::VfsFileRepo;
         if let Ok(Some(existing)) = VfsFileRepo::get_by_sha256_with_conn(&conn, &sha256) {
@@ -589,7 +589,7 @@ impl PaperSaveExecutor {
             Some("application/pdf"),
             None,
         )
-        .map_err(|e| format!("Blob storage failed: {}", e))?
+        .map_err(|e| ToolError::Execution(format!("Blob storage failed: {}", e)))?
         .hash;
 
         // ── Stage: Processing ──
@@ -646,7 +646,7 @@ impl PaperSaveExecutor {
             extracted_text.as_deref(),
             page_count,
         )
-        .map_err(|e| format!("File creation failed: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("File creation failed: {}", e)))?;
 
         log::info!(
             "[PaperSave] File created: {} (name={}, pages={:?})",
@@ -809,7 +809,7 @@ impl PaperSaveExecutor {
     }
 
     /// 通过 Unpaywall API 将 DOI 解析为开放获取 PDF URL
-    async fn resolve_doi_to_pdf(&self, doi: &str) -> Result<String, String> {
+    async fn resolve_doi_to_pdf(&self, doi: &str) -> ToolResult<String> {
         let url = format!(
             "{}/{}?email=support@deepstudent.app",
             UNPAYWALL_API_URL, doi
@@ -822,20 +822,20 @@ impl PaperSaveExecutor {
             .get(&url)
             .send()
             .await
-            .map_err(|e| format!("Unpaywall request failed: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Unpaywall request failed: {}", e)))?;
 
         if !response.status().is_success() {
-            return Err(format!(
+            return Err(ToolError::Execution(format!(
                 "Unpaywall returned HTTP {} for DOI '{}'. The paper may not have an open access version.",
                 response.status().as_u16(),
                 doi
-            ));
+            )));
         }
 
         let body: Value = response
             .json()
             .await
-            .map_err(|e| format!("Unpaywall parse failed: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Unpaywall parse failed: {}", e)))?;
 
         // 尝试 best_oa_location.url_for_pdf
         if let Some(pdf_url) = body
@@ -859,10 +859,10 @@ impl PaperSaveExecutor {
             }
         }
 
-        Err(format!(
+        Err(ToolError::NotFound(format!(
             "No open access PDF found for DOI '{}'. The paper may be behind a paywall.",
             doi
-        ))
+        )))
     }
 
     /// 下载 PDF 文件（带流式进度上报）
@@ -872,23 +872,23 @@ impl PaperSaveExecutor {
         ctx: &ExecutionContext,
         progress: &mut Vec<PaperProgressItem>,
         idx: usize,
-    ) -> Result<Vec<u8>, String> {
+    ) -> ToolResult<Vec<u8>> {
         // 安全检查：只允许 HTTPS（除 localhost）
         if !url.starts_with("https://")
             && !url.starts_with("http://localhost/")
             && !url.starts_with("http://localhost:")
             && url != "http://localhost"
         {
-            return Err(format!("Only HTTPS URLs are allowed: {}", url));
+            return Err(ToolError::InvalidArgs(format!("Only HTTPS URLs are allowed: {}", url)));
         }
 
         let response = if let Some(cancel_token) = ctx.cancellation_token() {
             tokio::select! {
                 result = self.download_client.get(url).send() => {
-                    result.map_err(|e| format!("PDF download failed: {}", e))?
+                    result.map_err(|e| ToolError::Execution(format!("PDF download failed: {}", e)))?
                 }
                 _ = cancel_token.cancelled() => {
-                    return Err("Download cancelled".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
@@ -896,27 +896,27 @@ impl PaperSaveExecutor {
                 .get(url)
                 .send()
                 .await
-                .map_err(|e| format!("PDF download failed: {}", e))?
+                .map_err(|e| ToolError::Execution(format!("PDF download failed: {}", e)))?
         };
 
         let status = response.status();
         if !status.is_success() {
-            return Err(format!(
+            return Err(ToolError::Execution(format!(
                 "PDF download returned HTTP {} from {}",
                 status.as_u16(),
                 url
-            ));
+            )));
         }
 
         // Content-Length 预防 OOM + 用于进度计算
         let total_size = response.content_length();
         if let Some(cl) = total_size {
             if cl as usize > MAX_PDF_SIZE {
-                return Err(format!(
+                return Err(ToolError::Execution(format!(
                     "PDF too large: {} MB (limit: {} MB)",
                     cl / (1024 * 1024),
                     MAX_PDF_SIZE / (1024 * 1024)
-                ));
+                )));
             }
             progress[idx].total_bytes = Some(cl);
         }
@@ -932,7 +932,7 @@ impl PaperSaveExecutor {
                 tokio::select! {
                     result = response.chunk() => result,
                     _ = cancel_token.cancelled() => {
-                        return Err("Download cancelled".to_string());
+                        return Err(ToolError::Cancelled);
                     }
                 }
             } else {
@@ -944,11 +944,11 @@ impl PaperSaveExecutor {
                     downloaded += chunk.len() as u64;
 
                     if buffer.len() + chunk.len() > MAX_PDF_SIZE {
-                        return Err(format!(
+                        return Err(ToolError::Execution(format!(
                             "PDF too large: >{} MB (limit: {} MB)",
                             MAX_PDF_SIZE / (1024 * 1024),
                             MAX_PDF_SIZE / (1024 * 1024)
-                        ));
+                        )));
                     }
 
                     buffer.extend_from_slice(&chunk);
@@ -967,7 +967,7 @@ impl PaperSaveExecutor {
                 }
                 Ok(None) => break, // 下载完成
                 Err(e) => {
-                    return Err(format!("PDF read failed: {}", e));
+                    return Err(ToolError::Execution(format!("PDF read failed: {}", e)));
                 }
             }
         }
@@ -979,7 +979,7 @@ impl PaperSaveExecutor {
 
         // PDF 签名验证
         if buffer.len() < 4 || &buffer[..4] != b"%PDF" {
-            return Err("Downloaded file is not a valid PDF (missing %PDF header)".to_string());
+            return Err(ToolError::Execution("Downloaded file is not a valid PDF (missing %PDF header)".to_string()));
         }
 
         Ok(buffer)
@@ -989,12 +989,12 @@ impl PaperSaveExecutor {
     // cite_format — 引用格式化
     // ========================================================================
 
-    fn execute_cite_format(&self, call: &ToolCall) -> Result<Value, String> {
+    fn execute_cite_format(&self, call: &ToolCall) -> ToolResult<Value> {
         let papers = call
             .arguments
             .get("papers")
             .and_then(|v| v.as_array())
-            .ok_or("Missing required parameter 'papers' (array)")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing required parameter 'papers' (array)".to_string()))?;
 
         let format = call
             .arguments
@@ -1009,10 +1009,10 @@ impl PaperSaveExecutor {
                 "bibtex" => Self::format_bibtex(paper),
                 "gbt7714" => Self::format_gbt7714(paper),
                 "apa" => Self::format_apa(paper),
-                _ => Err(format!(
+                _ => Err(ToolError::InvalidArgs(format!(
                     "Unsupported format: '{}'. Use 'bibtex', 'gbt7714', or 'apa'.",
                     format
-                )),
+                ))),
             }?;
             citations.push(json!({
                 "title": paper.get("title").and_then(|v| v.as_str()).unwrap_or(""),
@@ -1028,7 +1028,7 @@ impl PaperSaveExecutor {
     }
 
     /// 格式化为 BibTeX
-    fn format_bibtex(paper: &Value) -> Result<String, String> {
+    fn format_bibtex(paper: &Value) -> ToolResult<String> {
         let title = paper
             .get("title")
             .and_then(|v| v.as_str())
@@ -1072,7 +1072,7 @@ impl PaperSaveExecutor {
     }
 
     /// 格式化为 GB/T 7714
-    fn format_gbt7714(paper: &Value) -> Result<String, String> {
+    fn format_gbt7714(paper: &Value) -> ToolResult<String> {
         let title = paper
             .get("title")
             .and_then(|v| v.as_str())
@@ -1113,7 +1113,7 @@ impl PaperSaveExecutor {
     }
 
     /// 格式化为 APA 格式
-    fn format_apa(paper: &Value) -> Result<String, String> {
+    fn format_apa(paper: &Value) -> ToolResult<String> {
         let title = paper
             .get("title")
             .and_then(|v| v.as_str())
@@ -1231,7 +1231,7 @@ impl ToolExecutor for PaperSaveExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let tool_name = strip_tool_namespace(&call.name);
 
@@ -1242,7 +1242,7 @@ impl ToolExecutor for PaperSaveExecutor {
         let result = match tool_name {
             "paper_save" => self.execute_paper_save(call, ctx).await,
             "cite_format" => self.execute_cite_format(call),
-            _ => Err(format!("Unknown paper tool: {}", tool_name)),
+            _ => Err(ToolError::Execution(format!("Unknown paper tool: {}", tool_name))),
         };
 
         let duration = start_time.elapsed().as_millis() as u64;

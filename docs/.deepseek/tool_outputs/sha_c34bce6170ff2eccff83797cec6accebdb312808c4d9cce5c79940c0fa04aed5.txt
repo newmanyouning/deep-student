@@ -1,0 +1,154 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\处理PaddleOCR安装警告.md" total_lines="7430" shown_lines="201-400" truncated="true" next_start_line="401">
+   201│ ```
+   202│ 
+   203│ **5. 在另一个终端窗口运行 Python 代码**
+   204│ ```python
+   205│ from paddleocr import PaddleOCRVL
+   206│ 
+   207│ # 使用已启动的 llama-cpp-server 作为后端
+   208│ pipeline = PaddleOCRVL(
+   209│     vl_rec_backend="llama-cpp-server",
+   210│     vl_rec_server_url="http://127.0.0.1:8080/v1"
+   211│ )
+   212│ 
+   213│ result = pipeline.predict("your_handwritten_formula.jpg")
+   214│ for res in result:
+   215│     res.print()
+   216│ ```
+   217│ 
+   218│ ---
+   219│ 
+   220│ ### 💡 几点重要的补充
+   221│ 
+   222│ 1.  **关于“手写公式识别”**
+   223│     PaddleOCR-VL-1.5 的一大核心能力就是**公式识别**，并且已经针对**手写文字**进行了专项优化[citation:8]。代码示例中 `use_layout_detection=False` 的用法，正是为了让模型把整张图片当作一个待识别的公式或文本块来处理[citation:6][citation:7]。
+   224│ 
+   225│ 2.  **关于 GPU/CPU**
+   226│     由于你使用的是 Mac，方案一是完全基于 CPU 运行的，速度会慢一些，但对于测试和小规模使用来说足够了。如果你的 Mac 是 Intel 芯片，只能使用 CPU；如果是 Apple Silicon，可以尝试 `device="mps"` 参数，但可能不稳定，方案二（llama.cpp）会是更好的性能选择。
+   227│ 
+   228│ 3.  **网络问题**
+   229│     第一次运行代码时，模型文件（约 0.9B 参数）会自动从网络下载。如果下载很慢或失败，可以考虑使用代理，或者直接去 [Hugging Face 官网](https://huggingface.co/PaddlePaddle/PaddleOCR-VL-1.5) 手动下载后放到指定目录。
+   230│ 
+   231│ ---
+   232│ 
+   233│ ## ❓ unknown
+   234│ 
+   235│ 我想要清除本地下载的模型文件，直接拉取docker的镜像，我应该怎么做？
+   236│ 
+   237│ ---
+   238│ 
+   239│ ## ❓ unknown
+   240│ 
+   241│ {'type': 'SEARCH', 'results': [{'url': 'http://www.paddleocr.ai/main/version3.x/pipeline_usage/PaddleOCR-VL-NVIDIA-Blackwell.html?q=', 'title': 'PaddleOCR-VL NVIDIA Blackwell 架构 GPU 使用教程¶', 'snippet': 'PaddleOCR 提供了 Docker 镜像，用于快速启动 vLLM 推理服务。可使用以下命令启动服务（要求 Docker 版本 >= 19.03 ... 此外，使用此方式启动服务器后，除拉取镜像外，无需连接互联网。如需在离线环境中部署...', 'cite_index': 1, 'published_at': None, 'site_name': 'PaddleOCR', 'site_icon': 'https://cdn.deepseek.com/site-icons/paddleocr.ai', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://docs.vllm.ai/projects/ascend/zh-cn/main/tutorials/models/PaddleOCR-VL.html', 'title': 'PaddleOCR-VL', 'snippet': 'Installation# You can use our official docker image to runPaddleOCR-VL directly. Select an image based on your machine type and start the docker image on your node, refer to using docker. export ... Prepare model weights: Ensure the downloaded model weights are stored in the', 'cite_index': 2, 'published_at': None, 'site_name': 'vLLM Docs', 'site_icon': 'https://cdn.deepseek.com/site-icons/vllm.ai', 'query_indexes': [2, 1], 'is_hidden': False}, {'url': 'https://www.paddleocr.ai/main/version3.x/pipeline_usage/PaddleOCR-VL-Iluvatar-GPU.html', 'title': 'PaddleOCR-VL 天数 GPU 使用教程¶', 'snippet': '如需在离线环境中部署，可先在联网机器上拉取 Compose 文件中涉及的镜像，导出并传输至离线机器中导入，即可在离线环境下启动服务。 Docker Compose 通过读取.env 和 compose.yaml 文件中配置...', 'cite_index': 3, 'published_at': None, 'site_name': 'PaddleOCR', 'site_icon': 'https://cdn.deepseek.com/site-icons/paddleocr.ai', 'query_indexes': [1, 2], 'is_hidden': False}, {'url': 'https://blog.csdn.net/m0_61720747/article/details/155064592', 'title': 'PaddleOCR-VL部署流程（含VLLM推理框架部署）超强文档解析技术', 'snippet': '本教程将详细介绍如何在本地环境中使用Docker部署 PaddleOCR-VL，同时包含VLLM推理模型加速的部署过程，以及踩过的一些坑 ... 这边使用docker拉取镜像 CPU： docker pull ccr-2vdh3abv-pub.', 'cite_index': 4, 'published_at': 1763568000.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/csdn.net', 'query_indexes': [1, 2], 'is_hidden': False}, {'url': 'https://www.amd.com/en/developer/resources/technical-articles/2026/unlocking-high-performance-document-parsing-of-paddleocr-vl-1-5-.html', 'title': 'Unlocking High-Performance Document Parsing of PaddleOCR-VL-1.5 on AMD GPUs with ROCm Software', 'snippet': 'In this blog, we present a comprehensive guide to help users seamlessly adopt PaddleOCR-VL -1.5 on AMD GPUs. ... Then, we provide dual deployment options—an easy one-click Jupyter Notebook for quick trials and a step-by-step manual setup via Docker for customized workflows.', 'cite_index': 5, 'published_at': 1769616000.0, 'site_name': 'AMD', 'site_icon': 'https://cdn.deepseek.com/site-icons/amd.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'http://www.paddleocr.ai/main/en/version3.x/pipeline_usage/PaddleOCR-VL-Hygon-DCU.html', 'title': 'PaddleOCR-VL Hygon DCU Usage Tutorial', 'snippet': 'Method 1: Use the official Docker image. Method 2: Manually install PaddlePaddle and PaddleOCR. ... This step mainly introduces how to use Docker Compose to deploy PaddleOCR-VL as a service and call it. The specific process is as follows...', 'cite_index': 6, 'published_at': None, 'site_name': 'PaddleOCR', 'site_icon': 'https://cdn.deepseek.com/site-icons/paddleocr.ai', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://blog.csdn.net/qq_52678951/article/details/154916697', 'title': '使用 Docker 部署 PaddleOCR-VL 0.9 B大模型服务 原创', 'snippet': '安装了 Docker 和 NVIDIA Container Toolkit（支持 GPU） 具备至少一块 NVIDIA GPU（建议显存 ≥ 12GB，若显存较小可调整配置） 能访问公网以拉取镜像和安装依赖 1️⃣ 启动容器并保持运行 我们首先从百度云容器镜像仓库拉取官方提供的 PaddleOCR-VL + vLLM 集成镜像...', 'cite_index': 7, 'published_at': 1763222400.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/csdn.net', 'query_indexes': [1, 2], 'is_hidden': False}, {'url': 'https://www.cnblogs.com/ljbguanli/p/19596129#commentform', 'title': '深入解析：使用 Docker 一键部署 PaddleOCR-VL: 新手保姆级教程', 'snippet': '用 Docker 拉取 PaddleOCR-VL官方镜像 3.1：直接拉取官方镜像 若机器能连外网，直接 docker pull 官方镜像（推荐）： # 要求：Docker ≥ 19.03，主机有 GPU，NVIDIA 驱动支持 CUDA 12.6+', 'cite_index': 8, 'published_at': 1770566400.0, 'site_name': '博客园', 'site_icon': 'https://cdn.deepseek.com/site-icons/cnblogs.com', 'query_indexes': [1, 2], 'is_hidden': False}, {'url': 'https://www.gongjiyun.com/docs/flexible-deployment/best-practice/fmzcwcuovilhkzkdlrzcq03knnd/#1-%e5%9c%a8%e5%85%b1%e7%bb%a9%e7%ae%97%e5%8a%9b%e4%b8%8a%e8%bf%90%e8%a1%8c-paddleocr-vl-09b', 'title': '容器化部署 PaddleOCR-VL-0.9B', 'snippet': '在”服务配置”模块切换至”预制服务”选项卡，选择 PaddleOCR-VL-0.9B 官方镜像。 点击”部署服务”，平台将自动拉取镜像并启动容器。 从快捷访问那里把服务端的 URL 复制出来。', 'cite_index': 9, 'published_at': None, 'site_name': '共绩算力', 'site_icon': 'https://cdn.deepseek.com/site-icons/gongjiyun.com', 'query_indexes': [1, 2], 'is_hidden': False}, {'url': 'https://m.163.com/dy/article/KFESLLDP0519EA27.html?spss=adap_pc', 'title': '本地部署PaddleOCR，消费级显卡轻松跑，支持本地图片和PDF文件', 'snippet': 'Ai学习的老章  ·北京 ·优质互联网领域创作者  大家好，我是 Ai 学习的老章  前文我在一文中提到，vLLM 0.11.2 稳定版原生支持 DeepSeek-OCR，且兼容 OpenAI API 格式在线推理，操作更便捷。但 vLLM 0.11.1 及以上版本默认要求 CUDA 12.9，需先完成 CUDA 升级。  完成升级后，我  不过说实话，我测试了 N 多题目，，本文我试了最新版vL', 'cite_index': 10, 'published_at': 1764259200.0, 'site_name': '网易', 'site_icon': 'https://cdn.deepseek.com/site-icons/163.com', 'query_indexes': [1, 2], 'is_hidden': False}]}
+   242│ 嗯，用户之前问过怎么用PaddleOCR-VL-1.5识别手写数学公式，我推荐了Docker方案。现在用户明确表示想清除本地模型文件，直接用Docker镜像，这是一个很清晰的路径选择。
+   243│ 
+   244│ 用户的需求分两步：一是清理本地环境，二是正确拉取并运行Docker镜像。我需要给出具体的操作命令和步骤。
+   245│ 
+   246│ 先看搜索结果中关于Docker镜像的关键信息。PaddleOCR官方文档提供了明确的镜像拉取命令[citation:1]，使用的是ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddleocr-vl:latest这个地址。AMD官方技术文章也提到了类似的Docker运行命令[citation:5]，还详细说明了验证环境的步骤，包括检查ROCm版本、PaddlePaddle编译状态等。
+   247│ 
+   248│ 博客文章[citation:4][citation:8]给出了更贴近新手操作的流程，包括如何进入容器、安装必要依赖（如libGL.so.1）、使用Python API进行测试等。虽然这些是个人博客，权威性不如官方文档，但内容与官方文档一致，可以作为操作细节的补充。
+   249│ 
+   250│ 关于清理本地模型文件，搜索结果中没有直接提到。这部分需要根据我对Python环境管理的了解来给出建议——主要是找到pip安装的paddleocr包和缓存目录进行清理。
+   251│ 
+   252│ 有几个搜索结果是关于特定硬件平台（如天数GPU、海光DCU、NVIDIA Blackwell）的教程[citation:1][citation:3][citation:6]，对用户在Mac上使用参考价值有限。但其中关于Docker镜像的基本信息可以通用。
+   253│ 
+   254│ 我准备按这个结构回答：先给出清理本地环境的命令，然后提供拉取并运行Docker镜像的完整命令，接着说明进入容器后的验证步骤和Python API测试代码，最后补充Mac用户需要注意的事项（如缺少GPU加速、需手动安装libGL等）。
+   255│ 想要清除本地模型文件，直接用 Docker 镜像来运行 PaddleOCR-VL，是一个非常正确的选择。这能帮你彻底解决之前遇到的环境和依赖问题。
+   256│ 
+   257│ 整个过程分为两步：**先清理本地环境，再通过 Docker 拉取并运行全新的镜像**。
+   258│ 
+   259│ ---
+   260│ 
+   261│ ### 🧹 第一步：清理本地的 PaddleOCR 模型文件
+   262│ 
+   263│ 在 Mac 上，本地安装的模型通常分散在两个地方。你可以用以下命令来查找并删除它们：
+   264│ 
+   265│ 1.  **查找并删除通过 `pip` 安装的 `paddleocr` 包**
+   266│     ```bash
+   267│     pip uninstall paddleocr paddlepaddle
+   268│     ```
+   269│     执行这个命令后，系统会询问你是否确认删除，输入 `y` 即可。
+   270│ 
+   271│ 2.  **查找并删除自动下载的模型缓存**
+   272│     PaddleOCR 的模型文件通常会下载并缓存在你的用户目录下。你可以通过以下命令找到并删除它们：
+   273│     ```bash
+   274│     # 查找模型缓存目录
+   275│     find ~ -type d -name "paddleocr" -o -name ".paddlex" -o -name "PaddleOCR"
+   276│     ```
+   277│     如果确认这些是你要删除的模型缓存，可以使用 `rm -rf` 命令将它们彻底删除（请务必仔细确认路径）。
+   278│ 
+   279│ ---
+   280│ 
+   281│ ### 🐳 第二步：拉取并运行 PaddleOCR-VL 的 Docker 镜像
+   282│ 
+   283│ 这是最核心的一步。打开终端，直接复制并运行下面的命令。它会自动从百度云的镜像仓库下载一个包含了 PaddleOCR-VL-1.5 模型和所有依赖的完整环境，并启动容器[citation:1][citation:5]。
+   284│ 
+   285│ ```bash
+   286│ docker run -it \
+   287│   --shm-size 32g \
+   288│   --ipc=host \
+   289│   -v $PWD:/workspace \
+   290│   ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddlex-paddle-vllm-amd-gpu:3.4.0-0.14.0rc2 \
+   291│   /bin/bash
+   292│ ```
+   293│ 
+   294│ **这条命令的各项参数说明如下：**
+   295│ *   `-it`：以交互模式运行，让你可以直接在容器内操作。
+   296│ *   `--shm-size 32g`：将容器的共享内存设为 32GB，这对处理大图片很重要。
+   297│ *   `--ipc=host`：使用主机的 IPC 命名空间，有助于提升进程间通信效率。
+   298│ *   `-v $PWD:/workspace`：将你当前所在的 Mac 目录挂载到容器内的 `/workspace` 目录。这样，容器就能直接访问你 Mac 上的图片文件，处理结果也会保存在这里。
+   299│ *   最后一段是完整的镜像地址，这个镜像是专门为在 CPU 上运行而优化的，非常适合你的 Mac[citation:5]。
+   300│ 
+   301│ ---
+   302│ 
+   303│ ### ✅ 第三步：验证环境并开始使用
+   304│ 
+   305│ 容器启动后，你会直接进入一个 `/workspace` 目录的命令行。在这里，你可以做两件事来验证一切是否正常：
+   306│ 
+   307│ 1.  **安装一个可能缺失的系统依赖**
+   308│     有些用户在运行时会遇到一个 `libGL.so.1` 的报错，这是 OpenCV 的一个依赖。在容器内运行以下命令可以提前解决这个问题：
+   309│     ```bash
+   310│     apt-get update && apt-get install -y libgl1
+   311│     ```
+   312│ 
+   313│ 2.  **运行你的第一个测试**
+   314│     你可以创建一个简单的 Python 脚本来测试手写公式识别。在容器内创建一个 `test.py` 文件，并写入以下代码：
+   315│     ```python
+   316│     from paddleocr import PaddleOCRVL
+   317│ 
+   318│     # 初始化模型
+   319│     pipeline = PaddleOCRVL(use_layout_detection=False)
+   320│ 
+   321│     # 请将 'your_formula.jpg' 替换为你已经挂载到 /workspace 目录下的图片文件名
+   322│     result = pipeline.predict("your_formula.jpg")
+   323│ 
+   324│     for res in result:
+   325│         res.print()  # 在终端打印出识别出的 LaTeX 公式
+   326│     ```
+   327│     写好代码后，用 `python test.py` 运行即可。
+   328│ 
+   329│ ---
+   330│ 
+   331│ ### ⚠️ Mac 用户需要注意的小提示
+   332│ 
+   333│ *   **没有 GPU 加速**：由于你的 Mac 没有 NVIDIA GPU，这个 Docker 容器将完全使用 CPU 进行推理，所以处理速度会比在云端或装有 GPU 的服务器上慢一些。
+   334│ *   **代码稍微调整一下**：在你后续编写 Python 代码时，建议像上面的例子那样，显式地设置 `use_layout_detection=False`。这样做可以让模型更专注于识别你提供的整张手写公式图片，而不是尝试去分析版面结构[citation:5]。
+   335│ 
+   336│ 成功运行后，你可以在 Mac 上的当前目录（就是你运行 `docker run` 命令的那个目录）找到输出的结果文件。
+   337│ 
+   338│ ---
+   339│ 
+   340│ ## ❓ unknown
+   341│ 
+   342│ mac@macdeMac-mini ~ % docker pull ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlepaddle/paddle:3.3.0-jupyter
+   343│ failed to connect to the docker API at unix:///Users/mac/.docker/run/docker.sock; check if the path is correct and if the daemon is running: dial unix /Users/mac/.docker/run/docker.sock: connect: no such file or directory拉取镜像的时候这里报错了应该怎么处理
+   344│ 
+   345│ ---
+   346│ 
+   347│ ## ❓ unknown
+   348│ 
+   349│ {'type': 'SEARCH', 'results': [{'url': 'https://developer.apple.com/forums/thread/788364?answerId=850920022#850920022', 'title': 'Access Unix Socket from App Sandbox', 'snippet': 'Hello, I want to access the Docker socket API from inside the macOS App Sandbox. The method queries the API usingcurl with --unix-socket. However, the Sandbox blocks the request, as shown by the log: curl(22299) deny(1) network-outbound /Users/user/.docker/run/docker.sock', 'cite_index': 1, 'published_at': 1753632000.0, 'site_name': 'Apple Developer', 'site_icon': 'https://cdn.deepseek.com/site-icons/appl
+[TRUNCATED] Showing lines 201-400 of 7430. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\处理PaddleOCR安装警告.md" start_line=401 max_lines=200
+
+[TRUNCATED] The selected range exceeded 16KB. Continue with a smaller max_lines value.
+</file>

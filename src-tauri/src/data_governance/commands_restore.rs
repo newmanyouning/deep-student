@@ -7,6 +7,7 @@ use tracing::{debug, error, info, warn};
 #[cfg(feature = "data_governance")]
 use super::audit::{AuditLog, AuditOperation};
 use super::schema_registry::DatabaseId;
+use super::{DataGovernanceError, DataGovernanceResult};
 use crate::backup_common::BACKUP_GLOBAL_LIMITER;
 use crate::backup_job_manager::{
     BackupJobContext, BackupJobKind, BackupJobManagerState, BackupJobParams, BackupJobPhase,
@@ -45,7 +46,7 @@ pub async fn data_governance_restore_backup(
     backup_job_state: State<'_, BackupJobManagerState>,
     backup_id: String,
     restore_assets: Option<bool>,
-) -> Result<BackupJobStartResponse, String> {
+) -> DataGovernanceResult<BackupJobStartResponse> {
     let validated_backup_id = validate_backup_id(&backup_id)?;
 
     info!(
@@ -668,14 +669,13 @@ async fn execute_restore_with_progress(
         }
         match rusqlite::Connection::open(&db_path) {
             Ok(conn) => {
-                let tx_res = (|| -> Result<(usize, usize), String> {
-                    conn.execute("BEGIN IMMEDIATE", [])
-                        .map_err(|e| e.to_string())?;
+                let tx_res = (|| -> DataGovernanceResult<(usize, usize)> {
+                    conn.execute("BEGIN IMMEDIATE", [])?;
                     let result = super::sync::SyncManager::reset_sync_baseline_after_restore(&conn)
-                        .map_err(|e| format!("{}", e));
+                        .map_err(|e| DataGovernanceError::Sync(e.to_string()));
                     match result {
                         Ok(stats) => {
-                            conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+                            conn.execute("COMMIT", [])?;
                             Ok(stats)
                         }
                         Err(e) => {

@@ -1,0 +1,54 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\10_人文与知识\甲骨文财经机构信息查询.md" total_lines="101" shown_lines="50-101" truncated="false">
+    50│ 甲骨文公司是哪里的公司？是干嘛的？
+    51│ 
+    52│ ---
+    53│ 
+    54│ ## ❓ unknown
+    55│ 
+    56│ {'type': 'SEARCH', 'results': [{'url': 'https://www.sohu.com/a/742781531_121800264', 'title': '甲骨文创始人32岁前一无所有，看拉里·埃里森如何成为顶级富豪', 'snippet': '2023-12-10 11:26  发布于：重庆市  他被称为美国最疯狂的房地产买家，他所拥有的身家虽然没有荣登世界首富宝座，但是他拥有的房产可以与任何一位富翁相媲美。他就是世界上最大数据库软件公司甲骨文的老板拉里·埃里森。  今天我们来了解一下他的创业故事。埃里森是从俄罗斯移民的美国犹太人后裔， 1944 年他出生在曼哈顿，埃里斯的母亲在生下他 9 个月后便消失了。他从小在舅舅家长大，属于芝加哥', 'cite_index': 1, 'published_at': 1702137600.0, 'site_name': '搜狐', 'site_icon': 'https://cdn.deepseek.com/site-icons/sohu.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.oracle.com/cn/corporate/?sssourcesiteid=ocomcn', 'title': '关于甲骨文 | 公司信息 | Oracle 中国', 'snippet': '# 我们的使命是帮助人们以新的方法认识数据，发现洞察，开启无限可能。  ### 40 多年来，甲骨文公司专注创新和研发，为整个行业发展奠定了坚实基础。了解 Oracle 如何通过多种方法，为客户、合作伙伴和社区持续交付创新技术和解决方案。  ## 规模  - 2024 财年收入高达 530 亿美元 - 从 2012 财年至今研发总投入 800 亿美元 - 150 余起收购，投入高达 1100 多亿', 'cite_index': 2, 'published_at': 1670515200.0, 'site_name': 'Oracle', 'site_icon': 'https://cdn.deepseek.com/site-icons/oracle.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.thepaper.cn/newsDetail_forward_2998044', 'title': '【献礼70周年·人物篇】顾惠波：让天下产品皆可溯源_澎湃号·政务_澎湃新闻-The Paper', 'snippet': '2019-02-15 17:44  来源：澎湃新闻·澎湃号·政务  字号  编者按  为庆祝新中国成立70周年、人民政协成立70周年和多党合作制度确立70周年，弘扬民建“爱国、民主、建设、团结、创新、奉献”的共同价值理念，浙江民建微信公众号推出“献礼70周年”专栏，展示浙江民建各级组织和会员爱国奉献加油干、建功立业新时代的风采。今日推出人物篇（三）：《让天下产品皆可溯源——记民建会员、浙江甲骨文科', 'cite_index': 3, 'published_at': 1550160000.0, 'site_name': '澎湃新闻', 'site_icon': 'https://cdn.deepseek.com/site-icons/thepaper.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://baike.baidu.com/item/%E7%94%B2%E9%AA%A8%E6%96%87%E8%BD%AF%E4%BB%B6%E7%B3%BB%E7%BB%9F%E6%9C%89%E9%99%90%E5%85%AC%E5%8F%B8/6848010?fromModule=lemma_inlink', 'title': '甲骨文软件系统有限公司', 'snippet': '播报编辑讨论上传视频  中国以软件为主业的企业  甲骨文软件系统有限公司是美国甲骨文公司在中国设立的全资子公司，外文名为Oracle，1991年7月成立于北京，属外商独资企业，总部设于北京，主营数据库系统、应用软件开发及技术咨询服务。该公司通过本地化研发体系，提供Oracle9i电子商务平台、Java技术等产品 [1-3]。母公司甲骨文公司1989年进入中国市场，2002年10月设立深圳研发中心，', 'cite_index': 4, 'published_at': 1757952000.0, 'site_name': '百度百科', 'site_icon': 'https://cdn.deepseek.com/site-icons/baidu.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://finance.sina.com.cn/stock/relnews/us/2019-03-25/doc-ihtxyzsm0432248.shtml', 'title': '专访｜甲骨文科技集团董事长顾惠波：让天下产品皆可溯源', 'snippet': '2019年03月25日 22:31 农世界网  个人养老投资新时代，40家养老目标基金PK，你会选择哪一家？【寻2019基金业引领者】  顾惠波，民建会员、浙江甲骨文科技集团董事长，浙江甲骨文超级码科技股份有限公司董事长兼CEO。  顾惠波出生于广西北流，2010年加入民建，北京大学法学学士。2000年大学毕业，顾惠波没有选择去做律师或是法官，而是进入了一个较为冷门的事业单位——国家商业秘密载体技', 'cite_index': 5, 'published_at': 1553443200.0, 'site_name': '新浪财经', 'site_icon': 'https://cdn.deepseek.com/site-icons/sina.com.cn', 'query_indexes': [0], 'is_hidden': False}, {'url': 'http://ex.chinadaily.com.cn/exchange/partners/82/rss/channel/cn/columns/vyuatu/stories/WS61ca5e0da3107be4979ff45e.html', 'title': '坚持技术创新加速云端发展 甲骨文助力中企发展', 'snippet': '“甲骨文（Oracle）致力为客户和合作伙伴提供不同的办法、不同的方式去看待数据，并且从中取得数据的价值，产生不一样的可能性作为公司使命。” 甲骨文公司高级副总裁及亚洲区董事总经理李翰璋近日表示，甲骨文始终坚持创新，在云时代加速云端发展，在自身成长的同时助力中国企业发展。  持续投入研发 推动创新  44年前，甲骨文公司做数据库起家，数据是甲骨文的基因。甲骨文坚持将15%营收投入在研发中，这在IT', 'cite_index': 6, 'published_at': 1640620800.0, 'site_name': 'China Daily', 'site_icon': 'https://cdn.deepseek.com/site-icons/chinadaily.com.cn', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.sohu.com/a/256341838_721565', 'title': '青云榜！企业家风采展示⑯甲骨文超级码、博乐工业设计、鼎信集团、北冥星眸的掌门人亮相！_SaaS云平台', 'snippet': '风采  0/1  浙江甲骨文超级码科技股份有限公司董事长  顾惠波  最可能改变未来世界的企业榜  个人介绍  顾惠波，浙江甲骨文科技集团董事长，浙江甲骨文超级码科技股份有限公司董事长兼CEO。1978年6月生，广西北流人，人才引进落户杭州，北京大学法学学士，浙江大学MBA，全国律师资格。  丨2014年12月，顾惠波被杭州市政府、杭州广电局联合评选为“首届杭州十大新锐杭商”称号。  丨2015年', 'cite_index': 7, 'published_at': 1537891200.0, 'site_name': '搜狐', 'site_icon': 'https://cdn.deepseek.com/site-icons/sohu.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://forbeschina.com/business/%e5%95%86%e4%b8%9a/70438', 'title': '甲骨文又诞生两位亿万富豪 - 商业', 'snippet': '过去一年，甲骨文凭借在AI云领域的战略扩张收获颇丰。  公司通过开展云计算业务，充分利用市场对人工智能的需求获利。该公司已与业内多家巨头签署数额惊人的合同，包括与OpenAI达成的一份价值3000亿美元的算力供应协议。受此影响，甲骨文股价在过去六个月暴涨近115%，市值跃升至9330亿美元，跻身全球第十二大市值公司。  9月10日当天，甲骨文股价单日飙升36%。此前，该公司在第一季度财报电话会议中', 'cite_index': 8, 'published_at': 1758643200.0, 'site_name': 'Forbeschina', 'site_icon': 'https://cdn.deepseek.com/site-icons/forbeschina.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://www.163.com/dy/article/DSLQ7UF40530JQLO.html', 'title': '青云榜！企业家风采展示甲骨文超级码、博乐工业设计、鼎信集团、北冥星眸的掌门人亮相！', 'snippet': '0  分享至  导语：谁是浙商的未来？展现新生代浙商的风采！  以“致敬改革 驱动未来”为主旨，2018年度“浙商创业青云榜”活动报名已近尾声，杰出的青年浙商汇聚一堂共赴青云榜之约。那么今年已有哪些企业家报名？他们如何找到创业的风口，深耕且创新？他们在哪些领域里独树一帜、带动浙江经济的新一轮发展？  青云榜组委会重磅开启“青云榜企业家风采展示”专栏。每期遴选发布四名优秀参选企业家！满足你的好奇心，', 'cite_index': 9, 'published_at': 1537891200.0, 'site_name': '网易', 'site_icon': 'https://cdn.deepseek.com/site-icons/163.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.sohu.com/a/938222705_130887?scm=10001.325_13-325_13.0.0.5_32&spm=smpc.channel_248.block3_308_NDdFbm_1_fd.4.1758700540200mH2b7qk_324', 'title': '详解甲骨文的“增长模型”', 'snippet': '发布于：上海市  甲骨文正从传统软件供应商转型为GPU数据中心运营商，凭借与OpenAI、Meta和xAI等客户的大规模合同订单在该市场占据主导地位。  据追风交易台消息，根据摩根士丹利分析师Keith Weiss和Jamie Reynolds 9月23日发布的报告，这一转型将重塑公司的收入结构、利润率水平和风险动态，预计到2030财年，AI相关业务将贡献其总收入的60%。  这一判断基于甲骨文最', 'cite_index': 10, 'published_at': 1758643200.0, 'site_name': '搜狐', 'site_icon': 'https://cdn.deepseek.com/site-icons/sohu.com', 'query_indexes': [1], 'is_hidden': False}]}
+    57│ 好的，用户询问甲骨文公司的所在地和主营业务，这显然是在寻求对这家科技公司的基本了解。我需要先明确回答这两个核心问题：公司地理位置和主要业务范围。
+    58│ 
+    59│ 首先考虑从公司起源和总部所在地入手，根据搜索结果[citation:1][citation:2]可以确认甲骨文是美国公司，总部位于加州红木海岸。然后需要系统地介绍其业务演变，从最初的数据库软件到现在的云服务布局。
+    60│ 
+    61│ 我注意到这些搜索结果中[citation:2]来自甲骨文中国官网，权威性最高，提供了最新的财务数据和业务概况。[citation:6]来自中国日报网，也具有较好权威性。[citation:1]虽然是商业媒体但内容基础可靠。[citation:4]的百度百科条目提供了子公司信息。其他网页如[citation:3][citation:5][citation:7]主要涉及名称相似的中国公司，与问题无关。[citation:8][citation:10]虽涉及甲骨文但焦点在AI和财经分析，与基础介绍需求不太匹配。
+    62│ 
+    63│ 我打算采用分层结构来组织信息：先说明公司美国属性，再用表格呈现关键数据增强直观性，然后按时间顺序梳理业务发展脉络。表格可以突出营收、研发投入等核心指标[citation:2]，接着分阶段介绍从数据库到云服务的转型[citation:1][citation:2][citation:6]。最后会补充其在中国的业务布局[citation:4][citation:6]，并提及当前在AI领域的最新动态[citation:8][citation:10]来体现时效性。
+    64│ 
+    65│ 需要特别注意区分名称相似的“浙江甲骨文科技集团”等中国本土企业[citation:3][citation:5][citation:7]，避免用户产生混淆。整个回答要保持客观，用可靠数据支撑表述，避免主观评价。
+    66│ 甲骨文公司（Oracle Corporation）是一家总部位于**美国**的全球性科技巨头，最初于1977年在**加利福尼亚州圣克拉拉**成立，目前总部设在**加利福尼亚州红木海岸**[citation:1][citation:2]。它是世界上最大的数据库软件公司之一，也是仅次于微软的世界第二大软件公司[citation:1]。
+    67│ 
+    68│ 下面这个表格能帮你快速了解它的核心信息：
+    69│ 
+    70│ | 特性 | 描述 |
+    71│ | :--- | :--- |
+    72│ | **总部地点** | 美国加利福尼亚州红木海岸[citation:2] |
+    73│ | **成立时间** | 1977年[citation:2] |
+    74│ | **创始人** | 拉里·埃里森（Larry Ellison）、鲍勃·迈纳（Bob Miner）、埃德·奥茨（Ed Oates）[citation:2] |
+    75│ | **核心业务** | 数据库管理系统、企业级云服务（SaaS, PaaS, IaaS）、企业应用软件（ERP, CRM等） |
+    76│ | **行业地位** | 全球最大的数据库管理软件公司之一，世界第二大软件公司[citation:1]，云服务市场的重要参与者 |
+    77│ 
+    78│ ### 🚀 核心业务与技术优势
+    79│ 
+    80│ 甲骨文公司的业务演进清晰地展现了其战略重心：
+    81│ 
+    82│ 1.  **坚实的起点：数据库霸主**
+    83│     公司起步于**数据库软件**，其王牌产品 **Oracle Database** 是全球关系型数据库市场的领导者[citation:2]，为无数企业的核心业务系统提供数据存储和管理支持。这也是甲骨文最广为人知的根基业务。
+    84│ 
+    85│ 2.  **全面转向云端**
+    86│     近年来，甲骨文全力向云计算转型。其 **Oracle Cloud Infrastructure (OCI)** 提供基础设施服务，并与包括OpenAI在内的业内巨头签署了大规模合同[citation:8][citation:10]。同时，它提供一整套基于云的企业应用软件（SaaS），覆盖财务、人力资源、供应链、客户关系管理等[citation:2]。
+    87│ 
+    88│ 3.  **持续创新的基因**
+    89│     甲骨文非常重视研发，长期将年收入的约15%投入研发[citation:6]。例如，它推出了全球首款**自治数据库**，能够自动完成打补丁、调优等管理工作[citation:2]。同时，通过收购（如Sun Microsystems, NetSuite, Cerner）来快速增强技术实力和产品线[citation:2]。
+    90│ 
+    91│ ### 🌍 在中国的发展
+    92│ 
+    93│ 甲骨文于1989年进入中国市场[citation:4]，在北京（甲骨文软件系统有限公司[citation:4]）、上海、广州等地设有分支机构，并在深圳和北京设立了研发中心[citation:4][citation:6]。它为中国市场提供本土化的产品、技术支持和云服务，并利用其全球数据中心网络帮助中国企业拓展海外业务[citation:6]。
+    94│ 
+    95│ ### 💎 总结
+    96│ 
+    97│ 简单来说，甲骨文从**强大的数据库技术起家**，如今已发展成为一家提供**全方位企业级云服务和解决方案**的科技巨头。它帮助各类组织（从企业到政府机构）管理最核心的数据和业务流程。
+    98│ 
+    99│ 希望这些信息能帮助你全面了解甲骨文公司。如果你对它的某款具体产品（比如自治数据库）或者某个业务领域特别感兴趣，我们可以继续深入探讨。
+   100│ 
+   101│ ---
+</file>

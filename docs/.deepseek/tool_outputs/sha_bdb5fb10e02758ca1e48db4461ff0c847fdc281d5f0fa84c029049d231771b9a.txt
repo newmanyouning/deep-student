@@ -1,0 +1,33 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_rescan.py
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_rescan.py
+@@ -0,0 +1,28 @@
++import json, os
++
++base = r'C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md'
++folders = ['01_AI与编程开发','02_计算机与操作系统','03_健康与医学','04_游戏与娱乐',
++           '05_数学与自然科学','06_苹果生态与设备','07_生活与消费','08_职业与职场',
++           '09_硬件与工程','10_人文与知识']
++
++results = []
++for f in folders:
++    d = os.path.join(base, f)
++    if not os.path.isdir(d):
++        continue
++    for fn in os.listdir(d):
++        if not fn.endswith('.md'):
++            continue
++        fp = os.path.join(d, fn)
++        with open(fp, 'r', encoding='utf-8', errors='ignore') as fh:
++            lines = sum(1 for _ in fh)
++        rel = f + '\\' + fn
++        results.append({'path': rel, 'lines': lines})
++
++results.sort(key=lambda x: x['lines'], reverse=True)
++out_path = os.path.join(base, '_scan_new.json')
++with open(out_path, 'w', encoding='utf-8') as out:
++    json.dump({'all': results}, out, ensure_ascii=False)
++
++print(f'Total files: {len(results)}')
++print(f'Written to _scan_new.json')
+
+Created \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\_rescan.py (1053 bytes)

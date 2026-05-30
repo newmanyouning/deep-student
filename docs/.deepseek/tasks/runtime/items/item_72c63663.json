@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "id": "item_72c63663",
+  "turn_id": "turn_17bb1203",
+  "kind": "agent_reasoning",
+  "status": "completed",
+  "summary": "The write was denied by the user. Let me inform the user and show what I intended to write.",
+  "detail": "The write was denied by the user. Let me inform the user and show what I intended to write.",
+  "artifact_refs": [],
+  "started_at": "2026-05-17T09:45:43.130292700Z",
+  "ended_at": "2026-05-17T09:45:44.137203100Z"
+}

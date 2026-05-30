@@ -1,0 +1,34 @@
+<file path="knowledge_cache.md" total_lines="1766" shown_lines="1700-1729" truncated="true" next_start_line="1730">
+  1700│   - 核心解释：遍历 `ws.iter_rows()` 返回的每个单元格，当 `cell.data_type == 'f'` 或 `cell.value` 以 `=` 开头时，对该公式字符串应用正则 `([A-Z]+[0-9]+)` 提取所有列号+行号的引用（如 A1、B2，`$` 符号在正则中自动忽略）。提取结果存入 `formula_dependencies[sheet_name][cell.coordinate]`，结构为 `{'formula': 原始公式, 'dependencies': [引用列表], 'value': 当前值}`。该模式支持后续的依赖关系展示和手动修改依赖源功能——修改时通过 `new_formula.replace(old_ref, new_ref)` 逐对替换引用坐标，再写回 `ws[cell].value`。
+  1701│ 
+  1702│ - **[openpyxl 工作表页眉页脚属性遍历]** — 通过访问 Worksheet 对象的 `oddHeader`/`oddFooter`/`evenHeader`/`evenFooter`/`firstHeader`/`firstFooter` 六个属性提取完整的页面设置信息。
+  1703│   - 来源文件：Excel工具开发与打包.md
+  1704│   - 核心解释：openpyxl 的 Worksheet 对象在打开 `.xlsx` 文件后直接暴露这六个与打印页面布局相关的属性。代码中先使用 `hasattr(ws, 'oddHeader')` 做兼容性检查，然后按"奇数页/偶数页/首页"三种场景分别读取页眉和页脚。奇数页对应 `oddHeader` 和 `oddFooter`，偶数页对应 `evenHeader` 和 `evenFooter`，首页对应 `firstHeader` 和 `firstFooter`。对于包含打印设置的检测报告模板，这些属性可用于完整复现原始文档的页面布局。
+  1705│ 
+  1706│ - **[tkinter 多线程加载模式防止 UI 冻结]** — 使用 `threading.Thread` 将大文件加载操作放入后台线程，通过 `root.after()` 将 UI 更新回主线程，避免界面卡顿。
+  1707│   - 来源文件：Excel工具开发与打包.md
+  1708│   - 核心解释：`thread = threading.Thread(target=self._load_file, args=(file_path,))` 创建后台线程执行 `openpyxl.load_workbook()` 和 `pd.read_excel()` 等耗时操作。子线程中处理完数据后，通过 `self.root.after(0, lambda: self._update_sheet_list(sheet_names))` 将 UI 更新任务调度回 tkinter 主事件循环。`after(0, ...)` 表示零延迟排队到主线程执行，确保线程安全。此模式适用于所有需要加载大文件或执行耗时计算但必须保持界面响应的 tkinter 桌面应用。
+  1709│ 
+  1710│ #### 修复PyInstaller打包命令.md
+  1711│ 
+  1712│ - **[PyInstaller --add-binary 路径错误与修复]** — PowerShell 中使用 venv 内的绝对路径而非 `$env` 变量引用 DLL 文件可避免 "Unable to find" 错误。
+  1713│   - 来源文件：修复PyInstaller打包命令.md
+  1714│   - 核心解释：原命令使用 `$env:LOCALAPPDATA\Programs\Python\Python313\...` 引用 `pywintypes313.dll` 和 `pythoncom313.dll`，导致系统找不到该路径。正确做法是先用 `Get-ChildItem -Path D:\excel\venv -Filter "pywintypes*.dll" -Recurse` 定位实际文件路径，然后在 `--add-binary` 中填入虚拟环境内的准确绝对路径，如 `D:\excel\venv\Lib\site-packages\pywin32_system32\pywintypes313.dll;pywin32_system32`。分号后的 `pywin32_system32` 指定 DLL 在打包输出中的相对子目录位置。
+  1715│ 
+  1716│ - **[PowerShell 中 PyInstaller 参数字符串引用方式]** — PowerShell 将 `;` 视为语句分隔符，含分号的 `--add-data` 和 `--add-binary` 参数必须用双引号包裹。
+  1717│   - 来源文件：修复PyInstaller打包命令.md
+  1718│   - 核心解释：PowerShell 将 `;` 视为语句分隔符，因此 `--add-data src;src` 会导致 `src` 被当作独立命令执行而报 `CommandNotFoundException`。正确写法是 `--add-data "src;src"`（Windows 分隔符用 `;`，Linux 用 `:`）。多行命令建议使用 PowerShell 的行继续符 `` ` `` 将命令分行，每行一个参数，并用双引号包裹所有含分号或空格的 `SOURCE;DEST` 对，便于维护和调试。
+  1719│ 
+  1720│ - **[使用 .spec 文件管理复杂 PyInstaller 配置]** — 对于包含大量依赖的 Python 项目，使用 `.spec` 配置文件替代长命令行更专业、更可维护。
+  1721│   - 来源文件：修复PyInstaller打包命令.md
+  1722│   - 核心解释：先用 `python -m PyInstaller --onefile --windowed --name ExcelAnalyzer main.py` 生成基础 `.spec` 文件，然后编辑 `Analysis()` 部分，将 `binaries`、`datas`、`hiddenimports`、`excludes`、`runtime_hooks` 等列表配置进去。例如 `binaries=[('D:\\path\\pywintypes313.dll', 'pywin32_system32')]`，`datas=[('src', 'src'), ('config.json', '.')]`。配置完成后只需 `python -m PyInstaller ExcelAnalyzer.spec` 即可打包，`.spec` 文件是纯文本 Python 代码，可用任何编辑器打开修改，便于版本控制和团队协作。
+  1723│ 
+  1724│ - **[xlwings.rest 与 werkzeug 模块缺失警告处理]** — PyInstaller 打包时关于 xlwings 可选子模块的 `ModuleNotFoundError` 警告不影响主程序运行，可选择性安装 werkzeug 消除。
+  1725│   - 来源文件：修复PyInstaller打包命令.md
+  1726│   - 核心解释：打包输出中常见的 `WARNING: Failed to collect submodules for 'xlwings.rest' because importing 'xlwings.rest' raised: ModuleNotFoundError: No module named 'werkzeug'` 是因为 xlwings 的 RESTful API 功能（rest 子模块）依赖 werkzeug 库，但环境中未安装。如果程序不使用 xlwings 的 REST 服务功能，该警告可以安全忽略。若需消除，在虚拟环境中执行 `pip install werkzeug` 后重新打包即可。
+  1727│ 
+  1728│ #### 容器内PaddleOCR转PDF为MD.md
+  1729│ 
+
+[TRUNCATED] Showing lines 1700-1729 of 1766. To continue, call read_file with path="knowledge_cache.md" start_line=1730 max_lines=30
+</file>

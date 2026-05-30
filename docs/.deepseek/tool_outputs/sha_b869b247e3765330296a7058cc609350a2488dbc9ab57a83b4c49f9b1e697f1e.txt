@@ -1,0 +1,104 @@
+<file path="01_AI与编程开发/修复PyInstaller打包命令.md" total_lines="496" shown_lines="1-100" truncated="true" next_start_line="101">
+     1│ # 修复PyInstaller打包命令
+     2│ 对话ID: 618bce38-2d18-4178-8bda-d0515ca69f39
+     3│ 创建时间: 2026-04-08T10:43:27.181000+08:00
+     4│ 更新时间: 2026-04-08T10:56:15.917000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ python -m PyInstaller --onefile --windowed --name ExcelAnalyzer --add-data src;src --add-data config.json;. --add-data template.xls;. --add-data test_image.png;. --hidden-import PyQt5 --hidden-import PyQt5.QtCore --hidden-import PyQt5.QtGui --hidden-import PyQt5.QtWidgets --hidden-import openpyxl --hidden-import pandas --hidden-import numpy --hidden-import xlwings --hidden-import xlwings.utils --hidden-import xlwings._xlwindows --hidden-import xlrd --hidden-import PIL --hidden-import PIL.Image --hidden-import pywintypes --hidden-import win32api --hidden-import win32com --hidden-import win32com.gen_py --hidden-import win32com.client --hidden-import win32com.server --hidden-import win32timezone --hidden-import pythoncom --hidden-import networkx --hidden-import networkx.algorithms --hidden-import json --hidden-import logging --hidden-import threading --hidden-import tempfile --collect-all PyQt5 --collect-all PIL --collect-all xlwings --collect-all win32com --exclude-module matplotlib --exclude-module scipy --runtime-tmpdir . --add-data xlwings_runtime_hook.py;. --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pywintypes313.dll;pywin32_system32" --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pythoncom313.dll;pywin32_system32" main.py
+     9│ usage: pyinstaller [-h] [-v] [-D] [-F] [--specpath DIR] [-n NAME] [--contents-directory CONTENTS_DIRECTORY]
+    10│                    [--add-data SOURCE:DEST] [--add-binary SOURCE:DEST] [-p DIR] [--hidden-import MODULENAME]
+    11│                    [--collect-submodules MODULENAME] [--collect-data MODULENAME] [--collect-binaries MODULENAME]
+    12│                    [--collect-all MODULENAME] [--copy-metadata PACKAGENAME] [--recursive-copy-metadata PACKAGENAME]
+    13│                    [--additional-hooks-dir HOOKSPATH] [--runtime-hook RUNTIME_HOOKS] [--exclude-module EXCLUDES]
+    14│                    [--splash IMAGE_FILE] [-d {all,imports,bootloader,noarchive}] [--optimize LEVEL]
+    15│                    [--python-option PYTHON_OPTION] [-s] [--noupx] [--upx-exclude FILE] [-c] [-w]
+    16│                    [--hide-console {minimize-early,minimize-late,hide-late,hide-early}]
+    17│                    [-i <FILE.ico or FILE.exe,ID or FILE.icns or Image or "NONE">] [--disable-windowed-traceback]
+    18│                    [--version-file FILE] [--manifest <FILE or XML>] [-m <FILE or XML>] [-r RESOURCE] [--uac-admin]
+    19│                    [--uac-uiaccess] [--argv-emulation] [--osx-bundle-identifier BUNDLE_IDENTIFIER]
+    20│                    [--target-architecture ARCH] [--codesign-identity IDENTITY] [--osx-entitlements-file FILENAME]
+    21│                    [--runtime-tmpdir PATH] [--bootloader-ignore-signals] [--distpath DIR] [--workpath WORKPATH] [-y]
+    22│                    [--upx-dir UPX_DIR] [--clean] [--log-level LEVEL]
+    23│                    scriptname [scriptname ...]
+    24│ pyinstaller: error: argument --add-data: Wrong syntax, should be --add-data=SOURCE:DEST
+    25│ src : 无法将“src”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正确，
+    26│ 然后再试一次。
+    27│ 所在位置 行:1 字符: 80
+    28│ + ...  --onefile --windowed --name ExcelAnalyzer --add-data src;src --add-d ...
+    29│ +                                                               ~~~
+    30│     + CategoryInfo          : ObjectNotFound: (src:String) [], CommandNotFoundException
+    31│     + FullyQualifiedErrorId : CommandNotFoundException
+    32│ 
+    33│ . : 无法将“--add-data”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正
+    34│ 确，然后再试一次。
+    35│ 所在位置 行:1 字符: 109
+    36│ + ... alyzer --add-data src;src --add-data config.json;. --add-data templat ...
+    37│ +                                                        ~~~~~~~~~~
+    38│     + CategoryInfo          : ObjectNotFound: (--add-data:String) [], CommandNotFoundException
+    39│     + FullyQualifiedErrorId : CommandNotFoundException
+    40│ 
+    41│ . : 无法将“--add-data”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正
+    42│ 确，然后再试一次。
+    43│ 所在位置 行:1 字符: 135
+    44│ + ... --add-data config.json;. --add-data template.xls;. --add-data test_im ...
+    45│ +                                                        ~~~~~~~~~~
+    46│     + CategoryInfo          : ObjectNotFound: (--add-data:String) [], CommandNotFoundException
+    47│     + FullyQualifiedErrorId : CommandNotFoundException
+    48│ 
+    49│ . : 无法将“--hidden-import”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保
+    50│ 路径正确，然后再试一次。
+    51│ 所在位置 行:1 字符: 163
+    52│ + ... ta template.xls;. --add-data test_image.png;. --hidden-import PyQt5 - ...
+    53│ +                                                   ~~~~~~~~~~~~~~~
+    54│     + CategoryInfo          : ObjectNotFound: (--hidden-import:String) [], CommandNotFoundException
+    55│     + FullyQualifiedErrorId : CommandNotFoundException
+    56│ 
+    57│ . : 无法将“--add-binary”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径
+    58│ 正确，然后再试一次。
+    59│ 所在位置 行:1 字符: 1076
+    60│ + ... me-tmpdir . --add-data xlwings_runtime_hook.py;. --add-binary "$env:L ...
+    61│ +                                                      ~~~~~~~~~~~~
+    62│     + CategoryInfo          : ObjectNotFound: (--add-binary:String) [], CommandNotFoundException
+    63│     + FullyQualifiedErrorId : CommandNotFoundException
+    64│ 帮忙修复打包命令
+    65│ 
+    66│ ---
+    67│ 
+    68│ ## ❓ unknown
+    69│ 
+    70│ 问题出在 PowerShell 中分号 `;` 是命令分隔符，而不是参数的一部分。在 PowerShell 中运行 PyInstaller 时，需要将包含分号的参数用引号括起来。
+    71│ 
+    72│ 这是修复后的命令：
+    73│ 
+    74│ ```powershell
+    75│ python -m PyInstaller --onefile --windowed --name ExcelAnalyzer `
+    76│   --add-data "src;src" `
+    77│   --add-data "config.json;." `
+    78│   --add-data "template.xls;." `
+    79│   --add-data "test_image.png;." `
+    80│   --hidden-import PyQt5 `
+    81│   --hidden-import PyQt5.QtCore `
+    82│   --hidden-import PyQt5.QtGui `
+    83│   --hidden-import PyQt5.QtWidgets `
+    84│   --hidden-import openpyxl `
+    85│   --hidden-import pandas `
+    86│   --hidden-import numpy `
+    87│   --hidden-import xlwings `
+    88│   --hidden-import xlwings.utils `
+    89│   --hidden-import xlwings._xlwindows `
+    90│   --hidden-import xlrd `
+    91│   --hidden-import PIL `
+    92│   --hidden-import PIL.Image `
+    93│   --hidden-import pywintypes `
+    94│   --hidden-import win32api `
+    95│   --hidden-import win32com `
+    96│   --hidden-import win32com.gen_py `
+    97│   --hidden-import win32com.client `
+    98│   --hidden-import win32com.server `
+    99│   --hidden-import win32timezone `
+   100│   --hidden-import pythoncom `
+
+[TRUNCATED] Showing lines 1-100 of 496. To continue, call read_file with path="01_AI与编程开发/修复PyInstaller打包命令.md" start_line=101 max_lines=100
+</file>

@@ -151,7 +151,7 @@ fn ensure_workspace_creator(
 
 /// 创建工作区
 #[tauri::command]
-pub async fn workspace_create(
+pub async fn chat_v2_workspace_create(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     request: CreateWorkspaceRequest,
@@ -167,7 +167,7 @@ pub async fn workspace_create(
 
 /// 获取工作区信息
 #[tauri::command]
-pub async fn workspace_get(
+pub async fn chat_v2_workspace_get(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
@@ -187,7 +187,7 @@ pub async fn workspace_get(
 
 /// 关闭工作区
 #[tauri::command]
-pub async fn workspace_close(
+pub async fn chat_v2_workspace_close(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
@@ -198,7 +198,7 @@ pub async fn workspace_close(
 
 /// 删除工作区
 #[tauri::command]
-pub async fn workspace_delete(
+pub async fn chat_v2_workspace_delete(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
@@ -209,7 +209,7 @@ pub async fn workspace_delete(
 
 /// 创建 Agent
 #[tauri::command]
-pub async fn workspace_create_agent(
+pub async fn chat_v2_workspace_create_agent(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     db: State<'_, Arc<ChatV2Database>>,
     request: CreateAgentRequest,
@@ -232,7 +232,7 @@ pub async fn workspace_create_agent(
     );
 
     // 🔧 P0-2 修复：创建 ChatSession 记录，存储 system_prompt
-    // 这样 workspace_run_agent 才能正确获取到技能的系统提示词
+    // 这样 chat_v2_workspace_run_agent 才能正确获取到技能的系统提示词
     let conn = db
         .get_conn_safe()
         .map_err(|e| format!("Failed to get db connection: {}", e))?;
@@ -304,7 +304,7 @@ pub async fn workspace_create_agent(
 
 /// 列出工作区中的 Agent
 #[tauri::command]
-pub async fn workspace_list_agents(
+pub async fn chat_v2_workspace_list_agents(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
@@ -327,7 +327,7 @@ pub async fn workspace_list_agents(
 
 /// 发送消息到工作区
 #[tauri::command]
-pub async fn workspace_send_message(
+pub async fn chat_v2_workspace_send_message(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     request: WorkspaceSendMessageRequest,
@@ -360,7 +360,7 @@ pub async fn workspace_send_message(
 
 /// 列出工作区消息
 #[tauri::command]
-pub async fn workspace_list_messages(
+pub async fn chat_v2_workspace_list_messages(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
@@ -385,7 +385,7 @@ pub async fn workspace_list_messages(
 
 /// 设置工作区上下文
 #[tauri::command]
-pub async fn workspace_set_context(
+pub async fn chat_v2_workspace_set_context(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
@@ -397,7 +397,7 @@ pub async fn workspace_set_context(
 
 /// 获取工作区上下文
 #[tauri::command]
-pub async fn workspace_get_context(
+pub async fn chat_v2_workspace_get_context(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
@@ -410,7 +410,7 @@ pub async fn workspace_get_context(
 
 /// 列出工作区文档
 #[tauri::command]
-pub async fn workspace_list_documents(
+pub async fn chat_v2_workspace_list_documents(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
@@ -433,7 +433,7 @@ pub async fn workspace_list_documents(
 
 /// 获取工作区文档内容
 #[tauri::command]
-pub async fn workspace_get_document(
+pub async fn chat_v2_workspace_get_document(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
@@ -446,7 +446,7 @@ pub async fn workspace_get_document(
 
 /// 列出所有活跃工作区（从索引表）
 #[tauri::command]
-pub async fn workspace_list_all(
+pub async fn chat_v2_workspace_list_all(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     db: State<'_, Arc<ChatV2Database>>,
@@ -502,7 +502,7 @@ pub async fn workspace_list_all(
 /// 启动指定 Agent 的 Pipeline 执行，从 inbox 获取消息作为输入。
 /// Worker 会自动处理 inbox 中的任务消息，并在空闲期继续检查新消息。
 #[tauri::command]
-pub async fn workspace_run_agent(
+pub async fn chat_v2_workspace_run_agent(
     request: RunAgentRequest,
     window: Window,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
@@ -516,7 +516,7 @@ pub async fn workspace_run_agent(
     coordinator.ensure_member_or_creator(workspace_id, &request.requester_session_id)?;
 
     log::info!(
-        "[Workspace::handlers] [RUN_AGENT_START] workspace_run_agent: workspace_id={}, agent_session_id={}, has_reminder={}",
+        "[Workspace::handlers] [RUN_AGENT_START] chat_v2_workspace_run_agent: workspace_id={}, agent_session_id={}, has_reminder={}",
         workspace_id,
         agent_session_id,
         request.reminder.is_some()
@@ -977,7 +977,7 @@ pub async fn workspace_run_agent(
                             "workspace_id": workspace_id_clone,
                             "agent_session_id": session_id_for_cleanup,
                             "skill_id": Option::<String>::None,
-                            "reminder": format!("【重要提醒 - 第{}次】你之前没有发送任何消息就结束了任务。作为子代理，你必须在完成任务后使用 workspace_send_message 工具向主代理报告你的工作结果。请立即发送你的任务完成报告！", retry_count),
+                            "reminder": format!("【重要提醒 - 第{}次】你之前没有发送任何消息就结束了任务。作为子代理，你必须在完成任务后使用 chat_v2_workspace_send_message 工具向主代理报告你的工作结果。请立即发送你的任务完成报告！", retry_count),
                         });
                         if let Err(e) = window_clone.emit(
                             crate::chat_v2::tools::workspace_executor::WORKSPACE_WORKER_READY_EVENT,
@@ -1044,7 +1044,7 @@ pub async fn workspace_run_agent(
 
 /// 取消 Worker Agent 执行（手动中止）
 #[tauri::command]
-pub async fn workspace_cancel_agent(
+pub async fn chat_v2_workspace_cancel_agent(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
     session_id: String,
@@ -1074,7 +1074,7 @@ pub async fn workspace_cancel_agent(
 // Skill 相关命令 - 已移除
 // ============================================================
 // 技能系统由前端 src/chat-v2/skills/ 管理
-// workspace_list_skills 和 workspace_get_skill 命令已删除
+// workspace_list_skills 和 chat_v2_workspace_get_skill 命令已删除
 
 // ============================================================
 // 睡眠/唤醒相关命令
@@ -1097,7 +1097,7 @@ pub struct ManualWakeResponse {
 
 /// 手动唤醒睡眠中的 Coordinator
 #[tauri::command]
-pub async fn workspace_manual_wake(
+pub async fn chat_v2_workspace_manual_wake(
     request: ManualWakeRequest,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
 ) -> Result<ManualWakeResponse, String> {
@@ -1131,7 +1131,7 @@ pub async fn workspace_manual_wake(
 
 /// 取消睡眠
 #[tauri::command]
-pub async fn workspace_cancel_sleep(
+pub async fn chat_v2_workspace_cancel_sleep(
     session_id: String,
     workspace_id: String,
     sleep_id: String,
@@ -1179,7 +1179,7 @@ pub struct RestoreExecutionsResponse {
 /// 注意：主代理的 pipeline 恢复依赖于 TodoList 持久化机制，
 /// 前端应该在检测到 interrupted 状态的消息时调用 chat_v2_continue_message
 #[tauri::command]
-pub async fn workspace_restore_executions(
+pub async fn chat_v2_workspace_restore_executions(
     session_id: String,
     workspace_id: String,
     window: Window,
@@ -1191,7 +1191,7 @@ pub async fn workspace_restore_executions(
     coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
 
     log::info!(
-        "[Workspace::handlers] workspace_restore_executions: workspace_id={}",
+        "[Workspace::handlers] chat_v2_workspace_restore_executions: workspace_id={}",
         workspace_id
     );
 

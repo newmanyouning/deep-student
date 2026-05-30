@@ -1,0 +1,64 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\06_苹果生态与设备\Mac路由器IP设置问题.md" total_lines="368" shown_lines="1-60" truncated="true" next_start_line="61">
+     1│ # Mac路由器IP设置问题
+     2│ 对话ID: e5ffa58c-e8c4-44f1-9626-bc870b6ebf0c
+     3│ 创建时间: 2026-04-03T10:40:19.250000+08:00
+     4│ 更新时间: 2026-04-03T11:20:44.173000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ 为什么Mac上路由器的IP无法设置？
+     9│ 
+    10│ ---
+    11│ 
+    12│ ## ❓ unknown
+    13│ 
+    14│ 用户想知道为什么在Mac上无法设置路由器的IP地址。这可能涉及到Mac的网络设置、路由器配置或相关故障排除。为了全面获取信息，我们需要同时进行多项搜索，涵盖不同角度和潜在问题。
+    15│ {'type': 'TOOL_SEARCH'}
+    16│ {'type': 'TOOL_SEARCH'}
+    17│ {'type': 'TOOL_SEARCH'}
+    18│ {'type': 'TOOL_SEARCH'}
+    19│ {'type': 'TOOL_SEARCH'}
+    20│ {'type': 'TOOL_SEARCH'}
+    21│ 所有搜索都返回了结果。为了全面了解可能的原因，我们需要同时打开这些结果中看起来最有用的链接。
+    22│ {'type': 'TOOL_OPEN'}
+    23│ {'type': 'TOOL_OPEN'}
+    24│ {'type': 'TOOL_OPEN'}
+    25│ {'type': 'TOOL_OPEN'}
+    26│ {'type': 'TOOL_OPEN'}
+    27│ {'type': 'TOOL_OPEN'}
+    28│ {'type': 'TOOL_OPEN'}
+    29│ {'type': 'TOOL_OPEN'}
+    30│ {'type': 'TOOL_OPEN'}
+    31│ {'type': 'TOOL_OPEN'}
+    32│ {'type': 'TOOL_OPEN'}
+    33│ {'type': 'TOOL_OPEN'}
+    34│ {'type': 'TOOL_OPEN'}
+    35│ 这些结果涵盖了多种可能的原因和解决方案。我的回答将涵盖可能的原因和解决方案。回答会引用这些来源。
+    36│ 在 Mac 上设置不了路由器的 IP，通常是因为对两种不同的操作有所混淆：一是 Mac 上网卡 IP 的获取方式，二是进入路由器后台修改其自身的 IP 地址。大多数情况下，用户可能无法访问路由器后台（比如在浏览器输 IP 进不去），而不是真的在 Mac 上改不了任何东西。
+    37│ 
+    38│ 💡 **如果你是指 Mac 本身无法获取 IP 地址上网：**
+    39│ *   **IP 地址冲突**：手动分配的 IP 已被其他设备使用，可让 Mac 进入睡眠再唤醒[reference:0][reference:1]，或在网络设置中点击“续租 DHCP 租约”[reference:2][reference:3]，若无效可重启路由器和调制解调器[reference:4][reference:5]。
+    40│ *   **DHCP 故障**：路由器未自动分配 IP，可重启路由器、检查路由器设置中 DHCP 服务是否开启，或重启 Mac[reference:6][reference:7][reference:8]。
+    41│ *   **自我分配 IP**：Mac 获取不到 IP 自动保留了 169.254.x.x 地址，建议重启路由器、检查网线或手动输入正确的 IP 地址[reference:9][reference:10]。
+    42│ *   **MAC 地址过滤**：路由器开启了访问控制，可登录路由器后台，检查是否启用了 MAC 地址过滤或访问控制列表，确保 Mac 的设备在允许列表中[reference:11]。
+    43│ *   **VPN 干扰**：VPN 或代理软件可能导致路由问题，可暂时断开 VPN 或代理连接再试[reference:12][reference:13]。
+    44│ *   **系统权限（macOS 15+）**：升级到 macOS Sequoia 后，需在“系统设置” > “隐私与安全性” > “本地网络”中，为浏览器或终端应用开启访问权限[reference:14][reference:15][reference:16]。
+    45│ *   **配置文件限制**：工作电脑可能受描述文件限制，可在“系统设置” > “隐私与安全性” > “描述文件”中检查是否有相关配置[reference:17]。
+    46│ 
+    47│ 🖥️ **如果你是指无法进入路由器管理页面（修改其 IP 地址）：**
+    48│ *   **访问地址错误**：确认是否在浏览器地址栏输入了正确的 IP，可在 Mac 的“系统设置” > “网络” > “详细信息”中查看“路由器”地址，也可检查路由器背面的标签[reference:18][reference:19]。
+    49│ *   **Mac 网段不对**：Mac 的 IP 地址与路由器不在同一网段就无法通信，可将 Mac 的 IPv4 配置改为“使用 DHCP”自动获取 IP[reference:20][reference:21]。
+    50│ *   **浏览器/网线问题**：检查浏览器是否设置了代理并取消勾选[reference:22]，或尝试更换网线、路由器端口[reference:23]。
+    51│ 
+    52│ 若以上方法都无效，可以尝试重置路由器和 Mac 的网络设置[reference:24][reference:25]。建议先根据你的情况定位一下具体是哪一步操作遇到了问题，这样能更快速地解决。
+    53│ 
+    54│ ---
+    55│ 
+    56│ ## ❓ unknown
+    57│ 
+    58│ 一般公司的服务器会限制设备的Mac地址从而控制连接设备是吗？有没有一种方式骗过公司服务器的硬件Mac地址验证？
+    59│ 
+    60│ ---
+
+[TRUNCATED] Showing lines 1-60 of 368. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\06_苹果生态与设备\Mac路由器IP设置问题.md" start_line=61 max_lines=60
+</file>

@@ -14,7 +14,7 @@
 //!
 //! 每轮同步：
 //! 1. 下载三份 tombstones 清单并合并
-//! 2. 本地删除后显式调用 `mark_blob_deleted / mark_asset_deleted / mark_workspace_deleted`
+//! 2. 本地删除后显式调用 `mark_blob_deleted / mark_asset_deleted / mark_chat_v2_workspace_deleted`
 //!    添加新记录
 //! 3. 同步上传/下载文件之前：先按 tombstones 剔除云端清单里已被"删除标记"的条目，
 //!    同时把本地对应文件删除

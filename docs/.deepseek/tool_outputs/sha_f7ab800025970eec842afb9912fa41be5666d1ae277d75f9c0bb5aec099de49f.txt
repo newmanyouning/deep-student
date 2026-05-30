@@ -1,0 +1,174 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\修复PyInstaller打包命令.md" total_lines="496" shown_lines="1-200" truncated="true" next_start_line="201">
+     1│ # 修复PyInstaller打包命令
+     2│ 对话ID: 618bce38-2d18-4178-8bda-d0515ca69f39
+     3│ 创建时间: 2026-04-08T10:43:27.181000+08:00
+     4│ 更新时间: 2026-04-08T10:56:15.917000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ python -m PyInstaller --onefile --windowed --name ExcelAnalyzer --add-data src;src --add-data config.json;. --add-data template.xls;. --add-data test_image.png;. --hidden-import PyQt5 --hidden-import PyQt5.QtCore --hidden-import PyQt5.QtGui --hidden-import PyQt5.QtWidgets --hidden-import openpyxl --hidden-import pandas --hidden-import numpy --hidden-import xlwings --hidden-import xlwings.utils --hidden-import xlwings._xlwindows --hidden-import xlrd --hidden-import PIL --hidden-import PIL.Image --hidden-import pywintypes --hidden-import win32api --hidden-import win32com --hidden-import win32com.gen_py --hidden-import win32com.client --hidden-import win32com.server --hidden-import win32timezone --hidden-import pythoncom --hidden-import networkx --hidden-import networkx.algorithms --hidden-import json --hidden-import logging --hidden-import threading --hidden-import tempfile --collect-all PyQt5 --collect-all PIL --collect-all xlwings --collect-all win32com --exclude-module matplotlib --exclude-module scipy --runtime-tmpdir . --add-data xlwings_runtime_hook.py;. --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pywintypes313.dll;pywin32_system32" --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pythoncom313.dll;pywin32_system32" main.py
+     9│ usage: pyinstaller [-h] [-v] [-D] [-F] [--specpath DIR] [-n NAME] [--contents-directory CONTENTS_DIRECTORY]
+    10│                    [--add-data SOURCE:DEST] [--add-binary SOURCE:DEST] [-p DIR] [--hidden-import MODULENAME]
+    11│                    [--collect-submodules MODULENAME] [--collect-data MODULENAME] [--collect-binaries MODULENAME]
+    12│                    [--collect-all MODULENAME] [--copy-metadata PACKAGENAME] [--recursive-copy-metadata PACKAGENAME]
+    13│                    [--additional-hooks-dir HOOKSPATH] [--runtime-hook RUNTIME_HOOKS] [--exclude-module EXCLUDES]
+    14│                    [--splash IMAGE_FILE] [-d {all,imports,bootloader,noarchive}] [--optimize LEVEL]
+    15│                    [--python-option PYTHON_OPTION] [-s] [--noupx] [--upx-exclude FILE] [-c] [-w]
+    16│                    [--hide-console {minimize-early,minimize-late,hide-late,hide-early}]
+    17│                    [-i <FILE.ico or FILE.exe,ID or FILE.icns or Image or "NONE">] [--disable-windowed-traceback]
+    18│                    [--version-file FILE] [--manifest <FILE or XML>] [-m <FILE or XML>] [-r RESOURCE] [--uac-admin]
+    19│                    [--uac-uiaccess] [--argv-emulation] [--osx-bundle-identifier BUNDLE_IDENTIFIER]
+    20│                    [--target-architecture ARCH] [--codesign-identity IDENTITY] [--osx-entitlements-file FILENAME]
+    21│                    [--runtime-tmpdir PATH] [--bootloader-ignore-signals] [--distpath DIR] [--workpath WORKPATH] [-y]
+    22│                    [--upx-dir UPX_DIR] [--clean] [--log-level LEVEL]
+    23│                    scriptname [scriptname ...]
+    24│ pyinstaller: error: argument --add-data: Wrong syntax, should be --add-data=SOURCE:DEST
+    25│ src : 无法将“src”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正确，
+    26│ 然后再试一次。
+    27│ 所在位置 行:1 字符: 80
+    28│ + ...  --onefile --windowed --name ExcelAnalyzer --add-data src;src --add-d ...
+    29│ +                                                               ~~~
+    30│     + CategoryInfo          : ObjectNotFound: (src:String) [], CommandNotFoundException
+    31│     + FullyQualifiedErrorId : CommandNotFoundException
+    32│ 
+    33│ . : 无法将“--add-data”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正
+    34│ 确，然后再试一次。
+    35│ 所在位置 行:1 字符: 109
+    36│ + ... alyzer --add-data src;src --add-data config.json;. --add-data templat ...
+    37│ +                                                        ~~~~~~~~~~
+    38│     + CategoryInfo          : ObjectNotFound: (--add-data:String) [], CommandNotFoundException
+    39│     + FullyQualifiedErrorId : CommandNotFoundException
+    40│ 
+    41│ . : 无法将“--add-data”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径正
+    42│ 确，然后再试一次。
+    43│ 所在位置 行:1 字符: 135
+    44│ + ... --add-data config.json;. --add-data template.xls;. --add-data test_im ...
+    45│ +                                                        ~~~~~~~~~~
+    46│     + CategoryInfo          : ObjectNotFound: (--add-data:String) [], CommandNotFoundException
+    47│     + FullyQualifiedErrorId : CommandNotFoundException
+    48│ 
+    49│ . : 无法将“--hidden-import”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保
+    50│ 路径正确，然后再试一次。
+    51│ 所在位置 行:1 字符: 163
+    52│ + ... ta template.xls;. --add-data test_image.png;. --hidden-import PyQt5 - ...
+    53│ +                                                   ~~~~~~~~~~~~~~~
+    54│     + CategoryInfo          : ObjectNotFound: (--hidden-import:String) [], CommandNotFoundException
+    55│     + FullyQualifiedErrorId : CommandNotFoundException
+    56│ 
+    57│ . : 无法将“--add-binary”项识别为 cmdlet、函数、脚本文件或可运行程序的名称。请检查名称的拼写，如果包括路径，请确保路径
+    58│ 正确，然后再试一次。
+    59│ 所在位置 行:1 字符: 1076
+    60│ + ... me-tmpdir . --add-data xlwings_runtime_hook.py;. --add-binary "$env:L ...
+    61│ +                                                      ~~~~~~~~~~~~
+    62│     + CategoryInfo          : ObjectNotFound: (--add-binary:String) [], CommandNotFoundException
+    63│     + FullyQualifiedErrorId : CommandNotFoundException
+    64│ 帮忙修复打包命令
+    65│ 
+    66│ ---
+    67│ 
+    68│ ## ❓ unknown
+    69│ 
+    70│ 问题出在 PowerShell 中分号 `;` 是命令分隔符，而不是参数的一部分。在 PowerShell 中运行 PyInstaller 时，需要将包含分号的参数用引号括起来。
+    71│ 
+    72│ 这是修复后的命令：
+    73│ 
+    74│ ```powershell
+    75│ python -m PyInstaller --onefile --windowed --name ExcelAnalyzer `
+    76│   --add-data "src;src" `
+    77│   --add-data "config.json;." `
+    78│   --add-data "template.xls;." `
+    79│   --add-data "test_image.png;." `
+    80│   --hidden-import PyQt5 `
+    81│   --hidden-import PyQt5.QtCore `
+    82│   --hidden-import PyQt5.QtGui `
+    83│   --hidden-import PyQt5.QtWidgets `
+    84│   --hidden-import openpyxl `
+    85│   --hidden-import pandas `
+    86│   --hidden-import numpy `
+    87│   --hidden-import xlwings `
+    88│   --hidden-import xlwings.utils `
+    89│   --hidden-import xlwings._xlwindows `
+    90│   --hidden-import xlrd `
+    91│   --hidden-import PIL `
+    92│   --hidden-import PIL.Image `
+    93│   --hidden-import pywintypes `
+    94│   --hidden-import win32api `
+    95│   --hidden-import win32com `
+    96│   --hidden-import win32com.gen_py `
+    97│   --hidden-import win32com.client `
+    98│   --hidden-import win32com.server `
+    99│   --hidden-import win32timezone `
+   100│   --hidden-import pythoncom `
+   101│   --hidden-import networkx `
+   102│   --hidden-import networkx.algorithms `
+   103│   --hidden-import json `
+   104│   --hidden-import logging `
+   105│   --hidden-import threading `
+   106│   --hidden-import tempfile `
+   107│   --collect-all PyQt5 `
+   108│   --collect-all PIL `
+   109│   --collect-all xlwings `
+   110│   --collect-all win32com `
+   111│   --exclude-module matplotlib `
+   112│   --exclude-module scipy `
+   113│   --runtime-tmpdir . `
+   114│   --add-data "xlwings_runtime_hook.py;." `
+   115│   --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pywintypes313.dll;pywin32_system32" `
+   116│   --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pythoncom313.dll;pywin32_system32" `
+   117│   main.py
+   118│ ```
+   119│ 
+   120│ **关键修改：**
+   121│ 1. 使用 PowerShell 的行继续符 `` ` `` 将命令分成多行（更易读）
+   122│ 2. 所有 `--add-data` 和 `--add-binary` 的参数都用**双引号**括起来
+   123│ 3. 分号在引号内会被当作普通字符处理
+   124│ 
+   125│ **或者，如果不想使用多行，可以写成一行：**
+   126│ 
+   127│ ```powershell
+   128│ python -m PyInstaller --onefile --windowed --name ExcelAnalyzer --add-data "src;src" --add-data "config.json;." --add-data "template.xls;." --add-data "test_image.png;." --hidden-import PyQt5 --hidden-import PyQt5.QtCore --hidden-import PyQt5.QtGui --hidden-import PyQt5.QtWidgets --hidden-import openpyxl --hidden-import pandas --hidden-import numpy --hidden-import xlwings --hidden-import xlwings.utils --hidden-import xlwings._xlwindows --hidden-import xlrd --hidden-import PIL --hidden-import PIL.Image --hidden-import pywintypes --hidden-import win32api --hidden-import win32com --hidden-import win32com.gen_py --hidden-import win32com.client --hidden-import win32com.server --hidden-import win32timezone --hidden-import pythoncom --hidden-import networkx --hidden-import networkx.algorithms --hidden-import json --hidden-import logging --hidden-import threading --hidden-import tempfile --collect-all PyQt5 --collect-all PIL --collect-all xlwings --collect-all win32com --exclude-module matplotlib --exclude-module scipy --runtime-tmpdir . --add-data "xlwings_runtime_hook.py;." --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pywintypes313.dll;pywin32_system32" --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pythoncom313.dll;pywin32_system32" main.py
+   129│ ```
+   130│ 
+   131│ **额外建议：**
+   132│ 如果这个命令仍然因为路径长度问题出错，可以考虑创建一个 `.spec` 文件来管理这些复杂的配置，会更加清晰和易于维护。
+   133│ 
+   134│ ---
+   135│ 
+   136│ ## ❓ unknown
+   137│ 
+   138│ (venv) PS D:\excel> python -m PyInstaller --onefile --windowed --name ExcelAnalyzer --add-data "src;src" --add-data "config.json;." --add-data "template.xls;." --add-data "test_image.png;." --hidden-import PyQt5 --hidden-import PyQt5.QtCore --hidden-import PyQt5.QtGui --hidden-import PyQt5.QtWidgets --hidden-import openpyxl --hidden-import pandas --hidden-import numpy --hidden-import xlwings --hidden-import xlwings.utils --hidden-import xlwings._xlwindows --hidden-import xlrd --hidden-import PIL --hidden-import PIL.Image --hidden-import pywintypes --hidden-import win32api --hidden-import win32com --hidden-import win32com.gen_py --hidden-import win32com.client --hidden-import win32com.server --hidden-import win32timezone --hidden-import pythoncom --hidden-import networkx --hidden-import networkx.algorithms --hidden-import json --hidden-import logging --hidden-import threading --hidden-import tempfile --collect-all PyQt5 --collect-all PIL --collect-all xlwings --collect-all win32com --exclude-module matplotlib --exclude-module scipy --runtime-tmpdir . --add-data "xlwings_runtime_hook.py;." --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pywintypes313.dll;pywin32_system32" --add-binary "$env:LOCALAPPDATA\Programs\Python\Python313\Lib\site-packages\pywin32_system32\pythoncom313.dll;pywin32_system32" main.py
+   139│ 246 INFO: PyInstaller: 6.19.0, contrib hooks: 2026.4
+   140│ 246 INFO: Python: 3.13.12
+   141│ 284 INFO: Platform: Windows-11-10.0.26200-SP0
+   142│ 284 INFO: Python environment: D:\excel\venv
+   143│ 286 INFO: wrote D:\excel\ExcelAnalyzer.spec
+   144│ 2393 WARNING: Failed to collect submodules for 'xlwings.rest' because importing 'xlwings.rest' raised: ModuleNotFoundError: No module named 'werkzeug'
+   145│ 10688 INFO: Module search paths (PYTHONPATH):
+   146│ ['D:\\excel',
+   147│  'C:\\Program '
+   148│  'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\\python313.zip',
+   149│  'C:\\Program '
+   150│  'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\\DLLs',
+   151│  'C:\\Program '
+   152│  'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0\\Lib',
+   153│  'C:\\Program '
+   154│  'Files\\WindowsApps\\PythonSoftwareFoundation.Python.3.13_3.13.3312.0_x64__qbz5n2kfra8p0',
+   155│  'D:\\excel\\venv',
+   156│  'D:\\excel\\venv\\Lib\\site-packages',
+   157│  'D:\\excel\\venv\\Lib\\site-packages\\win32',
+   158│  'D:\\excel\\venv\\Lib\\site-packages\\win32\\lib',
+   159│  'D:\\excel\\venv\\Lib\\site-packages\\Pythonwin',
+   160│  'D:\\excel']
+   161│ 11302 INFO: Appending 'binaries' from .spec
+   162│ ERROR: Unable to find 'C:\\Users\\Lenovo\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\site-packages\\pywin32_system32\\pywintypes313.dll' when adding binary and data files.
+   163│ 看起来漏了打包什么文件，需要如何将这个文件下载后打包呢
+   164│ 
+   165│ ---
+   166│ 
+   167│ ## ❓ unknown
+   168│ 
+   169│ {'type': 'SEARCH', 'results': [{'url': 'https://www.dllme.com/dll/files/pywintypes313?tab=requests', 'title': 'pywintypes313.dll : Free .DLL Download', 'snippet': 'Most errors involving pywintypes313.dll occur because the DLL is missing, corrupted, or outdated. In many cases, reinstalling the related application or replacing the DLL resolves the issue. ... The first step in resolving DLL errors is to completely uninstall the affected software and reinstall its latest version.', 'cite_index': 1, 'published_at': 1763568000.0, 'site_name': 'DLLme.com', 'site_icon': 'https://cdn.deepseek.com/site-icons/dllme.com', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://www.cnblogs.com/chen117/p/14326873.html', 'title': 'Python离线安装PyInstaller', 'snippet': '目录中其他文件是可执行文件的动态链接库。 可通过 -F 参数对Python源文件生成一个独立的可执行文件 pyinstaller -F <Python源程序文件名> 使用前需要安装PyInstaller第三方库。', 'cite_index': 2, 'published_at': 1611590400.0, 'site_name': '博客园', 'site_icon': 'https://cdn.deepseek.com/site-icons/cnblogs.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://m.yisu.com/zixun/273238.html', 'title': '如何使用PyInstaller打包Python程序', 'snippet': '1，win7下面先安装这个依赖： pywin32 ，下载下来后切换到venv2.7 ... //cn.dll-files.com/msvcp90.dll.html 下载第三个zip文件，解压后放到C:\\Windows\\System32，如果是64位的还要放到C:\\Windows\\SysWOW64目录下。', 'cite_index': 3, 'published_at': 1635091200.0, 'site_name': '亿速云', 'site_icon': 'https://cdn.deepseek.com/site-icons/yisu.com', 'query_indexes': [2], 'is_hidden': False}, {'url': 'https://www.shuzhiduo.com/topic/python-embedded-%e7%bb%93%e5%90%88pyinstaller/', 'title': 'python-embedded 结合pyinstaller', 'snippet': 'ucrtbase.terminate 于动态链接库 api-ms-win-crt-runtime-l1-1-0.dll 上 以及 Error loading Python DLL: C:\\Users***\\python35.dll (error code 127) 解决方案 查找一通之后 ... 2,下载后安装 使用pip命令安装:pip install pywin32 2.安装Pyinstaller 下载安装文件安装...', 'cite_index': 4, 'published_at': 1724688000.0, 'site_name': '术之多', 'site_icon': 'https://cdn.deepseek.com/site-icons/shuzhiduo.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://developer.baidu.com/article/details/3311694', 'title': '解决PyInstaller打
+[TRUNCATED] Showing lines 1-200 of 496. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\修复PyInstaller打包命令.md" start_line=201 max_lines=200
+
+[TRUNCATED] The selected range exceeded 16KB. Continue with a smaller max_lines value.
+</file>

@@ -107,6 +107,7 @@ import { debugMasterSwitch, debugLog } from './debug-panel/debugMasterSwitch';
 // ★ 平台检测初始化（为 Android WebView 兼容性添加 CSS 类）
 import { initPlatformClasses } from './utils/platform';
 import { OverlayScrollbars, ClickScrollPlugin } from 'overlayscrollbars';
+import { settingsApi } from '@/api/settingsApi';
 
 // 尽早初始化平台检测类，确保 CSS 规则在渲染前生效
 initPlatformClasses();
@@ -196,7 +197,7 @@ async function initSentryIfConfigured() {
     // 检查用户是否同意了错误报告
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      const consent = await invoke('get_setting', { key: SENTRY_CONSENT_KEY }) as string | null;
+      const consent = await settingsApi.get(SENTRY_CONSENT_KEY ) as string | null;
       if (consent !== 'true') return; // 默认不开启
     } catch {
       return; // 数据库未就绪或读取失败，不初始化

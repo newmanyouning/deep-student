@@ -1,0 +1,17 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_42c34449 (explore) status=Completed
+  objective: 文件：01_AI与编程开发\Excel VBA代码存储位置与编辑工具.md 提取知识点
+  result: Good, I have the full content. Now I will produce the structured knowledge-point extraction report.
+
+### SUMMARY
+Read the file `01_AI与编程开发/Excel VBA代码存储位置与编辑工具.md` in full. The document is a Q&A-style note that covers two main topics: (1) where VBA code is stored inside Excel files (as `vbaProject.bin` inside the `.xlsm`/`.xlsb` ZIP archive, organized into standard modules, class modules, forms, worksheet objects, and ThisWorkbook), and the tools/methods to view, extract, and edit that code (built-in Alt+F11 editor, manual export/import, VbaDeveloper, vba-edit, CodePorting, SheetJS Pro, Spire.XLS, Aspose.Cells); (2) using Python scripts to automate VBA code injection into WPS via GUI automation (pywinauto), COM interface (win32com with `"Ket.Application"` ProgID), or third-party libraries (Aspose.Cells, xlwings), plus caveats about WPS needing a separate "VBA for WPS" plugin and the trust-center setting for VBProject access.
+
+### EVIDENCE
+- `01_AI与编程开发/Excel VBA代码存储位置与编辑工具.md:1-4` — file metadata (title, dialog ID, timestamps).
+- `01_AI与编程开发/Excel VBA代码存储位置与编辑工具.md:7-8` — first question: where is VBA code stored in `.xls` files and what tools extract/edit it.
+- `01_AI与编程开发/Excel VBA代码存储位置与编辑工具.md:28-35` — VBA code stored as binary in `.xlsm`/`.xlsb`; the `.xlsm` file is a ZIP archive containing `vbaProject.bin`; logical organization into standard modules, class modules, forms, worksheet objects, ThisWorkbook.
+- `01_AI与编程开发/Excel VBA代码存储位置与编辑工具.md:41-47` — built-in VBA editor opened via Alt+F11, Project Explorer tree view.
+- `01_AI与编程开发/Excel VBA代码存储位置与编辑工具.md:51-56` — ex...
+  stats: steps=3, duration_ms=223501

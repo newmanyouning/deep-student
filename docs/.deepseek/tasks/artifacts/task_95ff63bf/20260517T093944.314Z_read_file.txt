@@ -1,0 +1,47 @@
+<file path="01_AI与编程开发/查看云服务器模型版本方法.md" total_lines="327" shown_lines="1-43" truncated="true" next_start_line="44">
+     1│ # 查看云服务器模型版本方法
+     2│ 对话ID: ba40cc7a-b39d-49c1-a179-d7050261da65
+     3│ 创建时间: 2026-03-13T09:42:55.494000+08:00
+     4│ 更新时间: 2026-03-13T10:56:14.440000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ 如何查看部署在云服务器的模型版本？云服务器的操作系统为ubuntu22.04
+     9│ 
+    10│ ---
+    11│ 
+    12│ ## ❓ unknown
+    13│ 
+    14│ {'type': 'SEARCH', 'results': [{'url': 'https://www.henghost.com/jishu/314301/?jsmc=127a5725c0&jsme=1772257209', 'title': 'Ubuntu镜像中的软件版本如何确定', 'snippet': '查看操作系统版本 - lsb_release -a：显示发行版名称、版本号（如Ubuntu 22.04.3 LTS） ... - dpkg -l | grep <包名>：查询已安装软件包的版本（需替换为具体包名）。', 'cite_index': 1, 'published_at': 1756224000.0, 'site_name': '恒创科技', 'site_icon': 'https://cdn.deepseek.com/site-icons/henghost.com', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://blog.csdn.net/web_geek/article/details/156111155', 'title': '使用 apt 和 dpkg 查看Ubuntu 22.04已安装的软件', 'snippet': '此命令将显示每个已安装包的详细信息，包括版本、架构和来源等，帮助您快速了解系统的整体软件安装情况 ... 通过该命令，您可以查看软件包的描述、版本、依赖项以及是否已安装。若需进一步筛选...', 'cite_index': 2, 'published_at': 1766160000.0, 'site_name': 'CSDN博客', 'site_icon': 'https://cdn.deepseek.com/site-icons/csdn.net', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://cloud.kd.cn/ask/17410.html#comments', 'title': 'Linux如何查看软件版本？常用方法与命令详解？', 'snippet': 'apt list --installed | grep 软件名：列出已安装软件中包含指定关键词的包及版本（如grep nginx显示nginx/now 1.18.0-6ubuntu14.2 amd64 [installed]）。', 'cite_index': 3, 'published_at': 1756137600.0, 'site_name': 'kd.cn', 'site_icon': 'https://cdn.deepseek.com/site-icons/kd.cn', 'query_indexes': [1], 'is_hidden': False}]}
+    15│ 嗯，用户想知道如何在Ubuntu 22.04的云服务器上查看部署的模型版本。这个问题其实比较宽泛，因为"模型版本"取决于模型是通过什么方式部署的。我需要先帮用户理清不同部署方式的查看方法。
+    16│ 
+    17│ 我计划先说明这个问题的关键在于模型的部署方式，然后根据不同场景给出对应的查询命令。如果搜索结果中有相关方法，我可以分类整理成一个表格，让用户一目了然。
+    18│ 
+    19│ 看了搜索结果，有几个网页非常实用。一个详细介绍了Ubuntu系统中使用apt和dpkg查看已安装软件的方法[citation:2]，包括apt list --installed和dpkg -l等命令。另一个网页内容更全面[citation:3]，不仅涵盖了apt安装的软件，还介绍了Python包通过pip show查看版本、Node.js用node -v、Java用java -version，以及源码编译安装的软件用--version参数查询的方法。还有一个网页也提供了类似的基础命令[citation:1]。
+    20│ 
+    21│ 这三个搜索结果虽然来自技术博客或教程网站，权威性一般，但内容都是基础Linux运维知识，实用性强，可以相互印证。关于Python包__version__属性的方法[citation:3]和Docker容器内查看版本的思路，搜索结果中有提及，我可以补充进去。
+    22│ 
+    23│ 我准备用表格来整理不同部署场景下的查询方法，这样用户可以快速定位自己需要的情况。表格按部署方式分类，列出常见示例和查询命令。最后还需要提醒用户注意模型版本可能是自定义文件的情况，建议查看项目文档。
+    24│ 在 Ubuntu 22.04 云服务器上查看模型版本，具体方法取决于你的模型是通过什么方式部署的。简单来说，关键是先确定模型的“载体”是什么，再用相应的命令去查看。
+    25│ 
+    26│ 这里整理了不同部署方式下，查询版本信息的常用命令，你可以根据自己的情况对号入座：
+    27│ 
+    28│ | 部署方式 | 常见场景/示例 | 查询命令与方法 | 说明 |
+    29│ | :--- | :--- | :--- | :--- |
+    30│ | **通过系统包管理器安装** | 通过`apt`安装的模型依赖库或工具，如 `tensorflow`, `pytorch`（实际中较少直接用`apt`安装）。 | - **查看特定包版本**：`apt show <包名>` [citation:1][citation:2][citation:3]<br>- **列出所有包后筛选**：`apt list --installed \| grep <包名>` [citation:2][citation:3]<br>- **使用dpkg查询**：`dpkg -l \| grep <包名>` [citation:1] | 适用于通过`apt`安装的软件包。需将`<包名>`替换为实际名称，如`apt show tensorflow`。 |
+    31│ | **通过Python包管理器安装** | 通过`pip`安装的Python模型库，如 `tensorflow`, `pytorch`, `transformers`, `llama-cpp-python` 等。 | - **查看特定Python包**：`pip show <包名>` [citation:3]<br>- **在Python中查看**：`python -c "import <包名>; print(<包名>.__version__)"` [citation:3] | 这是AI模型部署中最常见的方式。`pip show`会显示版本、依赖等详细信息。 |
+    32│ | **通过源码或预编译二进制部署** | 直接下载或编译的模型推理引擎，如 `llama.cpp` 的可执行文件，或自己编写的模型服务。 | - **运行软件自带的版本命令**：`<软件名> --version` 或 `<软件名> -v` [citation:3]<br>- **查看环境变量或配置文件**：`echo $MODEL_VERSION` 或 `cat /path/to/version.txt` | 很多命令行工具支持 `--version` 参数。若为自定义服务，开发者常会将版本号写在环境变量或特定文件中。 |
+    33│ | **在容器（如Docker）中部署** | 将模型服务打包在Docker镜像中运行。 | - **查看镜像标签**：`docker images \| grep <镜像名>`<br>- **进入容器内查看**：`docker exec -it <容器名> /bin/bash`，进入后再使用前述`pip`或源码方式查看。 | 镜像标签通常会包含版本信息。进入容器后，内部就是一个Ubuntu环境，可以使用上述所有方法。 |
+    34│ 
+    35│ ### 💡 如果模型版本是自定义文件
+    36│ 如果你的“模型版本”是指模型本身（例如一个 `.bin` 或 `.gguf` 格式的大模型文件）的版本，那么它可能不存在于包管理器中。这种情况下，可以试试：
+    37│ *   **检查项目文档**：查看部署该项目时的 `README.md` 或 `requirements.txt`，里面可能记录了模型版本。
+    38│ *   **查看文件名或目录**：有时版本信息会直接包含在文件名或父目录名中。
+    39│ *   **询问模型的启动命令**：如果模型服务是通过一个脚本（如 `run_model.sh`）启动的，可以 `cat` 这个脚本看看里面是否有版本相关的线索。
+    40│ 
+    41│ 希望这些方法能帮你找到想要的版本信息。如果你方便告知具体是通过哪种方式部署的模型，比如是用`pip`安装的某个库，还是下载了可执行文件，我可以为你提供更精确的命令。
+    42│ 
+    43│ ---
+
+[TRUNCATED] Showing lines 1-43 of 327. To continue, call read_file with path="01_AI与编程开发/查看云服务器模型版本方法.md" start_line=44 max_lines=43
+</file>

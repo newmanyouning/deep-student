@@ -1,0 +1,10 @@
+--- a/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\analysis_batch_01.md
++++ b/\\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\analysis_batch_01.md
+@@ -81,3 +81,5 @@
+ | 3 | 考研资料上传AI知识库.md | 9481 | 考研OCR→Docker批量处理 | 从考研PDF资料OCR工具调研出发，通往PaddleOCR Docker容器内批量脚本编写，最终实现SCP下载断点续传产物的完整流水线 | 考研备考、OCR工具、Docker容器 |
+ | 4 | 服务器PaddleOCR PDF识别方法.md | 9210 | PaddleOCR容器→任务恢复 | 从阿里云Docker容器内paddleocr命令行的精调，到服务器定时关闭后nohup断点续传恢复的完整容灾流程 | PaddleOCR、Docker部署、命令行操作 |
+ | 5 | 树莓派安装Java打包运行方案.md | 8323 | Logisim类路径→文件关联 | 从FlatLaf依赖缺失的classpath调试，延伸到树莓派Ubuntu上.circ文件类型与Logisim Evolution的系统级MIME关联配置 | Java打包、类路径错误、文件关联 |
++| 6 | Claude Code使用指南.md | 8287 | Claude Code→cc-mini排错 | 从Claude Code安装配置和源码泄露话题出发，最终着陆于cc-mini+DeepSeek的FileWriteTool参数错误排错和备选方案推荐 | Claude Code、AI编程、工具排错 |
++| 7 | 处理PaddleOCR安装警告.md | 7430 | PaddleOCR-VL→公式识别精调 | 从Mac PATH警告起步，遍历Docker环境部署和LaTeX公式识别配置，最终精调parsing_res_list的content字段提取逻辑 | PaddleOCR、环境配置、公式识别 |
+
+Replaced 1 occurrence in \\?\C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\analysis_batch_01.md

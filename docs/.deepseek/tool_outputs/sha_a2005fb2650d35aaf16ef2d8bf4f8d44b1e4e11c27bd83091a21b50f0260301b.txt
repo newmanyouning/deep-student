@@ -1,0 +1,35 @@
+<file path="01_AI与编程开发/容器内PaddleOCR转PDF为MD.md" total_lines="432" shown_lines="400-432" truncated="false">
+   400│     out_base = sys.argv[2]
+   401│     if os.path.isfile(input_path) and input_path.lower().endswith('.pdf'):
+   402│         pdf_files = [input_path]
+   403│     elif os.path.isdir(input_path):
+   404│         pdf_files = [os.path.join(input_path, f) for f in os.listdir(input_path) if f.lower().endswith('.pdf')]
+   405│     else:
+   406│         print("输入路径不存在或不是 PDF 文件")
+   407│         sys.exit(1)
+   408│     for pdf in pdf_files:
+   409│         base_name = os.path.splitext(os.path.basename(pdf))[0]
+   410│         out_dir = os.path.join(out_base, base_name)
+   411│         os.makedirs(out_dir, exist_ok=True)
+   412│         pdf_to_markdown(pdf, out_dir)
+   413│ EOF
+   414│ ```
+   415│ 
+   416│ #### ⑤ 运行转换
+   417│ ```bash
+   418│ python /root/pdf_to_md.py /pdfs /output
+   419│ ```
+   420│ 
+   421│ 转换完成后，在宿主机的 `/home/ecs-user/pdf_output` 目录下即可找到生成的 Markdown 文件。
+   422│ 
+   423│ ---
+   424│ 
+   425│ ### 4. 验证 GPU 是否被容器识别（可选）
+   426│ 在容器内执行 `nvidia-smi`，若能显示 GPU 信息，则 GPU 已正确启用。
+   427│ 
+   428│ 如果遇到任何问题（如 `--gpus all` 选项不被识别），请检查 NVIDIA Container Toolkit 是否正确安装。
+   429│ 
+   430│ 这些命令已在 Ubuntu 22.04 上测试通过，您可以直接复制使用。
+   431│ 
+   432│ ---
+</file>

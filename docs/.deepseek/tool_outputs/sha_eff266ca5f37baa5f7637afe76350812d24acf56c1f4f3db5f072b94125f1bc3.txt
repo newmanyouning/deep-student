@@ -1,0 +1,39 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_14af8844 (explore) status=Completed
+  objective: 文件：01_AI与编程开发\DuckDuckGo MCP 配置方法.md 提取知识点
+  result: Now I have the full content. Let me extract the knowledge points from this document.
+
+### SUMMARY
+Read the file `01_AI与编程开发/DuckDuckGo MCP 配置方法.md` (237 lines) and extracted structured knowledge points about configuring the DuckDuckGo MCP server.
+
+### EVIDENCE
+- `01_AI与编程开发/DuckDuckGo MCP 配置方法.md:1-237` — Full document read, containing Q&A dialogue about configuring `duckduckgo-mcp-server`
+
+**Extracted Knowledge Points:**
+
+1. **项目概述** (lines 1-4): The document records a Q&A session (对话ID: 545bded8...) about configuring DuckDuckGo MCP Server, created 2026-05-13, updated 2026-05-14.
+
+2. **duckduckgo-mcp-server 是什么** (line 23): 一个 MCP (Model Context Protocol) 服务器，封装了 DuckDuckGo 搜索能力。PyPI 包名为 `duckduckgo-mcp-server`，可通过 `uvx duckduckgo-mcp-server` 或 `python -m duckduckgo_mcp_server` 运行。
+
+3. **默认配置项** (lines 10-13): 启动时默认输出：
+   - `SafeSearch: MODERATE (kp=-1)`
+   - `Default Region: none`
+   - `Fetch backend: httpx`
+
+4. **配置方式一：命令行参数** (lines 81-96): 推荐方式，一次有效。
+   - `--safe-search`: `strict`（严格）、`moderate`（中等，默认）、`off`（关闭）
+   - `--region`: 区域代码，如 `us-en`（美国英语）、`cn-zh`（中国中文）、`jp-jp`、`wt-wt`（全球）、`none`
+   - `--fetch-backend`: `httpx`（默认）或 `requests`
+   - PowerShell 中使用反引号 `` ` `` 换行，通过 `uvx --index <镜像> duckduckgo-mcp-server --参数` 传递
+
+5. **配置方式二：环境变量** (lines 100-118): 影响当前终端会话，命令行参数优先级更高。
+   - `$env:DUCKDUCKGO_SAFE_SEARCH` — 对应 `--safe-search`
+   - `$env:DUCKDUCKGO_REGION` — 对应 `--region`
+   - `$env:DUCKDUCKGO_FETCH_BACKEND` — 对应 `--fetch-backend`
+   - PowerShell 设置语法：`$env:变量名 = "值"`，然后运行 `uvx ...`
+
+6. **配置方式三：MCP 客户端永久配置** (lines 122-141): 用于 Claude Desktop 等客户端。
+   - 编辑 `cla...
+  stats: steps=3, duration_ms=224183

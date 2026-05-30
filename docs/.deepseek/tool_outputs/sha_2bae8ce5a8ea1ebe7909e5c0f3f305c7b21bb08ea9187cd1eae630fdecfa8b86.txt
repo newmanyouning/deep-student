@@ -1,0 +1,72 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2191,
+      "line": "  - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`",
+      "context_before": [
+        "",
+        "- **[WPS加载项目录路径]** — WPS加载项的存放位置取决于加载项类型和操作系统，有多个默认路径"
+      ],
+      "context_after": [
+        "  - 核心解释：WPS JS加载项（新式插件）在Windows下位于`%APPDATA%\\kingsoft\\wps\\jsaddons\\`，macOS下位于`~/Library/Containers/com.kingsoft.wpsoffice.mac/Data/.kingsoft/wps/jsaddons/`，Linux下位于`~/.local/share/Kingsoft/wps/jsaddons/`。传统COM加载项多在`%APPDATA%\\kingsoft\\wps\\addons\\`或WPS安装目录下的`addons`文件夹。配置文件则位于WPS安装目录的`office6\\cfgs\\`下。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2195,
+      "line": "  - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`",
+      "context_before": [
+        "",
+        "- **[wpsjs命令行工具安装]** — wpsjs工具通过npm全局安装，无独立安装包，需先安装Node.js环境"
+      ],
+      "context_after": [
+        "  - 核心解释：wpsjs是WPS官方为开发者提供的JS加载项命令行管理工具，通过`npm install -g wpsjs`命令全局安装。安装前需要先安装Node.js（建议v20 LTS稳定版），网络不佳时可配置淘宝镜像源加速。安装完成后通过`wpsjs -h`验证是否成功。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2199,
+      "line": "  - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`",
+      "context_before": [
+        "",
+        "- **[本地加载项加载方法]** — WPS加载本地加载项有官方wpsjs命令行方式和手动复制两种主要方法"
+      ],
+      "context_after": [
+        "  - 核心解释：开发者可使用wpsjs命令行工具：在项目目录运行`wpsjs debug`启动调试模式临时加载加载项，运行`wpsjs publish`将加载项发布到WPS的jsaddons目录完成安装。普通用户可将`.dotm`或`.xlam`等模板文件复制到WPS启动目录，或通过WPS的\"开发工具\"→\"加载项\"→\"添加\"手动导入。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2203,
+      "line": "  - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`",
+      "context_before": [
+        "",
+        "- **[WPS加载项类型区分]** — WPS加载项主要分为JS加载项和COM/模板类加载项，文件特征不同"
+      ],
+      "context_after": [
+        "  - 核心解释：JS加载项是基于网页技术的新式插件，包含`index.html`、`main.js`、`ribbon.xml`等文件；模板类加载项是传统插件，扩展名为`.dotm`（文字）、`.xlam`（表格）等。不同类型的加载项对应的存储目录和管理方式也不同。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 2207,
+      "line": "  - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`",
+      "context_before": [
+        "",
+        "- **[加载项故障排查要点]** — 加载项无法加载时需检查功能开关、调试工具和WPS版本兼容性"
+      ],
+      "context_after": [
+        "  - 核心解释：若加载项无法加载，首先确保WPS安装包带有加载项功能，可在`cfgs`文件夹下创建或编辑`oem.ini`文件，添加`JsApiShowWebDebugger=true`配置。其次可按`Alt+F12`或`F12`打开开发者工具查看错误信息。还需确认加载项与当前WPS版本兼容。",
+        ""
+      ]
+    }
+  ],
+  "total_matches": 5,
+  "files_searched": 1,
+  "truncated": false
+}

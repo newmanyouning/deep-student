@@ -1,0 +1,72 @@
+{
+  "matches": [
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 1069,
+      "line": "- **[WPS毫秒显示与时间加减]** — 自定义单元格格式yyyy-mm-dd hh:mm:ss.000显示毫秒，用=TEXT(A1,\"h:mm:ss.000\")格式化，加减直接=A1+TIME(0,0,0.001)。",
+      "context_before": [
+        "  - 核心解释：nohup command &简单适用，screen/tmux功能更强可断开重连。",
+        ""
+      ],
+      "context_after": [
+        "  - 来源文件：WPS的表格如何实现显示毫秒的时间不自动取整并且实现时间加减.md",
+        "  - 核心解释：WPS表格默认精确到秒，用TEXT函数和自定义格式保留毫秒。"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 1070,
+      "line": "  - 来源文件：WPS的表格如何实现显示毫秒的时间不自动取整并且实现时间加减.md",
+      "context_before": [
+        "",
+        "- **[WPS毫秒显示与时间加减]** — 自定义单元格格式yyyy-mm-dd hh:mm:ss.000显示毫秒，用=TEXT(A1,\"h:mm:ss.000\")格式化，加减直接=A1+TIME(0,0,0.001)。"
+      ],
+      "context_after": [
+        "  - 核心解释：WPS表格默认精确到秒，用TEXT函数和自定义格式保留毫秒。",
+        ""
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 1071,
+      "line": "  - 核心解释：WPS表格默认精确到秒，用TEXT函数和自定义格式保留毫秒。",
+      "context_before": [
+        "- **[WPS毫秒显示与时间加减]** — 自定义单元格格式yyyy-mm-dd hh:mm:ss.000显示毫秒，用=TEXT(A1,\"h:mm:ss.000\")格式化，加减直接=A1+TIME(0,0,0.001)。",
+        "  - 来源文件：WPS的表格如何实现显示毫秒的时间不自动取整并且实现时间加减.md"
+      ],
+      "context_after": [
+        "",
+        "- **[企业微信文档同步排查]** — 文档下载后未同步到云端常见原因为网络问题、缓存冲突、账号未登录或同步开关未开启。"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 1083,
+      "line": "  - 核心解释：推荐WPS PDF转文字、PDFelement、百度OCR API批量处理。",
+      "context_before": [
+        "- **[受保护PDF文字提取]** — 有密码PDF用PDF Password Remover解锁，编辑限制PDF用Google Chrome打开后打印为PDF或截图OCR识别。",
+        "  - 来源文件：受保护PDF文字提取方法与工具推荐.md"
+      ],
+      "context_after": [
+        "",
+        "- **[跨平台密码管理工具]** — 推荐Bitwarden（开源免费/全平台）、1Password（付费/体验佳）、KeePass（本地存储/高度安全）。"
+      ]
+    },
+    {
+      "file": "\\\\?\\C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md\\knowledge_cache.md",
+      "line_number": 1413,
+      "line": "- **[WPS加载项类型与本地路径]** — COM加载项(.dll/.exe)与WPS网页技术加载项(jsaddons目录)两类。",
+      "context_before": [
+        "  - 核心解释：例如 t1c/deepseek-math-7b-rl 中 t1c 是上传者的Ollama用户名，deepseek-math-7b-rl 才是模型实际名称。Ollama页面会标注\"UNOFFICIAL uploads\"说明非官方上传。官方模型在HuggingFace上的名称为 deepseek-ai/deepseek-math-7b-rl。",
+        ""
+      ],
+      "context_after": [
+        "  - 来源文件：WPS加载项查找与添加指南.md",
+        "  - 核心解释：WPS加载项本地路径为 %AppData%\\kingsoft\\wps\\jsaddons，启动项路径为 %AppData%\\Kingsoft\\wps\\startup。启用入口在\"开发工具\"选项卡（如找不到，右键功能区空白处→自定义功能区→勾选\"开发工具\"）。COM加载项通过\"添加\"按钮选择.dll文件即可。"
+      ]
+    }
+  ],
+  "total_matches": 5,
+  "files_searched": 1,
+  "truncated": false
+}

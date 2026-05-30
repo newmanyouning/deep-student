@@ -1,0 +1,12 @@
+{
+  "schema_version": 2,
+  "id": "item_dcca2a15",
+  "turn_id": "turn_22261275",
+  "kind": "agent_reasoning",
+  "status": "completed",
+  "summary": "The write_file tool was loaded and I need to retry. Let me use the correct format.",
+  "detail": "The write_file tool was loaded and I need to retry. Let me use the correct format.",
+  "artifact_refs": [],
+  "started_at": "2026-05-17T09:40:37.559945600Z",
+  "ended_at": "2026-05-17T09:40:38.968328700Z"
+}

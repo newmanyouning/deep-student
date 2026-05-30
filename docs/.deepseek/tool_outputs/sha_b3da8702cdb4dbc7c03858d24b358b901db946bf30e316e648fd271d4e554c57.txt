@@ -1,0 +1,64 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\06_苹果生态与设备\Mac终端切换代理方法.md" total_lines="627" shown_lines="1-60" truncated="true" next_start_line="61">
+     1│ # Mac终端切换代理方法
+     2│ 对话ID: 143c8923-5472-4767-94c7-a56d53ce16ce
+     3│ 创建时间: 2026-04-03T15:41:31.719000+08:00
+     4│ 更新时间: 2026-04-03T23:50:05.287000+08:00
+     5│ 
+     6│ ## ❓ unknown
+     7│ 
+     8│ mac终端如何切换代理到特定地址？
+     9│ 
+    10│ ---
+    11│ 
+    12│ ## ❓ unknown
+    13│ 
+    14│ 用户想知道如何在Mac终端切换代理到特定地址。这涉及到设置环境变量（如http_proxy、https_proxy、all_proxy）或使用网络设置工具。我需要提供清晰的步骤。为了全面获取信息，我需要同时进行多项搜索，涵盖不同方面的内容：基础的环境变量设置方法、使用networksetup命令的方法、可能存在的第三方工具、针对特定协议（如SOCKS5）的配置、以及可能遇到的常见问题。
+    15│ {'type': 'TOOL_SEARCH'}
+    16│ {'type': 'TOOL_SEARCH'}
+    17│ {'type': 'TOOL_SEARCH'}
+    18│ {'type': 'TOOL_SEARCH'}
+    19│ {'type': 'TOOL_SEARCH'}
+    20│ 搜索结果显示了一些相关页面。为了全面了解Mac终端切换代理的方法，我们需要同时打开这些页面。
+    21│ {'type': 'TOOL_OPEN'}
+    22│ {'type': 'TOOL_OPEN'}
+    23│ {'type': 'TOOL_OPEN'}
+    24│ {'type': 'TOOL_OPEN'}
+    25│ {'type': 'TOOL_OPEN'}
+    26│ {'type': 'TOOL_OPEN'}
+    27│ {'type': 'TOOL_OPEN'}
+    28│ {'type': 'TOOL_OPEN'}
+    29│ {'type': 'TOOL_OPEN'}
+    30│ {'type': 'TOOL_OPEN'}
+    31│ 这些资料涵盖了多种方法：通过环境变量设置临时或持久代理、使用networksetup命令、以及使用脚本或工具。我的回答将涵盖这些方法，包括临时设置、持久化配置、使用networksetup命令、以及便捷切换技巧。还会提供验证和排查的步骤。
+    32│ 想在 Mac 终端快速切换代理，最常用的方法是修改 `http_proxy` 和 `https_proxy` 这两个环境变量。可以临时设置，也可以写入配置文件让它持久生效。
+    33│ 
+    34│ ### ⚙️ 快速上手：三种主流方法
+    35│ 
+    36│ 这里总结了三种方法，你可以根据自己的需求来选择。
+    37│ 
+    38│ #### 方法一：临时设置 (快速测试)
+    39│ *   **特点**：只在当前终端窗口有效，关闭后即失效。
+    40│ *   **适用场景**：临时测试，不想让配置一直生效。
+    41│ 
+    42│ 在终端直接执行以下命令（替换为你自己的代理信息）：
+    43│ ```bash
+    44│ # 设置 HTTP 代理 (大部分情况只需设置这个)
+    45│ export http_proxy="http://your-proxy-address:port"
+    46│ export https_proxy="http://your-proxy-address:port"
+    47│ 
+    48│ # 对于 SOCKS5 代理
+    49│ export all_proxy="socks5://your-proxy-address:port"
+    50│ ```
+    51│ *   如果需要使用 `username:password` 认证，可以放在 `@` 符号前面：`http://username:password@address:port`[reference:0]。
+    52│ *   临时关闭代理：执行 `unset http_proxy https_proxy all_proxy`[reference:1]。
+    53│ 
+    54│ #### 方法二：持久化配置 (一劳永逸)
+    55│ *   **特点**：配置永久生效，每次打开终端都会自动应用。
+    56│ *   **适用场景**：长期固定使用一个代理。
+    57│ 
+    58│ 1.  根据你使用的 Shell 类型，用编辑器打开对应的配置文件[reference:2]：
+    59│     *   **zsh** (macOS Catalina 及以上默认)：`~/.zshrc`
+    60│     *   **bash** (旧版macOS)：`~/.bash_profile`
+
+[TRUNCATED] Showing lines 1-60 of 627. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\06_苹果生态与设备\Mac终端切换代理方法.md" start_line=61 max_lines=60
+</file>

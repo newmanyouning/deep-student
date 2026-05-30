@@ -1,0 +1,12 @@
+<file path="knowledge_cache.md" total_lines="1589" shown_lines="1580-1589" truncated="false">
+  1580│   - 来源文件：合并md文件脚本编写.md
+  1581│   - 核心解释：Python 严格依赖缩进来确定代码块边界。修复方法包括：在编辑器中开启"显示空格/Tab"功能检查缩进，手动删除前导空格后重敲 4 个空格，或将编辑器设置为 Tab 键自动替换为 4 个空格。复制网页代码时可能带入不可见特殊字符，可先粘贴到纯文本编辑器再复制到 IDE 中。
+  1582│ 
+  1583│ - **[Windows下Python文件编码问题及解决方案]** — 在 Windows 系统上用 `open()` 读取 UTF-8 编码的文件时，若不指定编码参数，Python 会使用系统默认编码（中文 Windows 下为 GBK），导致 `UnicodeDecodeError`。
+  1584│   - 来源文件：合并md文件脚本编写.md
+  1585│   - 核心解释：错误信息 `'gbk' codec can't decode byte 0x80` 表示文件中包含 UTF-8 特有的多字节字符（如中文、特殊符号），GBK 无法解码。解决方案是在 `open()` 中显式指定 `encoding='utf-8'`。推荐在系统终端用 `python 文件名.py` 运行脚本，此时 Python 解释器会自动按文件编码读取。
+  1586│ 
+  1587│ - **[Windows终端Python环境操作指南]** — 在 Windows 终端（CMD/PowerShell）中管理 Python 的三种模式：交互式环境、编辑文件、运行脚本。
+  1588│   - 来源文件：合并md文件脚本编写.md
+  1589│   - 核心解释：在终端输入 `python` 或 `py` 进入交互式 REPL（出现 `>>>` 提示符），输入 `exit()` 或 `Ctrl+Z` 退出；用 `notepad 文件名.py` 或 `code 文件名.py` 打开文件编辑；用 `python 脚本名.py` 或 `py 脚本名.py` 运行脚本。需确保 Python 已添加至环境变量，且 `cd` 到脚本所在目录。
+</file>

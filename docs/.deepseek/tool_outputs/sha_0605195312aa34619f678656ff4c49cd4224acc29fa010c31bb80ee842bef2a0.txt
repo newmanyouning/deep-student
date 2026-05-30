@@ -1,0 +1,23 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\knowledge_cache.md" total_lines="2312" shown_lines="2292-2312" truncated="false">
+  2292│   - 核心解释：不属于包管理器的模型文件版本可在以下位置查找：检查项目README.md或requirements.txt中的版本记录；模型文件名或父目录名常包含版本号(如bert-base-uncased, llama-2-7b.Q4_K_M.gguf)；查看启动脚本(如run_model.sh)中是否包含版本线索。若以上均未找到，需回溯原始部署命令和文档。
+  2293│ 
+  2294│ - **[WPS加载项多路径体系]** — WPS加载项无单一固定目录，存放位置取决于加载项类型和操作系统
+  2295│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2296│   - 核心解释：WPS加载项分三大类路径：(1)JS加载项(新式插件)：Windows在%APPDATA%\kingsoft\wps\jsaddons\，macOS在~/Library/Containers/com.kingsoft.wpsoffice.mac/Data/.kingsoft/wps/jsaddons/，Linux在~/.local/share/Kingsoft/wps/jsaddons/；(2)COM加载项(传统插件)：Windows在%APPDATA%\kingsoft\wps\addons\或WPS安装目录下的addons文件夹；(3)配置文件目录：Windows在WPS安装目录\office6\cfgs\，Linux在/opt/kingsoft/wps-office/office6/cfgs/。快速定位可用Win+R输入%APPDATA%\kingsoft\wps直接跳转。
+  2297│ 
+  2298│ - **[wpsjs命令行工具安装]** — wpsjs是WPS官方JS加载项管理工具，通过npm全局安装，无独立安装包
+  2299│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2300│   - 核心解释：前置依赖为Node.js（建议v20 LTS），安装命令为`npm install -g wpsjs`，国内网络慢可用`npm config set registry https://registry.npmmirror.com`切换淘宝镜像。验证安装用`wpsjs -h`，若提示命令无效需重启终端刷新环境变量。兼容性问题时可安装稳定旧版本`npm install -g wpsjs@2.1.6`。
+  2301│ 
+  2302│ - **[WPS本地加载项加载方法]** — 加载本地WPS加载项有两种方式：官方wpsjs命令行（适用于JS加载项开发调试）和手动复制模板文件（适用于传统.dotm/.xlam加载项）
+  2303│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2304│   - 核心解释：方法一(wpsjs)：在项目根目录运行`wpsjs debug`临时加载并支持热更新调试，运行`wpsjs publish`将加载项复制到jsaddons目录完成本地安装。方法二(手动)：将.dotm或.xlam模板文件复制到WPS启动目录(%APPDATA%\Kingsoft\wps\startup)后重启WPS自动加载，或在WPS的"开发工具"→"加载项"中手动添加。传统手动方式每次重启WPS可能不会自动加载，需重复操作。
+  2305│ 
+  2306│ - **[wpsjs核心命令工作流]** — wpsjs提供完整的加载项开发生命周期：create(创建)→debug(调试)→build(打包)→publish(发布)
+  2307│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2308│   - 核心解释：`wpsjs create 项目名`创建新加载项项目并选择类型(文字/表格/演示)和框架；`wpsjs debug`自动启动WPS并加载加载项，修改代码后自动刷新，Ctrl+C停止；`wpsjs build`打包加载项用于分发；`wpsjs publish`将加载项安装到本地WPS中。启用加载项功能需在cfgs目录的oem.ini中添加[JsApiShowWebDebugger=true]，调试按Alt+F12或F12打开开发者工具。
+  2309│ 
+  2310│ - **[WPS加载项加载失败排查]** — 加载项无法加载的常见原因包括：功能开关未开启、路径被隐藏、版本兼容性和调试模式配置问题
+  2311│   - 来源文件：`01_AI与编程开发/WPS加载项目录位置.md`
+  2312│   - 核心解释：排查步骤：(1)检查WPS安装包是否带加载项功能，在cfgs目录下oem.ini的[support]节添加JsApiShowWebDebugger=true；(2)在文件管理器中勾选"隐藏的项目"以显示AppData等隐藏目录；(3)尝试更新或更换WPS版本来解决兼容性问题；(4)按F12打开开发者工具查看控制台错误信息。不建议直接删除文件夹来卸载插件，优先用WPS内置加载项管理器。
+</file>

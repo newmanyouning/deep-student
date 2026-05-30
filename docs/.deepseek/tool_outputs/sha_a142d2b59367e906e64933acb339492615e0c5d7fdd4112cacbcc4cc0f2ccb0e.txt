@@ -1,0 +1,154 @@
+<file path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" total_lines="8287" shown_lines="551-700" truncated="true" next_start_line="701">
+   551│ ### 🇨🇳 第三步：配置国内大模型API
+   552│ 
+   553│ 这是你最关心的核心，目前有三条主流的捷径可以走：
+   554│ 
+   555│ #### 方案一：通过Coding Plan套餐（最省心，推荐）
+   556│ 
+   557│ 这是目前**最简单、最划算**的途径。各大模型厂商都推出了面向开发者的“Coding Plan”订阅套餐，直接打包好了AI编程能力[reference:7]，可以避免处理复杂API调用的麻烦。
+   558│ 
+   559│ | 厂商 | 套餐名称 | 入门月价 | 计费方式 | 核心亮点 |
+   560│ | :--- | :--- | :--- | :--- | :--- |
+   561│ | **阿里云** | 百炼 Coding Plan | **¥40/月** (首月**¥7.9**) | API请求次数 | **首月价格最低**，模型丰富（Qwen、GLM），国内稳定性强[reference:8] |
+   562│ | **智谱AI** | GLM Coding Plan | ¥49/月 | Prompt次数 | 为Coding Plan场景深度优化，工具调用能力强[reference:9][reference:10] |
+   563│ | **火山引擎** | 方舟 Coding Plan | ¥40/月 (首月**¥8.91**) | API请求次数 | 支持**Auto模式自动匹配最优模型**，支持模型多[reference:11] |
+   564│ 
+   565│ **如何接入**：购买套餐后，你将获得一个API Key和Base URL，在Cline插件的设置里填进去就行[reference:12]。
+   566│ 
+   567│ #### 方案二：通过AI网关/中转工具（更灵活）
+   568│ 
+   569│ 如果你喜欢折腾或需要精细控制，可以使用一些中转工具。例如，你可以在VSCode里配置**MCP Apps**[reference:13]，它能让你的AI像拥有“手脚”一样直接调用数据库、文件、命令行等外部工具。类似的工具有**cc-switch**，提供统一的API管理[reference:14]。
+   570│ 
+   571│ #### 方案三：直接使用厂商API（最直接，适合测试）
+   572│ 
+   573│ 这是最直接的方式，直接从各厂商官网获取API Key。你可以在Cline插件中直接使用这些API。
+   574│ 
+   575│ **主流国内模型API价格（2026年3月）**
+   576│ 
+   577│ | 厂商 | 模型名称 | 输入价格(元/百万token) | 输出价格(元/百万token) | 上下文长度 | 主要特点 |
+   578│ | :--- | :--- | :--- | :--- | :--- | :--- |
+   579│ | **阿里云** | Qwen3-Coder-Next | 约0.8 | 约2.0 | 1M | 编程能力强，专为代码优化[reference:15] |
+   580│ | **智谱AI** | GLM-4.7 | 约1.0 | 约2.5 | 200K | 国产最强编程模型之一，对齐Claude Sonnet 4[reference:16] |
+   581│ | **火山引擎** | Doubao-Seed-Code | 约0.9 | 约2.2 | 256K | 前端能力强，支持视觉理解UI稿[reference:17] |
+   582│ | **MiniMax** | MiniMax M2.5 | 约0.5 | 约1.5 | 256K | 性价比极高，价格约为Claude的1/21[reference:18] |
+   583│ | **DeepSeek** | DeepSeek-V3.2 | 约0.14 | 约0.28 | 128K | 极低成本，编程能力不错[reference:19] |
+   584│ | **月之暗面** | Kimi-K2.5 | 约0.6 | 约1.8 | 256K | 长文本能力突出[reference:20] |
+   585│ 
+   586│ ### 🤖 第四步：实现“自动安装依赖”的能力
+   587│ 
+   588│ 你提到的“缺少依赖自动下载”，这个能力其实是由**Agent框架（如Claw Code）** 在执行Shell命令时自然完成的。工作流程是：
+   589│ 
+   590│ 1.  你下达指令。
+   591│ 2.  云端模型分析后，决定调用`npm install`或`pip install`命令。
+   592│ 3.  Agent框架在本地Shell中执行该命令。
+   593│ 4.  结果返回，完成依赖安装。
+   594│ 
+   595│ 用户可以在VSCode的Cline插件中设置**权限确认**。每次Agent尝试执行敏感操作（如`npm install`）时，都会弹出请求，你可以选择“允许一次”、“允许所有”或“拒绝”[reference:21]。
+   596│ 
+   597│ ### 💡 注意事项
+   598│ 
+   599│ - **上下文窗口选择**：如果你需要处理超大型项目，推荐选择上下文窗口在**200K以上**的模型，如**Qwen3-Coder-Next（1M）**[reference:22]或**GLM-4.7（200K）**[reference:23]，可以一次性加载更多代码。
+   600│ 
+   601│ - **权限管理**：建议在Cline插件设置中，将自动权限改为**Ask for Approval**。安全起见，别给AI开放所有权限[reference:24]。
+   602│ 
+   603│ - **成本控制**：你可以在Agent框架配置中**限制单次任务的Token使用量**，或在模型API后台设置**每日调用限额**，避免费用超支。
+   604│ 
+   605│ - **遇到问题时**：需要先定位是哪个环节出了问题。先看VSCode输出面板里的插件日志，或去Agent框架的官方GitHub仓库提Issue求助。
+   606│ 
+   607│ ### 💎 总结
+   608│ 
+   609│ 按照以上步骤，你就能在Mac版VSCode里拥有一个能听懂中文、会自己写代码、装依赖的AI助手了。
+   610│ 
+   611│ 这套方案的关键是**Cline**和**Agent框架**的组合。你打算先用哪个方案试试看？确定好模型后，我可以再给你讲讲Cline里具体怎么配置API～
+   612│ 
+   613│ ---
+   614│ 
+   615│ ## ❓ unknown
+   616│ 
+   617│ 我需要的是一个简单的小工具，帮我处理excel格式的检测报告，需要的功能有，导入excel表格，提取excel单元格内容，页眉页脚的所有信息，以及文字间距以及文本格式信息，然后重新打开到一个可以自由选择部分为模板的可交互窗口，让我选择保留哪些为模板。如果有单元格在单个文件内引用的信息，就把引用的信息单独放在一个可以编辑的地方，编辑这个位置就能把引用的信息填完整。我需要这个工具可以在windows上运行，但是在mac上开发。这个上下文窗口我应该选择多长？
+   618│ 
+   619│ ---
+   620│ 
+   621│ ## ❓ unknown
+   622│ 
+   623│ 用户想开发一个处理Excel检测报告的工具，需求很明确：解析单元格、页眉页脚、样式，还要处理单元格引用并允许编辑。他特别问到上下文窗口的选择，这关系到AI生成代码的质量。先看看市面上有没有类似工具可以借鉴，同时确认一下用Python处理Excel这些复杂信息（比如页眉页脚）具体有哪些库和方法。把这两个问题分开搜索，效率会高一些。
+   624│ {'type': 'TOOL_SEARCH'}
+   625│ {'type': 'TOOL_SEARCH'}
+   626│ {'type': 'TOOL_SEARCH'}
+   627│ {'type': 'TOOL_SEARCH'}
+   628│ {'type': 'TOOL_SEARCH'}
+   629│ 搜索结果回来了，信息很丰富。关于库的选择，openpyxl 确实是读取和操作 .xlsx 文件的标准工具，能处理页眉页脚和单元格样式。关于公式引用和依赖分析，有像 pycel 和 koala 这样的库可以构建依赖图，这正好符合用户提到的“引用信息单独编辑”的需求。关于模板生成，也有现成的方案。看来技术实现路径是清晰的，现在需要把这些信息整合起来，形成一个清晰的方案，并重点回应用户关于上下文窗口长度的问题。
+   630│ {'type': 'TOOL_OPEN'}
+   631│ {'type': 'TOOL_OPEN'}
+   632│ {'type': 'TOOL_OPEN'}
+   633│ {'type': 'TOOL_OPEN'}
+   634│ {'type': 'TOOL_OPEN'}
+   635│ {'type': 'TOOL_OPEN'}
+   636│ {'type': 'TOOL_OPEN'}
+   637│ {'type': 'TOOL_OPEN'}
+   638│ {'type': 'TOOL_OPEN'}
+   639│ 搜索结果明确了技术可行性，openpyxl 能处理页眉页脚和样式，pycel 这类库也能解析单元格引用关系。现在需要把实现方案和上下文窗口的建议结合起来回答。回答会先给出一个整体实现方案，然后重点分析开发这个工具时，上下文窗口如何影响代码生成的准确性和效率，并给出具体的长度建议。
+   640│ 你想做的这个Excel检测报告处理工具，技术实现是完全可行的。结合你之前提到的AI辅助开发需求，这里从两个角度来回答：**技术上如何实现**，以及**开发过程中AI的上下文窗口该怎么选**。
+   641│ 
+   642│ ---
+   643│ 
+   644│ ## 一、工具的核心实现方案（技术路线图）
+   645│ 
+   646│ 这个工具可以拆解为五个核心模块，下面用Python开源方案逐一说明：
+   647│ 
+   648│ ```mermaid
+   649│ flowchart LR
+   650│     subgraph 1.导入模块
+   651│         A[选择Excel文件<br>tkinter.filedialog]
+   652│     end
+   653│ 
+   654│     subgraph 2.解析模块
+   655│         B1[读取所有单元格及样式<br>openpyxl]
+   656│         B2[读取页眉页脚<br>openpyxl]
+   657│         B3[解析公式依赖<br>openpyxl.formula.Tokenizer<br>或自定义依赖分析]
+   658│     end
+   659│ 
+   660│     subgraph 3.依赖管理
+   661│         C[提取单元格引用<br>构建依赖图]
+   662│     end
+   663│ 
+   664│     subgraph 4.交互模块
+   665│         D[模板选择界面<br>自定义Tkinter控件<br>展示所有解析内容<br>用户勾选保留项]
+   666│     end
+   667│ 
+   668│     subgraph 5.引用编辑器
+   669│         E[单独展示可编辑引用<br>编辑后回填单元格]
+   670│     end
+   671│ 
+   672│     A --> B1
+   673│     A --> B2
+   674│     A --> B3
+   675│     B3 --> C
+   676│     C --> D
+   677│     D --> E
+   678│ ```
+   679│ 
+   680│ ### 1. 导入与核心解析
+   681│ 使用 **openpyxl** 是最稳妥的选择。它可以直接读取 Excel 文件，无需安装 Microsoft Excel，且能完整保留格式信息[reference:0]。
+   682│ 
+   683│ ```python
+   684│ from openpyxl import load_workbook
+   685│ from openpyxl.styles import Font, Alignment, Border, PatternFill
+   686│ from openpyxl.worksheet.header_footer import HeaderFooter
+   687│ 
+   688│ wb = load_workbook('report.xlsx')
+   689│ ws = wb.active
+   690│ ```
+   691│ 
+   692│ ### 2. 提取页眉页脚信息
+   693│ openpyxl 原生支持读取页眉页脚，可以获取左、中、右三部分的所有内容[reference:1]：
+   694│ 
+   695│ ```python
+   696│ # 提取页眉信息（左、中、右）
+   697│ header_left = ws.header_footer.header.left
+   698│ header_center = ws.header_footer.header.center
+   699│ header_right = ws.header_footer.header.right
+   700│ 
+
+[TRUNCATED] Showing lines 551-700 of 8287. To continue, call read_file with path="C:\Users\1\Downloads\deepseek_data-2026-05-17\output_md\01_AI与编程开发\Claude Code使用指南.md" start_line=701 max_lines=150
+</file>

@@ -19,6 +19,7 @@ use crate::chat_v2::tools::todo_executor::{load_persisted_todo_list, restore_tod
 use crate::chat_v2::types::{
     variant_status, AttachmentMeta, ChatMessage, MessageRole, SendMessageRequest, SendOptions,
 };
+use crate::chat_v2::handlers::shared::apply_original_skill_snapshot_overrides;
 use crate::chat_v2::user_message_builder::create_user_refs_snapshot;
 // 🆕 VFS 统一存储（2025-12-07）：资源操作使用 vfs.db
 use crate::llm_manager::LLMManager;
@@ -258,86 +259,6 @@ fn apply_replay_mode_overrides(mut options: SendOptions) -> SendOptions {
     if options.replay_mode.is_some() {
         options.temperature = Some(0.0);
     }
-    options
-}
-
-pub(crate) fn apply_original_skill_snapshot_overrides(
-    mut options: SendOptions,
-    preferred_meta: Option<&crate::chat_v2::types::MessageMeta>,
-    fallback_meta: Option<&crate::chat_v2::types::MessageMeta>,
-) -> SendOptions {
-    if options.replay_mode != Some(crate::chat_v2::types::ReplayMode::Original) {
-        return options;
-    }
-
-    let snapshot = preferred_meta
-        .and_then(|meta| {
-            meta.skill_snapshot_after
-                .as_ref()
-                .or(meta.skill_snapshot_before.as_ref())
-        })
-        .or_else(|| {
-            fallback_meta.and_then(|meta| {
-                meta.skill_snapshot_after
-                    .as_ref()
-                    .or(meta.skill_snapshot_before.as_ref())
-            })
-        });
-
-    let runtime_snapshot = preferred_meta
-        .and_then(|meta| {
-            meta.skill_runtime_after
-                .as_ref()
-                .or(meta.skill_runtime_before.as_ref())
-        })
-        .or_else(|| {
-            fallback_meta.and_then(|meta| {
-                meta.skill_runtime_after
-                    .as_ref()
-                    .or(meta.skill_runtime_before.as_ref())
-            })
-        });
-
-    if snapshot.is_none() && runtime_snapshot.is_none() {
-        return options;
-    }
-
-    let mut replay_pinned_skill_ids = runtime_snapshot
-        .map(|snapshot| snapshot.active_skill_ids.clone())
-        .unwrap_or_default();
-    if let Some(snapshot) = snapshot {
-        replay_pinned_skill_ids = snapshot.manual_pinned_skill_ids.clone();
-    }
-    replay_pinned_skill_ids.sort();
-    replay_pinned_skill_ids.dedup();
-
-    if !replay_pinned_skill_ids.is_empty() {
-        options.active_skill_ids = Some(replay_pinned_skill_ids);
-    }
-
-    if let Some(runtime_snapshot) = runtime_snapshot {
-        if !runtime_snapshot.skill_contents.is_empty() {
-            options.skill_contents = Some(runtime_snapshot.skill_contents.clone());
-            options.replay_skill_contents = Some(runtime_snapshot.skill_contents.clone());
-        }
-        if !runtime_snapshot.skill_dependencies.is_empty() {
-            options.skill_dependencies = Some(runtime_snapshot.skill_dependencies.clone());
-        }
-        if !runtime_snapshot.skill_embedded_tools.is_empty() {
-            options.skill_embedded_tools = Some(runtime_snapshot.skill_embedded_tools.clone());
-        }
-        if !runtime_snapshot.mcp_tool_schemas.is_empty() {
-            options.mcp_tool_schemas = Some(runtime_snapshot.mcp_tool_schemas.clone());
-        }
-        if !runtime_snapshot.selected_mcp_servers.is_empty() {
-            options.mcp_tools = Some(runtime_snapshot.selected_mcp_servers.clone());
-        }
-    } else if let Some(snapshot) = snapshot {
-        if !snapshot.effective_allowed_external_servers.is_empty() {
-            options.mcp_tools = Some(snapshot.effective_allowed_external_servers.clone());
-        }
-    }
-
     options
 }
 

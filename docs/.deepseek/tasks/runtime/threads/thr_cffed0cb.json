@@ -1,0 +1,16 @@
+{
+  "schema_version": 2,
+  "id": "thr_cffed0cb",
+  "created_at": "2026-05-17T09:39:29.323907900Z",
+  "updated_at": "2026-05-17T09:47:06.807037400Z",
+  "model": "auto",
+  "workspace": "C:\\Users\\1\\Downloads\\deepseek_data-2026-05-17\\output_md",
+  "mode": "agent",
+  "allow_shell": false,
+  "trust_mode": false,
+  "auto_approve": false,
+  "latest_turn_id": "turn_d915bc2e",
+  "archived": false,
+  "task_id": "task_50514f8b",
+  "coherence_state": "healthy"
+}

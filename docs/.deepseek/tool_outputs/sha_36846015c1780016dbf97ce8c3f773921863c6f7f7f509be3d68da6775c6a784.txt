@@ -1,0 +1,33 @@
+[sub-agent result summarized for parent context]
+Child results are self-reports; verify side effects with tools like read_file or list_dir before claiming success.
+Use `agent_eval` for a fresh projection or `handle_read` on `transcript_handle` for bounded transcript slices.
+- agent_92e82770 (general) status=Completed
+  objective: 你是一个知识提取专家。请读取文件 `01_AI与编程开发/阿里云服务器PaddleOCR使用指南.md`，提取其中有价值的、可复用的知识点。
+
+要求：
+1. 先读取整个文件内容
+2. 提取3-8条知识点，每个知识点需要是独立、完整、有实用价值的
+3. 每条知识点的格式如下（输出纯文本，不要加额外的标记）：
+   - **[知识点标题]** — 一句话简介
+     - 来源文件：阿里云服务器PaddleOCR使用指南.md
+   ...
+  result: - **PaddleOCR 命令行快速识别（图片/文件夹/PDF三合一）** — 无需编写代码，一条命令即可完成文字识别，支持图片、文件夹批量处理和PDF文档。
+  - 来源文件：阿里云服务器PaddleOCR使用指南.md
+  - 核心解释：安装PaddleOCR whl包后，使用 `paddleocr --image_dir <路径> --use_angle_cls true` 即可识别单张图片。将 `--image_dir` 指向文件夹路径可批量处理所有图片；指向PDF文件可直接识别PDF内容。通过 `--page_num 3` 可限制只识别PDF前3页，默认值0表示识别全部页面。`--use_angle_cls true` 启用方向分类模型，能自动校正旋转或倒置的图片，建议始终开启。
+
+- **PaddleOCR Python API 的结果解析模式** — 理解 `ocr.ocr()` 返回值的嵌套结构是集成PaddleOCR到应用程序的关键。
+  - 来源文件：阿里云服务器PaddleOCR使用指南.md
+  - 核心解释：`ocr.ocr(img_path, cls=True)` 返回一个列表，每个元素对应一个检测到的文本框。每个元素的结构为 `[box, [text, confidence]]`：`box` 是文本框四个角的坐标列表，`text` 是识别出的文字内容，`confidence` 是置信度分数（0到1之间的浮点数）。在循环中通过 `line[1][0]` 取文本、`line[1][1]` 取置信度即可完成结果提取。
+
+- **PaddleOCR 检测阈值与结果过滤的调优方法** — 通过调整检测灵敏度阈值和置信度过滤阈值，可以在召回率和精确率之间取得平衡。
+  - 来源文件：阿里云服务器PaddleOCR使用指南.md
+  - 核心解释：`--det_db_thresh` 参数控制文本检测的灵敏度，值越小检测出的文本框越多但可能引入误检，默认值与DB检测算法相关。`--drop_score 0.5` 可过滤掉置信度低于0.5的识别结果，让输出更干净。在Python API中，还可通过 `det_model_dir`、`rec_model_dir`、`cls_model_dir` 分别指定自定义的检测、识别和分类模型路径，实现模型替换而非仅用默认模型。
+
+- **Ubuntu 22.04 下进入 Docker 容器的标准操作流程** — 从查看容器状态到进入容器内部的完整步骤，以及常见错误的排查方法。
+  - 来源文件：阿里云服务器PaddleOCR使用指南.md
+  - 核心解释：先用 `sudo docker ps` 查看正在运行的容器，获取容器名或ID；然后用 `sudo docker exec -it <容器名或ID> /bin/bash` 进入容器。`-i` 保持标准输入打开，`-t` 分配伪终端，两者必须组合使用才能获得交互式Shell。如果提示 `/bin/bash` 不存在，说明容器使用的是精简镜像（如Alpine Linux），应改用 `/bin/sh`。退出容器用 `exit` 命令，容器会继续在后台运行而不会被停止。
+
+- **Docker 容器无法进入的三类常见错误及解决方案** — 覆盖 "command not found"、"No such container" 和 "no such file or directory" 三种高频问题及其根因。
+  - 来源文件：阿里云服务器PaddleOCR使用指南.md
+  - 核心解释：错误一：`docker: command not found` 表示Docker未安装或当前用户不在docker用户组，加 `sudo` 或将用户加入dock...
+  stats: steps=3, duration_ms=75888

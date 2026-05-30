@@ -1,0 +1,105 @@
+# Ubuntu实时监控GPUCPU命令
+对话ID: 6b190d07-56c1-4ffa-9792-2b1b676a2f54
+创建时间: 2026-03-13T19:48:24.630000+08:00
+更新时间: 2026-03-13T23:07:02.992000+08:00
+
+## ❓ unknown
+
+在服务器ubuntu22.04终端运行什么命令可以实时监控GPU和CPU的占用情况？
+
+---
+
+## ❓ unknown
+
+{'type': 'SEARCH', 'results': [{'url': 'https://wiki.camthink.ai/docs/neoedge-ng4500-series/ng4500-cb01-development-board/software-guide/software-frameworks-and-tools/jtop/', 'title': 'jtop | CamThink', 'snippet': 'Written in Python, it offers an htop-like interactive interface for real-time monitoring of system resources such as CPU, GPU, memory, fan speed, and power consumption. ... - GPU：Monitors GPU utilization - CPU：Displays CPU usage - MEM：Displays memory and swap usage', 'cite_index': 1, 'published_at': None, 'site_name': 'camthink.ai', 'site_icon': 'https://cdn.deepseek.com/site-icons/camthink.ai', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://ubuntuhandbook.org/index.php/2023/01/indicator-show-cpu-gpu-memory-ubuntu-panel/?replytocom=3756744&noamp=mobile', 'title': 'This Indicator Shows CPU, GPU, Memory Usage on Ubuntu 22.04 Panel', 'snippet': 'It’s Indicator-SysMonitor, a free and open-source applet developed by the leader of Ubuntu Budgie team. With it, user can display the usage and/or temperature of the following system resource in top-panel ... press Ctrl+Alt+T on keyboard to open a terminal window.', 'cite_index': 2, 'published_at': 1714924800.0, 'site_name': 'UbuntuHandbook', 'site_icon': 'https://cdn.deepseek.com/site-icons/ubuntuhandbook.org', 'query_indexes': [1, 0], 'is_hidden': False}, {'url': 'https://ubuntuhandbook.org/index.php/2024/11/display-fps-while-gaming-ubuntu/', 'title': 'Display FPS, CPU/GPU Usage While Gaming in Ubuntu 24.04 | 22.04', 'snippet': 'Want to see frames per second (FPS), as well as CPU, GPU, RAM usage in your game screen? Here’s how to do the job in Debian, Ubuntu, and Linux Mint based systems. ... Step 1: Install MangoHud ... Step 2: Start your game with MangoHud overlay', 'cite_index': 3, 'published_at': 1763740800.0, 'site_name': 'UbuntuHandbook', 'site_icon': 'https://cdn.deepseek.com/site-icons/ubuntuhandbook.org', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://dev.to/neers/ultimate-useful-linux-commands-for-monitoring-1ej8', 'title': 'Ultimate guide of Linux commands for Monitoring', 'snippet': 'Here are some essential commands to monitor the health and CPU utilization of your Ubuntu 22.04 server: 1. General System Information - View system information ... 2. CPU Utilization - Display real-time CPU and memory usage...', 'cite_index': 4, 'published_at': 1737475200.0, 'site_name': 'DEV Community', 'site_icon': 'https://cdn.deepseek.com/site-icons/dev.to', 'query_indexes': [1, 0], 'is_hidden': False}, {'url': 'https://docs.rs/crate/all-smi/0.11.0', 'title': 'all-smi 0.11.0', 'snippet': 'Command-line utility for monitoring GPU hardware. It provides a real-time view of GPU utilization, memory usage, temperature, power consumption, and other metrics. # all-smi all-smi ... monitoring GPU and NPU hardware across multiple systems. It provides ... utilization, memory usage, temperature, power consumption, and other metrics.', 'cite_index': 5, 'published_at': None, 'site_name': 'Docs.rs', 'site_icon': 'https://cdn.deepseek.com/site-icons/docs.rs', 'query_indexes': [1, 0], 'is_hidden': False}, {'url': 'https://docs.rs/crate/all-smi/0.7.1/source/debian/changelog', 'title': 'all-smi 0.7.1', 'snippet': 'all-smi 0.7.1 Command-line utility for monitoring GPU hardware. It provides a real-time view of GPU utilization, memory usage, temperature, power consumption, and other metrics. ... * Initial release for Ubuntu 22.04 (Jammy)', 'cite_index': 6, 'published_at': None, 'site_name': 'Docs.rs', 'site_icon': 'https://cdn.deepseek.com/site-icons/docs.rs', 'query_indexes': [0], 'is_hidden': False}, {'url': 'https://ossmalta.eu/how-to-check-gpu-intel-amd-nvidia-usage-in-ubuntu-22-04-20-04/?amp=1', 'title': 'How to Check GPU (Intel/AMD/NVIDIA) Usage in Ubuntu 22.04 | 20.04', 'snippet': 'For the integrated Intel graphics card, there’s a command line toolintel_gpu_top can do the job. 1. First, press Ctrl+Alt+T on terminal to open a terminal window. When it opens, run command to install the package...', 'cite_index': 7, 'published_at': 1670342400.0, 'site_name': 'Open Source Society Malta', 'site_icon': 'https://cdn.deepseek.com/site-icons/ossmalta.eu', 'query_indexes': [1], 'is_hidden': False}, {'url': 'https://labex.io/de/tutorials/linux-linux-dstat-command-with-practical-examples-422651', 'title': 'Linux dstat Command with Practical Examples | LabEx', 'snippet': 'We will start by introducing the dstat command and demonstrating how to use it to monitor CPU utilization and memory usage on our Ubuntu 22.04 Docker container. The dstat command is a powerful tool for system administrators and developers who need', 'cite_index': 8, 'published_at': None, 'site_name': 'LabEx', 'site_icon': 'https://cdn.deepseek.com/site-icons/labex.io', 'query_indexes': [0], 'is_hidden': False}]}
+嗯，用户想在Ubuntu 22.04服务器上实时监控GPU和CPU占用情况，这是个很实用的系统运维需求。用户明确提到是服务器环境，所以需要的是终端命令工具而非桌面应用。
+
+我打算从CPU监控和GPU监控两个维度来组织回答，分别推荐常用工具，再给出组合监控的推荐方案。如果搜索结果中有权威的官方文档或技术博客，可以优先采用。
+
+看了搜索结果，有个技术社区文章列出了Linux监控的基础命令，包括top、htop、glances等[citation:4]，虽然来自开发者社区权威性一般，但内容准确实用。还有一个关于nvtop安装的详细指南[citation:7]，介绍了通过PPA安装nvtop监控AMD/NVIDIA GPU的方法，时效性不错是2022年的，权威性中等但操作步骤清晰。
+
+关于dstat的介绍来自LabEx[citation:8]，虽然是教程网站权威性不高，但dstat作为系统自带工具的使用方法描述准确。jtop的介绍[citation:1]虽然是针对Jetson平台的，但也提到了jtop的安装和使用，对NVIDIA用户有参考价值。all-smi的文档[citation:5][citation:6]来自官方文档，权威性较高，提供了跨平台GPU监控的详细说明。
+
+有几个搜索结果不太适用：mangohud是游戏场景的overlay工具[citation:3]，和服务器监控需求不符；indicator-sysmonitor是桌面面板工具[citation:2]，也不适合纯终端环境。
+
+考虑到用户可能在不同GPU品牌间切换，我会推荐nvtop作为GPU监控的首选[citation:7]，因为它同时支持AMD和NVIDIA。CPU监控则推荐htop[citation:4]和dstat[citation:8]的组合。最后可以用glances[citation:4]实现CPU+GPU一站式监控，但需要说明glances的GPU支持是调用nvtop或nvidia-smi实现的。
+
+信息呈现上，先给出最简洁的一行命令组合，再分工具详细说明，最后用表格对比不同场景的推荐方案，方便用户快速选择。
+在 Ubuntu 22.04 服务器上，你可以使用多种命令来实时监控 GPU 和 CPU。这里有一份精选的工具列表，你可以根据你的需求和显卡类型来选择。
+
+### 💻 CPU 监控常用命令
+对于 CPU 监控，有几个经典且强大的命令行工具：
+
+1.  **`htop`**：一个增强版的交互式进程查看器，比系统自带的 `top` 命令界面更友好，支持彩色显示和鼠标操作[citation:4]。
+    ```bash
+    # 安装
+    sudo apt install htop -y
+    # 运行
+    htop
+    ```
+
+2.  **`dstat`**：一个多功能资源统计工具，可以帮你全面了解 CPU、内存、磁盘 I/O 和网络流量等系统资源[citation:8]。
+    ```bash
+    # 安装
+    sudo apt install dstat -y
+    # 运行 (默认显示CPU、磁盘、网络、分页和系统信息)
+    dstat
+    # 单独监控CPU和内存
+    dstat --cpu --mem
+    ```
+
+### 🚀 GPU 监控常用命令
+GPU 监控取决于你的显卡品牌，最推荐的是 **`nvtop`**，它堪称GPU版的 `htop`。
+
+*   **对于 AMD 和 NVIDIA 显卡：** `nvtop` 是首选。它提供了一个直观的、类似 `htop` 的界面，可以实时显示 GPU 的整体利用率、显存使用情况、温度、功耗，甚至还能按进程查看占用[citation:7]。
+    ```bash
+    # 步骤1: 添加官方PPA源以获取最新版本
+    sudo add-apt-repository ppa:flexiondotorg/nvtop
+    # 步骤2: 更新软件包列表
+    sudo apt update
+    # 步骤3: 安装nvtop
+    sudo apt install nvtop -y
+    # 步骤4: 直接运行
+    nvtop
+    ```
+
+*   **对于 NVIDIA 显卡：** 如果你安装了 NVIDIA 驱动，系统自带的 **`nvidia-smi`** 命令是最基础且可靠的选择。它不仅能查看 GPU 状态，还能进行一些管理操作。
+    ```bash
+    # 直接运行，默认每隔1秒刷新一次
+    watch -n 1 nvidia-smi
+    ```
+    这里的 `watch` 命令让 `nvidia-smi` 每1秒刷新一次，从而实现实时监控的效果。
+
+*   **对于 Intel 集成显卡：** 可以使用 `intel_gpu_top` 工具。
+    ```bash
+    # 安装
+    sudo apt install intel-gpu-tools -y
+    # 运行 (通常需要sudo权限)
+    sudo intel_gpu_top
+    ```
+
+### ✨ 全能型选手：Glances
+如果你希望在一个窗口中同时看到 CPU、内存、磁盘、网络以及 GPU 的所有信息，那么 **`glances`** 是一个非常棒的选择。它是一个用 Python 编写的跨平台监控工具，信息显示非常全面[citation:4]。
+```bash
+# 安装
+sudo apt install glances -y
+# 运行
+glances
+```
+**请注意**：`glances` 的 GPU 监控功能通常需要调用 `nvtop` 或 `nvidia-smi` 等工具来实现，但在大多数情况下，它能很好地自动检测并显示 GPU 信息。
+
+### 总结与建议
+为了方便你选择，这里总结一下：
+
+| 监控需求 | 推荐工具 | 安装命令 | 主要特点 |
+| :--- | :--- | :--- | :--- |
+| **CPU + GPU 一站式** | **`glances`** | `sudo apt install glances` | 信息最全面，一目了然[citation:4] |
+| **GPU 专用 (AMD/NVIDIA)** | **`nvtop`** | `sudo add-apt-repository ppa:flexiondotorg/nvtop && sudo apt install nvtop` | 交互界面友好，支持按进程查看，功能强大[citation:7] |
+| **CPU 专用** | **`htop`** | `sudo apt install htop` | 经典的增强型进程管理器[citation:4] |
+| **NVIDIA 快速查看** | **`watch -n 1 nvidia-smi`** | (已随驱动安装) | 简单直接，无需安装新工具 |
+
+你可以根据自己的习惯选择一两个工具配合使用。例如，用 `nvtop` 专注看 GPU，用 `htop` 专注看 CPU，或者直接用 `glances` 一览无余。
+
+你的服务器上安装的是 NVIDIA 显卡吗？如果是的话，我可以再为你介绍一下 `nvidia-smi` 一些更详细的参数用法。
+
+---

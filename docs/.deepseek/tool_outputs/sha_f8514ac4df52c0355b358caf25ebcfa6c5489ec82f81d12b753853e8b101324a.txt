@@ -1,0 +1,207 @@
+<file path="01_AI与编程开发\项目重构方案.md" total_lines="6198" shown_lines="2567-3066" truncated="true" next_start_line="3067">
+  2567│ 
+  2568│ #### 3.1 直接返回值（推荐方案）
+  2569│ 
+  2570│ 通过`Application.Run`调用VBA函数（Function），**直接接收返回值**[reference:2]：
+  2571│ 
+  2572│ ```python
+  2573│ # VBA中的Function
+  2574│ Function MySum(x, y)
+  2575│     MySum = x + y
+  2576│ End Function
+  2577│ 
+  2578│ # Python中调用并直接获取返回值
+  2579│ result = wps.Run("MySum", 3, 5)  # result = 8
+  2580│ ```
+  2581│ 
+  2582│ **关键要点**：VBA函数名必须与赋值目标变量名一致，否则无返回值[reference:3]。即`Function MySum(x,y)`内部必须写`MySum = x + y`，而不能写`T = x + y`。
+  2583│ 
+  2584│ #### 3.2 写入工作表单元格（最稳定）
+  2585│ 
+  2586│ VBA将结果直接写入工作表的指定区域，Python再从COM读取：
+  2587│ 
+  2588│ ```python
+  2589│ # VBA将数据写入Sheet1的A1:D10区域
+  2590│ vba_code = '''
+  2591│ Sub WriteResultToSheet()
+  2592│     Sheet1.Range("A1:D10").Value = resultArray
+  2593│ End Sub
+  2594│ '''
+  2595│ 
+  2596│ # Python执行后读取
+  2597│ wps.Run("WriteResultToSheet")
+  2598│ data = wb.Sheets(1).Range("A1:D10").Value  # 返回二维元组
+  2599│ ```
+  2600│ 
+  2601│ 这是当前项目`VBAInjector`采用的模式，也是**最稳定、最推荐**的方式。
+  2602│ 
+  2603│ #### 3.3 写入剪贴板
+  2604│ 
+  2605│ VBA通过`MSForms.DataObject`将数据写入Windows剪贴板，Python通过`pyperclip`等库读取[reference:4]：
+  2606│ 
+  2607│ ```vba
+  2608│ ' VBA写入剪贴板
+  2609│ Sub WriteToClipboard(text As String)
+  2610│     Dim objData As New MSForms.DataObject
+  2611│     objData.SetText text
+  2612│     objData.PutInClipboard
+  2613│ End Sub
+  2614│ ```
+  2615│ 
+  2616│ 此方式适合小数据量场景，但依赖系统剪贴板，可能与其他应用冲突。
+  2617│ 
+  2618│ #### 3.4 写入临时文件
+  2619│ 
+  2620│ VBA将结果序列化为JSON/CSV文件，Python读取后解析[reference:5]。此方式适合大数据量，但涉及磁盘I/O，性能较差。
+  2621│ 
+  2622│ #### 3.5 创建命名区域（Named Range）
+  2623│ 
+  2624│ VBA将复杂结构数据以命名区域形式保存，Python通过`wb.Names("ResultRange").RefersToRange.Value`获取。
+  2625│ 
+  2626│ ---
+  2627│ 
+  2628│ ### 四、WPS环境特别注意事项
+  2629│ 
+  2630│ #### 4.1 ProgID选择
+  2631│ 
+  2632│ WPS可用ProgID优先级：`Ket.Application` → `KWPS.Application` → `ET.Application`。当前测试确认`Ket.Application`在WPS 12.0版本中可用。
+  2633│ 
+  2634│ #### 4.2 VBA工程访问权限（关键）
+  2635│ 
+  2636│ 写入VBA代码**必须**在WPS信任中心启用以下两项：
+  2637│ 1. **启用所有宏**
+  2638│ 2. **信任对VBA工程对象模型的访问**（核心，对应COM属性`Application.VBE`）
+  2639│ 
+  2640│ 否则调用`workbook.VBProject`将抛出`-2146827284 (0x800A03EC)`错误。
+  2641│ 
+  2642│ #### 4.3 路径格式要求
+  2643│ 
+  2644│ 传递给WPS COM的文件路径**必须使用绝对路径**，相对路径会导致文件找不到错误[reference:6]。
+  2645│ 
+  2646│ #### 4.4 权限问题排查
+  2647│ 
+  2648│ 如果出现`VBProject`成员不存在的错误，通常由以下原因导致：
+  2649│ - 未启用"信任对VBA工程对象模型的访问"
+  2650│ - WPS版本过低（需2019+）
+  2651│ - 工作簿文件格式不支持宏（需`.xlsm`或`.xls`格式，`.xlsx`不含VBA工程）
+  2652│ 
+  2653│ ---
+  2654│ 
+  2655│ ### 五、支持的数据类型
+  2656│ 
+  2657│ Python与VBA通过COM传递时，数据类型映射如下[reference:7][reference:8]：
+  2658│ 
+  2659│ | Python类型 | VBA类型 | 直接传递 | 备注 |
+  2660│ |-----------|---------|---------|------|
+  2661│ | `int`, `float` | `Long`, `Double` | ✅ | 标量类型完全兼容 |
+  2662│ | `str` | `String` | ✅ | 直接传递 |
+  2663│ | `list`, `tuple` | `Variant`数组 | ⚠️ | 需要转换为COM SafeArray |
+  2664│ | `dict` | `Dictionary`对象 | ❌ | 不可直接传递，需序列化为JSON字符串 |
+  2665│ | `bool` | `Boolean` | ✅ | 直接传递 |
+  2666│ | `None` | `Empty`/`Null` | ✅ | 直接传递 |
+  2667│ 
+  2668│ **建议**：复杂数据结构统一序列化为JSON字符串在两端传递，这是最稳妥的方式。当前项目`VBAInjector`正是采用此方式。
+  2669│ 
+  2670│ ---
+  2671│ 
+  2672│ ## ❓ unknown
+  2673│ 
+  2674│ 将以上调研结果转换为可以执行的步骤，仅输出提示词。
+  2675│ 
+  2676│ ---
+  2677│ 
+  2678│ ## ❓ unknown
+  2679│ 
+  2680│ 我们收到用户的要求：根据前面详尽的调研结果，将其转换为可执行的步骤，仅输出提示词文本，不得包含换行和引号。用户已经得到了Python直接写入VBA代码到WPS的技术调研报告，现在需要生成一个提示词，指导AI按照调研结果实际执行VBA代码注入测试。提示词应该详细描述操作步骤，但输出内容中不能有换行和引号。所以我们需要输出一段连续的、没有换行符、没有双引号或单引号的纯文本，内容是指令步骤。步骤要清晰具体，基于调研结论，指导AI在重构项目中实现并测试直接向WPS工作簿写入VBA代码、执行宏、获取返回值。注意：输出仅提示词，不要解释或额外内容。
+  2681│ 请对重构项目infrastructure.com_bridge.vba_injector模块进行增强改造以支持通过COM直接写入VBA代码到WPS工作簿并执行获取返回结果替换现有从文件加载模块方式。第一步在VBAInjector类中新增方法inject_vba_code_from_string传入workbook对象和vba_code字符串将代码作为标准模块注入具体操作为调用workbook.VBProject.VBComponents.Add传入参数1创建标准模块然后调用module.CodeModule.AddFromString传入vba_code字符串并设置模块名称如PythonInjectedDynamicModule。第二步新增方法execute_vba_function传入函数名和参数列表通过app.Run调用VBA函数直接获取返回值并返回Python侧同时捕获COM异常若函数不存在则尝试作为Sub过程执行无返回值。第三步新增方法get_vba_return_value_from_sheet在VBA函数将结果写入指定工作表区域后通过workbook.Sheets工作表名.Range区域地址.Value读取二维数据并转换为Python列表或字典。第四步修改parse_workbook方法改为先尝试直接注入VBA代码字符串而非从文件读取模块具体实现为从vba_modules/parsing目录读取各.vba文件内容合并为单一代码字符串或按需分别注入调用inject_vba_code_from_string注入后调用execute_vba_function执行解析宏并获取JSON字符串返回值解析为Python字典。第五步若直接注入执行失败则回退到原有的从文件加载模块方式确保兼容性。第六步在WPSConnector类的connect方法中增加VBA工程访问权限检测尝试访问app.VBE若失败则抛出明确异常提示用户启用信任中心设置。第七步创建测试脚本test_direct_vba_injection.py连接WPS打开template.xls使用VBAInjector新方法注入简单的测试函数Function GetSheetName返回当前工作表名称调用execute_vba_function获取返回值并验证。第八步注入实际的ExtractAllCellsData宏代码执行后获取返回的JSON字符串解析验证单元格数据正确性。第九步将所有测试过程和结果记录到logs/direct_vba_injection_test.log。第十步若测试通过则更新相关文档说明新的VBA注入机制若测试失败则分析是代码注入格式问题还是WPS安全限制生成direct_injection_issue_report.md。整个开发过程中注意COM对象的正确释放避免内存泄漏且注入的VBA代码中不得包含文件读写等危险操作。
+  2682│ 
+  2683│ ---
+  2684│ 
+  2685│ ## ❓ unknown
+  2686│ 
+  2687│ 现在让我在VBAInjector类中添加新的方法。首先添加inject_vba_code_from_strin
+  2688│ g方法：
+  2689│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2690│ 现在让我修改parse_workbook方法以支持直接注入。首先，我需要添加一个辅助方
+  2691│ 法来加载解析模块的VBA代码：
+  2692│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2693│ 现在让我修改parse_workbook方法的主体部分，添加直接注入的支持：
+  2694│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2695│ 现在让我继续修改其他解析部分。我需要修改格式提取部分：
+  2696│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2697│ 
+  2698│ API error: Error code: 400 - {'error': {'message': "This model's maximum
+  2699│ context length is 131072 tokens. However, you requested 131587 tokens
+  2700│ (123395 in the messages, 8192 in the completion). Please reduce the
+  2701│ length of the messages or completion.", 'type': 'invalid_request_error',
+  2702│ 'param': None, 'code': 'invalid_request_error'}}
+  2703│ 执行到这里上下文超限了，需要在新对话中继续工作，仅输出继续推进工作的提示词文本。
+  2704│ 
+  2705│ ---
+  2706│ 
+  2707│ ## ❓ unknown
+  2708│ 
+  2709│ 现在让我在VBAInjector类中添加新的方法。首先添加inject_vba_code_from_strin
+  2710│ g方法：
+  2711│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2712│ 现在让我修改parse_workbook方法以支持直接注入。首先，我需要添加一个辅助方
+  2713│ 法来加载解析模块的VBA代码：
+  2714│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2715│ 现在让我修改parse_workbook方法的主体部分，添加直接注入的支持：
+  2716│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2717│ 现在让我继续修改其他解析部分。我需要修改格式提取部分：
+  2718│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2719│ 
+  2720│ API error: Error code: 400 - {'error': {'message': "This model's maximum
+  2721│ context length is 131072 tokens. However, you requested 131587 tokens
+  2722│ (123395 in the messages, 8192 in the completion). Please reduce the
+  2723│ length of the messages or completion.", 'type': 'invalid_request_error',
+  2724│ 'param': None, 'code': 'invalid_request_error'}}
+  2725│ 执行到这里上下文超限了，需要在新对话中继续工作，AI已经创建了计划文件bright-island-heron.md，仅输出继续推进工作的提示词文本。
+  2726│ 
+  2727│ ---
+  2728│ 
+  2729│ ## ❓ unknown
+  2730│ 
+  2731│ 现在让我在VBAInjector类中添加新的方法。首先添加inject_vba_code_from_strin
+  2732│ g方法：
+  2733│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2734│ 现在让我修改parse_workbook方法以支持直接注入。首先，我需要添加一个辅助方
+  2735│ 法来加载解析模块的VBA代码：
+  2736│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2737│ 现在让我修改parse_workbook方法的主体部分，添加直接注入的支持：
+  2738│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2739│ 现在让我继续修改其他解析部分。我需要修改格式提取部分：
+  2740│ ↳ Edit(or_architecture_v2\infrastructure\com_bridge\vba_injector.py) ✓
+  2741│ 
+  2742│ API error: Error code: 400 - {'error': {'message': "This model's maximum
+  2743│ context length is 131072 tokens. However, you requested 131587 tokens
+  2744│ (123395 in the messages, 8192 in the completion). Please reduce the
+  2745│ length of the messages or completion.", 'type': 'invalid_request_error',
+  2746│ 'param': None, 'code': 'invalid_request_error'}}
+  2747│ 执行到这里上下文超限了，AI已经创建了计划文件bright-island-heron.md，需要让AI按照上一步的计划文件继续工作。仅输出继续推进工作的提示词文本。
+  2748│ 
+  2749│ ---
+  2750│ 
+  2751│ ## ❓ unknown
+  2752│ 
+  2753│ 我们注意到对话上下文已达到上限，需要在新会话中继续推进VBA直接注入改造。因此下一段提示词应聚焦于：已完成vba_injector部分修改，但还需完成后续步骤（execute_vba_function、parse_workbook剩余部分、WPSConnector权限检测、测试验证等），并给出明确的下一步工作范围。需避免重复已完成工作，且要控制长度防止再次超限。
+  2754│ 请在新会话中继续完成VBAInjector直接注入改造任务。上一会话已完成inject_vba_code_from_string方法添加和parse_workbook部分修改，但execute_vba_function方法尚未添加，parse_workbook剩余解析部分尚未完成，WPSConnector权限检测未添加，测试脚本未创建。请从以下步骤开始：第一步在VBAInjector类中添加execute_vba_function方法，接收函数名和参数列表，内部调用self.app.Run并捕获异常返回结果。第二步在parse_workbook方法中完成其余三个解析模块格式提取、页眉页脚、公式依赖的直接注入调用逻辑，确保失败时回退文件加载。第三步在WPSConnector类中添加_vba_access_check方法，在connect成功后尝试访问self.app.VBE，若失败则记录警告日志但不中断连接。第四步创建测试脚本验证直接注入，先测试简单函数返回，再测试完整ExtractAllCellsData宏执行并解析JSON。第五步运行测试并记录结果到logs。完成以上步骤后生成改造完成报告。
+  2755│ 
+  2756│ ---
+  2757│ 
+  2758│ ## ❓ unknown
+  2759│ 
+  2760│ 我们需生成一段提示词，在新对话中继续执行未完成的VBA注入增强改造任务，需指明当前进展和下一步具体操作，避免上下文超限，仅输出单段提示词文本。
+  2761│ 请在新对话中继续执行VBAInjector直接注入VBA代码功能的改造工作。当前已完成inject_vba_code_from_string方法的添加和parse_workbook方法部分修改，但格式提取、页眉页脚提取、依赖分析部分的直接注入改造尚未完成。请按以下步骤继续：第一步，读取infrastructure/com_bridge/vba_injector.py中已修改的parse_workbook方法，确认已替换单元格数据提取部分为直接注入方式。第二步，继续修改parse_workbook中格式提取逻辑，将原有的load_vba_module和execute_macro调用替换为使用_load_parsing_module_code加载ExtractAllFormats.vba代码并通过inject_vba_code_from_string注入，然后调用execute_vba_function执行ExtractAllFormats宏获取返回JSON。第三步，修改页眉页脚提取部分，同样方式处理ExtractHeadersFooters.vba。第四步，修改依赖分析部分，处理ExtractFormulaDependencies.vba。第五步，确保新增的inject_vba_code_from_string、execute_vba_function、get_vba_return_value_from_sheet三个方法已正确实现且无语法错误。第六步，创建测试脚本test_vba_direct_injection_complete.py，测试完整parse_workbook调用能否成功返回包含所有四部分数据的字典，将结果输出到控制台并写入logs/direct_injection_parse_result.log。第七步，若测试成功，记录成功日志并结束任务；若出现COM错误或VBA权限错误，将错误详情记录到direct_injection_error.txt并给出WPS信任中心设置步骤提示。仅执行上述改造和测试，不得修改其他无关代码。
+  2762│ 
+  2763│ ---
+  2764│ 
+  2765│ ## ❓ unknown
+  2766│ 
+  2767│ 我们收到用户请求，因为上下文超限中断了代码编辑操作，但AI已创建计划文件，需要继续按照该计划执行后续步骤。需要生成一个提示词，指示AI继续读取计划文件并完成剩下的编辑和测试工作。仅输出提示词文本，无换行和引号。
+  2768│ 请读取并严格遵循已创建的计划文件bright-island-heron.md中的步骤继续执行VBAInjector直接注入改造工作从上次中断的修改格式提取部分开始完成所有vba_injector.py的代码修改然后创建并运行test_direct_
+[TRUNCATED] Showing lines 2567-3066 of 6198. To continue, call read_file with path="01_AI与编程开发\项目重构方案.md" start_line=3067 max_lines=500
+
+[TRUNCATED] The selected range exceeded 16KB. Continue with a smaller max_lines value.
+</file>

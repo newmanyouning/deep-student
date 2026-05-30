@@ -1,0 +1,104 @@
+<file path="01_AI与编程开发/VBA代码问题分析.md" total_lines="566" shown_lines="51-150" truncated="true" next_start_line="151">
+    51│         Dim maxCells As Long
+    52│             ReDim cellData(1 To maxCells)
+    53│             ReDim cellData(1 To result.RowCount * result.ColumnCount)
+    54│         ReDim Preserve cellData(1 To cellIndex)
+    55│ Private Function ExtractCellData(cell As Range, sheetName As String) As cellData
+    56│     Dim result As cellData
+    57│ Private Function WorkbookDataToJson(data As WorkbookData) As String
+    58│     Dim json As String
+    59│     Dim i As Long, j As Long
+    60│ Private Function SheetDataToJson(data As SheetData) As String
+    61│     Dim json As String
+    62│     Dim i As Long
+    63│ Private Function CellDataToJson(data As cellData) As String
+    64│     Dim json As String
+    65│     Dim valueStr As String
+    66│ Private Function EscapeJson(text As String) As String
+    67│     Dim result As String
+    68│     Dim i As Long
+    69│     Dim ch As String
+    70│ 
+    71│ Public Function ExtractAllCellsData() As String
+    72│     Dim wb As Workbook
+    73│     Dim result As WorkbookData
+    74│     Dim jsonStr As String
+    75│     
+    76│     On Error GoTo ErrorHandler
+    77│     
+    78│     Set wb = ThisWorkbook
+    79│     result = ExtractWorkbookData(wb)
+    80│     jsonStr = WorkbookDataToJson(result)
+    81│     
+    82│     ExtractAllCellsData = jsonStr
+    83│     Exit Function
+    84│     
+    85│ ErrorHandler:
+    86│     ExtractAllCellsData = "Error: " & Err.Description
+    87│ End Function
+    88│ Public Function TestExtract() As String
+    89│     Dim result As String
+    90│     
+    91│     result = "测试提取函数:" & vbCrLf
+    92│     result = result & "工作簿: " & ThisWorkbook.Name & vbCrLf
+    93│     result = result & "工作表数量: " & ThisWorkbook.Worksheets.Count & vbCrLf
+    94│     
+    95│     Dim ws As Worksheet
+    96│     For Each ws In ThisWorkbook.Worksheets
+    97│         result = result & "工作表: " & ws.Name & vbCrLf
+    98│     Next ws
+    99│     
+   100│     TestExtract = result
+   101│ End Function
+   102│ Public Function HealthCheck() As String
+   103│     Dim result As String
+   104│     
+   105│     result = "VBA模块健康检查:" & vbCrLf
+   106│     result = result & "模块: ExtractAllCellsData" & vbCrLf
+   107│     result = result & "版本: 修复增强版 (2026-04-11)" & vbCrLf
+   108│     result = result & "状态: 正常" & vbCrLf
+   109│     result = result & "函数数量: 10" & vbCrLf
+   110│     
+   111│     HealthCheck = result
+   112│ End Function
+   113│ 
+   114│ ' 提取所有单元格数据模块（修复增强版）
+   115│ ' AI开发起始时间：2026年4月4日
+   116│ ' 修复时间：2026年4月11日
+   117│ ' 修复内容：基于分段测试结果进行增强
+   118│ ' 单元格数据结构
+   119│ ' 工作表数据结构
+   120│ ' 工作簿数据结构
+   121│ ' 主函数：提取工作簿所有数据
+   122│ ' 提取工作簿数据
+   123│     On Error GoTo ErrorHandler
+   124│     result.Name = wb.Name
+   125│     result.Path = wb.Path
+   126│     result.SheetCount = wb.Worksheets.Count
+   127│     For i = 1 To result.SheetCount
+   128│         Set ws = wb.Worksheets(i)
+   129│         result.Sheets(i) = ExtractSheetData(ws)
+   130│         result.TotalCells = result.TotalCells + result.Sheets(i).CellCount
+   131│     Next i
+   132│     ExtractWorkbookData = result
+   133│     Exit Function
+   134│ ErrorHandler:
+   135│     ' 返回空的工作簿数据
+   136│     result.Name = wb.Name
+   137│     result.Path = wb.Path
+   138│     result.SheetCount = 0
+   139│     result.TotalCells = 0
+   140│     ExtractWorkbookData = result
+   141│ ' 提取工作表数据
+   142│     On Error GoTo ErrorHandler
+   143│     result.Name = ws.Name
+   144│     result.Index = ws.Index
+   145│     ' 获取使用范围
+   146│     On Error Resume Next
+   147│     Set usedRange = ws.usedRange
+   148│     On Error GoTo 0
+   149│     If Not usedRange Is Nothing Then
+   150│         result.UsedRangeAddress = usedRange.Address
+
+[TRUNCATED] Showing lines 51-150 of 566. To continue, call read_file with path="01_AI与编程开发/VBA代码问题分析.md" start_line=151 max_lines=100
+</file>

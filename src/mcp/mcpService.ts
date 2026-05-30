@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import i18next from 'i18next';
 import { getErrorMessage } from '../utils/errorUtils';
 import { debugLog } from '../debug-panel/debugMasterSwitch';
+import { settingsApi } from '@/api/settingsApi';
 const console = debugLog as Pick<typeof debugLog, 'log' | 'warn' | 'error' | 'info' | 'debug'>;
 
 type TransportType = 'sse' | 'websocket' | 'streamable-http' | 'streamable_http' | 'stdio';
@@ -1784,7 +1785,7 @@ async function loadServersFromSettings(): Promise<McpConfig['servers']> {
   if (isTauriEnvironment) {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
-      listStr = await invoke<string | null>('get_setting', { key: 'mcp.tools.list' }).catch(() => null);
+      listStr = await settingsApi.get('mcp.tools.list' ).catch(() => null);
     } catch (err: unknown) {
       debugLog.warn('[MCP] Failed to load MCP servers via Tauri invoke:', err);
     }
@@ -1810,8 +1811,8 @@ async function loadCacheTtlFromSettings(): Promise<number | undefined> {
     try {
       const { invoke } = await import('@tauri-apps/api/core');
       const [perfTtl, legacyTtl] = await Promise.all([
-        invoke<string | null>('get_setting', { key: 'mcp.performance.cache_ttl_ms' }).catch(() => null),
-        invoke<string | null>('get_setting', { key: 'mcp.tools.cache_ttl_ms' }).catch(() => null),
+        settingsApi.get('mcp.performance.cache_ttl_ms' ).catch(() => null),
+        settingsApi.get('mcp.tools.cache_ttl_ms' ).catch(() => null),
       ]);
       const candidates = [perfTtl, legacyTtl].filter((v): v is string => typeof v === 'string' && v.trim().length > 0);
       for (const raw of candidates) {

@@ -1,0 +1,76 @@
+# Codex工具介绍
+对话ID: fe26f163-461a-4563-90aa-a1934056e3a5
+创建时间: 2026-04-21T21:24:28.617000+08:00
+更新时间: 2026-04-21T21:25:44.859000+08:00
+
+## ❓ unknown
+
+codex是什么工具？
+
+---
+
+## ❓ unknown
+
+用户想知道“codex”是什么工具。这可能指的是OpenAI的Codex，或者其他相关的技术。我需要提供全面的信息。为了全面获取信息，我需要同时进行多项搜索，涵盖Codex可能的不同含义、其功能、应用场景以及相关工具。
+{'type': 'TOOL_SEARCH'}
+搜索结果显示了很多关于Codex的信息。为了全面了解Codex，我们需要同时打开多个相关的链接。这些链接包括：结果0、结果1、结果2、结果3、结果4、结果5，以及结果1中的第0、1、2、3、4条链接，结果2中的第0、2条链接，结果3中的第0、1、2条链接，结果4中的第0、2、4条链接，结果5中的第1、3、5条链接。
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+{'type': 'TOOL_OPEN'}
+这些资料提供了关于Codex的丰富信息。我的回答将涵盖Codex的定义、主要功能、如何获取、工作原理、应用场景以及总结。
+Codex 是 OpenAI 推出的旗舰级 AI 编程工具。它早已不是简单的代码补全工具，而是一个能深度理解项目、独立完成复杂任务的“AI 软件工程师”[reference:0][reference:1]。
+
+### 🛠️ Codex的核心能力
+
+*   **全能 AI 工程师**：不再局限于补全代码，能理解自然语言，完成从生成代码、自动重构到执行命令的全流程工程任务[reference:2][reference:3]。
+*   **多形态支持**：提供 CLI、macOS/Windows 桌面应用、VS Code 等 IDE 插件及 Web 云端版本，满足不同开发场景[reference:4][reference:5][reference:6]。
+*   **深度上下文感知 (Chronicle)**：可通过后台截图理解屏幕内容（如 UI 报错、文档），构建"数字记忆"，理解模糊指令[reference:7][reference:8][reference:9]。
+*   **背景电脑操控 (Computer Use)**：拥有独立光标，能在后台操控 Mac 上的应用进行点击、输入、测试等，不影响你当前工作[reference:10][reference:11]。
+*   **内建浏览器与图像生成**：集成 Atlas 浏览器支持本地网页预览调试，并可直接调用 `gpt-image-1.5` 模型生成图片素材[reference:12][reference:13]。
+*   **多智能体并行**：支持多个智能体在独立工作树（worktrees）中同时并行处理任务，互不冲突[reference:14][reference:15][reference:16]。
+*   **技能 (Skills) 与自动化**：将指令、资源和脚本打包成可复用的"技能"，连接 Figma、Vercel 等第三方工具，并支持后台定时执行自动化任务[reference:17]。
+*   **GitHub 深度集成**：可通过在 PR 中 `@codex` 直接委派任务，如自动修复失败的 CI，实现从 Issue 到 PR 的自动化[reference:18]。
+*   **强大的模型支撑**：底层基于 OpenAI 强大的 GPT-5 系列模型，支持处理最多 40 万个 token 的上下文（约 10 万行代码）及超 50 种编程语言[reference:19][reference:20]。
+*   **开源与安全**：CLI 版本（Apache 2.0 协议）开源[reference:21]，并提供多种安全模式控制文件访问和执行权限[reference:22]。
+
+### 🚀 如何开始使用 Codex？
+
+1.  **最直接的方式 - 桌面应用**：在 macOS 或 Windows 上下载应用，通过可视化界面管理项目，是体验 Codex 强大功能最直观的方式[reference:23][reference:24]。
+2.  **最灵活的方式 - CLI**：使用 npm 安装：`npm install -g @openai/codex`，然后通过终端运行 `codex` 即可[reference:25]。
+3.  **无缝集成的方式 - IDE 插件**：在 VS Code 等编辑器的扩展商店中搜索 Codex 并安装，将 AI 能力直接嵌入开发环境[reference:26]。
+
+*   **费用**：CLI 和 IDE 插件通常免费[reference:27]，核心功能包含在 ChatGPT Plus 等订阅套餐中[reference:28]。
+
+### ⚙️ 工作原理
+
+Codex 依靠“智能体循环”工作：它接收你的指令，将其转化为提示词，发送给底层的 GPT 模型（如 `GPT-5.2-Codex`）[reference:29][reference:30]。模型会生成回复或要求执行工具调用，Codex 在获得授权后执行操作（如修改代码、执行命令），再将结果反馈给模型，如此循环直至任务完成[reference:31]。
+
+### 💡 常见应用场景
+
+*   **快速理解复杂代码库**：快速熟悉新接手的项目，理清架构、模块关系和调用链路[reference:32]。
+*   **重构与迁移代码**：安全地进行代码重构、升级依赖库或修改设计模式，确保所有相关文件同步修改[reference:33][reference:34]。
+*   **自动化测试与 Debug**：根据报错日志或堆栈跟踪信息，自主分析并修复 Bug，并运行测试验证修复效果[reference:35][reference:36]。
+*   **端到端项目开发**：从零开始搭建一个完整的项目，如搭建 Web 服务、添加缓存和限流、生成部署所需的 Dockerfile 等[reference:37][reference:38]。
+*   **运维与部署**：编写或优化 Nginx 配置、Docker Compose 文件，或排查 Kubernetes 集群问题[reference:39]。
+*   **自动化工作流**：设置定时任务，如每日 Issue 分类、CI 失败总结或版本简报生成，实现自动化[reference:40]。
+
+---

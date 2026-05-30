@@ -25,6 +25,7 @@ import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { useUnifiedErrorHandler } from '@/components/UnifiedErrorHandler';
 import { TauriAPI } from '@/utils/tauriApi';
 import type { UseMcpEditorSectionDeps, McpToolConfig } from './hookDepsTypes';
+import { settingsApi } from '@/api/settingsApi';
 
 interface McpTestResult {
   success: boolean;
@@ -374,7 +375,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
 
       // 先持久化
       if (invoke) {
-        await invoke('save_setting', { key: 'mcp.tools.list', value: JSON.stringify(newList) });
+        await settingsApi.save('mcp.tools.list', JSON.stringify(newList) );
       }
       // 再更新状态
       setConfig(prev => ({ ...prev, mcpTools: newList }));
@@ -471,7 +472,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
     const next = (config.mcpTools || []).filter((tool: McpToolConfig) => tool.id !== serverId);
     try {
       if (invoke) {
-        await invoke('save_setting', { key: 'mcp.tools.list', value: JSON.stringify(next) });
+        await settingsApi.save('mcp.tools.list', JSON.stringify(next) );
       }
       setConfig(prev => ({ ...prev, mcpTools: next }));
       try {
@@ -524,7 +525,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
 
       currentList[idx] = updated;
       if (invoke) {
-        await invoke('save_setting', { key: 'mcp.tools.list', value: JSON.stringify(currentList) });
+        await settingsApi.save('mcp.tools.list', JSON.stringify(currentList) );
       }
       setConfig(prev => ({ ...prev, mcpTools: currentList }));
       try {
@@ -830,7 +831,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
         }
         try {
           if (invoke) {
-            await invoke('save_setting', { key: 'mcp.tools.list', value: JSON.stringify(nextList) });
+            await settingsApi.save('mcp.tools.list', JSON.stringify(nextList) );
           }
           setConfig(prev => ({ ...prev, mcpTools: nextList }));
         } catch (error) {
@@ -1207,7 +1208,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
         }
         try {
           if (invoke) {
-            await invoke('save_setting', { key: 'mcp.tools.list', value: JSON.stringify(nextList) });
+            await settingsApi.save('mcp.tools.list', JSON.stringify(nextList) );
           }
           setConfig(prev => ({ ...prev, mcpTools: nextList }));
         } catch (e) {
@@ -1453,13 +1454,13 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
       try {
         if (invoke) {
           await Promise.all([
-            invoke('save_setting', { key: 'mcp.tools.advertise_all_tools', value: mcpPolicyModal.advertiseAll.toString() }),
-            invoke('save_setting', { key: 'mcp.tools.whitelist', value: mcpPolicyModal.whitelist }),
-            invoke('save_setting', { key: 'mcp.tools.blacklist', value: mcpPolicyModal.blacklist }),
-            invoke('save_setting', { key: 'mcp.performance.timeout_ms', value: String(mcpPolicyModal.timeoutMs) }),
-            invoke('save_setting', { key: 'mcp.performance.rate_limit_per_second', value: String(mcpPolicyModal.rateLimit) }),
-            invoke('save_setting', { key: 'mcp.performance.cache_max_size', value: String(mcpPolicyModal.cacheMax) }),
-            invoke('save_setting', { key: 'mcp.performance.cache_ttl_ms', value: String(mcpPolicyModal.cacheTtlMs) }),
+            settingsApi.save('mcp.tools.advertise_all_tools', mcpPolicyModal.advertiseAll.toString() ),
+            settingsApi.save('mcp.tools.whitelist', mcpPolicyModal.whitelist ),
+            settingsApi.save('mcp.tools.blacklist', mcpPolicyModal.blacklist ),
+            settingsApi.save('mcp.performance.timeout_ms', String(mcpPolicyModal.timeoutMs) ),
+            settingsApi.save('mcp.performance.rate_limit_per_second', String(mcpPolicyModal.rateLimit) ),
+            settingsApi.save('mcp.performance.cache_max_size', String(mcpPolicyModal.cacheMax) ),
+            settingsApi.save('mcp.performance.cache_ttl_ms', String(mcpPolicyModal.cacheTtlMs) ),
           ]);
         }
       } catch (err) {
