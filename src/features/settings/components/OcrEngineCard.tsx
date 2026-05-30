@@ -74,7 +74,7 @@ export const OcrEngineCard: React.FC<OcrEngineCardProps> = ({ className, apiConf
 
   const loadEngines = useCallback(async () => {
     try {
-      const result = await invoke<AvailableOcrModel[]>('get_available_ocr_models');
+      const result = await invoke<AvailableOcrModel[]>('ocr_get_available_models');
       setEngines(result);
     } catch (error: unknown) {
       console.error('加载已配置 OCR 模型失败:', error);
@@ -83,7 +83,7 @@ export const OcrEngineCard: React.FC<OcrEngineCardProps> = ({ className, apiConf
 
   const loadBuiltinEngines = useCallback(async () => {
     try {
-      const result = await invoke<OcrEngineInfo[]>('get_ocr_engines');
+      const result = await invoke<OcrEngineInfo[]>('ocr_get_engines');
       setBuiltinEngines(result);
     } catch (error: unknown) {
       console.error('加载内置 OCR 引擎失败:', error);
@@ -92,7 +92,7 @@ export const OcrEngineCard: React.FC<OcrEngineCardProps> = ({ className, apiConf
 
   const loadThinkingSetting = useCallback(async () => {
     try {
-      const enabled = await invoke<boolean>('get_ocr_thinking_enabled');
+      const enabled = await invoke<boolean>('ocr_get_thinking_enabled');
       setThinkingEnabled(enabled);
     } catch { /* 默认关闭 */ }
   }, []);
@@ -114,7 +114,7 @@ export const OcrEngineCard: React.FC<OcrEngineCardProps> = ({ className, apiConf
 
     try {
       setSaving(true);
-      await invoke('update_ocr_engine_priority', {
+      await invoke('ocr_update_engine_priority', {
         engineList: updated.map((e) => ({ configId: e.configId, enabled: e.enabled })),
       });
     } catch (error: unknown) {
@@ -135,7 +135,7 @@ export const OcrEngineCard: React.FC<OcrEngineCardProps> = ({ className, apiConf
 
     try {
       setSaving(true);
-      await invoke('update_ocr_engine_priority', {
+      await invoke('ocr_update_engine_priority', {
         engineList: updated.map((e) => ({ configId: e.configId, enabled: e.enabled })),
       });
     } catch (error: unknown) {
@@ -155,7 +155,7 @@ export const OcrEngineCard: React.FC<OcrEngineCardProps> = ({ className, apiConf
 
     try {
       setSaving(true);
-      await invoke('update_ocr_engine_priority', {
+      await invoke('ocr_update_engine_priority', {
         engineList: updated.map((e) => ({ configId: e.configId, enabled: e.enabled })),
       });
     } catch (error: unknown) {
@@ -360,7 +360,7 @@ export const OcrEngineCard: React.FC<OcrEngineCardProps> = ({ className, apiConf
               onCheckedChange={async (next) => {
                 setThinkingEnabled(next);
                 try {
-                  await invoke('set_ocr_thinking_enabled', { enabled: next });
+                  await invoke('ocr_set_thinking_enabled', { enabled: next });
                 } catch {
                   setThinkingEnabled(!next);
                 }

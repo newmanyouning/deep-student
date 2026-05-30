@@ -685,7 +685,7 @@ impl Tool for WebSearchTool {
         if !is_test_mode {
             if let Some(db) = ctx.db {
                 if let Ok(Some(selected_engines)) =
-                    db.get_setting("session.selected_search_engines")
+                    db.web_search_get_setting("session.selected_search_engines")
                 {
                     let allowed_engines: std::collections::HashSet<String> = selected_engines
                         .split(',')
@@ -736,7 +736,7 @@ impl Tool for WebSearchTool {
         if !is_test_mode {
             if let Some(db) = ctx.db {
                 if let Ok(Some(selected_engines)) =
-                    db.get_setting("session.selected_search_engines")
+                    db.web_search_get_setting("session.selected_search_engines")
                 {
                     if selected_engines.trim().is_empty() {
                         let error_msg = "请在输入栏选择搜索引擎以启用外部搜索功能";
@@ -754,7 +754,7 @@ impl Tool for WebSearchTool {
         // Apply DB overrides if available — 使用统一方法
         if let Some(db) = ctx.db {
             cfg.apply_db_overrides(
-                |k| db.get_setting(k).ok().flatten(),
+                |k| db.web_search_get_setting(k).ok().flatten(),
                 |k| db.get_secret(k).ok().flatten(),
             );
         }
@@ -774,7 +774,7 @@ impl Tool for WebSearchTool {
         //    记录一份输入供后续单引擎重排使用
         let original_input = input.clone();
         let mut out = if let Some(db) = ctx.db {
-            if let Ok(Some(selected_engines)) = db.get_setting("session.selected_search_engines") {
+            if let Ok(Some(selected_engines)) = db.web_search_get_setting("session.selected_search_engines") {
                 let engines: Vec<String> = selected_engines
                     .split(',')
                     .map(|s| s.trim().to_string())

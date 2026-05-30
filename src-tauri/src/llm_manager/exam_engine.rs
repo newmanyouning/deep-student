@@ -133,7 +133,7 @@ impl LLMManager {
     }
 
     pub async fn get_pdf_ocr_model_config(&self) -> Result<ApiConfig> {
-        let engine_type = self.get_ocr_engine_type().await;
+        let engine_type = self.ocr_get_engine_type().await;
         let config = self.get_ocr_model_config().await?;
         debug!(
             "[OCR] PDF OCR 使用引擎 {}，模型: id={}, model={}",
@@ -889,7 +889,7 @@ impl LLMManager {
         // S7 fix: 优先使用调用方传入的有效引擎类型，否则回退到全局设置
         let engine_type = match engine_override {
             Some(e) => e,
-            None => self.get_ocr_engine_type().await,
+            None => self.ocr_get_engine_type().await,
         };
 
         // 读取图片尺寸

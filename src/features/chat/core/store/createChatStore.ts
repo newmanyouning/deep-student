@@ -97,33 +97,9 @@ export const OPERATION_LOCK_TIMEOUT_MS = 30_000;
 // ID 生成
 // ============================================================================
 
-let idCounter = 0;
+// 🔧 REF-005: unified to utils/common.ts generateId, re-export for backward compat
+export { generateId } from "@/utils/common";
 
-/**
- * ID 计数器重置阈值
- * 🔧 P2修复：防止 idCounter 溢出
- * 选择 100 万作为阈值，因为：
- * 1. 远小于 Number.MAX_SAFE_INTEGER（约 9 千万亿）
- * 2. 单次会话几乎不可能产生这么多 ID
- * 3. 结合 timestamp 和 random，重置后仍能保证唯一性
- */
-const ID_COUNTER_RESET_THRESHOLD = 1_000_000;
-
-/**
- * 生成唯一 ID
- */
-export function generateId(prefix: string): string {
-  const timestamp = Date.now().toString(36);
-  const random = Math.random().toString(36).substring(2, 8);
-  const counter = (idCounter++).toString(36);
-
-  // 🔧 P2修复：超过阈值时重置计数器
-  if (idCounter >= ID_COUNTER_RESET_THRESHOLD) {
-    idCounter = 0;
-  }
-
-  return `${prefix}_${timestamp}_${random}_${counter}`;
-}
 
 // ============================================================================
 // 操作锁提示节流

@@ -189,7 +189,7 @@ export const ModelsTab: React.FC<ModelsTabProps> = ({
   useEffect(() => {
     const checkOcrEngine = async () => {
       try {
-        const engineType = await invoke<string>('get_ocr_engine_type');
+        const engineType = await invoke<string>('ocr_get_engine_type');
         setOcrEngineConfigured(!!engineType);
       } catch {
         setOcrEngineConfigured(false);

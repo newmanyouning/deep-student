@@ -57,7 +57,7 @@ export const useSystemSettings = () => {
         
         const settingsPromises = settingsKeys.map(async (key) => {
           try {
-            const value = await invoke('get_setting', { key }) as string;
+            const value = await invoke('web_search_get_setting', { key }) as string;
             return { key, value };
           } catch {
             return { key, value: String(DEFAULT_SETTINGS[key as keyof SystemSettings]) };
@@ -106,7 +106,7 @@ export const useSystemSettings = () => {
     setSaving(true);
     try {
       if (invoke) {
-        await invoke('save_setting', { key: key as string, value: String(value) });
+        await invoke('web_search_save_setting', { key: key as string, value: String(value) });
         if (key === 'theme') {
           try {
             localStorage.setItem('dstu-theme-mode', String(value));
@@ -135,7 +135,7 @@ export const useSystemSettings = () => {
     try {
       if (invoke) {
         const savePromises = Object.entries(newSettings).map(([key, value]) =>
-          invoke('save_setting', { key, value: String(value) })
+          invoke('web_search_save_setting', { key, value: String(value) })
         );
         
         await Promise.all(savePromises);

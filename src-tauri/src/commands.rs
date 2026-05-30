@@ -322,6 +322,7 @@ pub async fn cancel_stream(streamEventName: String, state: State<'_, AppState>) 
 }
 
 /// B4: 将图片固定为会话 Pin（base64 数组）
+/// DEPRECATED (REF-016): zero frontend callers, image pinning feature unused
 #[tauri::command]
 pub async fn pin_images(
     temp_id: String,
@@ -341,15 +342,16 @@ pub async fn pin_images(
     // 持久化 Pin 状态到设置表（用于跨启动恢复）
     let pin_key = format!("pinned_images:{}", temp_id);
     if images.is_empty() {
-        let _ = state.database.delete_setting(&pin_key);
+        let _ = state.database.web_search_delete_setting(&pin_key);
     } else if let Ok(images_json) = serde_json::to_string(&images) {
-        let _ = state.database.save_setting(&pin_key, &images_json);
+        let _ = state.database.web_search_save_setting(&pin_key, &images_json);
     }
 
     Ok(true)
 }
 
 /// B4: 取消会话 Pin 图片
+/// DEPRECATED (REF-016): zero frontend callers
 #[tauri::command]
 pub async fn unpin_images(temp_id: String, state: State<'_, AppState>) -> Result<bool> {
     modify_temp_session(state.inner(), &temp_id, |session| {
@@ -358,7 +360,7 @@ pub async fn unpin_images(temp_id: String, state: State<'_, AppState>) -> Result
     .await?;
 
     let pin_key = format!("pinned_images:{}", temp_id);
-    let _ = state.database.delete_setting(&pin_key);
+    let _ = state.database.web_search_delete_setting(&pin_key);
 
     Ok(true)
 }
@@ -588,22 +590,19 @@ pub struct AppState {
 pub fn get_template_config(
     template_id: &str,
     database: &Arc<Database>,
-) -> std::result::Result<(String, Vec<String>, String, String, String), String> {
+) -> Result<(String, Vec<String>, String, String, String)> {
     // 从数据库获取模板（包括内置和自定义）
-    match database.get_custom_template_by_id(template_id) {
-        Ok(Some(template)) => {
-            let fields = template.fields.clone();
-            Ok((
-                template.name,
-                fields,
-                template.front_template,
-                template.back_template,
-                template.css_style,
-            ))
-        }
-        Ok(None) => Err(format!("模板不存在: {}", template_id)),
-        Err(e) => Err(format!("获取模板失败: {}", e)),
-    }
+    let template = database
+        .get_custom_template_by_id(template_id)?
+        .ok_or_else(|| AppError::not_found(format!("模板不存在: {}", template_id)))?;
+    let fields = template.fields.clone();
+    Ok((
+        template.name,
+        fields,
+        template.front_template,
+        template.back_template,
+        template.css_style,
+    ))
 }
 
 // PDF OCR 命令组
@@ -667,6 +666,7 @@ pub async fn process_pdf_ocr(
 }
 
 /// 取消 PDF OCR 会话（基于 session_id / temp_id）
+/// DEPRECATED (REF-016): zero frontend callers, PDF OCR flow unused
 #[tauri::command]
 pub async fn cancel_pdf_ocr_session(
     session_id: String,
@@ -682,6 +682,7 @@ pub async fn cancel_pdf_ocr_session(
 }
 
 /// 暂停 PDF OCR 会话
+/// DEPRECATED (REF-016): zero frontend callers
 #[tauri::command]
 pub async fn pause_pdf_ocr_session(session_id: String, state: State<'_, AppState>) -> Result<bool> {
     let sender_opt = { state.pdf_ocr_pauses.lock().await.get(&session_id).cloned() };
@@ -694,6 +695,7 @@ pub async fn pause_pdf_ocr_session(session_id: String, state: State<'_, AppState
 }
 
 /// 继续 PDF OCR 会话
+/// DEPRECATED (REF-016): zero frontend callers
 #[tauri::command]
 pub async fn resume_pdf_ocr_session(
     session_id: String,
@@ -709,6 +711,7 @@ pub async fn resume_pdf_ocr_session(
 }
 
 /// 跳过指定页面
+/// DEPRECATED (REF-016): zero frontend callers
 #[tauri::command]
 pub async fn skip_pdf_ocr_page(
     session_id: String,
@@ -726,6 +729,7 @@ pub async fn skip_pdf_ocr_page(
 ///
 /// 这是新的高性能 PDF OCR 入口，前端只需传入 PDF 文件路径，
 /// 所有的 PDF 渲染和 OCR 处理都在后端完成，大幅减少 IPC 开销。
+/// DEPRECATED (REF-016): zero frontend callers, PDF OCR backend flow unused
 #[tauri::command]
 pub async fn start_pdf_ocr_backend(
     pdf_path: String,
@@ -2148,7 +2152,7 @@ pub async fn call_llm_for_boundary(
 
 /// 从文件路径解析文档文本
 #[tauri::command]
-pub async fn parse_document_from_path(file_path: String) -> std::result::Result<String, String> {
+pub async fn parse_document_from_path(file_path: String) -> Result<String> {
     info!("开始解析文档: {}", file_path);
 
     let parser = crate::document_parser::DocumentParser::new();
@@ -2161,7 +2165,7 @@ pub async fn parse_document_from_path(file_path: String) -> std::result::Result<
         Err(err) => {
             let error_msg = format!("文档解析失败: {}", err);
             error!("{}", error_msg);
-            Err(error_msg)
+            Err(AppError::unknown(error_msg))
         }
     }
 }
@@ -2171,7 +2175,7 @@ pub async fn parse_document_from_path(file_path: String) -> std::result::Result<
 pub async fn parse_document_from_base64(
     file_name: String,
     base64_content: String,
-) -> std::result::Result<String, String> {
+) -> Result<String> {
     info!("开始解析Base64文档: {}", file_name);
 
     let parser = crate::document_parser::DocumentParser::new();
@@ -2184,7 +2188,7 @@ pub async fn parse_document_from_base64(
         Err(err) => {
             let error_msg = format!("Base64文档解析失败: {}", err);
             error!("{}", error_msg);
-            Err(error_msg)
+            Err(AppError::unknown(error_msg))
         }
     }
 }
@@ -3692,10 +3696,10 @@ pub async fn export_unified_backup_data(
 /// 计算月度趋势数据 - 基于真实数据库查询
 async fn calculate_monthly_trend(
     database: &Arc<Database>,
-) -> std::result::Result<Vec<serde_json::Value>, String> {
+) -> Result<Vec<serde_json::Value>> {
     let conn = database
         .get_conn_safe()
-        .map_err(|e| format!("Database lock error: {}", e))?;
+        ?;
 
     // 查询最近6个月的错题创建数据
     let query = "
@@ -3710,7 +3714,7 @@ async fn calculate_monthly_trend(
 
     let mut stmt = conn
         .prepare(query)
-        .map_err(|e| format!("SQL prepare error: {}", e))?;
+        ?;
     let rows = stmt
         .query_map([], |row| {
             let month_str: String = row.get(0)?;
@@ -3728,11 +3732,11 @@ async fn calculate_monthly_trend(
                 "count": count
             }))
         })
-        .map_err(|e| format!("SQL query error: {}", e))?;
+        ?;
 
     let mut trend_data = Vec::new();
     for row in rows {
-        trend_data.push(row.map_err(|e| format!("Row processing error: {}", e))?);
+        trend_data.push(row?);
     }
 
     // 如果没有数据，返回最近6个月的空数据
@@ -3753,10 +3757,10 @@ async fn calculate_monthly_trend(
     Ok(trend_data)
 }
 /// 计算最近增长率 - 基于真实时间序列数据
-async fn calculate_recent_growth(database: &Arc<Database>) -> std::result::Result<f64, String> {
+async fn calculate_recent_growth(database: &Arc<Database>) -> Result<f64> {
     let conn = database
         .get_conn_safe()
-        .map_err(|e| format!("Database lock error: {}", e))?;
+        ?;
 
     // 查询最近两个月的错题数量
     let query = "
@@ -3771,18 +3775,18 @@ async fn calculate_recent_growth(database: &Arc<Database>) -> std::result::Resul
 
     let mut stmt = conn
         .prepare(query)
-        .map_err(|e| format!("SQL prepare error: {}", e))?;
+        ?;
     let rows = stmt
         .query_map([], |row| {
             let _month: String = row.get(0)?;
             let count: i64 = row.get(1)?;
             Ok(count as f64)
         })
-        .map_err(|e| format!("SQL query error: {}", e))?;
+        ?;
 
     let mut monthly_counts = Vec::new();
     for row in rows {
-        monthly_counts.push(row.map_err(|e| format!("Row processing error: {}", e))?);
+        monthly_counts.push(row?);
     }
 
     // 计算增长率
@@ -3811,7 +3815,7 @@ async fn calculate_recent_growth(database: &Arc<Database>) -> std::result::Resul
 #[allow(dead_code)]
 async fn calculate_review_analysis_stats(
     _database: &Arc<Database>,
-) -> std::result::Result<serde_json::Value, String> {
+) -> Result<serde_json::Value> {
     let review_stats = serde_json::json!({
         "total_reviews": 0,
         "total_covered_mistakes": 0,
@@ -3825,10 +3829,10 @@ async fn calculate_review_analysis_stats(
     Ok(review_stats)
 }
 /// 计算统一回顾趋势增长率 - 基于回顾分析创建数据
-async fn calculate_review_trend(database: &Arc<Database>) -> std::result::Result<f64, String> {
+async fn calculate_review_trend(database: &Arc<Database>) -> Result<f64> {
     let conn = database
         .get_conn_safe()
-        .map_err(|e| format!("Database lock error: {}", e))?;
+        ?;
 
     let query = "
         SELECT
@@ -3842,14 +3846,14 @@ async fn calculate_review_trend(database: &Arc<Database>) -> std::result::Result
 
     let mut stmt = conn
         .prepare(query)
-        .map_err(|e| format!("SQL prepare error: {}", e))?;
+        ?;
     let rows = stmt
         .query_map([], |row| Ok(row.get::<_, i64>(1)? as f64))
-        .map_err(|e| format!("SQL query error: {}", e))?;
+        ?;
 
     let mut monthly_counts = Vec::new();
     for row in rows {
-        monthly_counts.push(row.map_err(|e| format!("Row processing error: {}", e))?);
+        monthly_counts.push(row?);
     }
 
     if monthly_counts.len() >= 2 {
@@ -3871,10 +3875,10 @@ async fn calculate_review_trend(database: &Arc<Database>) -> std::result::Result
 /// 计算错题质量评分 - 基于真实的分析数据
 async fn calculate_mistake_quality_score(
     database: &Arc<Database>,
-) -> std::result::Result<f64, String> {
+) -> Result<f64> {
     let conn = database
         .get_conn_safe()
-        .map_err(|e| format!("Database lock error: {}", e))?;
+        ?;
 
     // 计算质量评分：基于是否有标签、是否有聊天记录、是否有总结等
     let quality_query = "
@@ -3889,7 +3893,7 @@ async fn calculate_mistake_quality_score(
 
     let mut stmt = conn
         .prepare(quality_query)
-        .map_err(|e| format!("SQL prepare error: {}", e))?;
+        ?;
     let (tagged, summarized, analyzed, total, with_chat) = stmt
         .query_row([], |row| {
             Ok((
@@ -3900,7 +3904,7 @@ async fn calculate_mistake_quality_score(
                 row.get::<_, i64>(4)? as f64,
             ))
         })
-        .map_err(|e| format!("SQL query error: {}", e))?;
+        ?;
 
     if total > 0.0 {
         // 计算质量评分：标签覆盖率30% + 总结覆盖率25% + 分析覆盖率25% + 聊天覆盖率20%

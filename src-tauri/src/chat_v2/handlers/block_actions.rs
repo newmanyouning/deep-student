@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, State};
 
 use crate::chat_v2::database::ChatV2Database;
-use crate::chat_v2::error::ChatV2Error;
+use crate::chat_v2::error::{ChatV2Error, ChatV2Result};
 use crate::chat_v2::events::{event_phase, event_types, next_session_sequence_id};
 use crate::chat_v2::handlers::manage_session::rebuild_session_skill_state_from_surviving_history;
 use crate::chat_v2::repo::ChatV2Repo;
@@ -53,7 +53,7 @@ pub async fn chat_v2_delete_message(
     db: State<'_, Arc<ChatV2Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
-) -> Result<(), String> {
+) -> ChatV2Result<()> {
     log::info!(
         "[ChatV2::handlers] chat_v2_delete_message: session_id={}, message_id={}",
         session_id,
@@ -66,15 +66,15 @@ pub async fn chat_v2_delete_message(
         return Err(ChatV2Error::Other(
             "Cannot delete message while streaming. Please wait for completion or cancel first."
                 .to_string(),
-        )
-        .into());
+        ));
     }
 
     // 验证消息 ID 格式
     if !message_id.starts_with("msg_") {
-        return Err(
-            ChatV2Error::Validation(format!("Invalid message ID format: {}", message_id)).into(),
-        );
+        return Err(ChatV2Error::Validation(format!(
+            "Invalid message ID format: {}",
+            message_id
+        )));
     }
 
     // 删除消息（包含级联删除块）
@@ -113,7 +113,7 @@ pub async fn chat_v2_copy_block_content(
     block_id: String,
     format: Option<String>,
     db: State<'_, Arc<ChatV2Database>>,
-) -> Result<CopyBlockContentResponse, String> {
+) -> ChatV2Result<CopyBlockContentResponse> {
     log::info!(
         "[ChatV2::handlers] chat_v2_copy_block_content: block_id={}, format={:?}",
         block_id,
@@ -122,9 +122,10 @@ pub async fn chat_v2_copy_block_content(
 
     // 验证块 ID 格式
     if !block_id.starts_with("blk_") {
-        return Err(
-            ChatV2Error::Validation(format!("Invalid block ID format: {}", block_id)).into(),
-        );
+        return Err(ChatV2Error::Validation(format!(
+            "Invalid block ID format: {}",
+            block_id
+        )));
     }
 
     let output_format = format.unwrap_or_else(|| "text".to_string());
@@ -294,7 +295,7 @@ pub async fn chat_v2_update_block_content(
     content: String,
     db: State<'_, Arc<ChatV2Database>>,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
-) -> Result<(), String> {
+) -> ChatV2Result<()> {
     log::info!(
         "[ChatV2::handlers] chat_v2_update_block_content: block_id={}, content_len={}",
         block_id,
@@ -303,28 +304,25 @@ pub async fn chat_v2_update_block_content(
 
     // 验证块 ID 格式
     if !block_id.starts_with("blk_") {
-        return Err(
-            ChatV2Error::Validation(format!("Invalid block ID format: {}", block_id)).into(),
-        );
+        return Err(ChatV2Error::Validation(format!(
+            "Invalid block ID format: {}",
+            block_id
+        )));
     }
 
     // 🔒 P1 修复（2026-01-10）：检查块所属会话是否有活跃流
     // 防止流式中修改历史消息内容导致语义不一致
-    let existing_block = ChatV2Repo::get_block_v2(&db, &block_id)
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| ChatV2Error::BlockNotFound(block_id.clone()).to_string())?;
+    let existing_block = ChatV2Repo::get_block_v2(&db, &block_id)?
+        .ok_or_else(|| ChatV2Error::BlockNotFound(block_id.clone()))?;
 
     // 从块获取消息，从消息获取 session_id
-    let message = ChatV2Repo::get_message_v2(&db, &existing_block.message_id)
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| {
-            ChatV2Error::MessageNotFound(existing_block.message_id.clone()).to_string()
-        })?;
+    let message = ChatV2Repo::get_message_v2(&db, &existing_block.message_id)?
+        .ok_or_else(|| ChatV2Error::MessageNotFound(existing_block.message_id.clone()))?;
 
     if chat_v2_state.has_active_stream(&message.session_id) {
         return Err(ChatV2Error::Other(
             "Cannot update block content while session is streaming. Please wait for completion or cancel first.".to_string()
-        ).into());
+        ));
     }
 
     // 更新块内容
@@ -347,7 +345,7 @@ pub async fn chat_v2_update_block_tool_output(
     block_id: String,
     tool_output_json: String,
     db: State<'_, Arc<ChatV2Database>>,
-) -> Result<(), String> {
+) -> ChatV2Result<()> {
     log::info!(
         "[ChatV2::handlers] chat_v2_update_block_tool_output: block_id={}, len={}",
         block_id,
@@ -355,21 +353,20 @@ pub async fn chat_v2_update_block_tool_output(
     );
 
     if !block_id.starts_with("blk_") {
-        return Err(
-            ChatV2Error::Validation(format!("Invalid block ID format: {}", block_id)).into(),
-        );
+        return Err(ChatV2Error::Validation(format!(
+            "Invalid block ID format: {}",
+            block_id
+        )));
     }
 
     // 验证 JSON 合法性
-    let _: serde_json::Value = serde_json::from_str(&tool_output_json)
-        .map_err(|e| format!("Invalid tool_output_json: {}", e))?;
+    let _: serde_json::Value = serde_json::from_str(&tool_output_json)?;
 
-    let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = db.get_conn_safe()?;
     conn.execute(
         "UPDATE chat_v2_blocks SET tool_output_json = ?1 WHERE id = ?2",
         rusqlite::params![tool_output_json, block_id],
-    )
-    .map_err(|e| format!("Failed to update block tool_output: {}", e))?;
+    )?;
 
     log::info!(
         "[ChatV2::handlers] Block tool_output updated: block_id={}",
@@ -385,30 +382,28 @@ pub async fn chat_v2_update_block_tool_output(
 pub async fn chat_v2_get_anki_cards_from_block_by_document_id(
     documentId: String,
     db: State<'_, Arc<ChatV2Database>>,
-) -> Result<Vec<crate::models::AnkiCard>, String> {
+) -> ChatV2Result<Vec<crate::models::AnkiCard>> {
     let doc_id = documentId.trim();
     if doc_id.is_empty() {
-        return Err("documentId is required".to_string());
+        return Err(ChatV2Error::Validation(
+            "documentId is required".to_string(),
+        ));
     }
 
-    let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
-    let mut stmt = conn
-        .prepare(
-            r#"
-            SELECT tool_output_json
-            FROM chat_v2_blocks
-            WHERE block_type = 'anki_cards' AND tool_output_json IS NOT NULL
-            ORDER BY rowid DESC
-            "#,
-        )
-        .map_err(|e| format!("Failed to prepare query: {}", e))?;
+    let conn = db.get_conn_safe()?;
+    let mut stmt = conn.prepare(
+        r#"
+        SELECT tool_output_json
+        FROM chat_v2_blocks
+        WHERE block_type = 'anki_cards' AND tool_output_json IS NOT NULL
+        ORDER BY rowid DESC
+        "#,
+    )?;
 
-    let rows = stmt
-        .query_map([], |row| row.get::<_, String>(0))
-        .map_err(|e| format!("Failed to query blocks: {}", e))?;
+    let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
 
     for row in rows {
-        let tool_output_json = row.map_err(|e| format!("Failed to read row: {}", e))?;
+        let tool_output_json = row?;
         let parsed: serde_json::Value = match serde_json::from_str(&tool_output_json) {
             Ok(value) => value,
             Err(_) => continue,
@@ -491,7 +486,7 @@ pub async fn chat_v2_upsert_streaming_block(
     tool_input_json: Option<String>,
     tool_output_json: Option<String>,
     db: State<'_, Arc<ChatV2Database>>,
-) -> Result<(), String> {
+) -> ChatV2Result<()> {
     log::info!(
         "[ChatV2::handlers] chat_v2_upsert_streaming_block: block_id={}, message_id={}, session_id={:?}, type={}, content_len={}, has_tool={}",
         block_id,
@@ -504,29 +499,29 @@ pub async fn chat_v2_upsert_streaming_block(
 
     // 验证块 ID 格式
     if !block_id.starts_with("blk_") {
-        return Err(
-            ChatV2Error::Validation(format!("Invalid block ID format: {}", block_id)).into(),
-        );
+        return Err(ChatV2Error::Validation(format!(
+            "Invalid block ID format: {}",
+            block_id
+        )));
     }
 
     // 验证消息 ID 格式
     if !message_id.starts_with("msg_") {
-        return Err(
-            ChatV2Error::Validation(format!("Invalid message ID format: {}", message_id)).into(),
-        );
+        return Err(ChatV2Error::Validation(format!(
+            "Invalid message ID format: {}",
+            message_id
+        )));
     }
 
     // 🔧 P35: 解析工具输入/输出 JSON
     let tool_input: Option<serde_json::Value> = tool_input_json
         .as_ref()
         .map(|s| serde_json::from_str(s))
-        .transpose()
-        .map_err(|e| format!("Invalid tool_input_json: {}", e))?;
+        .transpose()?;
     let tool_output: Option<serde_json::Value> = tool_output_json
         .as_ref()
         .map(|s| serde_json::from_str(s))
-        .transpose()
-        .map_err(|e| format!("Invalid tool_output_json: {}", e))?;
+        .transpose()?;
 
     // 构建块对象
     let now_ms = chrono::Utc::now().timestamp_millis();
@@ -553,7 +548,7 @@ pub async fn chat_v2_upsert_streaming_block(
     };
 
     // 先确保消息占位行存在（FK 约束要求消息先于块存在）
-    let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = db.get_conn_safe()?;
     if let Err(e) =
         ensure_message_exists_with_block(&conn, session_id.as_deref(), &block.message_id, &block.id)
     {
@@ -815,7 +810,7 @@ pub async fn chat_v2_anki_cards_result(
     request: AnkiCardsResultRequest,
     db: State<'_, Arc<ChatV2Database>>,
     app: AppHandle,
-) -> Result<String, String> {
+) -> ChatV2Result<String> {
     use tauri::Emitter;
 
     log::info!(
@@ -831,8 +826,7 @@ pub async fn chat_v2_anki_cards_result(
         return Err(ChatV2Error::Validation(format!(
             "Invalid message ID format: {}",
             request.message_id
-        ))
-        .into());
+        )));
     }
 
     // 生成新的 anki_cards 块 ID
@@ -875,7 +869,7 @@ pub async fn chat_v2_anki_cards_result(
     };
 
     // 保存到数据库
-    upsert_block_in_db(&block, &db).map_err(|e| e.to_string())?;
+    upsert_block_in_db(&block, &db)?;
 
     // 🆕 2026-01: 发射 anki_cards 事件到前端，通知 UI 更新
     // 使用会话特定的事件通道

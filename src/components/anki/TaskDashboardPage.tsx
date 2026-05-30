@@ -345,7 +345,7 @@ const SessionRow: React.FC<{
     try {
       // 并行加载卡片和模板，一次性设置状态避免两阶段渲染闪烁
       const [loadedCards, allTemplates] = await Promise.all([
-        invoke<AnkiCard[]>('get_document_cards', { documentId: session.documentId }),
+        invoke<AnkiCard[]>('anki_get_document_cards', { documentId: session.documentId }),
         invoke<CustomAnkiTemplate[]>('get_all_custom_templates').catch(err => {
           debugLog.error('[TaskDashboard] loadTemplates failed:', err);
           return [] as CustomAnkiTemplate[];
@@ -407,7 +407,7 @@ const SessionRow: React.FC<{
       } else if (action === 'retryFailed') {
         // [S2] 真正重试失败任务：获取文档所有 task → 筛选失败的 → 并行 trigger
         const tasks = await invoke<{ id: string; status: string }[]>(
-          'get_document_tasks',
+          'anki_get_document_tasks',
           { documentId: session.documentId },
         );
         const failedTasks = tasks.filter(
@@ -429,7 +429,7 @@ const SessionRow: React.FC<{
           }
         }
       } else if (action === 'delete') {
-        await invoke('delete_document_session', { documentId: session.documentId });
+        await invoke('anki_delete_document_session', { documentId: session.documentId });
         showGlobalNotification('success', t('taskDashboard.deleted'));
       }
       onRefresh();
@@ -467,7 +467,7 @@ const SessionRow: React.FC<{
           { documentId: session.documentId },
         ).catch(() => []),
         invoke<AnkiCard[]>(
-          'get_document_cards',
+          'anki_get_document_cards',
           { documentId: session.documentId },
         ),
       ]);
@@ -849,8 +849,8 @@ export const TaskDashboardPage: React.FC<TaskDashboardPageProps> = ({
   const load = useCallback(async () => {
     try {
       const [s, st] = await Promise.all([
-        invoke<DocumentSession[]>('list_document_sessions', { limit: DASHBOARD_SESSION_LIMIT }),
-        invoke<AnkiStats>('get_anki_stats'),
+        invoke<DocumentSession[]>('anki_list_document_sessions', { limit: DASHBOARD_SESSION_LIMIT }),
+        invoke<AnkiStats>('anki_get_stats'),
       ]);
       setSessions(s);
       setStats(st);

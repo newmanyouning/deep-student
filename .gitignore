@@ -201,7 +201,12 @@ wasi-*.tar.gz
 .serena/
 .codex/
 .claude/
+.kiro/
+.roundtable/
 .recovery/
+
+# AI agent instructions (local only, not for OSS repo)
+docs/.deepseek/
 
 # Rust local build cache variant
 src-tauri/.cargo-target/
@@ -265,6 +270,10 @@ public/images/*
 # GSD planning workflow artifacts
 .planning/
 study-ui/.planning/
+
+# Study UI internal docs (design plans + research, not for OSS repo)
+.study-ui/docs/plans/
+.study-ui/docs/research/
 
 # Design assets
 design/

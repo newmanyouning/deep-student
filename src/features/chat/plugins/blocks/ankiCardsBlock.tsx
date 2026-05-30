@@ -998,7 +998,7 @@ const AnkiCardsBlock: React.FC<BlockComponentProps> = React.memo(({
   const handleRefreshAnkiConnect = useCallback(async () => {
     if (!store) return;
     try {
-      const available = await invoke<boolean>('check_anki_connect_status');
+      const available = await invoke<boolean>('anki_connect_check_status');
       const latestBlock = store.getState().blocks.get(block.id);
       const latestData = latestBlock?.toolOutput as AnkiCardsBlockData | undefined;
       if (!latestData) return;
@@ -1039,7 +1039,7 @@ const AnkiCardsBlock: React.FC<BlockComponentProps> = React.memo(({
 
       void (async () => {
         try {
-          const tasks = await invoke<Array<{ status?: string }>>('get_document_tasks', { documentId: currentDocumentId });
+          const tasks = await invoke<Array<{ status?: string }>>('anki_get_document_tasks', { documentId: currentDocumentId });
           const latestBlock = store?.getState().blocks.get(block.id);
           if (!latestBlock || latestBlock.status !== 'running') return;
 
@@ -1051,7 +1051,7 @@ const AnkiCardsBlock: React.FC<BlockComponentProps> = React.memo(({
           }
 
           if (tasks.length > 0) {
-            const cards = await invoke<Array<Record<string, unknown>>>('get_document_cards', { documentId: currentDocumentId });
+            const cards = await invoke<Array<Record<string, unknown>>>('anki_get_document_cards', { documentId: currentDocumentId });
             const latestData = latestBlock.toolOutput as AnkiCardsBlockData | undefined;
             const hasFailures = statuses.some((status) => ['failed', 'truncated'].includes(status));
             store?.getState().updateBlock(block.id, {

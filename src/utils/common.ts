@@ -23,11 +23,20 @@ export function debounce<T extends (...args: any[]) => any>(
   };
 }
 
+let _idCounter = 0;
+const ID_COUNTER_RESET = 1_000_000;
+
 /**
- * 生成唯一ID
+ * 生成唯一 ID，可选前缀。
+ * 合并自 createChatStore::generateId — 现在作为全局统一实现 (REF-005)。
  */
-export function generateId(): string {
-  return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+export function generateId(prefix?: string): string {
+  const ts = Date.now().toString(36);
+  const rnd = Math.random().toString(36).substring(2, 8);
+  _idCounter = (_idCounter + 1) % ID_COUNTER_RESET;
+  const ctr = _idCounter.toString(36);
+  const body = `${ts}_${rnd}_${ctr}`;
+  return prefix ? `${prefix}_${body}` : body;
 }
 
 /**

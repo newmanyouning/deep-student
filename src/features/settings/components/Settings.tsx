@@ -440,7 +440,7 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
     if (!invoke) return;
     (async () => {
       try {
-        const v = await (invoke as typeof tauriInvoke)('get_setting', { key: 'topbar.top_margin' });
+        const v = await (invoke as typeof tauriInvoke)('web_search_get_setting', { key: 'topbar.top_margin' });
         const value = String(v ?? '').trim();
         if (value) {
           setTopbarTopMargin(value);
@@ -465,7 +465,7 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
     if (!invoke) return;
     (async () => {
       try {
-        const v = await (invoke as typeof tauriInvoke)('get_setting', { key: 'dev.show_raw_request' });
+        const v = await (invoke as typeof tauriInvoke)('web_search_get_setting', { key: 'dev.show_raw_request' });
         const value = String(v ?? '').trim().toLowerCase();
         setShowRawRequest(value === 'true' || value === '1');
       } catch {
@@ -529,7 +529,7 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
       payloadValue = String(timeoutMs);
     }
     try {
-      await invoke('save_setting', { key: 'chat.stream.timeout_ms', value: payloadValue });
+      await invoke('web_search_save_setting', { key: 'chat.stream.timeout_ms', value: payloadValue });
       showGlobalNotification('success', t('common:settings.chat_stream.save_success_timeout'));
       const savedValue = raw ? String(Math.round(Number(raw))) : '';
       setExtra(prev => ({
@@ -556,7 +556,7 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
       return;
     }
     try {
-      await invoke('save_setting', { key: 'chat.stream.auto_cancel_on_timeout', value: checked ? '1' : '0' });
+      await invoke('web_search_save_setting', { key: 'chat.stream.auto_cancel_on_timeout', value: checked ? '1' : '0' });
       showGlobalNotification('success', t('common:settings.chat_stream.save_success_auto_cancel'));
       emitChatStreamSettingsUpdate({ autoCancel: checked });
     } catch (error) {
@@ -574,12 +574,12 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
       try {
         // 并行加载所有参数调整相关设置
         const [ftsVal, rrfk, wfts, wvec, rawTimeout, rawAutoCancel] = await Promise.all([
-          invoke<string | null>('get_setting', { key: 'search.chat.semantic.fts_prefilter.enabled' }).catch(() => null),
-          invoke<string | null>('get_setting', { key: 'search.chat.rrf.k' }).catch(() => null),
-          invoke<string | null>('get_setting', { key: 'search.chat.rrf.w_fts' }).catch(() => null),
-          invoke<string | null>('get_setting', { key: 'search.chat.rrf.w_vec' }).catch(() => null),
-          invoke<string | null>('get_setting', { key: 'chat.stream.timeout_ms' }).catch(() => null),
-          invoke<string | null>('get_setting', { key: 'chat.stream.auto_cancel_on_timeout' }).catch(() => null),
+          invoke<string | null>('web_search_get_setting', { key: 'search.chat.semantic.fts_prefilter.enabled' }).catch(() => null),
+          invoke<string | null>('web_search_get_setting', { key: 'search.chat.rrf.k' }).catch(() => null),
+          invoke<string | null>('web_search_get_setting', { key: 'search.chat.rrf.w_fts' }).catch(() => null),
+          invoke<string | null>('web_search_get_setting', { key: 'search.chat.rrf.w_vec' }).catch(() => null),
+          invoke<string | null>('web_search_get_setting', { key: 'chat.stream.timeout_ms' }).catch(() => null),
+          invoke<string | null>('web_search_get_setting', { key: 'chat.stream.auto_cancel_on_timeout' }).catch(() => null),
         ]);
 
         const ftsEnabled = ftsVal ? (ftsVal === '1' || ftsVal.toLowerCase() === 'true') : true;
@@ -1385,13 +1385,13 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
                     try {
                       if (invoke) {
                         await Promise.all([
-                          invoke('save_setting', { key: 'mcp.tools.advertise_all_tools', value: mcpPolicyModal.advertiseAll.toString() }),
-                          invoke('save_setting', { key: 'mcp.tools.whitelist', value: mcpPolicyModal.whitelist }),
-                          invoke('save_setting', { key: 'mcp.tools.blacklist', value: mcpPolicyModal.blacklist }),
-                          invoke('save_setting', { key: 'mcp.performance.timeout_ms', value: String(mcpPolicyModal.timeoutMs) }),
-                          invoke('save_setting', { key: 'mcp.performance.rate_limit_per_second', value: String(mcpPolicyModal.rateLimit) }),
-                          invoke('save_setting', { key: 'mcp.performance.cache_max_size', value: String(mcpPolicyModal.cacheMax) }),
-                          invoke('save_setting', { key: 'mcp.performance.cache_ttl_ms', value: String(mcpPolicyModal.cacheTtlMs) }),
+                          invoke('web_search_save_setting', { key: 'mcp.tools.advertise_all_tools', value: mcpPolicyModal.advertiseAll.toString() }),
+                          invoke('web_search_save_setting', { key: 'mcp.tools.whitelist', value: mcpPolicyModal.whitelist }),
+                          invoke('web_search_save_setting', { key: 'mcp.tools.blacklist', value: mcpPolicyModal.blacklist }),
+                          invoke('web_search_save_setting', { key: 'mcp.performance.timeout_ms', value: String(mcpPolicyModal.timeoutMs) }),
+                          invoke('web_search_save_setting', { key: 'mcp.performance.rate_limit_per_second', value: String(mcpPolicyModal.rateLimit) }),
+                          invoke('web_search_save_setting', { key: 'mcp.performance.cache_max_size', value: String(mcpPolicyModal.cacheMax) }),
+                          invoke('web_search_save_setting', { key: 'mcp.performance.cache_ttl_ms', value: String(mcpPolicyModal.cacheTtlMs) }),
                         ]);
                       }
                     } catch (err) {

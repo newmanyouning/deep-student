@@ -113,21 +113,21 @@ const WebSearchAdvancedConfigInner: React.FC<WebSearchAdvancedConfigProps> = ({
   const loadConfigs = async () => {
     try {
       setLoading(true);
-      // 🔧 修复 #1/#7: 移除 get_provider_strategies_config 调用（策略仅由 EngineSettingsSection 管理）
+      // 🔧 修复 #1/#7: 移除 web_search_get_provider_strategies_config 调用（策略仅由 EngineSettingsSection 管理）
       const [cnWhitelistResult, tavilyDepthOpt] =
         await Promise.all([
         invoke<{ default_sites: string[]; user_config: CnWhitelistConfig }>(
-          'get_cn_whitelist_config'
+          'web_search_get_cn_whitelist_config'
         ),
-        invoke<string | null>('get_setting', {
+        invoke<string | null>('web_search_get_setting', {
           key: 'web_search.tavily.search_depth',
         }).catch(() => null),
       ]);
 
-      const rerankerEnabledOpt = await invoke<string | null>('get_setting', {
+      const rerankerEnabledOpt = await invoke<string | null>('web_search_get_setting', {
         key: 'web_search.reranker.enabled',
       }).catch(() => null);
-      const rerankerTopKOpt = await invoke<string | null>('get_setting', {
+      const rerankerTopKOpt = await invoke<string | null>('web_search_get_setting', {
         key: 'web_search.reranker.top_k',
       }).catch(() => null);
 
@@ -236,7 +236,7 @@ const WebSearchAdvancedConfigInner: React.FC<WebSearchAdvancedConfigProps> = ({
     const previous = tavilySearchDepth;
     setTavilySearchDepth(next);
     try {
-      await invoke('save_setting', {
+      await invoke('web_search_save_setting', {
         key: 'web_search.tavily.search_depth',
         value: next,
       });
@@ -257,11 +257,11 @@ const WebSearchAdvancedConfigInner: React.FC<WebSearchAdvancedConfigProps> = ({
 
   const saveRerankerConfig = async (config: RerankerConfig) => {
     await Promise.all([
-      invoke('save_setting', {
+      invoke('web_search_save_setting', {
         key: 'web_search.reranker.enabled',
         value: String(config.enabled),
       }),
-      invoke('save_setting', {
+      invoke('web_search_save_setting', {
         key: 'web_search.reranker.top_k',
         value: String(config.top_k ?? 10),
       }),
@@ -272,15 +272,15 @@ const WebSearchAdvancedConfigInner: React.FC<WebSearchAdvancedConfigProps> = ({
 
   const saveCnWhitelistConfig = async (config: CnWhitelistConfig) => {
     await Promise.all([
-      invoke('save_setting', {
+      invoke('web_search_save_setting', {
         key: 'web_search.cn_whitelist.enabled',
         value: String(config.enabled),
       }),
-      invoke('save_setting', {
+      invoke('web_search_save_setting', {
         key: 'web_search.cn_whitelist.use_default',
         value: String(config.use_default_list),
       }),
-      invoke('save_setting', {
+      invoke('web_search_save_setting', {
         key: 'web_search.cn_whitelist.custom_sites',
         value: (config.custom_sites ?? []).join(','),
       }),

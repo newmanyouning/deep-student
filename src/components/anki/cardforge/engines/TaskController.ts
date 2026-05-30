@@ -23,8 +23,8 @@
  * | 暂停 | pause_document_processing | 标记暂停，取消当前流 |
  * | 恢复 | resume_document_processing | 继续 Paused/Pending 任务 |
  * | 重试单个 | trigger_task_processing | 重新处理指定任务 |
- * | 取消 | delete_document_session | 清理文档会话 |
- * | 查询状态 | get_document_tasks | 获取所有任务状态 |
+ * | 取消 | anki_delete_document_session | 清理文档会话 |
+ * | 查询状态 | anki_get_document_tasks | 获取所有任务状态 |
  *
  * @module TaskController
  */
@@ -247,7 +247,7 @@ export class TaskController {
   /**
    * 取消文档处理
    *
-   * 调用后端 delete_document_session 命令，清理文档会话
+   * 调用后端 anki_delete_document_session 命令，清理文档会话
    * 会停止所有未完成的任务，并删除相关状态
    *
    * @param documentId 文档 ID
@@ -275,7 +275,7 @@ export class TaskController {
       // 调用后端删除会话命令
       // 后端会清理 DOCUMENT_STATES 和 RUNNING_HANDLES
       // 注意：统一使用 snake_case 参数名与后端 Rust 命令保持一致
-      await invoke<void>('delete_document_session', {
+      await invoke<void>('anki_delete_document_session', {
         documentId: documentId.trim(),
       });
 
@@ -302,7 +302,7 @@ export class TaskController {
   /**
    * 获取任务状态列表
    *
-   * 调用后端 get_document_tasks 命令，获取文档的所有任务状态
+   * 调用后端 anki_get_document_tasks 命令，获取文档的所有任务状态
    *
    * @param documentId 文档 ID
    * @returns 任务信息列表
@@ -325,7 +325,7 @@ export class TaskController {
       }
 
       // 调用后端查询命令
-      const backendTasks = await invoke<BackendTask[]>('get_document_tasks', {
+      const backendTasks = await invoke<BackendTask[]>('anki_get_document_tasks', {
         documentId: documentId.trim(),
       });
 
@@ -394,7 +394,7 @@ export class TaskController {
   /**
    * 获取文档状态
    *
-   * 调用后端 get_document_processing_state 命令（如果可用），获取文档的整体状态
+   * 调用后端 anki_get_document_processing_state 命令（如果可用），获取文档的整体状态
    * 包括总任务数、完成数、失败数等统计信息
    *
    * @param documentId 文档 ID
@@ -424,7 +424,7 @@ export class TaskController {
 
       try {
         // 优先使用最新命令名
-        return await invoke<DocumentState>('get_document_processing_state', {
+        return await invoke<DocumentState>('anki_get_document_processing_state', {
           documentId: trimmedId,
         });
       } catch (error: unknown) {
@@ -435,7 +435,7 @@ export class TaskController {
       }
     } catch (error: unknown) {
       // 如果后端未实现该命令，尝试从任务列表推导状态
-      console.warn('[TaskController] get_document_processing_state 未实现，从任务列表推导状态');
+      console.warn('[TaskController] anki_get_document_processing_state 未实现，从任务列表推导状态');
 
       try {
         const tasks = await this.getTaskStatus(documentId);

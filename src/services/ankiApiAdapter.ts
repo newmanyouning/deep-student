@@ -65,7 +65,7 @@ export const ankiApiAdapter = {
     } catch (error: unknown) {
       // 降级：使用旧接口
       if (params.format === 'apkg') {
-        return await invoke('export_cards_as_apkg_with_template', {
+        return await invoke('anki_connect_export_apkg_with_template', {
           // 双写兼容：后端 snake_case，部分旧前端/桥接可能校验 camelCase
           selected_cards: cardsForExport,
           selectedCards: cardsForExport,
@@ -100,7 +100,7 @@ export const ankiApiAdapter = {
         template_id: card.template_id ?? params.templateId ?? null,
       }));
 
-      return await invoke<SaveAnkiCardsResponse>('save_anki_cards', {
+      return await invoke<SaveAnkiCardsResponse>('anki_connect_save_cards', {
         request: {
           document_id: params.documentId ?? null,
           business_session_id: params.businessSessionId ?? null,
@@ -132,12 +132,12 @@ export const ankiApiAdapter = {
    * 删除卡片
    */
   async deleteAnkiCards(params: { cardIds: string[] }): Promise<void> {
-    // 后端仅有 delete_anki_card（单数），需逐个调用
+    // 后端仅有 anki_delete_card（单数），需逐个调用
     // Tauri v2 默认 camelCase → snake_case 自动映射
     const errors: string[] = [];
     for (const id of params.cardIds) {
       try {
-        await invoke('delete_anki_card', { cardId: id });
+        await invoke('anki_delete_card', { cardId: id });
       } catch (err) {
         errors.push(`${id}: ${err}`);
       }
@@ -259,7 +259,7 @@ export const ankiApiAdapter = {
         }
         if (documentIdRef) {
           try {
-            await invoke('delete_document_session', {
+            await invoke('anki_delete_document_session', {
               documentId: documentIdRef,
               document_id: documentIdRef,
             });

@@ -972,7 +972,7 @@ pub async fn notes_get_subject_rag_config(
     // 从 notes_database.settings 中读取，没有则使用 rag_configurations 默认
     if let Ok(Some(json)) = state
         .notes_database
-        .get_setting(&format!("notes.rag.config.{}", subject))
+        .web_search_get_setting(&format!("notes.rag.config.{}", subject))
     {
         if let Ok(cfg) = serde_json::from_str::<NotesSubjectRagConfig>(&json) {
             return Ok(cfg);
@@ -1028,7 +1028,7 @@ pub async fn notes_update_subject_rag_config(
     let json = serde_json::to_string(&cfg).map_err(|e| AppError::database(e.to_string()))?;
     state
         .notes_database
-        .save_setting(&format!("notes.rag.config.{}", subject), &json)
+        .web_search_save_setting(&format!("notes.rag.config.{}", subject), &json)
         .map_err(|e| AppError::database(e.to_string()))?;
 
     // 同步覆盖 notes 数据库中的默认 rag_configurations，使后续嵌入过程生效
@@ -1055,7 +1055,7 @@ pub async fn notes_set_pref(
 ) -> Result<bool> {
     state
         .notes_database
-        .save_setting(&format!("notes.pref.{}", key), &value)
+        .web_search_save_setting(&format!("notes.pref.{}", key), &value)
         .map_err(|e| AppError::database(e.to_string()))?;
     Ok(true)
 }
@@ -1064,7 +1064,7 @@ pub async fn notes_set_pref(
 pub async fn notes_get_pref(key: String, state: State<'_, AppState>) -> Result<Option<String>> {
     state
         .notes_database
-        .get_setting(&format!("notes.pref.{}", key))
+        .web_search_get_setting(&format!("notes.pref.{}", key))
         .map_err(|e| AppError::database(e.to_string()))
 }
 

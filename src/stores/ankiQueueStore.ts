@@ -1,9 +1,7 @@
 import { create } from 'zustand';
-import { TauriAPI } from '../utils/tauriApi';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import type { AnkiCard, AnkiGenerationOptions } from '../types';
-import { showGlobalNotification } from '../components/UnifiedNotification';
-import { debugLog } from '../debug-panel/debugMasterSwitch';
-import i18n from '@/i18n';
+import { createTauriPersistStorage } from '../utils/tauriPersistStorage';
 
 export type AnkiMaterialSourceType = 'mistake' | 'chat';
 
@@ -44,201 +42,65 @@ interface AnkiQueueState {
   clearMaterials: () => void;
 }
 
+const STORAGE_KEY = 'anki.material.queue';
+
 const isSameSource = (a: QueuedAnkiMaterial, b: QueuedAnkiMaterial) =>
   a.sourceType === b.sourceType && a.sourceId === b.sourceId;
 
-const STORAGE_KEY = 'anki.material.queue';
-
-const hasLocalStorage = () => typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
-
-const cloneMaterialsSnapshot = (materials: QueuedAnkiMaterial[]): QueuedAnkiMaterial[] =>
-  materials.map((item) => ({
-    ...item,
-    tags: item.tags ? [...item.tags] : item.tags,
-  }));
-
-const persistMaterials = async (materials: QueuedAnkiMaterial[]) => {
-  const serialized = JSON.stringify(materials);
-  try {
-    await TauriAPI.saveSetting(STORAGE_KEY, serialized);
-  } catch (error: unknown) {
-    console.error('[AnkiQueue] Failed to persist material queue:', error);
-    if (!hasLocalStorage()) {
-      throw error;
-    }
-    if (hasLocalStorage()) {
-      try {
-        window.localStorage.setItem(STORAGE_KEY, serialized);
-      } catch (storageError: unknown) {
-        console.error('[AnkiQueue] Failed to backup material queue to localStorage:', storageError);
-        throw storageError;
-      }
-    }
-  }
-};
-
-interface PersistRequest {
-  version: number;
-  materials: QueuedAnkiMaterial[];
-}
-
-let latestPersistRequestVersion = 0;
-let latestPersistedVersion = 0;
-let pendingPersistRequest: PersistRequest | null = null;
-let isPersistLoopRunning = false;
-
-const flushPersistQueue = async () => {
-  if (isPersistLoopRunning) return;
-  isPersistLoopRunning = true;
-
-  try {
-    while (pendingPersistRequest) {
-      const request = pendingPersistRequest;
-      pendingPersistRequest = null;
-
-      if (request.version <= latestPersistedVersion) {
-        continue;
-      }
-
-      await persistMaterials(request.materials);
-      latestPersistedVersion = request.version;
-    }
-  } catch (err: unknown) {
-    debugLog.error('[AnkiQueue] Failed to persist materials:', err);
-    showGlobalNotification('warning', i18n.t('common:persistFailed', 'Failed to save changes'));
-  } finally {
-    isPersistLoopRunning = false;
-    if (pendingPersistRequest) {
-      void flushPersistQueue();
-    }
-  }
-};
-
-const enqueuePersistMaterials = (materials: QueuedAnkiMaterial[]) => {
-  const version = ++latestPersistRequestVersion;
-  pendingPersistRequest = {
-    version,
-    materials: cloneMaterialsSnapshot(materials),
-  };
-  void flushPersistQueue();
-};
-
 const parseTimestamp = (value?: string | null): number => {
   if (!value) return 0;
-  const timestamp = Date.parse(value);
-  return Number.isNaN(timestamp) ? 0 : timestamp;
+  const ts = Date.parse(value);
+  return Number.isNaN(ts) ? 0 : ts;
 };
 
 const mergeMaterials = (
   current: QueuedAnkiMaterial[],
   incoming: unknown,
 ): QueuedAnkiMaterial[] => {
-  if (!Array.isArray(incoming) || incoming.length === 0) {
-    return current;
-  }
-
-  const dedupeMap = new Map<string, QueuedAnkiMaterial>();
+  if (!Array.isArray(incoming) || incoming.length === 0) return current;
+  const dedupe = new Map<string, QueuedAnkiMaterial>();
   const upsert = (item: QueuedAnkiMaterial | null | undefined) => {
     if (!item) return;
     if (typeof item.sourceId !== 'string' || typeof item.sourceType !== 'string') return;
     const key = `${item.sourceType}:${item.sourceId}`;
-    const existing = dedupeMap.get(key);
-    if (!existing) {
-      dedupeMap.set(key, item);
-      return;
-    }
-    const currentTs = parseTimestamp(existing.createdAt);
-    const nextTs = parseTimestamp(item.createdAt);
-    if (nextTs > currentTs) {
-      dedupeMap.set(key, item);
-    }
+    const existing = dedupe.get(key);
+    if (!existing) { dedupe.set(key, item); return; }
+    if (parseTimestamp(item.createdAt) > parseTimestamp(existing.createdAt)) dedupe.set(key, item);
   };
-
-  current.forEach((item) => upsert(item));
-  (incoming as QueuedAnkiMaterial[]).forEach((item) => upsert(item));
-
-  const merged = Array.from(dedupeMap.values());
+  current.forEach(upsert);
+  (incoming as QueuedAnkiMaterial[]).forEach(upsert);
+  const merged = Array.from(dedupe.values());
   merged.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
   return merged;
 };
 
-export const useAnkiQueueStore = create<AnkiQueueState>((set, get) => {
-  const loadMaterials = async () => {
-    try {
-      const stored = await TauriAPI.getSetting(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as unknown;
+export const useAnkiQueueStore = create<AnkiQueueState>()(
+  persist(
+    (set) => ({
+      materials: [],
+      addMaterial: (material, options) =>
         set((state) => {
-          const merged = mergeMaterials(state.materials, parsed);
-          const hasChanges =
-            merged.length !== state.materials.length ||
-            merged.some((item, index) => item !== state.materials[index]);
-          return hasChanges ? { materials: merged } : state;
-        });
-        return;
-      }
-    } catch (error: unknown) {
-      console.error('[AnkiQueue] Failed to load material queue:', error);
-    }
-
-    if (hasLocalStorage()) {
-      try {
-        const stored = window.localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored) as unknown;
-          set((state) => {
-            const merged = mergeMaterials(state.materials, parsed);
-            const hasChanges =
-              merged.length !== state.materials.length ||
-              merged.some((item, index) => item !== state.materials[index]);
-            return hasChanges ? { materials: merged } : state;
-          });
-        }
-      } catch (storageError: unknown) {
-        console.error('[AnkiQueue] Failed to load material queue from localStorage:', storageError);
-      }
-    }
-  };
-
-  if (typeof window !== 'undefined') {
-    void loadMaterials();
-  }
-
-  return {
-    materials: [],
-    addMaterial: (material, options) => {
-      set((state) => {
-        const existing = state.materials.find((item) => isSameSource(item, material));
-        const others = state.materials.filter((item) => !isSameSource(item, material));
-        let nextList: QueuedAnkiMaterial[];
-        if (existing) {
-          nextList = options?.replaceExisting ? [material, ...others] : [existing, ...others];
-        } else {
-          nextList = [material, ...others];
-        }
-        const sorted = nextList.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-        enqueuePersistMaterials(sorted);
-        return { materials: sorted };
-      });
+          const existing = state.materials.find((item) => isSameSource(item, material));
+          const others = state.materials.filter((item) => !isSameSource(item, material));
+          const next = existing
+            ? options?.replaceExisting ? [material, ...others] : [existing, ...others]
+            : [material, ...others];
+          return { materials: next.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')) };
+        }),
+      removeMaterial: (queueId) =>
+        set((state) => ({ materials: state.materials.filter((item) => item.queueId !== queueId) })),
+      clearMaterials: () => set({ materials: [] }),
+    }),
+    {
+      name: STORAGE_KEY,
+      storage: createJSONStorage(createTauriPersistStorage),
+      merge: (persisted, current) => ({
+        ...current,
+        materials: mergeMaterials(current.materials, (persisted as AnkiQueueState)?.materials),
+      }),
     },
-    removeMaterial: (queueId) => {
-      set((state) => {
-        const updated = state.materials.filter((item) => item.queueId !== queueId);
-        enqueuePersistMaterials(updated);
-        return { materials: updated };
-      });
-    },
-    clearMaterials: () => {
-      set(() => {
-        enqueuePersistMaterials([]);
-        if (hasLocalStorage()) {
-          try { window.localStorage.removeItem(STORAGE_KEY); } catch (error: unknown) { console.error('[AnkiQueue] Failed to clear localStorage backup:', error); }
-        }
-        return { materials: [] };
-      });
-    },
-  };
-});
+  ),
+);
 
 export const createQueueId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {

@@ -51,7 +51,7 @@ export const AnkiConnectSettingsSection: React.FC<AnkiConnectSettingsSectionProp
       if (!ok) throw new Error(t('common:anki.settings.unavailable'));
       const [deckNames, modelNames] = await Promise.all([
         (window as any).__TAURI_INTERNALS__ ? (await import('@tauri-apps/api/core')).invoke<string[]>('anki_get_deck_names') : Promise.resolve([]),
-        (window as any).__TAURI_INTERNALS__ ? (await import('@tauri-apps/api/core')).invoke<string[]>('get_anki_model_names') : Promise.resolve([])
+        (window as any).__TAURI_INTERNALS__ ? (await import('@tauri-apps/api/core')).invoke<string[]>('anki_connect_get_model_names') : Promise.resolve([])
       ]);
       // 向全局派发连接状态事件，供页面顶部状态同步
       window.dispatchEvent(new CustomEvent('ankiConnectStatusUpdated', {

@@ -1881,6 +1881,7 @@ impl LocalQuestionWithSync {
 // ============================================================================
 
 use crate::commands::AppState;
+use crate::models::AppError;
 use tauri::State;
 
 /// 检查同步状态
@@ -1888,12 +1889,12 @@ use tauri::State;
 pub async fn qbank_sync_check(
     state: State<'_, AppState>,
     exam_id: String,
-) -> Result<SyncStatusResult, String> {
+) -> Result<SyncStatusResult, AppError> {
     let db = state
         .vfs_db
         .as_ref()
-        .ok_or("VFS database not initialized")?;
-    QuestionSyncService::check_sync_status(db, &exam_id).map_err(|e| e.to_string())
+        .ok_or_else(|| AppError::database("VFS database not initialized"))?;
+    QuestionSyncService::check_sync_status(db, &exam_id).map_err(|e| AppError::unknown(e.to_string()))
 }
 
 /// 获取冲突列表
@@ -1901,12 +1902,12 @@ pub async fn qbank_sync_check(
 pub async fn qbank_get_sync_conflicts(
     state: State<'_, AppState>,
     exam_id: String,
-) -> Result<Vec<SyncConflict>, String> {
+) -> Result<Vec<SyncConflict>, AppError> {
     let db = state
         .vfs_db
         .as_ref()
-        .ok_or("VFS database not initialized")?;
-    QuestionSyncService::list_pending_conflicts(db, &exam_id).map_err(|e| e.to_string())
+        .ok_or_else(|| AppError::database("VFS database not initialized"))?;
+    QuestionSyncService::list_pending_conflicts(db, &exam_id).map_err(|e| AppError::unknown(e.to_string()))
 }
 
 /// 解决单个冲突
@@ -1915,13 +1916,13 @@ pub async fn qbank_resolve_sync_conflict(
     state: State<'_, AppState>,
     conflict_id: String,
     strategy: String,
-) -> Result<crate::vfs::repos::question_repo::Question, String> {
+) -> Result<crate::vfs::repos::question_repo::Question, AppError> {
     let db = state
         .vfs_db
         .as_ref()
-        .ok_or("VFS database not initialized")?;
+        .ok_or_else(|| AppError::database("VFS database not initialized"))?;
     let strategy = QuestionConflictStrategy::from_str(&strategy);
-    QuestionSyncService::resolve_conflict(db, &conflict_id, strategy).map_err(|e| e.to_string())
+    QuestionSyncService::resolve_conflict(db, &conflict_id, strategy).map_err(|e| AppError::unknown(e.to_string()))
 }
 
 /// 批量解决冲突
@@ -1930,13 +1931,13 @@ pub async fn qbank_batch_resolve_conflicts(
     state: State<'_, AppState>,
     exam_id: String,
     strategy: String,
-) -> Result<Vec<crate::vfs::repos::question_repo::Question>, String> {
+) -> Result<Vec<crate::vfs::repos::question_repo::Question>, AppError> {
     let db = state
         .vfs_db
         .as_ref()
-        .ok_or("VFS database not initialized")?;
+        .ok_or_else(|| AppError::database("VFS database not initialized"))?;
     let strategy = QuestionConflictStrategy::from_str(&strategy);
-    QuestionSyncService::batch_resolve_conflicts(db, &exam_id, strategy).map_err(|e| e.to_string())
+    QuestionSyncService::batch_resolve_conflicts(db, &exam_id, strategy).map_err(|e| AppError::unknown(e.to_string()))
 }
 
 /// 启用/禁用同步
@@ -1945,12 +1946,12 @@ pub async fn qbank_set_sync_enabled(
     state: State<'_, AppState>,
     exam_id: String,
     enabled: bool,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let db = state
         .vfs_db
         .as_ref()
-        .ok_or("VFS database not initialized")?;
-    QuestionSyncService::set_sync_enabled(db, &exam_id, enabled).map_err(|e| e.to_string())
+        .ok_or_else(|| AppError::database("VFS database not initialized"))?;
+    QuestionSyncService::set_sync_enabled(db, &exam_id, enabled).map_err(|e| AppError::unknown(e.to_string()))
 }
 
 /// 更新同步配置
@@ -1959,12 +1960,12 @@ pub async fn qbank_update_sync_config(
     state: State<'_, AppState>,
     exam_id: String,
     config: SyncConfig,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let db = state
         .vfs_db
         .as_ref()
-        .ok_or("VFS database not initialized")?;
-    QuestionSyncService::update_sync_config(db, &exam_id, &config).map_err(|e| e.to_string())
+        .ok_or_else(|| AppError::database("VFS database not initialized"))?;
+    QuestionSyncService::update_sync_config(db, &exam_id, &config).map_err(|e| AppError::unknown(e.to_string()))
 }
 
 #[cfg(test)]

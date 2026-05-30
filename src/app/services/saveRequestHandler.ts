@@ -1,6 +1,5 @@
 import type React from 'react';
 import { TauriAPI } from '@/utils/tauriApi';
-import type { MistakeItem } from '@/types';
 import { getErrorMessage } from '@/utils/errorUtils';
 import { showGlobalNotification } from '@/components/UnifiedNotification';
 import type { ChatMessage } from './types';
@@ -132,7 +131,7 @@ export function createSaveRequestHandler(deps: SaveRequestHandlerDeps) {
         return undefined;
       })();
 
-      const rebuildThinkingContentMap = (mistake: MistakeItem) => {
+      const rebuildThinkingContentMap = (mistake: { chat_history?: Array<{ role?: string; thinking_content?: string }> }) => {
         const map = new Map<string, string>();
         (mistake.chat_history || []).forEach((message: any, index: number) => {
           if (message.role === 'assistant' && message.thinking_content) {
@@ -215,11 +214,11 @@ export function createSaveRequestHandler(deps: SaveRequestHandlerDeps) {
 
       const finalMistakeItem = runtimeResponse.finalMistakeItem;
       if (runtimeResponse.success) {
-        let resolvedMistake: MistakeItem | null = finalMistakeItem;
+        let resolvedMistake: Record<string, unknown> | null = finalMistakeItem;
 
         if (resolvedMistake && (chatMetadataProvided || requestedChatCategory === 'general_chat')) {
           try {
-            const patched: MistakeItem = {
+            const patched = {
               ...resolvedMistake,
               chat_category: requestedChatCategory,
               ...(chatMetadataProvided ? { chat_metadata: incomingChatMetadata ?? null } : {}),

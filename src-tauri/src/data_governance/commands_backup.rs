@@ -28,15 +28,16 @@ use super::commands::try_save_audit_log;
 use super::commands_restore::{
     execute_backup_with_progress_resumable, execute_zip_import_with_progress_resumable,
 };
+use super::error::{DataGovernanceError, DataGovernanceResult};
 
 /// 获取应用数据基础目录（Tauri app_data_dir）
 ///
 /// 注意：此目录是基础目录，**不是**运行时数据库/资产的实际存储位置。
 /// 运行时存储位置请使用 `get_active_data_dir`。
-pub(super) fn get_app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+pub(super) fn get_app_data_dir(app: &tauri::AppHandle) -> DataGovernanceResult<PathBuf> {
     app.path()
         .app_data_dir()
-        .map_err(|e| format!("获取应用数据目录失败: {}", e))
+        .map_err(|e| DataGovernanceError::Internal(format!("获取应用数据目录失败: {}", e)))
 }
 
 /// 获取活动数据空间目录（运行时所有数据库和资产的实际存储位置）
@@ -46,7 +47,7 @@ pub(super) fn get_app_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String
 ///
 /// **重要**：所有数据库路径解析、同步操作、资产扫描都必须基于此目录，
 /// 禁止直接使用 `get_app_data_dir` 访问数据库文件。
-pub(super) fn get_active_data_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+pub(super) fn get_active_data_dir(app: &tauri::AppHandle) -> DataGovernanceResult<PathBuf> {
     let base_dir = get_app_data_dir(app)?;
     Ok(crate::data_space::get_data_space_manager()
         .map(|mgr| mgr.active_dir())
@@ -204,7 +205,7 @@ fn should_apply_change_by_strategy(
     change: &SyncChangeWithData,
     id_column: &str,
     strategy: MergeStrategy,
-) -> Result<bool, String> {
+) -> DataGovernanceResult<bool> {
     match strategy {
         MergeStrategy::UseCloud => Ok(true),
         // manual 仅用于“冲突记录”人工决策；无冲突记录应按 KeepLatest 自动收敛
@@ -216,10 +217,10 @@ fn should_apply_change_by_strategy(
                 id_column,
             )
             .map_err(|e| {
-                format!(
+                DataGovernanceError::Internal(format!(
                     "查询本地记录失败 {}.{}: {}",
                     change.table_name, change.record_id, e
-                )
+                ))
             })?;
 
             // 本地不存在：无冲突，接受云端变化（含删除操作的幂等）
@@ -265,7 +266,7 @@ pub(super) fn apply_downloaded_changes_to_databases(
     changes: &[SyncChangeWithData],
     active_dir: &std::path::Path,
     strategy: MergeStrategy,
-) -> Result<ApplyToDbsResult, String> {
+) -> DataGovernanceResult<ApplyToDbsResult> {
     use crate::data_governance::sync::ConflictPolicy;
     use std::collections::HashMap;
 
@@ -340,7 +341,7 @@ pub(super) fn apply_downloaded_changes_to_databases(
         }
 
         let conn = rusqlite::Connection::open(&db_path)
-            .map_err(|e| format!("打开数据库 {} 失败: {}", db_name, e))?;
+            .map_err(|e| DataGovernanceError::Database(format!("打开数据库 {} 失败: {}", db_name, e)))?;
 
         // 预过滤：先按策略决策（KeepLocal 直接跳过云端变更）
         let mut owned_changes: Vec<SyncChangeWithData> = Vec::new();
@@ -421,10 +422,10 @@ pub(super) fn apply_downloaded_changes_to_databases(
             .map(|(db, err)| format!("{}: {}", db, err))
             .collect::<Vec<_>>()
             .join("；");
-        return Err(format!(
+        return Err(DataGovernanceError::Internal(format!(
             "部分数据库应用变更失败（已成功 {} 条，失败 {} 条）: {}。请重试同步以修复",
             agg.total_success, agg.total_failed, detail
-        ));
+        )));
     }
 
     Ok(agg)
@@ -453,40 +454,40 @@ pub(super) fn sanitize_path_for_user(path: &Path) -> String {
 /// [P3 Fix] 虽然允许用户选择任意路径，但仍需拒绝明显的路径遍历攻击：
 /// - 路径组件中包含 `..`（目录遍历）
 /// - 路径中包含 null 字节（C 字符串截断攻击）
-pub(super) fn validate_user_path(path: &Path, _app_data_dir: &Path) -> Result<(), String> {
+pub(super) fn validate_user_path(path: &Path, _app_data_dir: &Path) -> DataGovernanceResult<()> {
     let path_str = path.to_string_lossy();
 
     // 拒绝 null 字节
     if path_str.contains('\0') {
-        return Err("路径中不允许包含 null 字节".to_string());
+        return Err(DataGovernanceError::InvalidArgument("路径中不允许包含 null 字节".to_string()));
     }
 
     // 拒绝路径遍历（.. 组件）
     for component in path.components() {
         if let std::path::Component::ParentDir = component {
-            return Err("路径中不允许包含 '..' 目录遍历".to_string());
+            return Err(DataGovernanceError::InvalidArgument("路径中不允许包含 '..' 目录遍历".to_string()));
         }
     }
 
     Ok(())
 }
 
-pub(super) fn validate_backup_id(raw_backup_id: &str) -> Result<String, String> {
+pub(super) fn validate_backup_id(raw_backup_id: &str) -> DataGovernanceResult<String> {
     let trimmed = raw_backup_id.trim();
     if trimmed.is_empty() {
-        return Err("backup_id 不能为空".to_string());
+        return Err(DataGovernanceError::InvalidArgument("backup_id 不能为空".to_string()));
     }
 
     let decoded = urlencoding::decode(trimmed)
-        .map_err(|e| format!("backup_id 编码非法: {}", e))?
+        .map_err(|e| DataGovernanceError::InvalidArgument(format!("backup_id 编码非法: {}", e)))?
         .into_owned();
 
     if decoded != trimmed {
-        return Err("backup_id 不允许包含 URL 编码".to_string());
+        return Err(DataGovernanceError::InvalidArgument("backup_id 不允许包含 URL 编码".to_string()));
     }
 
     if decoded.len() > 128 {
-        return Err("backup_id 长度超限（最大 128）".to_string());
+        return Err(DataGovernanceError::InvalidArgument("backup_id 长度超限（最大 128）".to_string()));
     }
 
     if decoded.contains('/')
@@ -494,14 +495,14 @@ pub(super) fn validate_backup_id(raw_backup_id: &str) -> Result<String, String> 
         || decoded.contains("..")
         || decoded.starts_with('.')
     {
-        return Err("backup_id 包含非法路径片段".to_string());
+        return Err(DataGovernanceError::InvalidArgument("backup_id 包含非法路径片段".to_string()));
     }
 
     if !decoded
         .chars()
         .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.'))
     {
-        return Err("backup_id 包含非法字符".to_string());
+        return Err(DataGovernanceError::InvalidArgument("backup_id 包含非法字符".to_string()));
     }
 
     Ok(decoded)
@@ -510,17 +511,15 @@ pub(super) fn validate_backup_id(raw_backup_id: &str) -> Result<String, String> 
 pub(super) fn ensure_existing_path_within_backup_dir(
     path: &std::path::Path,
     backup_dir: &std::path::Path,
-) -> Result<(), String> {
-    let canonical_backup_dir =
-        std::fs::canonicalize(backup_dir).map_err(|e| format!("解析备份根目录失败: {}", e))?;
-    let canonical_path =
-        std::fs::canonicalize(path).map_err(|e| format!("解析备份路径失败: {}", e))?;
+) -> DataGovernanceResult<()> {
+    let canonical_backup_dir = std::fs::canonicalize(backup_dir)?;
+    let canonical_path = std::fs::canonicalize(path)?;
 
     if !canonical_path.starts_with(&canonical_backup_dir) {
-        return Err(format!(
+        return Err(DataGovernanceError::InvalidArgument(format!(
             "备份路径越界: {}。请确认路径在备份目录内，或前往「设置 > 数据治理」重新选择备份目录",
             sanitize_path_for_user(&canonical_path)
-        ));
+        )));
     }
 
     Ok(())
@@ -583,7 +582,7 @@ pub(super) async fn acquire_backup_global_permit(
 #[tauri::command]
 pub async fn data_governance_get_backup_list(
     app: tauri::AppHandle,
-) -> Result<Vec<BackupInfoResponse>, String> {
+) -> DataGovernanceResult<Vec<BackupInfoResponse>> {
     debug!("[data_governance] 获取备份列表");
 
     let app_data_dir = get_app_data_dir(&app)?;
@@ -601,7 +600,7 @@ pub async fn data_governance_get_backup_list(
     // 获取备份列表
     let manifests = manager.list_backups().map_err(|e| {
         error!("[data_governance] 获取备份列表失败: {}", e);
-        format!("获取备份列表失败: {}", e)
+        DataGovernanceError::Internal(format!("获取备份列表失败: {}", e))
     })?;
 
     // 转换为响应格式
@@ -653,7 +652,7 @@ pub async fn data_governance_get_backup_list(
 pub async fn data_governance_delete_backup(
     app: tauri::AppHandle,
     backup_id: String,
-) -> Result<bool, String> {
+) -> DataGovernanceResult<bool> {
     let validated_backup_id = validate_backup_id(&backup_id)?;
     info!("[data_governance] 删除备份: {}", validated_backup_id);
 
@@ -662,13 +661,13 @@ pub async fn data_governance_delete_backup(
         .clone()
         .acquire_owned()
         .await
-        .map_err(|e| format!("获取全局备份锁失败: {}", e))?;
+        .map_err(|e| DataGovernanceError::Internal(format!("获取全局备份锁失败: {}", e)))?;
 
     let app_data_dir = get_app_data_dir(&app)?;
     let backup_dir = get_backup_dir(&app_data_dir);
 
     if !backup_dir.exists() {
-        return Err("备份目录不存在。请前往「设置 > 数据治理 > 备份」检查备份目录配置".to_string());
+        return Err(DataGovernanceError::Internal("备份目录不存在。请前往「设置 > 数据治理 > 备份」检查备份目录配置".to_string()));
     }
 
     let manager = BackupManager::new(backup_dir.clone());
@@ -681,7 +680,7 @@ pub async fn data_governance_delete_backup(
 
     manager.delete_backup(&validated_backup_id).map_err(|e| {
         error!("[data_governance] 删除备份失败: {}", e);
-        format!("删除备份失败: {}", e)
+        DataGovernanceError::Internal(format!("删除备份失败: {}", e))
     })?;
 
     info!("[data_governance] 备份删除成功: {}", validated_backup_id);
@@ -703,7 +702,7 @@ pub async fn data_governance_delete_backup(
 pub async fn data_governance_check_disk_space_for_restore(
     app: tauri::AppHandle,
     backup_id: String,
-) -> Result<DiskSpaceCheckResponse, String> {
+) -> DataGovernanceResult<DiskSpaceCheckResponse> {
     let validated_backup_id = validate_backup_id(&backup_id)?;
     debug!(
         "[data_governance] 检查恢复磁盘空间: backup_id={}",
@@ -714,20 +713,20 @@ pub async fn data_governance_check_disk_space_for_restore(
     let backup_dir = get_backup_dir(&app_data_dir);
 
     if !backup_dir.exists() {
-        return Err("备份目录不存在。请前往「设置 > 数据治理 > 备份」检查备份目录配置".to_string());
+        return Err(DataGovernanceError::Internal("备份目录不存在。请前往「设置 > 数据治理 > 备份」检查备份目录配置".to_string()));
     }
 
     // 读取备份清单以获取备份大小
     let manager = BackupManager::new(backup_dir.clone());
     let manifests = manager.list_backups().map_err(|e| {
         error!("[data_governance] 获取备份列表失败: {}", e);
-        format!("获取备份列表失败: {}", e)
+        DataGovernanceError::Internal(format!("获取备份列表失败: {}", e))
     })?;
 
     let manifest = manifests
         .iter()
         .find(|m| m.backup_id == validated_backup_id)
-        .ok_or_else(|| format!("未找到备份: {}", validated_backup_id))?;
+        .ok_or_else(|| DataGovernanceError::NotFound(format!("未找到备份: {}", validated_backup_id)))?;
 
     let db_size: u64 = manifest.files.iter().map(|f| f.size).sum();
     let asset_size: u64 = manifest.assets.as_ref().map(|a| a.total_size).unwrap_or(0);
@@ -740,7 +739,7 @@ pub async fn data_governance_check_disk_space_for_restore(
     let available_bytes =
         crate::backup_common::get_available_disk_space(&app_data_dir).map_err(|e| {
             error!("[data_governance] 获取可用磁盘空间失败: {}", e);
-            format!("获取可用磁盘空间失败: {}", e)
+            DataGovernanceError::Internal(format!("获取可用磁盘空间失败: {}", e))
         })?;
 
     let has_enough_space = available_bytes >= required_bytes;
@@ -772,7 +771,7 @@ pub async fn data_governance_check_disk_space_for_restore(
 pub async fn data_governance_verify_backup(
     app: tauri::AppHandle,
     backup_id: String,
-) -> Result<BackupVerifyResponse, String> {
+) -> DataGovernanceResult<BackupVerifyResponse> {
     let validated_backup_id = validate_backup_id(&backup_id)?;
     info!("[data_governance] 验证备份: {}", validated_backup_id);
 
@@ -780,7 +779,7 @@ pub async fn data_governance_verify_backup(
     let backup_dir = get_backup_dir(&app_data_dir);
 
     if !backup_dir.exists() {
-        return Err("备份目录不存在。请前往「设置 > 数据治理 > 备份」检查备份目录配置".to_string());
+        return Err(DataGovernanceError::Internal("备份目录不存在。请前往「设置 > 数据治理 > 备份」检查备份目录配置".to_string()));
     }
 
     let manager = BackupManager::new(backup_dir.clone());
@@ -790,17 +789,17 @@ pub async fn data_governance_verify_backup(
         .clone()
         .acquire_owned()
         .await
-        .map_err(|e| format!("获取全局备份锁失败: {}", e))?;
+        .map_err(|e| DataGovernanceError::Internal(format!("获取全局备份锁失败: {}", e)))?;
 
     // 获取备份列表并查找指定的备份
     let manifests = manager
         .list_backups()
-        .map_err(|e| format!("获取备份列表失败: {}", e))?;
+        .map_err(|e| DataGovernanceError::Internal(format!("获取备份列表失败: {}", e)))?;
 
     let manifest = manifests
         .iter()
         .find(|m| m.backup_id == validated_backup_id)
-        .ok_or_else(|| format!("备份不存在: {}", validated_backup_id))?;
+        .ok_or_else(|| DataGovernanceError::NotFound(format!("备份不存在: {}", validated_backup_id)))?;
 
     let manifest_dir = backup_dir.join(&manifest.backup_id);
     ensure_existing_path_within_backup_dir(&manifest_dir, &backup_dir)?;
@@ -863,7 +862,7 @@ pub async fn data_governance_verify_backup(
 #[tauri::command]
 pub async fn data_governance_auto_verify_latest_backup(
     app: tauri::AppHandle,
-) -> Result<AutoVerifyResponse, String> {
+) -> DataGovernanceResult<AutoVerifyResponse> {
     info!("[data_governance] 自动验证最新备份完整性");
 
     let app_data_dir = get_app_data_dir(&app)?;
@@ -871,8 +870,7 @@ pub async fn data_governance_auto_verify_latest_backup(
 
     if !backup_dir.exists() {
         return Err(
-            "备份目录不存在，无法执行自动验证。请前往「设置 > 数据治理 > 备份」检查备份目录配置"
-                .to_string(),
+            DataGovernanceError::Internal("备份目录不存在，无法执行自动验证。请前往「设置 > 数据治理 > 备份」检查备份目录配置".to_string()),
         );
     }
 
@@ -883,22 +881,22 @@ pub async fn data_governance_auto_verify_latest_backup(
         .clone()
         .acquire_owned()
         .await
-        .map_err(|e| format!("获取全局备份锁失败: {}", e))?;
+        .map_err(|e| DataGovernanceError::Internal(format!("获取全局备份锁失败: {}", e)))?;
 
     // 获取备份列表并找到最新的备份
     let manifests = manager
         .list_backups()
-        .map_err(|e| format!("获取备份列表失败: {}", e))?;
+        .map_err(|e| DataGovernanceError::Internal(format!("获取备份列表失败: {}", e)))?;
 
     if manifests.is_empty() {
-        return Err("没有可用的备份，无法执行自动验证。请先创建一个备份".to_string());
+        return Err(DataGovernanceError::Internal("没有可用的备份，无法执行自动验证。请先创建一个备份".to_string()));
     }
 
     // 按创建时间排序，取最新的
     let latest_manifest = manifests
         .iter()
         .max_by(|a, b| a.created_at.cmp(&b.created_at))
-        .ok_or_else(|| "无法确定最新备份".to_string())?;
+        .ok_or_else(|| DataGovernanceError::Internal("无法确定最新备份".to_string()))?;
 
     let backup_id = latest_manifest.backup_id.clone();
     let verified_at = chrono::Utc::now().to_rfc3339();
@@ -1109,7 +1107,7 @@ pub async fn data_governance_run_backup(
     base_version: Option<String>,
     include_assets: Option<bool>,
     asset_types: Option<Vec<String>>,
-) -> Result<BackupJobStartResponse, String> {
+) -> DataGovernanceResult<BackupJobStartResponse> {
     let backup_type = backup_type.unwrap_or_else(|| "full".to_string());
     let include_assets = include_assets.unwrap_or(false);
     info!(
@@ -1597,7 +1595,7 @@ async fn execute_backup_with_progress(
 pub async fn data_governance_cancel_backup(
     backup_job_state: State<'_, BackupJobManagerState>,
     job_id: String,
-) -> Result<bool, String> {
+) -> DataGovernanceResult<bool> {
     info!("[data_governance] 请求取消备份任务: {}", job_id);
 
     let job_manager = backup_job_state.get();
@@ -1629,7 +1627,7 @@ pub async fn data_governance_cancel_backup(
 pub async fn data_governance_get_backup_job(
     backup_job_state: State<'_, BackupJobManagerState>,
     job_id: String,
-) -> Result<Option<BackupJobSummary>, String> {
+) -> DataGovernanceResult<Option<BackupJobSummary>> {
     let job_manager = backup_job_state.get();
     Ok(job_manager.get_job(&job_id))
 }
@@ -1646,7 +1644,7 @@ pub async fn data_governance_get_backup_job(
 #[tauri::command]
 pub async fn data_governance_list_backup_jobs(
     backup_job_state: State<'_, BackupJobManagerState>,
-) -> Result<Vec<BackupJobSummary>, String> {
+) -> DataGovernanceResult<Vec<BackupJobSummary>> {
     let job_manager = backup_job_state.get();
     Ok(job_manager.list_jobs())
 }
@@ -1663,7 +1661,7 @@ pub async fn data_governance_list_backup_jobs(
 #[tauri::command]
 pub async fn data_governance_list_resumable_jobs(
     backup_job_state: State<'_, BackupJobManagerState>,
-) -> Result<Vec<PersistedJob>, String> {
+) -> DataGovernanceResult<Vec<PersistedJob>> {
     let job_manager = backup_job_state.get();
     job_manager.list_resumable_jobs()
 }
@@ -1692,7 +1690,7 @@ pub async fn data_governance_resume_backup_job(
     app: tauri::AppHandle,
     backup_job_state: State<'_, BackupJobManagerState>,
     job_id: String,
-) -> Result<BackupJobStartResponse, String> {
+) -> DataGovernanceResult<BackupJobStartResponse> {
     info!("[data_governance] 尝试恢复备份任务: job_id={}", job_id);
 
     let job_manager = backup_job_state.get();
@@ -1702,18 +1700,18 @@ pub async fn data_governance_resume_backup_job(
     let persisted = persisted_jobs
         .into_iter()
         .find(|j| j.job_id == job_id)
-        .ok_or_else(|| format!("未找到可恢复的任务: {}", job_id))?;
+        .ok_or_else(|| DataGovernanceError::NotFound(format!("未找到可恢复的任务: {}", job_id)))?;
 
     // 检查任务是否可恢复
     if persisted.status != BackupJobStatus::Failed {
-        return Err(format!(
+        return Err(DataGovernanceError::InvalidArgument(format!(
             "任务状态为 {:?}，仅失败状态的任务可恢复。请等待任务完成或创建新任务",
             persisted.status
-        ));
+        )));
     }
 
     if persisted.checkpoint.is_none() {
-        return Err("任务没有检查点信息，无法恢复。请创建新的备份任务重试".to_string());
+        return Err(DataGovernanceError::InvalidArgument("任务没有检查点信息，无法恢复。请创建新的备份任务重试".to_string()));
     }
 
     // 恢复任务上下文
@@ -1754,14 +1752,14 @@ pub async fn data_governance_resume_backup_job(
 
             let zip_path = params
                 .zip_path
-                .ok_or_else(|| "导入任务缺少 ZIP 路径参数".to_string())?;
+                .ok_or_else(|| DataGovernanceError::InvalidArgument("导入任务缺少 ZIP 路径参数".to_string()))?;
             let zip_file_path = PathBuf::from(&zip_path);
 
             if !zip_file_path.exists() {
-                return Err(format!(
+                return Err(DataGovernanceError::InvalidArgument(format!(
                     "ZIP 文件不存在: {}。请确认文件路径正确，或重新选择文件",
                     sanitize_path_for_user(&zip_file_path)
-                ));
+                )));
             }
 
             let app_clone = app.clone();
@@ -1797,7 +1795,7 @@ pub async fn data_governance_resume_backup_job(
 #[tauri::command]
 pub async fn data_governance_cleanup_persisted_jobs(
     backup_job_state: State<'_, BackupJobManagerState>,
-) -> Result<usize, String> {
+) -> DataGovernanceResult<usize> {
     let job_manager = backup_job_state.get();
     job_manager.cleanup_finished_persisted_jobs()
 }
@@ -1838,7 +1836,7 @@ pub async fn data_governance_backup_tiered(
     include_assets: Option<bool>,
     max_asset_size: Option<u64>,
     asset_types: Option<Vec<String>>,
-) -> Result<BackupJobStartResponse, String> {
+) -> DataGovernanceResult<BackupJobStartResponse> {
     info!(
         "[data_governance] 启动后台分层备份任务: tiers={:?}, include_assets={:?}, asset_types={:?}",
         tiers, include_assets, asset_types

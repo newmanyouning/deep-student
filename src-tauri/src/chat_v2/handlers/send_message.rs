@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 use tauri::{Emitter, State, Window};
 
 use crate::chat_v2::database::ChatV2Database;
-use crate::chat_v2::error::ChatV2Error;
+use crate::chat_v2::error::{ChatV2Error, ChatV2Result};
 use crate::chat_v2::events::ChatV2EventEmitter;
 use crate::chat_v2::pipeline::ChatV2Pipeline;
 use crate::chat_v2::repo::ChatV2Repo;
@@ -367,7 +367,7 @@ pub async fn chat_v2_send_message(
     chat_v2_state: State<'_, Arc<ChatV2State>>,
     pipeline: State<'_, Arc<ChatV2Pipeline>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> Result<String, String> {
+) -> ChatV2Result<String> {
     log::info!(
         "[ChatV2::handlers] chat_v2_send_message: session_id={}, content_len={}",
         request.session_id,
@@ -421,8 +421,7 @@ pub async fn chat_v2_send_message(
     if !has_content && !has_context_refs {
         return Err(ChatV2Error::Validation(
             "Message content or context refs required".to_string(),
-        )
-        .into());
+        ));
     }
 
     let model_id = request.options.as_ref().and_then(|o| o.model_id.as_deref());
@@ -458,8 +457,7 @@ pub async fn chat_v2_send_message(
             return Err(ChatV2Error::Other(
                 "Session has an active stream. Please wait for completion or cancel first."
                     .to_string(),
-            )
-            .into());
+            ));
         }
     };
 
@@ -537,7 +535,7 @@ pub async fn chat_v2_cancel_stream(
     message_id: String,
     window: Window,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
-) -> Result<(), String> {
+) -> ChatV2Result<()> {
     log::info!(
         "[ChatV2::handlers] chat_v2_cancel_stream: session_id={}, message_id={}",
         session_id,
@@ -553,7 +551,9 @@ pub async fn chat_v2_cancel_stream(
         );
         Ok(())
     } else {
-        Err(ChatV2Error::Other("No active stream to cancel".to_string()).into())
+        Err(ChatV2Error::Other(
+            "No active stream to cancel".to_string(),
+        ))
     }
 }
 
@@ -590,7 +590,7 @@ pub async fn chat_v2_retry_message(
     pipeline: State<'_, Arc<ChatV2Pipeline>>,
     // ★ 2026-01-26：用于判断模型是否支持多模态
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> Result<RetryMessageResult, String> {
+) -> ChatV2Result<RetryMessageResult> {
     log::info!(
         "[ChatV2::handlers] chat_v2_retry_message: session_id={}, message_id={}",
         session_id,
@@ -598,9 +598,8 @@ pub async fn chat_v2_retry_message(
     );
 
     // 从数据库加载原消息
-    let original_message = ChatV2Repo::get_message_v2(&db, &message_id)
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| ChatV2Error::MessageNotFound(message_id.clone()).to_string())?;
+    let original_message = ChatV2Repo::get_message_v2(&db, &message_id)?
+        .ok_or_else(|| ChatV2Error::MessageNotFound(message_id.clone()))?;
 
     // 🔧 语义修正：重试只能针对助手消息
     // 如果是用户消息，应该使用"编辑并重发"功能
@@ -608,8 +607,7 @@ pub async fn chat_v2_retry_message(
         return Err(ChatV2Error::Validation(
             "Retry is only for assistant messages. Use edit_and_resend for user messages."
                 .to_string(),
-        )
-        .into());
+        ));
     }
 
     // 🔒 P0 修复：在任何破坏性操作之前原子注册流，消除 TOCTOU 竞态
@@ -620,20 +618,21 @@ pub async fn chat_v2_retry_message(
             return Err(ChatV2Error::Other(
                 "Session has an active stream. Please wait for completion or cancel first."
                     .to_string(),
-            )
-            .into());
+            ));
         }
     };
 
     // ★ 2025-12-10 统一改造：获取前一条用户消息的内容和上下文快照
     // 附件现在通过 context_snapshot.user_refs 恢复，不再使用 message.attachments
-    let user_msg_result =
-        find_preceding_user_message_with_attachments(&db, &session_id, &original_message).map_err(
-            |e| {
-                chat_v2_state.remove_stream(&session_id);
-                e
-            },
-        )?;
+    let user_msg_result = find_preceding_user_message_with_attachments(
+        &db,
+        &session_id,
+        &original_message,
+    )
+    .map_err(|e| {
+        chat_v2_state.remove_stream(&session_id);
+        e
+    })?;
     let user_content = user_msg_result.content;
 
     // ★ VFS 统一存储：从上下文快照恢复 SendContextRef（包含附件）
@@ -674,12 +673,12 @@ pub async fn chat_v2_retry_message(
     let messages_to_delete: Vec<String> = {
         let conn = db.get_conn_safe().map_err(|e| {
             chat_v2_state.remove_stream(&session_id);
-            e.to_string()
+            e
         })?;
         let all_messages =
             ChatV2Repo::get_session_messages_with_conn(&conn, &session_id).map_err(|e| {
                 chat_v2_state.remove_stream(&session_id);
-                e.to_string()
+                e
             })?;
 
         log::info!(
@@ -692,7 +691,7 @@ pub async fn chat_v2_retry_message(
             .position(|m| m.id == message_id)
             .ok_or_else(|| {
                 chat_v2_state.remove_stream(&session_id);
-                ChatV2Error::MessageNotFound(message_id.clone()).to_string()
+                ChatV2Error::MessageNotFound(message_id.clone())
             })?;
 
         let to_delete: Vec<String> = all_messages
@@ -715,7 +714,7 @@ pub async fn chat_v2_retry_message(
     if !messages_to_delete.is_empty() {
         let conn = db.get_conn_safe().map_err(|e| {
             chat_v2_state.remove_stream(&session_id);
-            e.to_string()
+            e
         })?;
 
         // 🔧 P0 修复：先收集要 decrement 的 resource IDs（在事务外、decrement 前）
@@ -740,7 +739,7 @@ pub async fn chat_v2_retry_message(
                 e
             );
             chat_v2_state.remove_stream(&session_id);
-            e.to_string()
+            ChatV2Error::from(e)
         })?;
 
         let mut deleted_count = 0;
@@ -771,7 +770,8 @@ pub async fn chat_v2_retry_message(
         if delete_error.is_some() {
             let _ = conn.execute("ROLLBACK", []);
             chat_v2_state.remove_stream(&session_id);
-            return Err(delete_error.unwrap());
+            // delete_error is Some(String), need to convert to ChatV2Error
+            return Err(ChatV2Error::Other(delete_error.unwrap()));
         } else {
             conn.execute("COMMIT", []).map_err(|e| {
                 log::error!(
@@ -779,7 +779,7 @@ pub async fn chat_v2_retry_message(
                     e
                 );
                 chat_v2_state.remove_stream(&session_id);
-                e.to_string()
+                ChatV2Error::from(e)
             })?;
         }
 
@@ -941,7 +941,7 @@ pub async fn chat_v2_edit_and_resend(
     pipeline: State<'_, Arc<ChatV2Pipeline>>,
     // ★ 2026-01-26：用于判断模型是否支持多模态
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> Result<EditAndResendResult, String> {
+) -> ChatV2Result<EditAndResendResult> {
     log::info!(
         "[ChatV2::handlers] chat_v2_edit_and_resend: session_id={}, message_id={}, new_content_len={}",
         session_id,
@@ -951,16 +951,19 @@ pub async fn chat_v2_edit_and_resend(
 
     // 验证内容
     if new_content.trim().is_empty() {
-        return Err(ChatV2Error::Validation("New content cannot be empty".to_string()).into());
+        return Err(ChatV2Error::Validation(
+            "New content cannot be empty".to_string(),
+        ));
     }
 
     // 验证原消息存在且是用户消息
-    let original_message = ChatV2Repo::get_message_v2(&db, &message_id)
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| ChatV2Error::MessageNotFound(message_id.clone()).to_string())?;
+    let original_message = ChatV2Repo::get_message_v2(&db, &message_id)?
+        .ok_or_else(|| ChatV2Error::MessageNotFound(message_id.clone()))?;
 
     if original_message.role != MessageRole::User {
-        return Err(ChatV2Error::Validation("Can only edit user messages".to_string()).into());
+        return Err(ChatV2Error::Validation(
+            "Can only edit user messages".to_string(),
+        ));
     }
 
     // 🔒 P0 修复：任何写操作之前先校验消息归属，防止跨会话篡改
@@ -968,8 +971,7 @@ pub async fn chat_v2_edit_and_resend(
         return Err(ChatV2Error::Validation(format!(
             "Message {} does not belong to session {}",
             message_id, session_id
-        ))
-        .into());
+        )));
     }
 
     // 🔒 P0 修复：在任何破坏性操作之前原子注册流，消除 TOCTOU 竞态
@@ -980,8 +982,7 @@ pub async fn chat_v2_edit_and_resend(
             return Err(ChatV2Error::Other(
                 "Session has an active stream. Please wait for completion or cancel first."
                     .to_string(),
-            )
-            .into());
+            ));
         }
     };
 
@@ -1057,14 +1058,15 @@ pub async fn chat_v2_edit_and_resend(
     {
         let conn = db.get_conn_safe().map_err(|e| {
             chat_v2_state.remove_stream(&session_id);
-            e.to_string()
+            e
         })?;
 
         // 获取原消息的块
-        let blocks = ChatV2Repo::get_message_blocks_with_conn(&conn, &message_id).map_err(|e| {
-            chat_v2_state.remove_stream(&session_id);
-            e.to_string()
-        })?;
+        let blocks =
+            ChatV2Repo::get_message_blocks_with_conn(&conn, &message_id).map_err(|e| {
+                chat_v2_state.remove_stream(&session_id);
+                e
+            })?;
 
         // 找到 content 块并更新
         for block in blocks {
@@ -1073,7 +1075,7 @@ pub async fn chat_v2_edit_and_resend(
                 updated_block.content = Some(new_content.clone());
                 ChatV2Repo::update_block_with_conn(&conn, &updated_block).map_err(|e| {
                     chat_v2_state.remove_stream(&session_id);
-                    e.to_string()
+                    e
                 })?;
                 log::debug!(
                     "[ChatV2::handlers] Updated content block: block_id={}",
@@ -1111,7 +1113,7 @@ pub async fn chat_v2_edit_and_resend(
 
             ChatV2Repo::update_message_with_conn(&conn, &updated_message).map_err(|e| {
                 chat_v2_state.remove_stream(&session_id);
-                e.to_string()
+                e
             })?;
 
             log::info!(
@@ -1125,12 +1127,12 @@ pub async fn chat_v2_edit_and_resend(
     let messages_to_delete: Vec<String> = {
         let conn = db.get_conn_safe().map_err(|e| {
             chat_v2_state.remove_stream(&session_id);
-            e.to_string()
+            e
         })?;
         let all_messages =
             ChatV2Repo::get_session_messages_with_conn(&conn, &session_id).map_err(|e| {
                 chat_v2_state.remove_stream(&session_id);
-                e.to_string()
+                e
             })?;
 
         // 按稳定排序（timestamp ASC, rowid ASC）定位用户消息的 index
@@ -1139,7 +1141,7 @@ pub async fn chat_v2_edit_and_resend(
             .position(|m| m.id == message_id)
             .ok_or_else(|| {
                 chat_v2_state.remove_stream(&session_id);
-                ChatV2Error::MessageNotFound(message_id.clone()).to_string()
+                ChatV2Error::MessageNotFound(message_id.clone())
             })?;
 
         // 只删除该用户消息之后的所有消息（+1 保留用户消息本身）
@@ -1162,7 +1164,7 @@ pub async fn chat_v2_edit_and_resend(
     if !messages_to_delete.is_empty() {
         let conn = db.get_conn_safe().map_err(|e| {
             chat_v2_state.remove_stream(&session_id);
-            e.to_string()
+            e
         })?;
 
         // 🔧 P0 修复：先收集要 decrement 的 resource IDs（在事务外、decrement 前）
@@ -1185,7 +1187,7 @@ pub async fn chat_v2_edit_and_resend(
         conn.execute("BEGIN IMMEDIATE", []).map_err(|e| {
             log::error!("[ChatV2::handlers] Failed to begin transaction: {}", e);
             chat_v2_state.remove_stream(&session_id);
-            e.to_string()
+            ChatV2Error::from(e)
         })?;
 
         let mut deleted_count = 0;
@@ -1217,12 +1219,12 @@ pub async fn chat_v2_edit_and_resend(
         if delete_error.is_some() {
             let _ = conn.execute("ROLLBACK", []);
             chat_v2_state.remove_stream(&session_id);
-            return Err(delete_error.unwrap());
+            return Err(ChatV2Error::Other(delete_error.unwrap()));
         } else {
             conn.execute("COMMIT", []).map_err(|e| {
                 log::error!("[ChatV2::handlers] Failed to commit transaction: {}", e);
                 chat_v2_state.remove_stream(&session_id);
-                e.to_string()
+                ChatV2Error::from(e)
             })?;
         }
 
@@ -1346,9 +1348,9 @@ pub async fn chat_v2_edit_and_resend(
 // ============================================================================
 
 /// 获取消息内容（从块中提取）
-fn get_message_content(db: &ChatV2Database, message_id: &str) -> Result<String, String> {
+fn get_message_content(db: &ChatV2Database, message_id: &str) -> ChatV2Result<String> {
     // 获取消息的所有块
-    let blocks = ChatV2Repo::get_message_blocks_v2(db, message_id).map_err(|e| e.to_string())?;
+    let blocks = ChatV2Repo::get_message_blocks_v2(db, message_id)?;
 
     // 合并所有 content 类型块的内容
     let content: String = blocks
@@ -1361,7 +1363,9 @@ fn get_message_content(db: &ChatV2Database, message_id: &str) -> Result<String, 
 
     if content.is_empty() {
         // 如果没有 content 块，返回错误
-        return Err(ChatV2Error::Other("Message has no content blocks".to_string()).into());
+        return Err(ChatV2Error::Other(
+            "Message has no content blocks".to_string(),
+        ));
     }
 
     Ok(content)
@@ -1372,10 +1376,9 @@ fn find_preceding_user_message_content(
     db: &ChatV2Database,
     session_id: &str,
     assistant_message: &ChatMessage,
-) -> Result<String, String> {
+) -> ChatV2Result<String> {
     // 获取会话的所有消息
-    let messages =
-        ChatV2Repo::get_session_messages_v2(db, session_id).map_err(|e| e.to_string())?;
+    let messages = ChatV2Repo::get_session_messages_v2(db, session_id)?;
 
     // 按时间戳排序，找到助手消息之前的最近一条用户消息
     let assistant_timestamp = &assistant_message.timestamp;
@@ -1388,7 +1391,9 @@ fn find_preceding_user_message_content(
 
     match user_message {
         Some(msg) => get_message_content(db, &msg.id),
-        None => Err(ChatV2Error::Other("No preceding user message found".to_string()).into()),
+        None => Err(ChatV2Error::Other(
+            "No preceding user message found".to_string(),
+        )),
     }
 }
 
@@ -1440,10 +1445,9 @@ fn find_preceding_user_message_with_attachments(
     db: &ChatV2Database,
     session_id: &str,
     assistant_message: &ChatMessage,
-) -> Result<UserMessageRestoreResult, String> {
+) -> ChatV2Result<UserMessageRestoreResult> {
     // 获取会话的所有消息
-    let messages =
-        ChatV2Repo::get_session_messages_v2(db, session_id).map_err(|e| e.to_string())?;
+    let messages = ChatV2Repo::get_session_messages_v2(db, session_id)?;
 
     // 按时间戳排序，找到助手消息之前的最近一条用户消息
     let assistant_timestamp = &assistant_message.timestamp;
@@ -1472,7 +1476,9 @@ fn find_preceding_user_message_with_attachments(
                 timestamp,
             })
         }
-        None => Err(ChatV2Error::Other("No preceding user message found".to_string()).into()),
+        None => Err(ChatV2Error::Other(
+            "No preceding user message found".to_string(),
+        )),
     }
 }
 
@@ -1640,7 +1646,7 @@ pub async fn chat_v2_continue_message(
     pipeline: State<'_, Arc<ChatV2Pipeline>>,
     // ★ 2026-01-26：用于判断模型是否支持多模态
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> Result<String, String> {
+) -> ChatV2Result<String> {
     log::info!(
         "[ChatV2::handlers] chat_v2_continue_message: session_id={}, message_id={}, variant_id={:?}",
         session_id,
@@ -1650,15 +1656,14 @@ pub async fn chat_v2_continue_message(
 
     // 加载持久化的 TodoList (活跃流检查由 try_register_stream 原子完成)
     let todo_info = load_persisted_todo_list(&db, &session_id)
-        .map_err(|e| format!("Failed to load TodoList: {}", e))?;
+        .map_err(|e| ChatV2Error::Other(e))?;
 
     let (todo_list, persisted_message_id, persisted_variant_id) = match todo_info {
         Some(info) => info,
         None => {
             return Err(ChatV2Error::Validation(
                 "No incomplete TODO list found. Cannot continue execution.".to_string(),
-            )
-            .into());
+            ));
         }
     };
 
@@ -1676,8 +1681,7 @@ pub async fn chat_v2_continue_message(
     if todo_list.is_all_done() {
         return Err(ChatV2Error::Validation(
             "TODO list is already complete. No need to continue.".to_string(),
-        )
-        .into());
+        ));
     }
 
     log::info!(
@@ -1690,12 +1694,11 @@ pub async fn chat_v2_continue_message(
 
     // 5. 恢复 TodoList 到内存
     restore_todo_list_from_db(&db, &session_id)
-        .map_err(|e| format!("Failed to restore TodoList: {}", e))?;
+        .map_err(|e| ChatV2Error::Other(e))?;
 
     // 6. 加载原消息
-    let original_message = ChatV2Repo::get_message_v2(&db, &persisted_message_id)
-        .map_err(|e| e.to_string())?
-        .ok_or_else(|| ChatV2Error::MessageNotFound(persisted_message_id.clone()).to_string())?;
+    let original_message = ChatV2Repo::get_message_v2(&db, &persisted_message_id)?
+        .ok_or_else(|| ChatV2Error::MessageNotFound(persisted_message_id.clone()))?;
 
     // 7. 验证变体状态（必须是 interrupted 才能继续）
     let target_variant_id = variant_id
@@ -1766,8 +1769,7 @@ pub async fn chat_v2_continue_message(
         Err(()) => {
             return Err(ChatV2Error::Other(
                 "Failed to register stream for continue execution.".to_string(),
-            )
-            .into());
+            ));
         }
     };
 

@@ -284,21 +284,21 @@ impl OcrStrategyConfig {
     fn load_from_db(db: &Database) -> Self {
         let mut config = Self::default();
 
-        if let Ok(Some(v)) = db.get_setting("ocr.enabled") {
+        if let Ok(Some(v)) = db.web_search_get_setting("ocr.enabled") {
             config.enabled = v.to_lowercase() == "true";
         }
-        if let Ok(Some(v)) = db.get_setting("ocr.skip_for_multimodal") {
+        if let Ok(Some(v)) = db.web_search_get_setting("ocr.skip_for_multimodal") {
             config.skip_for_multimodal = v.to_lowercase() == "true";
         }
-        if let Ok(Some(v)) = db.get_setting("ocr.pdf_text_threshold") {
+        if let Ok(Some(v)) = db.web_search_get_setting("ocr.pdf_text_threshold") {
             if let Ok(n) = v.parse::<usize>() {
                 config.pdf_text_threshold = n;
             }
         }
-        if let Ok(Some(v)) = db.get_setting("ocr.images") {
+        if let Ok(Some(v)) = db.web_search_get_setting("ocr.images") {
             config.ocr_images = v.to_lowercase() == "true";
         }
-        if let Ok(Some(v)) = db.get_setting("ocr.scanned_pdf") {
+        if let Ok(Some(v)) = db.web_search_get_setting("ocr.scanned_pdf") {
             config.ocr_scanned_pdf = v.to_lowercase() == "true";
         }
 

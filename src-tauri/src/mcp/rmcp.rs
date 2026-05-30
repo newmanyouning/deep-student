@@ -15,7 +15,7 @@ pub struct RmcpTestOutcome {
 
 /// Use the external `rmcp` crate to sanity-check a Streamable HTTP MCP endpoint.
 /// This attempts to build a client and perform a minimal initialize call.
-pub async fn test_rmcp_streamable_http(
+pub async fn mcp_test_rmcp_streamable(
     url: &str,
     _api_key: Option<String>,
 ) -> Result<RmcpTestOutcome, Box<dyn std::error::Error + Send + Sync>> {

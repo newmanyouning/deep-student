@@ -30,19 +30,19 @@ const getStr = (v: unknown, def: string) => typeof v === 'string' && v.trim() ? 
 
 export const ankiConnectClient = {
   async check(): Promise<boolean> {
-    return await invoke<boolean>('check_anki_connect_status');
+    return await invoke<boolean>('anki_connect_check_status');
   },
   async listDecks(): Promise<string[]> {
-    return await invoke<string[]>('get_anki_deck_names');
+    return await invoke<string[]>('anki_connect_get_deck_names');
   },
   async listModels(): Promise<string[]> {
-    return await invoke<string[]>('get_anki_model_names');
+    return await invoke<string[]>('anki_connect_get_model_names');
   },
   async createDeck(name: string): Promise<void> {
     await invoke('create_anki_deck', { deckName: name });
   },
   async importPackage(apkgPath: string): Promise<boolean> {
-    return await invoke<boolean>('import_anki_package', { path: apkgPath });
+    return await invoke<boolean>('anki_connect_import_package', { path: apkgPath });
   },
   async addCards(params: { cards: AnkiCard[]; deckName: string; noteType: string }): Promise<(number | null)[]> {
     const { cards, deckName, noteType } = params;
@@ -64,18 +64,18 @@ export const ankiConnectClient = {
   },
   async loadSettings(): Promise<AnkiConnectSettings> {
     const [enabled, autoImport, defDeck, defModel, delAfter, openOnFail, exportDeck, autoCreate, batchSize, retryTimes, tagPrefix, mediaMode] = await Promise.all([
-      invoke('get_setting', { key: 'anki_connect_enabled' }).catch(() => 'false') as Promise<string>,
-      invoke('get_setting', { key: 'anki_connect_auto_import_enabled' }).catch(() => 'true') as Promise<string>,
-      invoke('get_setting', { key: 'anki_connect_default_deck' }).catch(() => 'Default') as Promise<string>,
-      invoke('get_setting', { key: 'anki_connect_default_model' }).catch(() => 'Basic') as Promise<string>,
-      invoke('get_setting', { key: 'anki_connect_delete_apkg_after_import' }).catch(() => 'true') as Promise<string>,
-      invoke('get_setting', { key: 'anki_connect_open_folder_on_failure' }).catch(() => 'true') as Promise<string>,
-      invoke('get_setting', { key: 'anki_connect_export_deck' }).catch(() => '') as Promise<string>,
-      invoke('get_setting', { key: 'anki_connect_auto_create_deck' }).catch(() => 'true') as Promise<string>,
-      invoke('get_setting', { key: 'anki_connect_batch_size' }).catch(() => '50') as Promise<string>,
-      invoke('get_setting', { key: 'anki_connect_retry_times' }).catch(() => '1') as Promise<string>,
-      invoke('get_setting', { key: 'anki_connect_tag_prefix' }).catch(() => '') as Promise<string>,
-      invoke('get_setting', { key: 'anki_connect_media_mode' }).catch(() => 'upload_media') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_enabled' }).catch(() => 'false') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_auto_import_enabled' }).catch(() => 'true') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_default_deck' }).catch(() => 'Default') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_default_model' }).catch(() => 'Basic') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_delete_apkg_after_import' }).catch(() => 'true') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_open_folder_on_failure' }).catch(() => 'true') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_export_deck' }).catch(() => '') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_auto_create_deck' }).catch(() => 'true') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_batch_size' }).catch(() => '50') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_retry_times' }).catch(() => '1') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_tag_prefix' }).catch(() => '') as Promise<string>,
+      invoke('web_search_get_setting', { key: 'anki_connect_media_mode' }).catch(() => 'upload_media') as Promise<string>,
     ]);
     return {
       anki_connect_enabled: strToBool(enabled, false),
@@ -107,6 +107,6 @@ export const ankiConnectClient = {
     if (s.anki_connect_retry_times != null) push('anki_connect_retry_times', s.anki_connect_retry_times);
     if (s.anki_connect_tag_prefix != null) push('anki_connect_tag_prefix', s.anki_connect_tag_prefix);
     if (s.anki_connect_media_mode != null) push('anki_connect_media_mode', s.anki_connect_media_mode);
-    await Promise.all(pairs.map(([key, value]) => invoke('save_setting', { key, value })));
+    await Promise.all(pairs.map(([key, value]) => invoke('web_search_save_setting', { key, value })));
   }
 };

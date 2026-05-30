@@ -9,6 +9,7 @@ use serde::Deserialize;
 use tauri::{AppHandle, Manager, State};
 
 use crate::vfs::database::VfsDatabase;
+use crate::vfs::error::VfsResult;
 use crate::vfs::repos::{VfsPomodoroRepo, VfsTodoRepo};
 use crate::vfs::types::*;
 
@@ -111,7 +112,7 @@ pub struct ReorderItemsInput {
 // ============================================================================
 
 #[tauri::command]
-pub fn todo_create_list(app: AppHandle, input: CreateTodoListInput) -> Result<VfsTodoList, String> {
+pub fn todo_create_list(app: AppHandle, input: CreateTodoListInput) -> VfsResult<VfsTodoList> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     let params = VfsCreateTodoListParams {
         title: input.title,
@@ -121,23 +122,20 @@ pub fn todo_create_list(app: AppHandle, input: CreateTodoListInput) -> Result<Vf
         is_default: false,
     };
 
-    VfsTodoRepo::create_todo_list(&vfs_db, params).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::create_todo_list(&vfs_db, params)}
 
 #[tauri::command]
-pub fn todo_get_list(app: AppHandle, list_id: String) -> Result<Option<VfsTodoList>, String> {
+pub fn todo_get_list(app: AppHandle, list_id: String) -> VfsResult<Option<VfsTodoList>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::get_todo_list(&vfs_db, &list_id).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::get_todo_list(&vfs_db, &list_id)}
 
 #[tauri::command]
-pub fn todo_list_lists(app: AppHandle) -> Result<Vec<VfsTodoList>, String> {
+pub fn todo_list_lists(app: AppHandle) -> VfsResult<Vec<VfsTodoList>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::list_todo_lists(&vfs_db).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::list_todo_lists(&vfs_db)}
 
 #[tauri::command]
-pub fn todo_update_list(app: AppHandle, input: UpdateTodoListInput) -> Result<VfsTodoList, String> {
+pub fn todo_update_list(app: AppHandle, input: UpdateTodoListInput) -> VfsResult<VfsTodoList> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     let params = VfsUpdateTodoListParams {
         title: input.title,
@@ -145,33 +143,29 @@ pub fn todo_update_list(app: AppHandle, input: UpdateTodoListInput) -> Result<Vf
         icon: input.icon,
         color: input.color,
     };
-    VfsTodoRepo::update_todo_list(&vfs_db, &input.id, params).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::update_todo_list(&vfs_db, &input.id, params)}
 
 #[tauri::command]
-pub fn todo_delete_list(app: AppHandle, list_id: String) -> Result<(), String> {
+pub fn todo_delete_list(app: AppHandle, list_id: String) -> VfsResult<()> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::delete_todo_list(&vfs_db, &list_id).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::delete_todo_list(&vfs_db, &list_id)}
 
 #[tauri::command]
-pub fn todo_toggle_list_favorite(app: AppHandle, list_id: String) -> Result<VfsTodoList, String> {
+pub fn todo_toggle_list_favorite(app: AppHandle, list_id: String) -> VfsResult<VfsTodoList> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::toggle_todo_list_favorite(&vfs_db, &list_id).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::toggle_todo_list_favorite(&vfs_db, &list_id)}
 
 #[tauri::command]
-pub fn todo_ensure_inbox(app: AppHandle) -> Result<VfsTodoList, String> {
+pub fn todo_ensure_inbox(app: AppHandle) -> VfsResult<VfsTodoList> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::ensure_default_inbox(&vfs_db).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::ensure_default_inbox(&vfs_db)}
 
 // ============================================================================
 // TodoItem 命令
 // ============================================================================
 
 #[tauri::command]
-pub fn todo_create_item(app: AppHandle, input: CreateTodoItemInput) -> Result<VfsTodoItem, String> {
+pub fn todo_create_item(app: AppHandle, input: CreateTodoItemInput) -> VfsResult<VfsTodoItem> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     let params = VfsCreateTodoItemParams {
         todo_list_id: input.todo_list_id,
@@ -184,27 +178,24 @@ pub fn todo_create_item(app: AppHandle, input: CreateTodoItemInput) -> Result<Vf
         parent_id: input.parent_id,
         attachments: input.attachments,
     };
-    VfsTodoRepo::create_todo_item(&vfs_db, params).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::create_todo_item(&vfs_db, params)}
 
 #[tauri::command]
-pub fn todo_get_item(app: AppHandle, item_id: String) -> Result<Option<VfsTodoItem>, String> {
+pub fn todo_get_item(app: AppHandle, item_id: String) -> VfsResult<Option<VfsTodoItem>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::get_todo_item(&vfs_db, &item_id).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::get_todo_item(&vfs_db, &item_id)}
 
 #[tauri::command]
 pub fn todo_list_items(
     app: AppHandle,
     list_id: String,
     include_completed: bool,
-) -> Result<Vec<VfsTodoItem>, String> {
+) -> VfsResult<Vec<VfsTodoItem>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::list_items_by_list(&vfs_db, &list_id, include_completed).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::list_items_by_list(&vfs_db, &list_id, include_completed)}
 
 #[tauri::command]
-pub fn todo_update_item(app: AppHandle, input: UpdateTodoItemInput) -> Result<VfsTodoItem, String> {
+pub fn todo_update_item(app: AppHandle, input: UpdateTodoItemInput) -> VfsResult<VfsTodoItem> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     let params = VfsUpdateTodoItemParams {
         title: input.title,
@@ -221,26 +212,22 @@ pub fn todo_update_item(app: AppHandle, input: UpdateTodoItemInput) -> Result<Vf
         estimated_pomodoros: input.estimated_pomodoros,
         completed_pomodoros: input.completed_pomodoros,
     };
-    VfsTodoRepo::update_todo_item(&vfs_db, &input.id, params).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::update_todo_item(&vfs_db, &input.id, params)}
 
 #[tauri::command]
-pub fn todo_toggle_item(app: AppHandle, item_id: String) -> Result<VfsTodoItem, String> {
+pub fn todo_toggle_item(app: AppHandle, item_id: String) -> VfsResult<VfsTodoItem> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::toggle_todo_item(&vfs_db, &item_id).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::toggle_todo_item(&vfs_db, &item_id)}
 
 #[tauri::command]
-pub fn todo_delete_item(app: AppHandle, item_id: String) -> Result<(), String> {
+pub fn todo_delete_item(app: AppHandle, item_id: String) -> VfsResult<()> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::delete_todo_item(&vfs_db, &item_id).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::delete_todo_item(&vfs_db, &item_id)}
 
 #[tauri::command]
-pub fn todo_reorder_items(app: AppHandle, input: ReorderItemsInput) -> Result<(), String> {
+pub fn todo_reorder_items(app: AppHandle, input: ReorderItemsInput) -> VfsResult<()> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::reorder_items(&vfs_db, &input.list_id, &input.item_ids).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::reorder_items(&vfs_db, &input.list_id, &input.item_ids)}
 
 // ============================================================================
 // 查询命令
@@ -250,50 +237,44 @@ pub fn todo_reorder_items(app: AppHandle, input: ReorderItemsInput) -> Result<()
 pub fn todo_list_today(
     app: AppHandle,
     include_completed: bool,
-) -> Result<Vec<VfsTodoItem>, String> {
+) -> VfsResult<Vec<VfsTodoItem>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::list_today_items(&vfs_db, include_completed).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::list_today_items(&vfs_db, include_completed)}
 
 #[tauri::command]
 pub fn todo_list_overdue(
     app: AppHandle,
     include_completed: bool,
-) -> Result<Vec<VfsTodoItem>, String> {
+) -> VfsResult<Vec<VfsTodoItem>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::list_overdue_items(&vfs_db, include_completed).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::list_overdue_items(&vfs_db, include_completed)}
 
 #[tauri::command]
 pub fn todo_list_upcoming(
     app: AppHandle,
     days: i64,
     include_completed: bool,
-) -> Result<Vec<VfsTodoItem>, String> {
+) -> VfsResult<Vec<VfsTodoItem>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::list_upcoming_items(&vfs_db, days, include_completed).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::list_upcoming_items(&vfs_db, days, include_completed)}
 
 #[tauri::command]
 pub fn todo_list_completed(
     app: AppHandle,
     list_id: Option<String>,
-) -> Result<Vec<VfsTodoItem>, String> {
+) -> VfsResult<Vec<VfsTodoItem>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::list_completed_items(&vfs_db, list_id.as_deref()).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::list_completed_items(&vfs_db, list_id.as_deref())}
 
 #[tauri::command]
-pub fn todo_search(app: AppHandle, query: String) -> Result<Vec<VfsTodoItem>, String> {
+pub fn todo_search(app: AppHandle, query: String) -> VfsResult<Vec<VfsTodoItem>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::search_items(&vfs_db, &query).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::search_items(&vfs_db, &query)}
 
 #[tauri::command]
-pub fn todo_get_active_summary(app: AppHandle) -> Result<Option<TodoActiveSummary>, String> {
+pub fn todo_get_active_summary(app: AppHandle) -> VfsResult<Option<TodoActiveSummary>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsTodoRepo::get_active_todo_summary(&vfs_db).map_err(|e| e.to_string())
-}
+    VfsTodoRepo::get_active_todo_summary(&vfs_db)}
 
 // ============================================================================
 // 番茄钟命令
@@ -327,7 +308,7 @@ fn default_pomodoro_status() -> String {
 pub fn pomodoro_create_record(
     app: AppHandle,
     input: CreatePomodoroInput,
-) -> Result<PomodoroRecord, String> {
+) -> VfsResult<PomodoroRecord> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     let params = CreatePomodoroRecordParams {
         todo_item_id: input.todo_item_id,
@@ -338,35 +319,30 @@ pub fn pomodoro_create_record(
         r#type: input.r#type,
         status: input.status,
     };
-    VfsPomodoroRepo::create_record(&vfs_db, params).map_err(|e| e.to_string())
-}
+    VfsPomodoroRepo::create_record(&vfs_db, params)}
 
 #[tauri::command]
 pub fn pomodoro_get_record(
     app: AppHandle,
     record_id: String,
-) -> Result<Option<PomodoroRecord>, String> {
+) -> VfsResult<Option<PomodoroRecord>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsPomodoroRepo::get_record(&vfs_db, &record_id).map_err(|e| e.to_string())
-}
+    VfsPomodoroRepo::get_record(&vfs_db, &record_id)}
 
 #[tauri::command]
 pub fn pomodoro_list_by_todo(
     app: AppHandle,
     todo_item_id: String,
-) -> Result<Vec<PomodoroRecord>, String> {
+) -> VfsResult<Vec<PomodoroRecord>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsPomodoroRepo::list_by_todo_item(&vfs_db, &todo_item_id).map_err(|e| e.to_string())
-}
+    VfsPomodoroRepo::list_by_todo_item(&vfs_db, &todo_item_id)}
 
 #[tauri::command]
-pub fn pomodoro_today_stats(app: AppHandle) -> Result<PomodoroTodayStats, String> {
+pub fn pomodoro_today_stats(app: AppHandle) -> VfsResult<PomodoroTodayStats> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsPomodoroRepo::get_today_stats(&vfs_db).map_err(|e| e.to_string())
-}
+    VfsPomodoroRepo::get_today_stats(&vfs_db)}
 
 #[tauri::command]
-pub fn pomodoro_list_today(app: AppHandle) -> Result<Vec<PomodoroRecord>, String> {
+pub fn pomodoro_list_today(app: AppHandle) -> VfsResult<Vec<PomodoroRecord>> {
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
-    VfsPomodoroRepo::list_today_records(&vfs_db).map_err(|e| e.to_string())
-}
+    VfsPomodoroRepo::list_today_records(&vfs_db)}

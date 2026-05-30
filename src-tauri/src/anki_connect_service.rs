@@ -1,4 +1,4 @@
-use crate::models::AnkiCard;
+use crate::models::{AnkiCard, AppError};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::TcpStream;
@@ -155,7 +155,7 @@ fn build_fields_with_model_names(
 
 /// 检查AnkiConnect是否可用
 #[tauri::command]
-pub async fn check_anki_connect_availability() -> Result<bool, String> {
+pub async fn check_anki_connect_availability() -> Result<bool, AppError> {
     println!("🔍 正在检查AnkiConnect连接到: {}", ANKI_CONNECT_URL);
 
     // 首先检查端口8765是否开放
@@ -167,7 +167,7 @@ pub async fn check_anki_connect_availability() -> Result<bool, String> {
         }
         Err(e) => {
             println!("❌ 端口8765无法访问: {}", e);
-            return Err(format!("端口8765无法访问: {} \n\n这通常意味着：\n1. Anki桌面程序未运行\n2. AnkiConnect插件未安装或未启用\n3. 端口被其他程序占用\n\n解决方法：\n1. 启动Anki桌面程序\n2. 安装AnkiConnect插件（代码：2055492159）\n3. 重启Anki以激活插件", e));
+            return Err(AppError::network(format!("端口8765无法访问: {} \n\n这通常意味着：\n1. Anki桌面程序未运行\n2. AnkiConnect插件未安装或未启用\n3. 端口被其他程序占用\n\n解决方法：\n1. 启动Anki桌面程序\n2. 安装AnkiConnect插件（代码：2055492159）\n3. 重启Anki以激活插件", e)));
         }
     }
 
@@ -177,7 +177,7 @@ pub async fn check_anki_connect_availability() -> Result<bool, String> {
         .tcp_keepalive(Some(std::time::Duration::from_secs(30)))
         .connect_timeout(std::time::Duration::from_secs(5))
         .build()
-        .map_err(|e| format!("创建HTTP客户端失败: {}", e))?;
+        .map_err(|e| AppError::unknown(format!("创建HTTP客户端失败: {}", e)))?;
 
     println!("🔍 第一步：尝试探测AnkiConnect（GET 非阻塞）...");
     match client.get(ANKI_CONNECT_URL).send().await {
@@ -220,7 +220,7 @@ pub async fn check_anki_connect_availability() -> Result<bool, String> {
                 let response_text = response
                     .text()
                     .await
-                    .map_err(|e| format!("读取响应内容失败: {}", e))?;
+                    .map_err(|e| AppError::unknown(format!("读取响应内容失败: {}", e)))?;
                 println!("📥 响应内容: {}", response_text);
 
                 match serde_json::from_str::<AnkiConnectResponse>(&response_text) {
@@ -229,48 +229,47 @@ pub async fn check_anki_connect_availability() -> Result<bool, String> {
                             println!("✅ AnkiConnect版本检查成功");
                             Ok(true)
                         } else {
-                            Err(format!(
+                            Err(AppError::unknown(format!(
                                 "AnkiConnect错误: {}",
                                 anki_response.error.unwrap_or_default()
-                            ))
+                            )))
                         }
                     }
-                    Err(e) => Err(format!(
+                    Err(e) => Err(AppError::unknown(format!(
                         "解析AnkiConnect响应失败: {} - 响应内容: {}",
                         e, response_text
-                    )),
+                    ))),
                 }
             } else {
                 let error_text = response
                     .text()
                     .await
                     .unwrap_or_else(|_| "无法读取错误内容".to_string());
-                Err(format!(
+                Err(AppError::unknown(format!(
                     "AnkiConnect HTTP错误: {} - 内容: {}",
                     status_code, error_text
-                ))
+                )))
             }
         }
         Err(e) => {
             println!("❌ AnkiConnect连接错误详情: {:?}", e);
             if e.is_timeout() {
-                Err(
-                    "AnkiConnect连接超时（5秒），请确保Anki桌面程序正在运行并启用了AnkiConnect插件"
-                        .to_string(),
-                )
+                Err(AppError::network(
+                    "AnkiConnect连接超时（5秒），请确保Anki桌面程序正在运行并启用了AnkiConnect插件",
+                ))
             } else if e.is_connect() {
-                Err("无法连接到AnkiConnect服务器，请确保：1)Anki正在运行 2)AnkiConnect插件已安装并启用 3)端口8765未被占用".to_string())
+                Err(AppError::network("无法连接到AnkiConnect服务器，请确保：1)Anki正在运行 2)AnkiConnect插件已安装并启用 3)端口8765未被占用"))
             } else if e.to_string().contains("connection closed") {
-                Err("连接被AnkiConnect服务器关闭，可能原因：1)AnkiConnect版本过旧 2)请求格式不兼容 3)需要重启Anki".to_string())
+                Err(AppError::network("连接被AnkiConnect服务器关闭，可能原因：1)AnkiConnect版本过旧 2)请求格式不兼容 3)需要重启Anki"))
             } else {
-                Err(format!("AnkiConnect连接失败: {}", e))
+                Err(AppError::unknown(format!("AnkiConnect连接失败: {}", e)))
             }
         }
     }
 }
 
 /// 获取所有牌组名称
-pub async fn get_deck_names() -> Result<Vec<String>, String> {
+pub async fn get_deck_names() -> Result<Vec<String>, AppError> {
     let request = AnkiConnectRequest {
         action: "deckNames".to_string(),
         version: 6,
@@ -312,7 +311,7 @@ pub async fn get_deck_names() -> Result<Vec<String>, String> {
 }
 
 /// 获取所有笔记类型名称
-pub async fn get_model_names() -> Result<Vec<String>, String> {
+pub async fn get_model_names() -> Result<Vec<String>, AppError> {
     let request = AnkiConnectRequest {
         action: "modelNames".to_string(),
         version: 6,
@@ -353,7 +352,7 @@ pub async fn get_model_names() -> Result<Vec<String>, String> {
     }
 }
 
-pub async fn get_model_field_names(model_name: &str) -> Result<Vec<String>, String> {
+pub async fn get_model_field_names(model_name: &str) -> Result<Vec<String>, AppError> {
     check_anki_connect_availability().await?;
 
     let params = serde_json::json!({
@@ -383,7 +382,7 @@ pub async fn get_model_field_names(model_name: &str) -> Result<Vec<String>, Stri
                             Err(format!("获取模型字段失败: {}", error))
                         } else if let Some(result) = resp.result {
                             serde_json::from_value::<Vec<String>>(result)
-                                .map_err(|e| format!("解析模型字段失败: {}", e))
+                                .map_err(|e| AppError::unknown(format!("解析模型字段失败: {}", e)))
                         } else {
                             Err("AnkiConnect返回空结果".to_string())
                         }
@@ -403,7 +402,7 @@ pub async fn add_notes_to_anki(
     cards: Vec<AnkiCard>,
     deck_name: String,
     note_type: String,
-) -> Result<Vec<Option<u64>>, String> {
+) -> Result<Vec<Option<u64>>, AppError> {
     add_notes_to_anki_with_card_models(cards, deck_name, note_type, HashMap::new()).await
 }
 
@@ -412,7 +411,7 @@ pub async fn add_notes_to_anki_with_card_models(
     deck_name: String,
     note_type: String,
     card_models: HashMap<String, String>,
-) -> Result<Vec<Option<u64>>, String> {
+) -> Result<Vec<Option<u64>>, AppError> {
     // 首先检查AnkiConnect可用性
     check_anki_connect_availability().await?;
 
@@ -515,7 +514,7 @@ pub async fn add_notes_to_anki_with_card_models(
 }
 
 /// 创建牌组（如果不存在）
-pub async fn create_deck_if_not_exists(deck_name: &str) -> Result<(), String> {
+pub async fn create_deck_if_not_exists(deck_name: &str) -> Result<(), AppError> {
     let params = serde_json::json!({
         "deck": deck_name
     });
@@ -562,7 +561,7 @@ pub async fn create_deck_if_not_exists(deck_name: &str) -> Result<(), String> {
 
 /// 通过 AnkiConnect 导入 APKG 包
 /// 要求传入绝对路径
-pub async fn import_apkg(path: &str) -> Result<bool, String> {
+pub async fn import_apkg(path: &str) -> Result<bool, AppError> {
     if path.trim().is_empty() {
         return Err("APKG 路径不能为空".to_string());
     }

@@ -119,7 +119,7 @@ impl FeatureFlagManager {
     /// 从数据库加载功能开关配置
     pub async fn load_from_database(mut self, db: &Database) -> Result<Self, String> {
         let flags_json = db
-            .get_setting("feature_flags.config")
+            .web_search_get_setting("feature_flags.config")
             .map_err(|e| format!("Failed to load feature flags: {}", e))?;
 
         if let Some(json_str) = flags_json {
@@ -139,7 +139,7 @@ impl FeatureFlagManager {
         let json_str = serde_json::to_string(&self.flags)
             .map_err(|e| format!("Failed to serialize feature flags: {}", e))?;
 
-        db.save_setting("feature_flags.config", &json_str)
+        db.web_search_save_setting("feature_flags.config", &json_str)
             .map_err(|e| format!("Failed to save feature flags: {}", e))
     }
 

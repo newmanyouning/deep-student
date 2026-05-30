@@ -7,7 +7,7 @@ import { AppearanceTab } from '../AppearanceTab';
 const getSettingMock = vi.fn();
 const saveSettingMock = vi.fn();
 const invokeMock = vi.fn((command: string, payload?: Record<string, unknown>) => {
-  if (command === 'save_setting') {
+  if (command === 'web_search_save_setting') {
     return saveSettingMock(payload?.key, payload?.value);
   }
   return Promise.resolve(null);
@@ -29,10 +29,10 @@ vi.mock('react-i18next', () => ({
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: (command: string, payload?: Record<string, unknown>) => {
-    if (command === 'get_setting') {
+    if (command === 'web_search_get_setting') {
       return getSettingMock(payload?.key);
     }
-    if (command === 'save_setting') {
+    if (command === 'web_search_save_setting') {
       return saveSettingMock(payload?.key, payload?.value);
     }
     return Promise.reject(new Error(`Unexpected command: ${command}`));

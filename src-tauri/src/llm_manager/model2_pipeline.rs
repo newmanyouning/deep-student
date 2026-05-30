@@ -716,7 +716,7 @@ impl LLMManager {
     fn build_debug_persist_config(&self) -> Option<DebugPersistConfig> {
         let enabled = self
             .db
-            .get_setting("debug.persist_logs")
+            .web_search_get_setting("debug.persist_logs")
             .ok()
             .flatten()
             .map(|v| v == "true")
@@ -1268,7 +1268,7 @@ impl LLMManager {
         // 检查是否启用工具（全局 + 模型能力）
         let mut tools_enabled = self
             .db
-            .get_setting("tools.enabled")
+            .web_search_get_setting("tools.enabled")
             .ok()
             .flatten()
             .map(|v| v.to_lowercase())
@@ -2838,7 +2838,7 @@ impl LLMManager {
         // 检查是否启用工具（全局 + 模型能力）
         let tools_enabled = self
             .db
-            .get_setting("tools.enabled")
+            .web_search_get_setting("tools.enabled")
             .ok()
             .flatten()
             .map(|v| v.to_lowercase())

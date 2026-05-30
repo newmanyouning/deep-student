@@ -306,14 +306,14 @@ impl NotesManager {
 
     #[cfg(feature = "lance")]
     fn ensure_notes_lance_migrated(&self) -> Result<()> {
-        if let Ok(Some(flag)) = self.db.get_setting("notes.lance.migrated") {
+        if let Ok(Some(flag)) = self.db.web_search_get_setting("notes.lance.migrated") {
             if flag == "1" {
                 return Ok(());
             }
         }
         self.migrate_all_notes_to_lance()?;
         self.db
-            .save_setting("notes.lance.migrated", "1")
+            .web_search_save_setting("notes.lance.migrated", "1")
             .map_err(|e| {
                 AppError::database(format!(
                     "Failed to save Lance Notes migration status: {}",

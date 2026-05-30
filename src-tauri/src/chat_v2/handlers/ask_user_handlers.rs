@@ -6,6 +6,7 @@
 //! ## 设计参考
 //! - `approval_handlers.rs`: Tauri command 桥接审批响应模式
 
+use crate::chat_v2::error::ChatV2Result;
 use crate::chat_v2::tools::ask_user_executor::{handle_ask_user_response, AskUserResponse};
 
 // ============================================================================
@@ -16,13 +17,6 @@ use crate::chat_v2::tools::ask_user_executor::{handle_ask_user_response, AskUser
 ///
 /// 前端用户选择选项或输入自定义回答后调用此命令，
 /// 将回答发送给等待的 AskUserExecutor。
-///
-/// ## 参数
-/// - `tool_call_id`: 工具调用 ID（用于匹配等待的 channel）
-/// - `selected_texts`: 用户选择的文本列表（支持多选）
-/// - `selected_indices`: 选项索引列表
-/// - `custom_text`: 用户自定义输入文本（可选）
-/// - `source`: 回答来源（"user_click" | "custom_input" | "mixed" | "timeout" | "channel_closed"）
 #[tauri::command]
 pub async fn chat_v2_ask_user_respond(
     tool_call_id: String,
@@ -30,7 +24,7 @@ pub async fn chat_v2_ask_user_respond(
     selected_indices: Vec<i32>,
     custom_text: Option<String>,
     source: String,
-) -> Result<(), String> {
+) -> ChatV2Result<()> {
     log::info!(
         "[ChatV2::ask_user] Received response: tool_call_id={}, selected={:?}, indices={:?}, custom_text={:?}, source='{}'",
         tool_call_id,

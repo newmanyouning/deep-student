@@ -59,7 +59,7 @@ export function useAttachmentSettings(): UseAttachmentSettingsReturn {
     let disposed = false;
     (async () => {
       try {
-        const raw = await invoke<string | null>('get_setting', { key: 'attachment.settings' }).catch(() => null);
+        const raw = await invoke<string | null>('web_search_get_setting', { key: 'attachment.settings' }).catch(() => null);
         if (disposed) return;
         if (raw) {
           try {
@@ -82,7 +82,7 @@ export function useAttachmentSettings(): UseAttachmentSettingsReturn {
   const saveSettings = useCallback(async (newSettings: Partial<AttachmentSettings>): Promise<boolean> => {
     try {
       const merged = { ...settings, ...newSettings };
-      await invoke('save_setting', { 
+      await invoke('web_search_save_setting', { 
         key: 'attachment.settings', 
         value: JSON.stringify(merged) 
       });
@@ -97,7 +97,7 @@ export function useAttachmentSettings(): UseAttachmentSettingsReturn {
   // 重置设置
   const resetSettings = useCallback(async (): Promise<boolean> => {
     try {
-      await invoke('save_setting', { 
+      await invoke('web_search_save_setting', { 
         key: 'attachment.settings', 
         value: JSON.stringify(DEFAULT_SETTINGS) 
       });

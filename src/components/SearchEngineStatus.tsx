@@ -55,7 +55,7 @@ export const SearchEngineStatus: React.FC<SearchEngineStatusProps> = ({
   // 测试单个引擎
   const testEngine = async (engineId: string): Promise<EngineStatus> => {
     try {
-      const result = await invoke<{ok: boolean, message: string, response_time?: number}>('test_search_engine', {
+      const result = await invoke<{ok: boolean, message: string, response_time?: number}>('web_search_test_engine', {
         engine: engineId
       });
       

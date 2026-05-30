@@ -15,12 +15,13 @@ import { NotionButton } from '@/components/ui/NotionButton';
 import { Label } from '@/components/ui/shad/Label';
 import { Badge } from '@/components/ui/shad/Badge';
 import { CollapsibleModelSelector, type CollapsibleModelOption } from '@/components/ui/shad/CollapsibleModelSelector';
-import { TauriAPI } from '@/utils/tauriApi';
+import { saveVendorConfigs, getVendorConfigs } from '@/utils/configApi';
 import { inferCapabilities, getModelDefaultParameters, applyProviderSpecificAdjustments } from '@/utils/modelCapabilities';
 import { inferApiCapabilities } from '@/utils/apiCapabilityEngine';
 import { cn } from '@/lib/utils';
 import { vfsUnifiedIndexApi } from '@/api/vfsUnifiedIndexApi';
-import { ApiKeyField } from './ApiKeyField';
+import { VendorApiKeySection } from './VendorApiKeySection';
+import type { VendorConfig } from '@/types';
 
 interface SiliconFlowModel {
   id: string;
@@ -92,8 +93,6 @@ export const SiliconFlowSection: React.FC<SiliconFlowSectionProps> = ({ onCreate
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const lastSavedKeyRef = useRef('');
   const statusTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const siliconFlowVendorKey = 'builtin-siliconflow.api_key';
-  const siliconFlowLegacyKey = 'siliconflow.api_key';
   const [lastFetchTime, setLastFetchTime] = useState<number | null>(null); // 上次获取时间
   const [isFromCache, setIsFromCache] = useState(false); // 是否来自缓存
 
@@ -210,28 +209,35 @@ export const SiliconFlowSection: React.FC<SiliconFlowSectionProps> = ({ onCreate
     };
   }, [getModelCapabilities, selectedModelData, selectedModel]);
 
+  // BUGFIX 2026-05-30: 使用统一供应商路径 (saveVendorConfigs → SecureStore)
+  // 旧路径 TauriAPI.saveSetting() 仅写入 settings 键值表，LLMManager 从 SecureStore 读取导致不一致
+
+  const siliconFlowVendorId = 'builtin-siliconflow';
+
   const persistApiKey = useCallback(async (value: string) => {
     try {
       const trimmed = value.trim();
+      const vendorConfig: VendorConfig = {
+        id: siliconFlowVendorId,
+        name: 'SiliconFlow',
+        providerType: 'siliconflow',
+        baseUrl: 'https://api.siliconflow.cn/v1',
+        apiKey: trimmed,
+        isBuiltin: true,
+        enabled: true,
+        websiteUrl: 'https://cloud.siliconflow.cn',
+        notes: '',
+        modelAdapter: 'general',
+      };
+      await saveVendorConfigs([vendorConfig]);
+      // CRITICAL: 同步更新本地状态，否则 VendorApiKeySection 会立即被旧值覆盖
       if (trimmed) {
-        await Promise.all([
-          TauriAPI.saveSetting(siliconFlowVendorKey, trimmed),
-          TauriAPI.saveSetting(siliconFlowLegacyKey, trimmed),
-        ]);
+        setApiKey(trimmed);
+        lastSavedKeyRef.current = trimmed;
       } else {
-        await Promise.all([
-          TauriAPI.deleteSetting(siliconFlowVendorKey),
-          TauriAPI.deleteSetting(siliconFlowLegacyKey),
-        ]);
-        if (typeof window !== 'undefined') {
-          try {
-            window.localStorage?.removeItem('siliconflow_api_key');
-          } catch (error: unknown) {
-            console.warn('移除旧版 SiliconFlow Key 失败:', error);
-          }
-        }
+        setApiKey('');
+        lastSavedKeyRef.current = '';
       }
-      // Broadcast the change so other views refresh immediately.
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('siliconflow-apikey-changed', { detail: { apiKey: trimmed } }));
         window.dispatchEvent(new CustomEvent('api_configurations_changed'));
@@ -240,7 +246,7 @@ export const SiliconFlowSection: React.FC<SiliconFlowSectionProps> = ({ onCreate
       console.error('Failed to save SiliconFlow API key:', error);
       showGlobalNotification('error', t('common:siliconflow.save_api_key_failed'));
     }
-  }, [showGlobalNotification, siliconFlowVendorKey, siliconFlowLegacyKey, t]);
+  }, [showGlobalNotification, siliconFlowVendorId, t]);
 
   const clearStatusTimer = useCallback(() => {
     if (statusTimerRef.current) {
@@ -281,37 +287,26 @@ export const SiliconFlowSection: React.FC<SiliconFlowSectionProps> = ({ onCreate
     }
   }, [apiKey, persistApiKey, clearStatusTimer, scheduleStatusReset, showGlobalNotification, t]);
 
-  // 组件加载时从持久化存储恢复API密钥
+  // 组件加载时从统一存储恢复 API Key
   React.useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        let savedApiKey = await TauriAPI.getSetting(siliconFlowVendorKey);
-        const legacyApiKey = await TauriAPI.getSetting(siliconFlowLegacyKey);
-        if (legacyApiKey?.trim() && legacyApiKey.trim() !== savedApiKey?.trim()) {
-          savedApiKey = legacyApiKey;
-          await persistApiKey(legacyApiKey);
-        }
-        if (!savedApiKey && typeof window !== 'undefined' && window.localStorage) {
-          const legacy = window.localStorage.getItem('siliconflow_api_key');
-          if (legacy) {
-            savedApiKey = legacy;
-            await persistApiKey(legacy);
-            try { window.localStorage.removeItem('siliconflow_api_key'); } catch (error: unknown) { console.error('移除旧版 SiliconFlow Key 失败:', error); }
-          }
-        }
-        if (mounted && savedApiKey) {
-          setApiKey(savedApiKey);
-          lastSavedKeyRef.current = savedApiKey;
+        const vendors = await getVendorConfigs();
+        const sfVendor = vendors.find(v => v.id === siliconFlowVendorId);
+        const key = sfVendor?.apiKey?.trim();
+        if (key && mounted) {
+          setApiKey(key);
+          lastSavedKeyRef.current = key;
         }
       } catch (error: unknown) {
-        console.error('加载SiliconFlow API Key失败:', error);
+        console.error('加载 SiliconFlow API Key 失败:', error);
       }
     })();
     return () => {
       mounted = false;
     };
-  }, [persistApiKey, siliconFlowVendorKey, siliconFlowLegacyKey]);
+  }, [siliconFlowVendorId]);
 
   React.useEffect(() => {
     return () => {
@@ -888,7 +883,7 @@ export const SiliconFlowSection: React.FC<SiliconFlowSectionProps> = ({ onCreate
           // 先读取现有引擎列表
           let existingEngines: Array<{ configId: string; model: string; engineType: string; name: string; isFree: boolean; enabled: boolean; priority: number }> = [];
           try {
-            existingEngines = await invoke<typeof existingEngines>('get_available_ocr_models');
+            existingEngines = await invoke<typeof existingEngines>('ocr_get_available_models');
           } catch { /* 首次使用，列表为空 */ }
 
           // 合并逻辑：预设引擎排在前面，已有自定义引擎追加在后
@@ -923,7 +918,7 @@ export const SiliconFlowSection: React.FC<SiliconFlowSectionProps> = ({ onCreate
             ),
           ].map((e, i) => ({ ...e, priority: i }));
 
-          await invoke('save_available_ocr_models', { models: merged });
+          await invoke('ocr_save_available_models', { models: merged });
           console.log('📝 已合并保存 OCR 模型配置（保留自定义引擎）:', merged);
         } catch (e: unknown) {
           console.warn('保存 OCR 模型配置失败:', e);
@@ -966,57 +961,31 @@ export const SiliconFlowSection: React.FC<SiliconFlowSectionProps> = ({ onCreate
           ? 'text-amber-600 dark:text-amber-400'
           : 'text-muted-foreground';
 
+  // BUGFIX 2026-05-30: 使用统一 VendorApiKeySection (提供标准保存/删除按钮)
+  const sfVendorConfig: VendorConfig = useMemo(() => ({
+    id: siliconFlowVendorId,
+    name: 'SiliconFlow',
+    providerType: 'siliconflow',
+    baseUrl: 'https://api.siliconflow.cn/v1',
+    apiKey: apiKey,
+    isBuiltin: true,
+    enabled: true,
+    websiteUrl: 'https://cloud.siliconflow.cn',
+    notes: '',
+    modelAdapter: 'general',
+  }), [apiKey, siliconFlowVendorId]);
+
   const quickBody = (
     <div className="space-y-3">
-      <ApiKeyField
-        value={apiKey}
-        onChange={e => handleApiKeyChange(e.target.value)}
-        onKeyDown={e => {
-          if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
-            e.preventDefault();
-            void handleSaveApiKey();
-          }
-        }}
-        placeholder={t('common:siliconflow.api_key_placeholder_local')}
-        revealed={showApiKey}
-        canReveal={canRevealApiKey}
-        onToggle={() => setShowApiKey(v => !v)}
-        showLabel={t('common:siliconflow.show_api_key')}
-        hideLabel={t('common:siliconflow.hide_api_key')}
+      <VendorApiKeySection
+        vendor={sfVendorConfig}
+        onSave={async (key: string) => { await persistApiKey(key); }}
+        onClear={async () => { await persistApiKey(''); }}
       />
-      <div
-        className={['flex items-center gap-2 text-xs transition-colors', statusToneClassName].join(' ')}
-        aria-live="polite"
-      >
-        {saveStatus === 'saving' && <Spinner className="h-3.5 w-3.5 animate-spin" />}
-        {saveStatus === 'saved' && <Check className="h-3.5 w-3.5" />}
-        {saveStatus === 'error' && <WarningCircle className="h-3.5 w-3.5" />}
-        <span>{statusText}</span>
-      </div>
       <div className="flex flex-wrap gap-2 pt-1">
-        <NotionButton
-          variant="primary"
-          size="sm"
-          onClick={() => {
-            void handleSaveApiKey();
-          }}
-          disabled={!canSave}
-          title={t('common:actions.save')}
-        >
-          {saveStatus === 'saving' ? <Spinner className="h-3.5 w-3.5 animate-spin" /> : <FloppyDisk className="h-3.5 w-3.5" />}
-          {t('common:actions.save')}
-        </NotionButton>
-        {/* Notion 风格按钮 - 一键分配 */}
         <NotionButton variant="ghost" size="sm" onClick={handleOneClickAssign} disabled={loading || !apiKey.trim()} className="text-primary bg-primary/10 hover:bg-primary/20">
           <Lightning className="h-3.5 w-3.5" />
           {t('common:siliconflow.one_click_assign')}
-        </NotionButton>
-        {/* Notion 风格按钮 - 清除 */}
-        <NotionButton variant={confirmingClearApiKey ? 'danger' : 'ghost'} size="sm" onClick={clearSavedApiKey} disabled={!canClearStoredKey} title={t('common:siliconflow.clear_api_key_title')} className={confirmingClearApiKey ? undefined : 'text-red-600 dark:text-red-400 bg-red-500/10 hover:bg-red-500/20'}>
-          <Trash className="h-3.5 w-3.5" />
-          {confirmingClearApiKey
-            ? t('common:siliconflow.clear_confirm_button')
-            : t('common:siliconflow.clear_button')}
         </NotionButton>
       </div>
     </div>

@@ -15,7 +15,7 @@ export interface QueueSettings {
 
 async function readMode(defaultValue: QueueMode): Promise<QueueMode> {
   try {
-    const raw = await tauriInvoke<string | null>('get_setting', { key: QUEUE_MODE_KEY });
+    const raw = await tauriInvoke<string | null>('web_search_get_setting', { key: QUEUE_MODE_KEY });
     if (raw === 'queue' || raw === 'guide') return raw;
     return defaultValue;
   } catch {
@@ -44,7 +44,7 @@ export function useQueueSettings(): QueueSettings {
     const prev = mode;
     setModeState(v);
     try {
-      await tauriInvoke('save_setting', { key: QUEUE_MODE_KEY, value: v });
+      await tauriInvoke('web_search_save_setting', { key: QUEUE_MODE_KEY, value: v });
     } catch {
       setModeState(prev);
     }

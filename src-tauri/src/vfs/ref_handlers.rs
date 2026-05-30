@@ -53,14 +53,14 @@ const MAX_BATCH_RESOURCES: usize = 50;
 pub async fn vfs_get_resource_refs(
     params: GetResourceRefsInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<VfsContextRefData, String> {
+) -> VfsResult<VfsContextRefData> {
     info!(
         "[VFS::RefHandlers] vfs_get_resource_refs: source_ids={:?}, include_folder_contents={}, max_items={}",
         params.source_ids, params.include_folder_contents, params.max_items
     );
 
     let max_items = (params.max_items as usize).min(MAX_BATCH_RESOURCES);
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     let mut refs: Vec<VfsResourceRef> = Vec::new();
     let mut total_count = 0usize;
@@ -154,7 +154,7 @@ pub async fn vfs_get_resource_refs(
 pub async fn vfs_resolve_resource_refs(
     refs: Vec<VfsResourceRef>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<ResolvedResource>, String> {
+) -> VfsResult<Vec<ResolvedResource>> {
     info!(
         "[VFS::RefHandlers] vfs_resolve_resource_refs: {} refs",
         refs.len()
@@ -169,14 +169,14 @@ pub async fn vfs_resolve_resource_refs(
     }
 
     if refs.len() > MAX_BATCH_RESOURCES {
-        return Err(format!(
+        return Err(VfsError::Internal(format!(
             "Too many refs to resolve: {} (max: {})",
             refs.len(),
             MAX_BATCH_RESOURCES
-        ));
+        )));
     }
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
     let blobs_dir = vfs_db.blobs_dir();
 
     let mut resolved: Vec<ResolvedResource> = Vec::with_capacity(refs.len());
@@ -244,13 +244,13 @@ pub async fn vfs_resolve_resource_refs(
 pub async fn vfs_get_resource_ref_count(
     source_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<i32, String> {
+) -> VfsResult<i32> {
     info!(
         "[VFS::RefHandlers] vfs_get_resource_ref_count: source_id={}",
         source_id
     );
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     // ★ 2026-02-09 修复：通过 get_source_id_type 获取正确的表名，
     //   再通过 table.resource_id → resources.ref_count 查找。
@@ -289,8 +289,7 @@ pub async fn vfs_get_resource_ref_count(
             params![source_id],
             |row| row.get(0),
         )
-        .optional()
-        .map_err(|e| format!("Query failed: {}", e))?
+        .optional()?
         .unwrap_or(0)
     };
 

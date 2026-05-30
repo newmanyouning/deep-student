@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use tauri::{State, Window};
 
+use crate::chat_v2::error::ChatV2Result;
 use crate::chat_v2::migration::{
     check_migration_status, migrate_legacy_chat, rollback_migration, MigrationCheckResult,
     MigrationReport,
@@ -18,11 +19,11 @@ use crate::database::Database;
 pub async fn chat_v2_check_migration_status(
     database: State<'_, Arc<Database>>,
     chat_v2_db: State<'_, Arc<ChatV2Database>>,
-) -> Result<MigrationCheckResult, String> {
-    let data_conn = database.get_conn_safe().map_err(|e| e.to_string())?;
-    let chat_v2_conn = chat_v2_db.get_conn_safe().map_err(|e| e.to_string())?;
+) -> ChatV2Result<MigrationCheckResult> {
+    let data_conn = database.get_conn_safe().map_err(|e| crate::chat_v2::error::ChatV2Error::Database(format!("{:#}", e)))?;
+    let chat_v2_conn = chat_v2_db.get_conn_safe()?;
 
-    check_migration_status(&data_conn, &chat_v2_conn).map_err(|e| e.to_string())
+    Ok(check_migration_status(&data_conn, &chat_v2_conn)?)
 }
 
 /// 执行迁移
@@ -34,11 +35,11 @@ pub async fn chat_v2_migrate_legacy_chat(
     window: Window,
     database: State<'_, Arc<Database>>,
     chat_v2_db: State<'_, Arc<ChatV2Database>>,
-) -> Result<MigrationReport, String> {
-    let data_conn = database.get_conn_safe().map_err(|e| e.to_string())?;
-    let chat_v2_conn = chat_v2_db.get_conn_safe().map_err(|e| e.to_string())?;
+) -> ChatV2Result<MigrationReport> {
+    let data_conn = database.get_conn_safe().map_err(|e| crate::chat_v2::error::ChatV2Error::Database(format!("{:#}", e)))?;
+    let chat_v2_conn = chat_v2_db.get_conn_safe()?;
 
-    migrate_legacy_chat(&data_conn, &chat_v2_conn, Some(window)).map_err(|e| e.to_string())
+    Ok(migrate_legacy_chat(&data_conn, &chat_v2_conn, Some(window))?)
 }
 
 /// 回滚迁移
@@ -49,9 +50,9 @@ pub async fn chat_v2_rollback_migration(
     window: Window,
     database: State<'_, Arc<Database>>,
     chat_v2_db: State<'_, Arc<ChatV2Database>>,
-) -> Result<MigrationReport, String> {
-    let data_conn = database.get_conn_safe().map_err(|e| e.to_string())?;
-    let chat_v2_conn = chat_v2_db.get_conn_safe().map_err(|e| e.to_string())?;
+) -> ChatV2Result<MigrationReport> {
+    let data_conn = database.get_conn_safe().map_err(|e| crate::chat_v2::error::ChatV2Error::Database(format!("{:#}", e)))?;
+    let chat_v2_conn = chat_v2_db.get_conn_safe()?;
 
-    rollback_migration(&data_conn, &chat_v2_conn, Some(window)).map_err(|e| e.to_string())
+    Ok(rollback_migration(&data_conn, &chat_v2_conn, Some(window))?)
 }

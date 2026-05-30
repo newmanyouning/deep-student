@@ -3,12 +3,13 @@
 //! 本模块定义 VFS 操作的错误类型和结果类型别名。
 
 use std::fmt;
+use serde::Serialize;
 
 /// VFS 操作结果类型别名
 pub type VfsResult<T> = Result<T, VfsError>;
 
 /// VFS 错误类型
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub enum VfsError {
     /// 数据库错误
     Database(String),

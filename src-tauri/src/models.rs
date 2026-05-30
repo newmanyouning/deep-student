@@ -785,166 +785,10 @@ pub struct AnalysisRequest {
     pub session_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct GeneralChatRequest {
-    pub user_question: String,
-    #[serde(default)]
-    pub question_image_files: Vec<String>,
-    #[serde(default)]
-    pub doc_attachments: Option<Vec<DocumentAttachment>>,
-    #[serde(default)]
-    pub enable_chain_of_thought: bool,
-    /// 🎯 新架构兼容：前端传入的会话 ID
-    #[serde(default)]
-    pub session_id: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GeneralChatResponse {
-    pub mistake_id: String,
-    pub temp_id: String,
-    pub business_session_id: String,
-    pub generation_id: i64,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<ChatMetadata>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct GenerateChatMetadataRequest {
-    #[serde(default)]
-    pub temp_id: Option<String>,
-    #[serde(default)]
-    pub mistake_id: Option<String>,
-    #[serde(default)]
-    pub conversation_preview: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct GenerateChatMetadataResponse {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<ChatMetadata>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateChatMetadataNoteRequest {
-    #[serde(default)]
-    pub temp_id: Option<String>,
-    #[serde(default)]
-    pub mistake_id: Option<String>,
-    #[serde(default)]
-    pub note: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateChatMetadataNoteResponse {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<ChatMetadata>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct UpdateOcrNoteRequest {
-    #[serde(default)]
-    pub temp_id: Option<String>,
-    #[serde(default)]
-    pub mistake_id: Option<String>,
-    #[serde(default)]
-    pub note: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct UpdateOcrNoteResponse {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub ocr_note: Option<String>,
-}
-
-// Bridge专用分析请求结构
-#[derive(Debug, Deserialize)]
-pub struct BridgeAnalysisRequest {
-    pub source_id: String,     // Bridge来源ID
-    pub source_type: String,   // Bridge来源类型
-    pub ocr_text: String,      // Bridge构造的OCR文本
-    pub user_question: String, // 用户问题描述
-    pub tags: Vec<String>,     // Bridge提供的标签
-    pub images: Vec<String>,   // 图片文件路径
-}
-
-// OCR结果结构
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct OcrResult {
-    pub text: String,
-    pub confidence: f64,
-    pub source: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct AnalysisResponse {
-    pub mistake_id: String,
-    pub temp_id: String,
-    pub business_session_id: String,
-    pub generation_id: i64,
-    pub initial_data: InitialAnalysisData,
-}
-
-#[derive(Debug, Serialize)]
-pub struct InitialAnalysisData {
-    pub ocr_text: String,
-    pub tags: Vec<String>,
-    pub mistake_type: String,
-    pub first_answer: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ContinueChatRequest {
-    pub temp_id: String,
-    pub chat_history: Vec<ChatMessage>,
-    pub enable_chain_of_thought: Option<bool>,
-    #[serde(default)]
-    pub enable_rag: Option<bool>,
-    #[serde(default)]
-    pub rag_options: Option<RagQueryOptionsWithLibraries>,
-    #[serde(default)]
-    pub temperature: Option<f32>,
-    #[serde(default)]
-    pub model2_override_id: Option<String>,
-    // 🆕 本轮追问新增图片（base64），优先写入最后一条用户消息
-    #[serde(default)]
-    pub question_image_files: Option<Vec<String>>,
-    // 🔧 新增：追问时的文档附件支持
-    #[serde(default)]
-    pub document_attachments: Option<Vec<DocumentAttachment>>,
-    // 🔧 新增：消息级选择 - MCP 工具与搜索引擎
-    #[serde(default)]
-    pub mcp_tools: Option<Vec<String>>,
-    #[serde(default)]
-    pub search_engines: Option<Vec<String>>,
-    // 🆕 B4: 视觉质量策略（用于后端按需压缩/降采样）
-    #[serde(default)]
-    pub vision_quality: Option<String>, // low|medium|high
-}
-
-#[derive(Debug, Serialize)]
-pub struct ContinueChatResponse {
-    pub new_assistant_message: String,
-}
-// default_save_source 已删除（仅被废弃的 SaveMistakeResponse 使用）
-
-// 回顾分析相关结构
-#[derive(Debug, Serialize)]
-pub struct ReviewSessionResponse {
-    pub review_id: String,
-    pub analysis_summary: String,
-    pub chat_history: Option<Vec<ChatMessage>>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ReviewChatRequest {
-    pub review_id: String,
-    pub new_message: ChatMessage,
-    pub chat_history: Vec<ChatMessage>,
-}
-
 // 结构化错误处理
+/// REF-003: Serialize to lowercase to match frontend union type.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum AppErrorType {
     Validation,
     Database,
@@ -957,10 +801,15 @@ pub enum AppErrorType {
     Unknown,
 }
 
+/// REF-003: Field names aligned with frontend `AppError` interface.
+/// `error_type` serializes as `type` to match TS `{ type: string, message: string, details?: any }`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppError {
+    #[serde(rename = "type")]
     pub error_type: AppErrorType,
     pub message: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub details: Option<serde_json::Value>,
 }
 

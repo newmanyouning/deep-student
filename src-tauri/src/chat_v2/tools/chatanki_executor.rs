@@ -1376,7 +1376,7 @@ impl ChatAnkiToolExecutor {
             let json_content = serde_json::to_string_pretty(&cards)
                 .map_err(|e| format!("Serialize json failed: {}", e))?;
 
-            let path = crate::cmd::anki_connect::save_json_file(json_content, suggested)
+            let path = crate::cmd::anki_connect::anki_connect_save_json_file(json_content, suggested)
                 .await
                 .map_err(|e| e.to_string())?;
             ("json".to_string(), path, note_type)
@@ -1494,7 +1494,7 @@ impl ChatAnkiToolExecutor {
             // 多模板 APKG 导出：每种 template_id 创建独立的 Anki model，
             // 每张卡片的 notes.mid 指向自己模板对应的 model。
             // Anki 格式支持一个 APKG 内多个 note type（model），字段和 card template 各自独立。
-            crate::apkg_exporter_service::export_multi_template_apkg(
+            crate::apkg_exporter_service::anki_connect_export_multi_apkg(
                 cards,
                 deck_name.clone(),
                 output_path.clone(),
@@ -2029,7 +2029,7 @@ impl ChatAnkiToolExecutor {
                 let proc =
                     crate::document_processing_service::DocumentProcessingService::new(db.clone());
                 let tasks = proc
-                    .get_document_tasks(&document_id)
+                    .anki_get_document_tasks(&document_id)
                     .map_err(|e| e.to_string())?;
 
                 // Best-effort cancel streaming tasks.
@@ -3369,7 +3369,7 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> Result<()
             let proc = crate::document_processing_service::DocumentProcessingService::new(
                 params.anki_db.clone(),
             );
-            match proc.get_document_tasks(&document_id) {
+            match proc.anki_get_document_tasks(&document_id) {
                 Ok(tasks) => {
                     let streaming = crate::streaming_anki_service::StreamingAnkiService::new(
                         params.anki_db.clone(),
@@ -3582,7 +3582,7 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> Result<()
             // Done: emit end with full cards list.
             if cards.len() > visible_card_count {
                 for c in cards.iter().skip(visible_card_count) {
-                    let _ = params.anki_db.delete_anki_card(&c.id);
+                    let _ = params.anki_db.anki_delete_card(&c.id);
                 }
             }
             let final_cards: Vec<Value> = cards
@@ -4451,10 +4451,10 @@ fn resolve_deck_and_note_type(
 
     let db = ctx.main_db.as_ref().or(ctx.anki_db.as_ref());
     let deck_from_db = db
-        .and_then(|d| d.get_setting("anki_connect_default_deck").ok().flatten())
+        .and_then(|d| d.web_search_get_setting("anki_connect_default_deck").ok().flatten())
         .filter(|s| !s.trim().is_empty());
     let note_from_db = db
-        .and_then(|d| d.get_setting("anki_connect_default_model").ok().flatten())
+        .and_then(|d| d.web_search_get_setting("anki_connect_default_model").ok().flatten())
         .filter(|s| !s.trim().is_empty());
 
     (

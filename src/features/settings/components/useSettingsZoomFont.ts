@@ -33,7 +33,7 @@ export function useSettingsZoomFont(deps: UseSettingsZoomFontDeps) {
     setZoomLoading(true);
     (async () => {
       try {
-        const storedValue = await tauriInvoke('get_setting', { key: UI_ZOOM_STORAGE_KEY }) as string;
+        const storedValue = await tauriInvoke('web_search_get_setting', { key: UI_ZOOM_STORAGE_KEY }) as string;
         const parsed = clampZoom(parseFloat(storedValue));
         if (!disposed) {
           setUiZoom(parsed);
@@ -67,7 +67,7 @@ export function useSettingsZoomFont(deps: UseSettingsZoomFontDeps) {
     setZoomStatus({ type: 'idle' });
     try {
       await applyZoomToWebview(normalized);
-      await tauriInvoke('save_setting', { key: UI_ZOOM_STORAGE_KEY, value: normalized.toString() });
+      await tauriInvoke('web_search_save_setting', { key: UI_ZOOM_STORAGE_KEY, value: normalized.toString() });
       setZoomStatus({
         type: 'success',
         message: t('settings:zoom.status_applied', { value: formatZoomLabel(normalized) }),
@@ -95,7 +95,7 @@ export function useSettingsZoomFont(deps: UseSettingsZoomFontDeps) {
     setFontLoading(true);
     (async () => {
       try {
-        const storedValue = await tauriInvoke('get_setting', { key: UI_FONT_STORAGE_KEY }) as string;
+        const storedValue = await tauriInvoke('web_search_get_setting', { key: UI_FONT_STORAGE_KEY }) as string;
         const fontValue = storedValue || DEFAULT_UI_FONT;
         if (!disposed) {
           setUiFont(fontValue);
@@ -126,7 +126,7 @@ export function useSettingsZoomFont(deps: UseSettingsZoomFontDeps) {
     }
     setFontSaving(true);
     try {
-      await tauriInvoke('save_setting', { key: UI_FONT_STORAGE_KEY, value });
+      await tauriInvoke('web_search_save_setting', { key: UI_FONT_STORAGE_KEY, value });
     } catch (error) {
       console.error('Failed to save font setting:', error);
     } finally {
@@ -148,7 +148,7 @@ export function useSettingsZoomFont(deps: UseSettingsZoomFontDeps) {
     setFontSizeLoading(true);
     (async () => {
       try {
-        const storedValue = await tauriInvoke('get_setting', { key: UI_FONT_SIZE_STORAGE_KEY }) as string;
+        const storedValue = await tauriInvoke('web_search_get_setting', { key: UI_FONT_SIZE_STORAGE_KEY }) as string;
         const parsed = clampFontSize(parseFloat(storedValue));
         if (!disposed) {
           setUiFontSize(parsed);
@@ -180,7 +180,7 @@ export function useSettingsZoomFont(deps: UseSettingsZoomFontDeps) {
     }
     setFontSizeSaving(true);
     try {
-      await tauriInvoke('save_setting', { key: UI_FONT_SIZE_STORAGE_KEY, value: normalized.toString() });
+      await tauriInvoke('web_search_save_setting', { key: UI_FONT_SIZE_STORAGE_KEY, value: normalized.toString() });
     } catch {
       // 静默失败：避免控制台噪音
     } finally {

@@ -85,10 +85,10 @@ pub mod unified_file_manager;
 pub mod utils;
 pub mod vector_store;
 pub mod vendors;
-pub mod vfs; // VFS 虚拟文件系统（统一资源存储） // DSTU 访达协议层（VFS 的文件系统语义接口）
+pub mod vfs; // VFS 虚拟文件系统（统一资源存储）
 pub mod vlm_grounding_service;
 pub mod voice_input;
-pub mod workflow_error_handler; // SM-2 间隔重复算法 // 题目集同步冲突策略服务
+pub mod workflow_error_handler; // 工作流错误处理与恢复
 
 // 数据治理模块（条件编译，需启用 data_governance feature）
 #[cfg(feature = "data_governance")]
@@ -705,7 +705,7 @@ pub fn run() {
                 let database_for_mcp = database.clone();
                 let app_handle_for_mcp = app_handle.clone();
                 tauri::async_runtime::spawn(async move {
-                    let mode = database_for_mcp.get_setting("mcp.mode").ok().flatten().unwrap_or_else(|| "frontend".to_string());
+                    let mode = database_for_mcp.web_search_get_setting("mcp.mode").ok().flatten().unwrap_or_else(|| "frontend".to_string());
                     if mode == "backend" {
                         if let Err(e) = init_mcp_client(database_for_mcp, Some(app_handle_for_mcp)).await {
                             error!("❌ MCP 客户端初始化失败: {}", e);
@@ -880,11 +880,11 @@ pub fn run() {
             crate::commands::get_enhanced_statistics,
 
             // 通用设置保存/读取命令
-            crate::commands::save_setting,
-            crate::commands::get_setting,
-            crate::commands::delete_setting,
-            crate::commands::get_settings_by_prefix,
-            crate::commands::delete_settings_by_prefix,
+            crate::commands::web_search_save_setting,
+            crate::commands::web_search_get_setting,
+            crate::commands::web_search_delete_setting,
+            crate::commands::web_search_web_search_get_settings_by_prefix,
+            crate::commands::web_search_web_search_delete_settings_by_prefix,
             crate::voice_input::voice_input_transcribe,
             // 调试日志管理
             crate::commands::get_debug_logs_info,
@@ -892,18 +892,18 @@ pub fn run() {
             crate::commands::cleanup_old_debug_logs,
             crate::commands::ensure_debug_log_dir,
             crate::commands::read_debug_log_file,
-            crate::commands::get_security_status,
-            crate::commands::get_cn_whitelist_config,
+            crate::commands::web_search_get_security_status,
+            crate::commands::web_search_get_cn_whitelist_config,
             crate::commands::detect_tool_conflicts,
-            crate::commands::get_tools_namespace_config,
-            crate::commands::get_provider_strategies_config,
-            crate::commands::save_provider_strategies_config,
-            crate::commands::get_feature_flags,
-            crate::commands::update_feature_flag,
+            crate::commands::web_search_get_tools_namespace_config,
+            crate::commands::web_search_get_provider_strategies_config,
+            crate::commands::web_search_save_provider_strategies_config,
+            crate::commands::web_search_get_feature_flags,
+            crate::commands::web_search_update_feature_flag,
             crate::commands::is_feature_enabled,
             crate::commands::get_injection_budget_config,
             crate::commands::simulate_budget_allocation,
-            crate::commands::test_search_engine,
+            crate::commands::web_search_test_engine,
             crate::commands::get_image_as_base64,
             crate::commands::get_api_configurations,
             crate::commands::save_api_configurations,
@@ -915,23 +915,23 @@ pub fn run() {
             crate::commands::save_model_profiles,
             crate::commands::test_api_connection,
 
-            crate::commands::get_model_adapter_options,
-            crate::commands::save_model_adapter_options,
+            crate::commands::anki_cards_get_model_adapter_options,
+            crate::commands::anki_cards_save_model_adapter_options,
             crate::commands::reset_model_adapter_options,
             crate::commands::estimate_tokens,
             // OCR 引擎配置命令
-            crate::commands::get_ocr_engines,
-            crate::commands::get_ocr_engine_type,
-            crate::commands::set_ocr_engine_type,
-            crate::commands::get_ocr_thinking_enabled,
-            crate::commands::set_ocr_thinking_enabled,
+            crate::commands::ocr_get_engines,
+            crate::commands::ocr_get_engine_type,
+            crate::commands::ocr_set_engine_type,
+            crate::commands::ocr_get_thinking_enabled,
+            crate::commands::ocr_set_thinking_enabled,
             crate::commands::infer_ocr_engine_from_model,
             crate::commands::validate_ocr_model,
-            crate::commands::get_ocr_prompt_template,
-            crate::commands::get_available_ocr_models,
-            crate::commands::save_available_ocr_models,
-            crate::commands::test_ocr_engine,
-            crate::commands::update_ocr_engine_priority,
+            crate::commands::ocr_get_prompt_template,
+            crate::commands::ocr_get_available_models,
+            crate::commands::ocr_save_available_models,
+            crate::commands::ocr_test_engine,
+            crate::commands::ocr_update_engine_priority,
             crate::commands::add_ocr_engine,
             crate::commands::remove_ocr_engine,
             // Lance 向量表优化命令
@@ -944,42 +944,42 @@ pub fn run() {
             crate::commands::generate_anki_cards_from_document_file,
             crate::commands::generate_anki_cards_from_document_base64,
             crate::commands::call_llm_for_boundary, // CardForge 2.0 - LLM 定界
-            crate::commands::check_anki_connect_status,
-            crate::commands::get_anki_deck_names,
-            crate::commands::get_anki_model_names,
+            crate::commands::anki_connect_check_status,
+            crate::commands::anki_connect_get_deck_names,
+            crate::commands::anki_connect_get_model_names,
             crate::commands::create_anki_deck,
-            crate::commands::save_anki_cards,
+            crate::commands::anki_connect_save_cards,
             crate::commands::add_cards_to_anki_connect,
-            crate::commands::import_anki_package,
-            crate::commands::export_cards_as_apkg,
-            crate::commands::export_cards_as_apkg_with_template,
-            crate::cmd::anki_connect::export_multi_template_apkg,
+            crate::commands::anki_connect_import_package,
+            crate::commands::anki_connect_export_apkg,
+            crate::commands::anki_connect_export_apkg_with_template,
+            crate::cmd::anki_connect::anki_connect_export_multi_apkg,
             // 🔧 P0-30 修复：注册批量导出命令
             crate::commands::batch_export_cards,
-            crate::commands::save_json_file,
+            crate::commands::anki_connect_save_json_file,
             crate::commands::start_enhanced_document_processing,
             crate::commands::pause_document_processing,
             crate::commands::resume_document_processing,
-            crate::commands::get_document_processing_state,
-            crate::commands::get_document_task_counts,
+            crate::commands::anki_get_document_processing_state,
+            crate::commands::anki_get_document_task_counts,
             crate::commands::trigger_task_processing,
-            crate::commands::get_document_tasks,
-            crate::commands::get_task_cards,
-            crate::commands::update_anki_card,
-            crate::commands::delete_anki_card,
-            crate::commands::delete_document_task,
-            crate::commands::delete_document_session,
-            crate::commands::export_apkg_for_selection,
-            crate::commands::get_document_cards,
-            crate::commands::list_anki_library_cards,
-            crate::commands::export_anki_cards,
+            crate::commands::anki_get_document_tasks,
+            crate::commands::anki_get_task_cards,
+            crate::commands::anki_update_card,
+            crate::commands::anki_delete_card,
+            crate::commands::anki_delete_document_task,
+            crate::commands::anki_delete_document_session,
+            crate::commands::anki_export_apkg_for_selection,
+            crate::commands::anki_get_document_cards,
+            crate::commands::anki_list_library_cards,
+            crate::commands::anki_export_cards,
             crate::cmd::enhanced_anki::recover_stuck_document_tasks,
-            crate::cmd::enhanced_anki::list_document_sessions,
-            crate::cmd::enhanced_anki::get_anki_stats,
+            crate::cmd::enhanced_anki::anki_list_document_sessions,
+            crate::cmd::enhanced_anki::anki_get_stats,
             // 状态恢复相关命令
             crate::commands::get_recent_document_tasks,
             crate::commands::get_all_recent_cards,
-            crate::commands::get_pending_memory_candidates,
+            crate::commands::anki_get_pending_memory_candidates,
             crate::commands::dismiss_pending_memory_candidates,
             crate::commands::mark_pending_memory_candidates_saved,
             crate::commands::parse_document_from_path,
@@ -1092,21 +1092,21 @@ pub fn run() {
             crate::commands::optimize_lance_database,
             crate::commands::cancel_stream,
             // MCP 相关命令
-            crate::commands::get_mcp_status,
-            crate::commands::get_mcp_tools,
-            crate::commands::test_mcp_connection,
-            crate::commands::test_mcp_websocket,
-            crate::commands::test_mcp_sse,
-            crate::commands::test_mcp_http,
+            crate::commands::mcp_get_status,
+            crate::commands::mcp_get_tools,
+            crate::commands::mcp_test_connection,
+            crate::commands::mcp_test_websocket,
+            crate::commands::mcp_test_sse,
+            crate::commands::mcp_test_http,
             crate::commands::mcp_stdio_start,
             crate::commands::mcp_stdio_send,
             crate::commands::mcp_stdio_close,
-            crate::commands::save_mcp_config,
+            crate::commands::mcp_save_config,
             crate::commands::reload_mcp_client,
             crate::commands::get_mcp_config,
             crate::commands::import_mcp_config,
             crate::commands::export_mcp_config,
-            crate::commands::test_all_search_engines
+            crate::commands::web_search_test_all_engines
 
             // =============== Notes (isolated) ===============
             ,crate::commands::notes_list,
@@ -1260,15 +1260,6 @@ pub fn run() {
             ,crate::chat_v2::handlers::workspace_handlers::workspace_manual_wake
             ,crate::chat_v2::handlers::workspace_handlers::workspace_cancel_sleep
             ,crate::chat_v2::handlers::workspace_handlers::workspace_restore_executions
-            // ⚠️ DEPRECATED 资源库命令 — 前端已迁移到 VFS (vfs_* 命令)，零引用。
-            // 保留注册以兼容旧版前端，计划在下一次大版本中移除。参见 P1-#9。
-            ,crate::chat_v2::handlers::resource_handlers::resource_create_or_reuse
-            ,crate::chat_v2::handlers::resource_handlers::resource_get
-            ,crate::chat_v2::handlers::resource_handlers::resource_get_latest
-            ,crate::chat_v2::handlers::resource_handlers::resource_exists
-            ,crate::chat_v2::handlers::resource_handlers::resource_increment_ref
-            ,crate::chat_v2::handlers::resource_handlers::resource_decrement_ref
-            ,crate::chat_v2::handlers::resource_handlers::resource_get_versions_by_source
             // 🆕 Skills 文件系统命令
             ,crate::chat_v2::skills::skill_list_directories
             ,crate::chat_v2::skills::skill_read_file
@@ -1363,6 +1354,12 @@ pub fn run() {
             ,crate::vfs::handlers::vfs_rag_search
             ,crate::vfs::handlers::vfs_get_lance_stats
             ,crate::vfs::handlers::vfs_optimize_lance
+            // OCR 结果存储模块 (2026-05-30)
+            ,crate::vfs::ocr_storage_handlers::ocr_store_result
+            ,crate::vfs::ocr_storage_handlers::ocr_list_results
+            ,crate::vfs::ocr_storage_handlers::ocr_delete_result
+            ,crate::vfs::ocr_storage_handlers::ocr_mark_exported
+            ,crate::vfs::ocr_storage_handlers::ocr_list_for_export
             // VFS 多模态统一管理命令（2026-01）
             ,crate::vfs::handlers::vfs_multimodal_index
             ,crate::vfs::handlers::vfs_multimodal_search
@@ -1946,7 +1943,7 @@ pub async fn load_mcp_config_from_db(
     let mut config = crate::mcp::McpConfig::default();
 
     // 读取多工具配置列表
-    if let Ok(Some(tools_json)) = database.get_setting("mcp.tools.list") {
+    if let Ok(Some(tools_json)) = database.web_search_get_setting("mcp.tools.list") {
         // 解析工具列表JSON
         if let Ok(tools_list) = serde_json::from_str::<Vec<serde_json::Value>>(&tools_json) {
             // 如果有工具列表，使用第一个工具作为主要连接（兼容现有单一客户端架构）
@@ -2153,17 +2150,17 @@ pub async fn load_mcp_config_from_db(
         }
     } else {
         // 如果没有新的工具列表，回退到旧的单一配置方式（向后兼容）
-        if let Ok(Some(transport_type)) = database.get_setting("mcp.transport.type") {
+        if let Ok(Some(transport_type)) = database.web_search_get_setting("mcp.transport.type") {
             match transport_type.as_str() {
                 "stdio" => {
                     let command = database
-                        .get_setting("mcp.transport.command")
+                        .web_search_get_setting("mcp.transport.command")
                         .ok()
                         .flatten()
                         .unwrap_or_else(|| "mcp-server".to_string());
 
                     let args_str = database
-                        .get_setting("mcp.transport.args")
+                        .web_search_get_setting("mcp.transport.args")
                         .ok()
                         .flatten()
                         .unwrap_or_default();
@@ -2175,7 +2172,7 @@ pub async fn load_mcp_config_from_db(
                     };
 
                     let framing = database
-                        .get_setting("mcp.transport.framing")
+                        .web_search_get_setting("mcp.transport.framing")
                         .ok()
                         .flatten()
                         .map(|s| match s.as_str() {
@@ -2195,7 +2192,7 @@ pub async fn load_mcp_config_from_db(
                 }
                 "websocket" => {
                     let url = database
-                        .get_setting("mcp.transport.url")
+                        .web_search_get_setting("mcp.transport.url")
                         .ok()
                         .flatten()
                         .unwrap_or_else(|| "ws://localhost:8080".to_string());
@@ -2216,18 +2213,18 @@ pub async fn load_mcp_config_from_db(
     }
 
     // 读取工具配置
-    if let Ok(Some(cache_ttl_str)) = database.get_setting("mcp.tools.cache_ttl_ms") {
+    if let Ok(Some(cache_ttl_str)) = database.web_search_get_setting("mcp.tools.cache_ttl_ms") {
         if let Ok(cache_ttl_ms) = cache_ttl_str.parse::<u64>() {
             config.tools.cache_ttl_ms = cache_ttl_ms;
         }
     }
 
-    if let Ok(Some(advertise_all_str)) = database.get_setting("mcp.tools.advertise_all_tools") {
+    if let Ok(Some(advertise_all_str)) = database.web_search_get_setting("mcp.tools.advertise_all_tools") {
         config.tools.advertise_all_tools =
             advertise_all_str.to_lowercase() != "0" && advertise_all_str.to_lowercase() != "false";
     }
 
-    if let Ok(Some(whitelist_str)) = database.get_setting("mcp.tools.whitelist") {
+    if let Ok(Some(whitelist_str)) = database.web_search_get_setting("mcp.tools.whitelist") {
         if !whitelist_str.is_empty() {
             config.tools.whitelist = whitelist_str
                 .split(',')
@@ -2236,7 +2233,7 @@ pub async fn load_mcp_config_from_db(
         }
     }
 
-    if let Ok(Some(blacklist_str)) = database.get_setting("mcp.tools.blacklist") {
+    if let Ok(Some(blacklist_str)) = database.web_search_get_setting("mcp.tools.blacklist") {
         if !blacklist_str.is_empty() {
             config.tools.blacklist = blacklist_str
                 .split(',')
@@ -2246,26 +2243,26 @@ pub async fn load_mcp_config_from_db(
     }
 
     // 读取性能配置
-    if let Ok(Some(timeout_str)) = database.get_setting("mcp.performance.timeout_ms") {
+    if let Ok(Some(timeout_str)) = database.web_search_get_setting("mcp.performance.timeout_ms") {
         if let Ok(timeout_ms) = timeout_str.parse::<u64>() {
             config.performance.timeout_ms = timeout_ms;
         }
     }
 
-    if let Ok(Some(rate_limit_str)) = database.get_setting("mcp.performance.rate_limit_per_second")
+    if let Ok(Some(rate_limit_str)) = database.web_search_get_setting("mcp.performance.rate_limit_per_second")
     {
         if let Ok(rate_limit) = rate_limit_str.parse::<usize>() {
             config.performance.rate_limit_per_second = rate_limit;
         }
     }
     // 新增：资源缓存大小
-    if let Ok(Some(cache_max_size_str)) = database.get_setting("mcp.performance.cache_max_size") {
+    if let Ok(Some(cache_max_size_str)) = database.web_search_get_setting("mcp.performance.cache_max_size") {
         if let Ok(cache_max_size) = cache_max_size_str.parse::<usize>() {
             config.performance.cache_max_size = cache_max_size;
         }
     }
     // 新增：资源缓存TTL
-    if let Ok(Some(cache_ttl_ms_str)) = database.get_setting("mcp.performance.cache_ttl_ms") {
+    if let Ok(Some(cache_ttl_ms_str)) = database.web_search_get_setting("mcp.performance.cache_ttl_ms") {
         if let Ok(cache_ttl_ms) = cache_ttl_ms_str.parse::<u64>() {
             config.performance.cache_ttl_ms = cache_ttl_ms;
         }

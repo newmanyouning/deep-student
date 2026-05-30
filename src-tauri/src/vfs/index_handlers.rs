@@ -4,6 +4,7 @@
 //!
 //! ★ 2026-01 统一架构：所有索引操作通过 VfsFullIndexingService 执行
 
+use crate::vfs::error::{VfsError, VfsResult};
 use crate::llm_manager::LLMManager;
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::index_service::{IndexStatusSummary, UnitIndexStatus, VfsIndexService};
@@ -17,9 +18,9 @@ use tauri::State;
 #[tauri::command]
 pub async fn vfs_unified_index_status(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<IndexStatusSummary, String> {
+) -> VfsResult<IndexStatusSummary> {
     let service = VfsIndexService::new(vfs_db.inner().clone());
-    service.get_status_summary().map_err(|e| e.to_string())
+    service.get_status_summary()
 }
 
 /// 获取资源的 Units 列表
@@ -27,11 +28,9 @@ pub async fn vfs_unified_index_status(
 pub async fn vfs_get_resource_units(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     resource_id: String,
-) -> Result<Vec<UnitIndexStatus>, String> {
+) -> VfsResult<Vec<UnitIndexStatus>> {
     let service = VfsIndexService::new(vfs_db.inner().clone());
-    service
-        .get_resource_units(&resource_id)
-        .map_err(|e| e.to_string())
+    service.get_resource_units(&resource_id)
 }
 
 /// 重新索引 Unit
@@ -40,11 +39,9 @@ pub async fn vfs_reindex_unit(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     unit_id: String,
     mode: String, // "text" | "mm" | "both"
-) -> Result<bool, String> {
+) -> VfsResult<bool> {
     let service = VfsIndexService::new(vfs_db.inner().clone());
-    service
-        .reset_unit_index(&unit_id, &mode)
-        .map_err(|e| e.to_string())?;
+    service.reset_unit_index(&unit_id, &mode)?;
     Ok(true)
 }
 
@@ -58,7 +55,7 @@ pub async fn vfs_unified_batch_index(
     lance_store: State<'_, Arc<VfsLanceStore>>,
     mode: String, // "text" | "mm" | "both"
     batch_size: Option<i32>,
-) -> Result<BatchIndexResult, String> {
+) -> VfsResult<BatchIndexResult> {
     let raw_limit = batch_size.unwrap_or(10);
     let limit = raw_limit.clamp(1, 100) as u32;
 
@@ -70,9 +67,9 @@ pub async fn vfs_unified_batch_index(
     );
 
     if mode == "mm" {
-        return Err(
+        return Err(VfsError::Internal(
             "vfs_unified_batch_index: multimodal batch indexing is not supported yet".to_string(),
-        );
+        ));
     }
     if mode == "both" {
         log::warn!(
@@ -85,20 +82,17 @@ pub async fn vfs_unified_batch_index(
         // 获取索引配置
         let indexing_service = VfsIndexingService::new(Arc::clone(&vfs_db));
         let _config = indexing_service
-            .get_indexing_config()
-            .map_err(|e| e.to_string())?;
+            .get_indexing_config()?;
 
         let full_indexing_service = VfsFullIndexingService::new(
             Arc::clone(&vfs_db),
             Arc::clone(&llm_manager),
             Arc::clone(lance_store.inner()),
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
         let (success, fail) = full_indexing_service
             .process_pending_batch(limit)
-            .await
-            .map_err(|e| e.to_string())?;
+            .await?;
 
         log::info!(
             "[VFS::index_handlers] vfs_unified_batch_index completed: success={}, fail={}",
@@ -159,7 +153,7 @@ pub async fn vfs_sync_resource_units(
     page_count: Option<i32>,
     extracted_text: Option<String>,
     preview_json: Option<String>,
-) -> Result<Vec<UnitIndexStatus>, String> {
+) -> VfsResult<Vec<UnitIndexStatus>> {
     let service = VfsIndexService::new(vfs_db.inner().clone());
 
     let input = UnitBuildInput {
@@ -174,9 +168,7 @@ pub async fn vfs_sync_resource_units(
         preview_json,
     };
 
-    let units = service
-        .sync_resource_units(input)
-        .map_err(|e| e.to_string())?;
+    let units = service.sync_resource_units(input)?;
     Ok(units.into_iter().map(UnitIndexStatus::from).collect())
 }
 
@@ -189,7 +181,7 @@ pub async fn vfs_delete_resource_index(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     resource_id: String,
-) -> Result<DeleteIndexResult, String> {
+) -> VfsResult<DeleteIndexResult> {
     log::info!(
         "[VFS::index_handlers] vfs_delete_resource_index: resource_id={}",
         resource_id
@@ -273,9 +265,9 @@ pub async fn vfs_delete_resource_index(
 #[tauri::command]
 pub async fn vfs_list_embedding_dims(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<EmbeddingDimInfo>, String> {
+) -> VfsResult<Vec<EmbeddingDimInfo>> {
     let service = VfsIndexService::new(vfs_db.inner().clone());
-    let dims = service.list_dimensions().map_err(|e| e.to_string())?;
+    let dims = service.list_dimensions()?;
     Ok(dims
         .into_iter()
         .map(|d| EmbeddingDimInfo {

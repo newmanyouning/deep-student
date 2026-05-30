@@ -93,7 +93,7 @@ export const EngineSettingsSection: React.FC<{
     const loadData = async () => {
       try {
         if (!invoke) return;
-        const res = await invoke('get_provider_strategies_config') as { provider_strategies?: ProviderStrategiesMap } | null;
+        const res = await invoke('web_search_get_provider_strategies_config') as { provider_strategies?: ProviderStrategiesMap } | null;
         setProviderStrategies(res?.provider_strategies || null);
       } catch {
         setProviderStrategies(null);
@@ -120,7 +120,7 @@ export const EngineSettingsSection: React.FC<{
     if (!invoke) return;
     try {
       setEngineTesting(id);
-      const res = await invoke('test_search_engine', { engine: id }) as { ok?: boolean; message?: string; response_time?: number } | null;
+      const res = await invoke('web_search_test_engine', { engine: id }) as { ok?: boolean; message?: string; response_time?: number } | null;
       const ok = !!res?.ok;
       const msg = ok ? t('status.test_success', { ns: 'settings' }) : String(res?.message || '');
       setEngineResults(prev => ({ ...prev, [id]: { ok, msg, ms: res?.response_time } }));
@@ -170,7 +170,7 @@ export const EngineSettingsSection: React.FC<{
     if (!invoke || !providerStrategies) return;
     try {
       setProviderSaving(true);
-      await invoke('save_provider_strategies_config', { strategies: providerStrategies });
+      await invoke('web_search_save_provider_strategies_config', { strategies: providerStrategies });
       showGlobalNotification('success', t('settings:advanced_search.messages.strategies_saved'));
     } catch (error: unknown) {
       showGlobalNotification('error', getErrorMessage(error));

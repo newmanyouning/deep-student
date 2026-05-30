@@ -68,7 +68,7 @@ impl Default for BackupConfig {
 impl BackupConfig {
     /// 从数据库加载备份配置
     pub fn load(database: &Database) -> Result<Self> {
-        match database.get_setting(BACKUP_CONFIG_KEY)? {
+        match database.web_search_get_setting(BACKUP_CONFIG_KEY)? {
             Some(json_str) => {
                 let config: BackupConfig = serde_json::from_str(&json_str)
                     .map_err(|e| AppError::internal(format!("解析备份配置失败: {}", e)))?;
@@ -82,7 +82,7 @@ impl BackupConfig {
     pub fn save(&self, database: &Database) -> Result<()> {
         let json_str = serde_json::to_string(self)
             .map_err(|e| AppError::internal(format!("序列化备份配置失败: {}", e)))?;
-        database.save_setting(BACKUP_CONFIG_KEY, &json_str)?;
+        database.web_search_save_setting(BACKUP_CONFIG_KEY, &json_str)?;
         Ok(())
     }
 
@@ -385,7 +385,7 @@ pub(crate) fn cleanup_old_backups(backups_dir: &PathBuf, max_count: u32) -> Resu
 }
 /// 获取上次自动备份时间
 fn get_last_auto_backup_time(database: &Database) -> Result<Option<DateTime<Utc>>> {
-    match database.get_setting(LAST_AUTO_BACKUP_KEY)? {
+    match database.web_search_get_setting(LAST_AUTO_BACKUP_KEY)? {
         Some(time_str) => match DateTime::parse_from_rfc3339(&time_str) {
             Ok(dt) => Ok(Some(dt.with_timezone(&Utc))),
             Err(e) => {
@@ -399,7 +399,7 @@ fn get_last_auto_backup_time(database: &Database) -> Result<Option<DateTime<Utc>
 
 /// 保存上次自动备份时间
 fn save_last_auto_backup_time(database: &Database, time: DateTime<Utc>) -> Result<()> {
-    database.save_setting(LAST_AUTO_BACKUP_KEY, &time.to_rfc3339())?;
+    database.web_search_save_setting(LAST_AUTO_BACKUP_KEY, &time.to_rfc3339())?;
     Ok(())
 }
 

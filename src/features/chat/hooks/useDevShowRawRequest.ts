@@ -47,7 +47,7 @@ export function useDevShowRawRequest(): boolean {
 
     const loadSetting = async () => {
       try {
-        const v = await invoke<string>('get_setting', { key: 'dev.show_raw_request' });
+        const v = await invoke<string>('web_search_get_setting', { key: 'dev.show_raw_request' });
         const value = String(v ?? '').trim().toLowerCase();
         setShowRawRequest(value === 'true' || value === '1');
       } catch {
@@ -99,7 +99,7 @@ function _initFilterConfig() {
   if (_filterConfigLoaded || !isTauri) return;
   _filterConfigLoaded = true;
 
-  invoke<string>('get_setting', { key: 'debug.filter_config' })
+  invoke<string>('web_search_get_setting', { key: 'debug.filter_config' })
     .then(v => {
       const raw = String(v ?? '').trim();
       if (!raw) return;
@@ -118,7 +118,7 @@ function _initFilterConfig() {
     .catch(() => { /* keep default */ });
 
   // 兼容旧版 key
-  invoke<string>('get_setting', { key: 'debug.filter_level' })
+  invoke<string>('web_search_get_setting', { key: 'debug.filter_level' })
     .then(v => {
       const val = String(v ?? '').trim().toLowerCase();
       if (_filterConfig.preset === 'standard' && (val === 'full' || val === 'compact')) {

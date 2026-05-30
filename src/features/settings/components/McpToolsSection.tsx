@@ -1654,7 +1654,7 @@ function ToolPermissionsSection({ toolsByServer }: {
   const fetchConfig = useCallback(async () => {
     setIsLoading(true);
     try {
-      const results = await invoke<[string, string, string][]>('get_settings_by_prefix', {
+      const results = await invoke<[string, string, string][]>('web_search_web_search_get_settings_by_prefix', {
         prefix: 'tool_approval.',
       });
 
@@ -1697,7 +1697,7 @@ function ToolPermissionsSection({ toolsByServer }: {
   const handleToggleGlobalBypass = useCallback(async (checked: boolean) => {
     const newVal = checked;
     try {
-      await invoke('save_setting', {
+      await invoke('web_search_save_setting', {
         key: 'tool_approval.global_bypass',
         value: newVal ? 'true' : 'false',
       });
@@ -1718,7 +1718,7 @@ function ToolPermissionsSection({ toolsByServer }: {
   const handleSetOverride = useCallback(async (toolName: string, level: SensitivityLevel) => {
     const key = `tool_approval.override.${toolName}`;
     try {
-      await invoke('save_setting', { key, value: level });
+      await invoke('web_search_save_setting', { key, value: level });
       setToolOverrides(prev => {
         const existing = prev.find(o => o.toolName === toolName);
         if (existing) {
@@ -1736,7 +1736,7 @@ function ToolPermissionsSection({ toolsByServer }: {
   const handleRemoveOverride = useCallback(async (toolName: string) => {
     const key = `tool_approval.override.${toolName}`;
     try {
-      await invoke('delete_setting', { key });
+      await invoke('web_search_delete_setting', { key });
       setToolOverrides(prev => prev.filter(o => o.toolName !== toolName));
     } catch (err) {
       console.error('[ToolPermissions] Remove override failed:', err);
@@ -1748,7 +1748,7 @@ function ToolPermissionsSection({ toolsByServer }: {
     if (!window.confirm(t('settings:tool_permissions.clear_history_confirm'))) return;
     try {
       // 🔧 R2-H2 修复：调用统一命令，同时清内存 + DB。
-      // 旧实现 `delete_settings_by_prefix` 只清 DB，ApprovalManager 内存 HashMap
+      // 旧实现 `web_search_web_search_delete_settings_by_prefix` 只清 DB，ApprovalManager 内存 HashMap
       // 还留着，未重启进程期间前面的批准继续自动通过，违背"清除"承诺。
       const result = await invoke<number>('chat_v2_clear_approval_history');
       setHistoryCount(0);

@@ -374,7 +374,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
 
       // 先持久化
       if (invoke) {
-        await invoke('save_setting', { key: 'mcp.tools.list', value: JSON.stringify(newList) });
+        await invoke('web_search_save_setting', { key: 'mcp.tools.list', value: JSON.stringify(newList) });
       }
       // 再更新状态
       setConfig(prev => ({ ...prev, mcpTools: newList }));
@@ -471,7 +471,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
     const next = (config.mcpTools || []).filter((tool: McpToolConfig) => tool.id !== serverId);
     try {
       if (invoke) {
-        await invoke('save_setting', { key: 'mcp.tools.list', value: JSON.stringify(next) });
+        await invoke('web_search_save_setting', { key: 'mcp.tools.list', value: JSON.stringify(next) });
       }
       setConfig(prev => ({ ...prev, mcpTools: next }));
       try {
@@ -524,7 +524,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
 
       currentList[idx] = updated;
       if (invoke) {
-        await invoke('save_setting', { key: 'mcp.tools.list', value: JSON.stringify(currentList) });
+        await invoke('web_search_save_setting', { key: 'mcp.tools.list', value: JSON.stringify(currentList) });
       }
       setConfig(prev => ({ ...prev, mcpTools: currentList }));
       try {
@@ -830,7 +830,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
         }
         try {
           if (invoke) {
-            await invoke('save_setting', { key: 'mcp.tools.list', value: JSON.stringify(nextList) });
+            await invoke('web_search_save_setting', { key: 'mcp.tools.list', value: JSON.stringify(nextList) });
           }
           setConfig(prev => ({ ...prev, mcpTools: nextList }));
         } catch (error) {
@@ -1207,7 +1207,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
         }
         try {
           if (invoke) {
-            await invoke('save_setting', { key: 'mcp.tools.list', value: JSON.stringify(nextList) });
+            await invoke('web_search_save_setting', { key: 'mcp.tools.list', value: JSON.stringify(nextList) });
           }
           setConfig(prev => ({ ...prev, mcpTools: nextList }));
         } catch (e) {
@@ -1453,13 +1453,13 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
       try {
         if (invoke) {
           await Promise.all([
-            invoke('save_setting', { key: 'mcp.tools.advertise_all_tools', value: mcpPolicyModal.advertiseAll.toString() }),
-            invoke('save_setting', { key: 'mcp.tools.whitelist', value: mcpPolicyModal.whitelist }),
-            invoke('save_setting', { key: 'mcp.tools.blacklist', value: mcpPolicyModal.blacklist }),
-            invoke('save_setting', { key: 'mcp.performance.timeout_ms', value: String(mcpPolicyModal.timeoutMs) }),
-            invoke('save_setting', { key: 'mcp.performance.rate_limit_per_second', value: String(mcpPolicyModal.rateLimit) }),
-            invoke('save_setting', { key: 'mcp.performance.cache_max_size', value: String(mcpPolicyModal.cacheMax) }),
-            invoke('save_setting', { key: 'mcp.performance.cache_ttl_ms', value: String(mcpPolicyModal.cacheTtlMs) }),
+            invoke('web_search_save_setting', { key: 'mcp.tools.advertise_all_tools', value: mcpPolicyModal.advertiseAll.toString() }),
+            invoke('web_search_save_setting', { key: 'mcp.tools.whitelist', value: mcpPolicyModal.whitelist }),
+            invoke('web_search_save_setting', { key: 'mcp.tools.blacklist', value: mcpPolicyModal.blacklist }),
+            invoke('web_search_save_setting', { key: 'mcp.performance.timeout_ms', value: String(mcpPolicyModal.timeoutMs) }),
+            invoke('web_search_save_setting', { key: 'mcp.performance.rate_limit_per_second', value: String(mcpPolicyModal.rateLimit) }),
+            invoke('web_search_save_setting', { key: 'mcp.performance.cache_max_size', value: String(mcpPolicyModal.cacheMax) }),
+            invoke('web_search_save_setting', { key: 'mcp.performance.cache_ttl_ms', value: String(mcpPolicyModal.cacheTtlMs) }),
           ]);
         }
       } catch (err) {
@@ -1762,7 +1762,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
         const fr = await testMcpHttpFrontend(endpoint, String(tool?.apiKey || ''), headerCandidates);
         res = normalizeFrontendResult(fr);
       } else if (transport === 'stdio') {
-        // stdio 走后端 test_mcp_connection，带细粒度进度
+        // stdio 走后端 mcp_test_connection，带细粒度进度
         failureLabel = t('settings:test_labels.connectivity_test_failed');
         const rawArgs = tool?.args;
         const argsArr: string[] = Array.isArray(rawArgs)
@@ -1776,7 +1776,7 @@ export function useMcpEditorSection(deps: UseMcpEditorSectionDeps) {
             setMcpTestStep(event.payload.step);
           });
           setMcpTestStep('spawn_process');
-          const backendRes = await tauriInvoke<{ success?: boolean; tools_count?: number; tools_preview?: Array<{ name: string; description?: string }>; error?: string }>('test_mcp_connection', {
+          const backendRes = await tauriInvoke<{ success?: boolean; tools_count?: number; tools_preview?: Array<{ name: string; description?: string }>; error?: string }>('mcp_test_connection', {
             command: String(tool?.command || ''),
             args: argsArr,
             env: tool?.env || null,

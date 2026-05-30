@@ -631,7 +631,7 @@ impl LanceVectorStore {
         let default_root = default_lance_root_from_db_path(self.database.db_path())?;
         let setting_value = self
             .database
-            .get_setting("rag.lance.path")
+            .web_search_get_setting("rag.lance.path")
             .ok()
             .flatten()
             .map(|raw| raw.trim().to_string())
@@ -645,7 +645,7 @@ impl LanceVectorStore {
                         // 归一化保存，避免下次读取出现多余空白
                         let normalized = candidate.to_string_lossy().to_string();
                         if normalized != raw {
-                            self.database.save_setting("rag.lance.path", &normalized)?;
+                            self.database.web_search_save_setting("rag.lance.path", &normalized)?;
                         }
                         return Ok(candidate);
                     }
@@ -665,7 +665,7 @@ impl LanceVectorStore {
                 default_root.to_string_lossy()
             );
             self.database
-                .save_setting("rag.lance.path", &default_root.to_string_lossy())?;
+                .web_search_save_setting("rag.lance.path", &default_root.to_string_lossy())?;
         }
 
         Ok(default_root)
@@ -689,7 +689,7 @@ impl LanceVectorStore {
         let key = Self::optimization_scope_key(scope);
         let last = self
             .database
-            .get_setting(&key)
+            .web_search_get_setting(&key)
             .ok()
             .flatten()
             .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
@@ -711,7 +711,7 @@ impl LanceVectorStore {
     fn record_optimization_timestamp(&self, scope: &str) {
         let key = Self::optimization_scope_key(scope);
         let now = chrono::Utc::now().to_rfc3339();
-        if let Err(err) = self.database.save_setting(&key, &now) {
+        if let Err(err) = self.database.web_search_save_setting(&key, &now) {
             warn!("⚠️ [Lance优化] 记录 {} 上次优化时间失败: {}", scope, err);
         }
     }
@@ -722,7 +722,7 @@ impl LanceVectorStore {
             return flag;
         }
         self.database
-            .get_setting("lance.optimize.delete_unverified")
+            .web_search_get_setting("lance.optimize.delete_unverified")
             .ok()
             .flatten()
             .and_then(|raw| parse_bool_flag(&raw))
@@ -912,7 +912,7 @@ impl LanceVectorStore {
     #[cfg(feature = "lance")]
     fn should_rebuild_fts(&self, table_name: &str, expected: &str) -> bool {
         self.database
-            .get_setting(Self::fts_version_key(table_name).as_str())
+            .web_search_get_setting(Self::fts_version_key(table_name).as_str())
             .ok()
             .flatten()
             .map(|v| v != expected)
@@ -923,7 +923,7 @@ impl LanceVectorStore {
     fn record_fts_version(&self, table_name: &str, version: &str) {
         if let Err(err) = self
             .database
-            .save_setting(Self::fts_version_key(table_name).as_str(), version)
+            .web_search_save_setting(Self::fts_version_key(table_name).as_str(), version)
         {
             warn!(
                 "⚠️ [LanceIndex] 保存 FTS 版本信息失败 {} -> {}: {}",
@@ -936,7 +936,7 @@ impl LanceVectorStore {
     fn build_fts_index_builder(&self) -> FtsIndexBuilder {
         let tokenizer = self
             .database
-            .get_setting("rag.hybrid.fts.tokenizer")
+            .web_search_get_setting("rag.hybrid.fts.tokenizer")
             .ok()
             .flatten()
             .filter(|s| !s.trim().is_empty())
@@ -948,7 +948,7 @@ impl LanceVectorStore {
         if tokenizer == "ngram" {
             let min_len = self
                 .database
-                .get_setting("rag.hybrid.fts.ngram_min")
+                .web_search_get_setting("rag.hybrid.fts.ngram_min")
                 .ok()
                 .flatten()
                 .and_then(|s| s.parse::<u32>().ok())
@@ -956,7 +956,7 @@ impl LanceVectorStore {
                 .unwrap_or(2);
             let max_len = self
                 .database
-                .get_setting("rag.hybrid.fts.ngram_max")
+                .web_search_get_setting("rag.hybrid.fts.ngram_max")
                 .ok()
                 .flatten()
                 .and_then(|s| s.parse::<u32>().ok())
@@ -964,7 +964,7 @@ impl LanceVectorStore {
                 .unwrap_or_else(|| std::cmp::max(min_len, 4));
             let prefix_only = self
                 .database
-                .get_setting("rag.hybrid.fts.ngram_prefix_only")
+                .web_search_get_setting("rag.hybrid.fts.ngram_prefix_only")
                 .ok()
                 .flatten()
                 .map(|s| s == "1" || s.eq_ignore_ascii_case("true"))
@@ -987,7 +987,7 @@ impl LanceVectorStore {
 
         if let Some(language) = self
             .database
-            .get_setting("rag.hybrid.fts.language")
+            .web_search_get_setting("rag.hybrid.fts.language")
             .ok()
             .flatten()
             .filter(|s| !s.trim().is_empty())
@@ -2478,7 +2478,7 @@ impl LanceVectorStore {
         let mut per_doc_cap: usize = 2;
         let mut fetch_mul: usize = 3;
 
-        let get = |key: &str| self.database.get_setting(key).ok().flatten();
+        let get = |key: &str| self.database.web_search_get_setting(key).ok().flatten();
         if let Some(v) = get("rag.hybrid.rrf.k").and_then(|s| s.parse::<f32>().ok()) {
             if v > 0.0 {
                 rrf_k = v;
@@ -2880,7 +2880,7 @@ impl VectorStore for LanceVectorStore {
         {
             let fts_prefilter_enabled = self
                 .database
-                .get_setting("rag.hybrid.fts_prefilter.enabled")
+                .web_search_get_setting("rag.hybrid.fts_prefilter.enabled")
                 .ok()
                 .flatten()
                 .map(|v| v != "0")
@@ -3966,7 +3966,7 @@ impl MigrationCoordinator {
             );
             let _ = self
                 .database
-                .save_setting("rag.lance.migration.completed", "0");
+                .web_search_save_setting("rag.lance.migration.completed", "0");
             return Ok(());
         }
 
@@ -3977,7 +3977,7 @@ impl MigrationCoordinator {
             );
             let _ = self
                 .database
-                .save_setting("rag.lance.migration.completed", "0");
+                .web_search_save_setting("rag.lance.migration.completed", "0");
             // self.schedule_chat_backfill(chat_expected.saturating_sub(chat_actual));
             return Ok(());
         }
@@ -3987,7 +3987,7 @@ impl MigrationCoordinator {
 
         let _ = self
             .database
-            .save_setting("rag.lance.migration.completed", "1");
+            .web_search_save_setting("rag.lance.migration.completed", "1");
         Ok(())
     }
 

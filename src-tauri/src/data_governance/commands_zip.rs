@@ -25,6 +25,7 @@ use super::commands_backup::{
     get_backup_dir, sanitize_path_for_user, validate_backup_id, validate_user_path,
     BackupJobStartResponse,
 };
+use super::error::{DataGovernanceError, DataGovernanceResult};
 
 /// 将本地临时 ZIP 文件复制到虚拟 URI 目标（Android content:// 等），完成后清理临时文件。
 fn copy_temp_zip_to_virtual_uri(window: &tauri::Window, local_path: &str, virtual_uri: &str) {
@@ -81,7 +82,7 @@ pub async fn data_governance_backup_and_export_zip(
     tiers: Option<Vec<String>>,
     include_assets: Option<bool>,
     asset_types: Option<Vec<String>>,
-) -> Result<BackupJobStartResponse, String> {
+) -> DataGovernanceResult<BackupJobStartResponse> {
     let app_data_dir = get_app_data_dir(&app)?;
 
     // Android content:// 等虚拟 URI：先导出到本地临时文件，完成后再复制到目标 URI
@@ -89,7 +90,7 @@ pub async fn data_governance_backup_and_export_zip(
         if crate::unified_file_manager::is_virtual_uri(&output_path) {
             let temp_dir = app_data_dir.join("temp_zip_export");
             std::fs::create_dir_all(&temp_dir)
-                .map_err(|e| format!("创建 ZIP 临时导出目录失败: {}", e))?;
+                .map_err(|e| DataGovernanceError::Io(format!("创建 ZIP 临时导出目录失败: {}", e)))?;
             let temp_path = temp_dir.join(format!("backup_export_{}.zip", uuid::Uuid::new_v4()));
             (
                 temp_path.to_string_lossy().to_string(),
@@ -264,7 +265,7 @@ async fn execute_backup_and_export_zip_with_progress(
 
     let include_assets = include_assets.unwrap_or(!use_tiered);
 
-    let backup_result: Result<String, String> = if use_tiered {
+    let backup_result: DataGovernanceResult<String> = if use_tiered {
         let parsed_tiers: Vec<BackupTier> = tiers
             .unwrap_or_else(|| vec!["core".to_string()])
             .into_iter()
@@ -312,7 +313,7 @@ async fn execute_backup_and_export_zip_with_progress(
         manager
             .backup_tiered(&selection)
             .map(|result| result.manifest.backup_id)
-            .map_err(|e| format!("分层备份失败: {}", e))
+            .map_err(|e| DataGovernanceError::Backup(format!("分层备份失败: {}", e)))
     } else if include_assets {
         let asset_config = if let Some(types) = asset_types.clone() {
             let parsed_types: Vec<AssetType> = types
@@ -334,12 +335,12 @@ async fn execute_backup_and_export_zip_with_progress(
         manager
             .backup_with_assets(Some(asset_config))
             .map(|manifest| manifest.backup_id)
-            .map_err(|e| format!("完整备份失败: {}", e))
+            .map_err(|e| DataGovernanceError::Backup(format!("完整备份失败: {}", e)))
     } else {
         manager
             .backup_full()
             .map(|manifest| manifest.backup_id)
-            .map_err(|e| format!("备份失败: {}", e))
+            .map_err(|e| DataGovernanceError::Backup(format!("备份失败: {}", e)))
     };
 
     let backup_id = match backup_result {
@@ -462,7 +463,7 @@ pub async fn data_governance_export_zip(
     output_path: Option<String>,
     compression_level: Option<u32>,
     include_checksums: Option<bool>,
-) -> Result<BackupJobStartResponse, String> {
+) -> DataGovernanceResult<BackupJobStartResponse> {
     let validated_backup_id = validate_backup_id(&backup_id)?;
 
     // Android content:// 等虚拟 URI：先导出到本地临时文件，完成后再复制到目标 URI
@@ -471,7 +472,7 @@ pub async fn data_governance_export_zip(
             let app_data_dir = get_app_data_dir(&app)?;
             let temp_dir = app_data_dir.join("temp_zip_export");
             std::fs::create_dir_all(&temp_dir)
-                .map_err(|e| format!("创建 ZIP 临时导出目录失败: {}", e))?;
+                .map_err(|e| DataGovernanceError::Io(format!("创建 ZIP 临时导出目录失败: {}", e)))?;
             let temp_path = temp_dir.join(format!("zip_export_{}.zip", uuid::Uuid::new_v4()));
             (
                 Some(temp_path.to_string_lossy().to_string()),
@@ -1139,7 +1140,7 @@ pub async fn data_governance_import_zip(
     backup_job_state: State<'_, BackupJobManagerState>,
     zip_path: String,
     backup_id: Option<String>,
-) -> Result<BackupJobStartResponse, String> {
+) -> DataGovernanceResult<BackupJobStartResponse> {
     let validated_backup_id = match backup_id {
         Some(id) => Some(validate_backup_id(&id)?),
         None => None,
@@ -1157,14 +1158,14 @@ pub async fn data_governance_import_zip(
                     (path.clone(), cleanup.or(Some(path)))
                 }
                 Err(e) => {
-                    return Err(format!("无法读取 ZIP 文件: {}", e));
+                    return Err(DataGovernanceError::Internal(format!("无法读取 ZIP 文件: {}", e)));
                 }
             }
         } else {
             let path = PathBuf::from(&zip_path);
             validate_user_path(&path, &app_data_dir)?;
             if !path.exists() {
-                return Err(format!(
+                return Err(DataGovernanceError::NotFound(format!(
                     "ZIP 文件不存在: {}。请确认文件路径正确，或重新选择文件",
                     sanitize_path_for_user(&path)
                 ));

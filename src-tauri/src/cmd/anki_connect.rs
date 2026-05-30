@@ -96,7 +96,7 @@ pub(crate) fn build_safe_output_path(
 
 /// 检查AnkiConnect连接状态
 #[tauri::command]
-pub async fn check_anki_connect_status() -> Result<bool> {
+pub async fn anki_connect_check_status() -> Result<bool> {
     match crate::anki_connect_service::check_anki_connect_availability().await {
         Ok(available) => Ok(available),
         Err(e) => Err(AppError::validation(e)),
@@ -105,7 +105,7 @@ pub async fn check_anki_connect_status() -> Result<bool> {
 
 /// 获取所有牌组名称
 #[tauri::command]
-pub async fn get_anki_deck_names() -> Result<Vec<String>> {
+pub async fn anki_connect_get_deck_names() -> Result<Vec<String>> {
     match crate::anki_connect_service::get_deck_names().await {
         Ok(deck_names) => Ok(deck_names),
         Err(e) => Err(AppError::validation(e)),
@@ -115,12 +115,12 @@ pub async fn get_anki_deck_names() -> Result<Vec<String>> {
 /// 🧩 兼容旧前端：保留 anki_get_deck_names 别名
 #[tauri::command]
 pub async fn anki_get_deck_names() -> Result<Vec<String>> {
-    get_anki_deck_names().await
+    anki_connect_get_deck_names().await
 }
 
 /// 获取所有笔记类型名称
 #[tauri::command]
-pub async fn get_anki_model_names() -> Result<Vec<String>> {
+pub async fn anki_connect_get_model_names() -> Result<Vec<String>> {
     match crate::anki_connect_service::get_model_names().await {
         Ok(model_names) => Ok(model_names),
         Err(e) => Err(AppError::validation(e)),
@@ -257,7 +257,7 @@ pub async fn add_cards_to_anki_connect(
 
 /// 导入 APKG 到本机 Anki（通过 AnkiConnect）
 #[tauri::command]
-pub async fn import_anki_package(path: String) -> Result<bool> {
+pub async fn anki_connect_import_package(path: String) -> Result<bool> {
     match crate::anki_connect_service::import_apkg(&path).await {
         Ok(ok) => Ok(ok),
         Err(e) => Err(AppError::validation(e)),
@@ -297,7 +297,7 @@ pub struct SaveAnkiCardsResponse {
 }
 
 #[tauri::command]
-pub async fn save_anki_cards(
+pub async fn anki_connect_save_cards(
     request: SaveAnkiCardsRequest,
     state: State<'_, AppState>,
 ) -> Result<SaveAnkiCardsResponse> {
@@ -429,7 +429,7 @@ pub async fn save_anki_cards(
                 Ok(ids) => ids,
                 Err(e) if e.to_string().contains("no_cards_saved_in_atomic_insert") => {
                     for card in &cards_to_insert {
-                        database.update_anki_card(card).map_err(|update_err| {
+                        database.anki_update_card(card).map_err(|update_err| {
                             AppError::database(format!("更新已有卡片失败: {}", update_err))
                         })?;
                     }
@@ -461,7 +461,7 @@ pub async fn save_anki_cards(
     .await
     .map_err(|e| {
         AppError::internal(format!(
-            "save_anki_cards task join error: {}",
+            "anki_connect_save_cards task join error: {}",
             e.to_string()
         ))
     })??;
@@ -471,17 +471,17 @@ pub async fn save_anki_cards(
 
 /// 导出选定的卡片为.apkg文件
 #[tauri::command]
-pub async fn export_cards_as_apkg(
+pub async fn anki_connect_export_apkg(
     selected_cards: Vec<crate::models::AnkiCard>,
     deck_name: String,
     note_type: String,
     state: State<'_, AppState>,
 ) -> Result<String> {
-    export_cards_as_apkg_with_template(selected_cards, deck_name, note_type, None, state).await
+    anki_connect_export_apkg_with_template(selected_cards, deck_name, note_type, None, state).await
 }
 /// 导出选定的卡片为.apkg文件（支持模板）
 #[tauri::command]
-pub async fn export_cards_as_apkg_with_template(
+pub async fn anki_connect_export_apkg_with_template(
     selected_cards: Vec<crate::models::AnkiCard>,
     deck_name: String,
     mut note_type: String,
@@ -589,7 +589,7 @@ pub async fn export_cards_as_apkg_with_template(
 /// 多模板 APKG 导出（前端导出按钮直接调用）
 /// 每种 template_id 创建独立的 Anki model，每张卡片用自己的模板渲染
 #[tauri::command]
-pub async fn export_multi_template_apkg(
+pub async fn anki_connect_export_multi_apkg(
     cards: Vec<crate::models::AnkiCard>,
     deck_name: String,
     output_path: Option<String>,
@@ -669,7 +669,7 @@ pub async fn export_multi_template_apkg(
         output_path.set_extension("apkg");
     }
 
-    if let Err(e) = crate::apkg_exporter_service::export_multi_template_apkg(
+    if let Err(e) = crate::apkg_exporter_service::anki_connect_export_multi_apkg(
         cards.into_iter().filter(|c| !c.is_error_card).collect(),
         deck_name,
         output_path.clone(),
@@ -714,7 +714,7 @@ pub async fn export_multi_template_apkg(
     }
 }
 
-// 🔧 P0-30 修复：添加 batch_export_cards 和 save_json_file 命令
+// 🔧 P0-30 修复：添加 batch_export_cards 和 anki_connect_save_json_file 命令
 // =================== Batch Export Commands ===================
 
 /// 批量导出卡片请求参数
@@ -789,7 +789,7 @@ pub async fn batch_export_cards(
     match format.as_str() {
         "apkg" => {
             // 调用现有的 APKG 导出逻辑
-            export_cards_as_apkg_with_template(
+            anki_connect_export_apkg_with_template(
                 anki_cards,
                 deck_name,
                 note_type,
@@ -803,7 +803,7 @@ pub async fn batch_export_cards(
             let json_content = serde_json::to_string_pretty(&anki_cards)
                 .map_err(|e| AppError::validation(format!("JSON 序列化失败: {}", e)))?;
             let filename = format!("anki_cards_{}.json", chrono::Utc::now().timestamp());
-            save_json_file(json_content, filename).await
+            anki_connect_save_json_file(json_content, filename).await
         }
         "anki-connect" => {
             // AnkiConnect 导出暂时返回成功（实际由前端处理）
@@ -867,7 +867,7 @@ mod batch_export_tests {
 
 /// 保存 JSON 文件到临时目录
 #[tauri::command]
-pub async fn save_json_file(content: String, suggested_name: String) -> Result<String> {
+pub async fn anki_connect_save_json_file(content: String, suggested_name: String) -> Result<String> {
     println!("📝 保存 JSON 文件: {}", suggested_name);
 
     let trimmed = suggested_name.trim();

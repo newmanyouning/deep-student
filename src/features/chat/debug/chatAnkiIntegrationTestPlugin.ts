@@ -649,7 +649,7 @@ async function runScenario_saveToLibrary(
 
     if (documentId) {
       try {
-        const dbCards = await invoke<unknown[]>('get_document_cards', { documentId });
+        const dbCards = await invoke<unknown[]>('anki_get_document_cards', { documentId });
         const dbCount = Array.isArray(dbCards) ? dbCards.length : 0;
         const storeCount = bd?.cards?.length ?? 0;
         checks.push(verify('DB 卡片已存在', dbCount > 0, `DB=${dbCount}, Store=${storeCount}`));

@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use crate::chat_v2::error::ChatV2Error;
+use crate::chat_v2::error::{ChatV2Error, ChatV2Result};
 use crate::commands::AppState;
 
 /// OCR 请求
@@ -43,7 +43,7 @@ pub struct OcrResponse {
 pub async fn chat_v2_perform_ocr(
     request: OcrRequest,
     state: State<'_, AppState>,
-) -> Result<OcrResponse, String> {
+) -> ChatV2Result<OcrResponse> {
     log::info!(
         "[ChatV2::OCR] Performing OCR: images_count={}",
         request.images.len()
@@ -51,7 +51,7 @@ pub async fn chat_v2_perform_ocr(
 
     // 验证请求
     if request.images.is_empty() {
-        return Err(ChatV2Error::Validation("At least one image is required".to_string()).into());
+        return Err(ChatV2Error::Validation("At least one image is required".to_string()));
     }
 
     // 获取当前 OCR 引擎适配器
@@ -66,14 +66,13 @@ pub async fn chat_v2_perform_ocr(
         for (index, base64_data) in request.images.iter().enumerate() {
             let image_bytes = parse_base64_image(base64_data).map_err(|e| {
                 ChatV2Error::Validation(format!("Failed to parse image {}: {}", index, e))
-                    .to_string()
             })?;
 
             let text = crate::ocr_adapters::system_ocr::perform_system_ocr(&image_bytes)
                 .await
                 .map_err(|e| {
                     log::error!("[ChatV2::OCR] System OCR failed for image {}: {}", index, e);
-                    ChatV2Error::Llm(format!("System OCR failed: {}", e)).to_string()
+                    ChatV2Error::Llm(format!("System OCR failed: {}", e))
                 })?;
 
             if !all_text.is_empty() && !text.is_empty() {
@@ -91,7 +90,6 @@ pub async fn chat_v2_perform_ocr(
             use base64::Engine;
             let image_bytes = parse_base64_image(base64_data).map_err(|e| {
                 ChatV2Error::Validation(format!("Failed to parse image {}: {}", index, e))
-                    .to_string()
             })?;
             let mime = infer_mime_from_data_url(base64_data);
             let normalized_base64 = base64::engine::general_purpose::STANDARD.encode(&image_bytes);
@@ -107,7 +105,7 @@ pub async fn chat_v2_perform_ocr(
             .await
             .map_err(|e| {
                 log::error!("[ChatV2::OCR] OCR failed: {}", e);
-                ChatV2Error::Llm(format!("OCR failed: {}", e)).to_string()
+                ChatV2Error::Llm(format!("OCR failed: {}", e))
             })?;
 
         ocr_raw.assistant_message.trim().to_string()
@@ -130,26 +128,20 @@ pub async fn chat_v2_perform_ocr(
     })
 }
 
-/// 解析 base64 图片数据
-///
-/// 支持两种格式：
-/// - data:image/xxx;base64,<data>
-/// - 纯 base64 字符串
-fn parse_base64_image(data: &str) -> Result<Vec<u8>, String> {
+fn parse_base64_image(data: &str) -> ChatV2Result<Vec<u8>> {
     use base64::Engine;
 
     let base64_data = if data.starts_with("data:") {
-        // 提取 data URL 中的 base64 部分
         data.split(",")
             .nth(1)
-            .ok_or_else(|| "Invalid data URL format".to_string())?
+            .ok_or_else(|| ChatV2Error::Validation("Invalid data URL format".to_string()))?
     } else {
         data
     };
 
     base64::engine::general_purpose::STANDARD
         .decode(base64_data)
-        .map_err(|e| format!("Base64 decode error: {}", e))
+        .map_err(|e| ChatV2Error::Validation(format!("Base64 decode error: {}", e)))
 }
 
 fn infer_mime_from_data_url(data: &str) -> &'static str {

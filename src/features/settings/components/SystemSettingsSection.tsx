@@ -141,7 +141,7 @@ export const SystemSettingsSection: React.FC = () => {
     let disposed = false;
     (async () => {
       try {
-        const raw = await tauriInvoke<string | null>('get_setting', { key: 'textbook.max_pages' }).catch(() => null);
+        const raw = await tauriInvoke<string | null>('web_search_get_setting', { key: 'textbook.max_pages' }).catch(() => null);
         if (disposed) return;
         const v = raw != null ? parseInt(String(raw), 10) : NaN;
         setTextbookMaxPages(Number.isFinite(v) && v > 0 ? v : 12);
@@ -155,7 +155,7 @@ export const SystemSettingsSection: React.FC = () => {
     try {
       const clamped = Math.max(1, Math.min(50, Math.floor(value)));
       setTextbookMaxPages(clamped);
-      await tauriInvoke('save_setting', { key: 'textbook.max_pages', value: String(clamped) });
+      await tauriInvoke('web_search_save_setting', { key: 'textbook.max_pages', value: String(clamped) });
       showGlobalNotification('success', t('common:config_saved'));
     } catch (e: unknown) {
       showGlobalNotification('error', t('common:messages.error.update_failed', { error: String(e) }));
@@ -181,7 +181,7 @@ export const SystemSettingsSection: React.FC = () => {
     if (autoSave && isAutoSaveEnabled) {
       const success = await saveSetting(key, value);
       if (!success) {
-        showGlobalNotification('error', t('common:system_settings.save_setting_failed', { key }));
+        showGlobalNotification('error', t('common:system_settings.web_search_save_setting_failed', { key }));
       } else if (key === 'markdownRendererMode') {
         emitMarkdownRendererModeChange(String(value));
       }
@@ -203,7 +203,7 @@ export const SystemSettingsSection: React.FC = () => {
       showGlobalNotification('success', t('common:system_settings.all_settings_saved'));
       emitMarkdownRendererModeChange(markdownRendererMode);
     } else {
-      showGlobalNotification('error', t('common:system_settings.save_settings_failed'));
+      showGlobalNotification('error', t('common:system_settings.web_search_save_settings_failed'));
     }
   };
 
@@ -467,7 +467,7 @@ const TextbookScaleSetting: React.FC = () => {
     let disposed = false;
     (async () => {
       try {
-        const raw = await tauriInvoke<string | null>('get_setting', { key: 'textbook.render_scale' }).catch(() => null);
+        const raw = await tauriInvoke<string | null>('web_search_get_setting', { key: 'textbook.render_scale' }).catch(() => null);
         if (disposed) return;
         const v = raw != null ? parseFloat(String(raw)) : NaN;
         setValue(Number.isFinite(v) ? Math.max(1.0, Math.min(3.0, v)) : 2.0);
@@ -481,7 +481,7 @@ const TextbookScaleSetting: React.FC = () => {
     const clamped = Math.max(1.0, Math.min(3.0, v));
     setValue(clamped);
     try {
-      await tauriInvoke('save_setting', { key: 'textbook.render_scale', value: String(clamped) });
+      await tauriInvoke('web_search_save_setting', { key: 'textbook.render_scale', value: String(clamped) });
       showGlobalNotification('success', t('common:config_saved'));
     } catch (e: unknown) {
       showGlobalNotification('error', t('common:messages.error.update_failed', { error: String(e) }));
@@ -512,7 +512,7 @@ const TextbookConcurrencySetting: React.FC = () => {
     let disposed = false;
     (async () => {
       try {
-        const raw = await tauriInvoke<string | null>('get_setting', { key: 'textbook.export_concurrency' }).catch(() => null);
+        const raw = await tauriInvoke<string | null>('web_search_get_setting', { key: 'textbook.export_concurrency' }).catch(() => null);
         if (disposed) return;
         const v = raw != null ? parseInt(String(raw), 10) : NaN;
         setValue(Number.isFinite(v) ? Math.max(1, Math.min(4, v)) : 2);
@@ -526,7 +526,7 @@ const TextbookConcurrencySetting: React.FC = () => {
     const clamped = Math.max(1, Math.min(4, Math.floor(v)));
     setValue(clamped);
     try {
-      await tauriInvoke('save_setting', { key: 'textbook.export_concurrency', value: String(clamped) });
+      await tauriInvoke('web_search_save_setting', { key: 'textbook.export_concurrency', value: String(clamped) });
       showGlobalNotification('success', t('common:config_saved'));
     } catch (e: unknown) {
       showGlobalNotification('error', t('common:messages.error.update_failed', { error: String(e) }));

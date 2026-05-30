@@ -61,7 +61,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
   useEffect(() => {
     (async () => {
       try {
-        const val = await tauriInvoke('get_setting', { key: SENTRY_CONSENT_KEY }) as string | null;
+        const val = await tauriInvoke('web_search_get_setting', { key: SENTRY_CONSENT_KEY }) as string | null;
         setSentryEnabled(val === 'true');
       } catch {
         setSentryEnabled(false);
@@ -73,9 +73,9 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
     (async () => {
       try {
         const [persistVal, configVal, legacyLevelVal] = await Promise.all([
-          tauriInvoke('get_setting', { key: 'debug.persist_logs' }).catch(() => 'false') as Promise<string>,
-          tauriInvoke('get_setting', { key: 'debug.filter_config' }).catch(() => '') as Promise<string>,
-          tauriInvoke('get_setting', { key: 'debug.filter_level' }).catch(() => '') as Promise<string>,
+          tauriInvoke('web_search_get_setting', { key: 'debug.persist_logs' }).catch(() => 'false') as Promise<string>,
+          tauriInvoke('web_search_get_setting', { key: 'debug.filter_config' }).catch(() => '') as Promise<string>,
+          tauriInvoke('web_search_get_setting', { key: 'debug.filter_level' }).catch(() => '') as Promise<string>,
         ]);
         setDebugPersistLogs(String(persistVal ?? '') === 'true');
         const raw = String(configVal ?? '').trim();
@@ -223,7 +223,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                       setTopbarTopMargin(String(platformDefault));
                       return;
                     }
-                    await invoke('save_setting', { key: 'topbar.top_margin', value: String(numValue) });
+                    await invoke('web_search_save_setting', { key: 'topbar.top_margin', value: String(numValue) });
                     setTopbarTopMargin(String(numValue));
                     showGlobalNotification('success', t('settings:save_success'));
                     try {
@@ -326,7 +326,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               setShowRawRequest(newValue);
               if (!invoke) return;
               try {
-                await invoke('save_setting', { key: 'dev.show_raw_request', value: String(newValue) });
+                await invoke('web_search_save_setting', { key: 'dev.show_raw_request', value: String(newValue) });
                 showGlobalNotification('success', t('settings:save_notifications.saved', '已保存'));
                 try {
                   window.dispatchEvent(new CustomEvent('systemSettingsChanged', { detail: { showRawRequest: newValue } }));
@@ -344,7 +344,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               const cfg = { ...next, preset: 'custom' as const };
               setFilterConfig(cfg);
               try {
-                await tauriInvoke('save_setting', { key: 'debug.filter_config', value: JSON.stringify(cfg) });
+                await tauriInvoke('web_search_save_setting', { key: 'debug.filter_config', value: JSON.stringify(cfg) });
                 window.dispatchEvent(new CustomEvent('systemSettingsChanged', { detail: { copyFilterConfig: cfg } }));
               } catch {
                 // noop
@@ -456,7 +456,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
               if (debugPersistLogs === null) return;
               setDebugPersistLogs(newValue);
               try {
-                await tauriInvoke('save_setting', { key: 'debug.persist_logs', value: String(newValue) });
+                await tauriInvoke('web_search_save_setting', { key: 'debug.persist_logs', value: String(newValue) });
                 showGlobalNotification('success', t('settings:save_notifications.saved', '已保存'));
               } catch (error: unknown) {
                 showGlobalNotification('error', getErrorMessage(error));
@@ -524,7 +524,7 @@ export const GeneralTab: React.FC<GeneralTabProps> = ({
                 if (sentryEnabled === null) return;
                 setSentryEnabled(newValue);
                 try {
-                  await tauriInvoke('save_setting', {
+                  await tauriInvoke('web_search_save_setting', {
                     key: SENTRY_CONSENT_KEY,
                     value: String(newValue),
                   });

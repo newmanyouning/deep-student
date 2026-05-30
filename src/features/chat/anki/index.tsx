@@ -123,7 +123,7 @@ export async function exportCardsAsApkg(
   }
 
   try {
-    // 多模板导出：直接调用后端 export_cards_as_apkg_with_template
+    // 多模板导出：直接调用后端 anki_connect_export_apkg_with_template
     // 每张卡片保留自己的 template_id，后端会按卡片分组加载对应模板
     const errorCardCount = cards.filter(card => card.is_error_card).length;
     const cardsForExport = cards
@@ -165,7 +165,7 @@ export async function exportCardsAsApkg(
     // 直接调用后端多模板导出命令
     // 后端按每张卡片的 template_id 分组，创建独立 Anki model，
     // 每个 model 有各自的字段列表、HTML/CSS card template
-    const filePath: string = await invoke('export_multi_template_apkg', {
+    const filePath: string = await invoke('anki_connect_export_multi_apkg', {
       cards: cardsForExport,
       deckName,
       outputPath: selectedPath,

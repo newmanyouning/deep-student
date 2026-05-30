@@ -407,7 +407,7 @@ impl ChatV2Pipeline {
         // 🔧 修复 #14: 统一应用数据库配置覆盖（API Keys、过滤、策略等）
         if let Some(ref db) = self.main_db {
             config.apply_db_overrides(
-                |k| db.get_setting(k).ok().flatten(),
+                |k| db.web_search_get_setting(k).ok().flatten(),
                 |k| db.get_secret(k).ok().flatten(),
             );
         }

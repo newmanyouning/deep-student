@@ -980,7 +980,7 @@ pub async fn export_cards_to_apkg_with_full_template(
 /// - deck_name: 牌组名称
 /// - output_path: 输出文件路径
 /// - template_map: template_id → CustomAnkiTemplate 的映射
-pub async fn export_multi_template_apkg(
+pub async fn anki_connect_export_multi_apkg(
     cards: Vec<AnkiCard>,
     deck_name: String,
     output_path: PathBuf,
