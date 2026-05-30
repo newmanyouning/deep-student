@@ -9,7 +9,7 @@ export async function saveSetting(key: string, value: string): Promise<void> {
       }
       return;
     }
-    await invoke<void>('web_search_save_setting', { key, value });
+    await invoke<void>('save_setting', { key, value });
   } catch (error) {
     console.error('Failed to save setting:', error);
     throw new Error(`Failed to save setting: ${error}`);
@@ -21,7 +21,7 @@ export async function getSetting(key: string): Promise<string | null> {
     if (!isTauriRuntime) {
       return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
     }
-    const response = await invoke<string | null>('web_search_get_setting', { key });
+    const response = await invoke<string | null>('get_setting', { key });
     return response;
   } catch (error) {
     console.error('Failed to get setting:', error);
@@ -39,7 +39,7 @@ export async function deleteSetting(key: string): Promise<void> {
       }
       return;
     }
-    await invoke<boolean>('web_search_delete_setting', { key });
+    await invoke<boolean>('delete_setting', { key });
   } catch (error) {
     console.error('Failed to delete setting:', error);
     // 仅在 Tauri 运行时不可用时回退到 localStorage
@@ -52,7 +52,7 @@ export async function deleteSetting(key: string): Promise<void> {
 // MCP helpers
 export async function testMcpConnection(command: string, args: string[], env?: Record<string, string>, options?: { cwd?: string | null; framing?: 'jsonl' | 'content_length' | null }): Promise<any> {
   try {
-    const response = await invoke<any>('mcp_test_connection', {
+    const response = await invoke<any>('test_mcp_connection', {
       command,
       args,
       env,
@@ -191,13 +191,13 @@ export async function researchGetFullContentPrecise(documentIds: string[]): Prom
 
 // Research settings (scoped helpers)
 export async function researchGetSetting(key: string): Promise<string | null> {
-  return await invoke('research_web_search_get_setting', { key });
+  return await invoke('research_get_setting', { key });
 }
 export async function researchSetSetting(key: string, value: string): Promise<string> {
   return await invoke('research_set_setting', { key, value });
 }
 export async function researchDeleteSetting(key: string): Promise<string> {
-  return await invoke('research_web_search_delete_setting', { key });
+  return await invoke('research_delete_setting', { key });
 }
 
 export async function researchListArtifacts(sessionId: string, roundNo?: number): Promise<{items: Array<{id:number;round_no:number;agent:string;artifact_type:string;payload_json:string;size:number;created_at:string}>}> {
@@ -206,7 +206,7 @@ export async function researchListArtifacts(sessionId: string, roundNo?: number)
 
 export async function testMcpWebsocket(url: string, env?: Record<string, string>): Promise<any> {
   try {
-    const response = await invoke<any>('mcp_test_websocket', { url, env });
+    const response = await invoke<any>('test_mcp_websocket', { url, env });
     return response;
   } catch (error) {
     console.error('Failed to test MCP WebSocket connection:', error);
@@ -216,7 +216,7 @@ export async function testMcpWebsocket(url: string, env?: Record<string, string>
 
 export async function testMcpSse(endpoint: string, apiKey: string, env?: Record<string, string>): Promise<any> {
   try {
-    const response = await invoke<any>('mcp_test_sse', { endpoint, apiKey, env });
+    const response = await invoke<any>('test_mcp_sse', { endpoint, apiKey, env });
     return response;
   } catch (error) {
     console.error('Failed to test MCP SSE connection:', error);
@@ -226,7 +226,7 @@ export async function testMcpSse(endpoint: string, apiKey: string, env?: Record<
 
 export async function testMcpHttp(endpoint: string, apiKey: string, env?: Record<string, string>): Promise<any> {
   try {
-    const response = await invoke<any>('mcp_test_http', { endpoint, apiKey, env });
+    const response = await invoke<any>('test_mcp_http', { endpoint, apiKey, env });
     return response;
   } catch (error) {
     console.error('Failed to test MCP HTTP connection:', error);
@@ -257,7 +257,7 @@ export async function reloadMcpClient(): Promise<{ success: boolean; message?: s
 // 外部搜索连通性测试
 export async function testWebSearchConnectivity(engine?: string): Promise<any> {
   try {
-    const response = await invoke<any>('web_search_test_connectivity', { engine: engine || null });
+    const response = await invoke<any>('test_web_search_connectivity', { engine: engine || null });
     return response;
   } catch (error) {
     console.error('Failed to test external search connection:', error);
@@ -268,7 +268,7 @@ export async function testWebSearchConnectivity(engine?: string): Promise<any> {
 // MCP 状态与工具
 export async function getMcpStatus(): Promise<any> {
   try {
-    return await invoke<any>('mcp_get_status');
+    return await invoke<any>('get_mcp_status');
   } catch (error) {
     console.error('Failed to get MCP status:', error);
     throw new Error(`Failed to get MCP status: ${error}`);
@@ -277,7 +277,7 @@ export async function getMcpStatus(): Promise<any> {
 
 export async function getMcpTools(): Promise<Array<{ name: string; description?: string; input_schema: any }>> {
   try {
-    return await invoke<Array<{ name: string; description?: string; input_schema: any }>>('mcp_get_tools');
+    return await invoke<Array<{ name: string; description?: string; input_schema: any }>>('get_mcp_tools');
   } catch (error) {
     console.error('Failed to get MCP tools:', error);
     throw new Error(`Failed to get MCP tools: ${error}`);
@@ -301,7 +301,7 @@ export async function testAllSearchEngines(): Promise<{
   timestamp: string;
 }> {
   try {
-    return await invoke('web_search_test_all_engines');
+    return await invoke('test_all_search_engines');
   } catch (error) {
     console.error('Search engine health check failed:', error);
     throw new Error(`Search engine health check failed: ${error}`);

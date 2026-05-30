@@ -22,7 +22,7 @@ impl LLMManager {
         // 从 settings 读取默认文本嵌入模型配置ID
         let embedding_model_id_opt = self
             .db
-            .web_search_get_setting("embedding.default_text_model_config_id")
+            .get_setting("embedding.default_text_model_config_id")
             .map_err(|e| AppError::configuration(format!("读取嵌入模型配置失败: {}", e)))?;
 
         // M13 fix: 如果没有显式设置默认维度，尝试智能回退
@@ -56,7 +56,7 @@ impl LLMManager {
     /// 2. 已启用的嵌入类 API 配置（isEmbedding=true）
     async fn auto_detect_embedding_model_id(&self) -> Option<String> {
         // 先检查是否已设置了默认维度（但缺少 model_config_id 的情况）
-        if let Ok(Some(dim_str)) = self.db.web_search_get_setting("embedding.default_text_dimension") {
+        if let Ok(Some(dim_str)) = self.db.get_setting("embedding.default_text_dimension") {
             // 有默认维度但缺 model_config_id —— 说明设置不完整
             info!(
                 "[RAG] Default dimension {} set but model_config_id missing",
@@ -80,7 +80,7 @@ impl LLMManager {
                 );
                 let _ = self
                     .db
-                    .web_search_save_setting("embedding.default_text_model_config_id", &config.id);
+                    .save_setting("embedding.default_text_model_config_id", &config.id);
                 return Some(config.id.clone());
             } else if embedding_configs.len() > 1 {
                 info!(
@@ -116,7 +116,7 @@ impl LLMManager {
         // 从 settings 读取默认多模态嵌入模型配置ID
         let vl_embedding_model_id = self
             .db
-            .web_search_get_setting("embedding.default_multimodal_model_config_id")
+            .get_setting("embedding.default_multimodal_model_config_id")
             .map_err(|e| AppError::configuration(format!("读取多模态嵌入模型配置失败: {}", e)))?
             .ok_or_else(|| {
                 AppError::configuration(
@@ -160,7 +160,7 @@ impl LLMManager {
         // 方案一：VL-Embedding 直接向量化（从维度管理获取）
         let mode1_available = self
             .db
-            .web_search_get_setting("embedding.default_multimodal_model_config_id")
+            .get_setting("embedding.default_multimodal_model_config_id")
             .ok()
             .flatten()
             .is_some();

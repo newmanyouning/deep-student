@@ -1001,7 +1001,7 @@ impl VlmGroundingService {
         // ===== Tier 0: 从 OCR 引擎配置中查找 GLM-4.6V =====
         // OCR 引擎（ocr.available_models）和普通模型列表是两套独立存储，
         // 一键分配会把 GLM-4.6V 加到 OCR 引擎但不一定在普通模型列表中。
-        let ocr_models = self.llm_manager.ocr_get_available_models().await;
+        let ocr_models = self.llm_manager.get_available_ocr_models().await;
         // 按 priority 排序，优先使用主引擎
         let mut ocr_glm: Vec<&crate::llm_manager::OcrModelConfig> = ocr_models
             .iter()

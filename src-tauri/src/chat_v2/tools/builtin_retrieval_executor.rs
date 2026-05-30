@@ -1362,12 +1362,12 @@ impl BuiltinRetrievalExecutor {
         if let Some(db) = &ctx.main_db {
             // 统一应用所有 DB 配置覆盖（API keys + 站点过滤 + 策略 + reranker + CN 白名单等）
             config.apply_db_overrides(
-                |k| db.web_search_get_setting(k).ok().flatten(),
+                |k| db.get_setting(k).ok().flatten(),
                 |k| db.get_secret(k).ok().flatten(),
             );
 
             // 读取用户选择的搜索引擎
-            if let Ok(Some(engines_str)) = db.web_search_get_setting("session.selected_search_engines") {
+            if let Ok(Some(engines_str)) = db.get_setting("session.selected_search_engines") {
                 selected_engines = engines_str
                     .split(',')
                     .map(|s| s.trim().to_string())

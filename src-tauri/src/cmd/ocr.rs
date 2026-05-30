@@ -71,7 +71,7 @@ pub struct OcrEngineInfoResponse {
 
 /// 获取所有可用的 OCR 引擎列表
 #[tauri::command]
-pub async fn ocr_get_engines() -> Result<Vec<OcrEngineInfoResponse>> {
+pub async fn get_ocr_engines() -> Result<Vec<OcrEngineInfoResponse>> {
     let engines = OcrAdapterFactory::engine_info_list();
 
     Ok(engines
@@ -89,12 +89,12 @@ pub async fn ocr_get_engines() -> Result<Vec<OcrEngineInfoResponse>> {
 
 /// 获取当前配置的 OCR 引擎类型
 #[tauri::command]
-pub async fn ocr_get_engine_type(state: State<'_, AppState>) -> Result<String> {
+pub async fn get_ocr_engine_type(state: State<'_, AppState>) -> Result<String> {
     let db = &state.database;
 
     // 从数据库读取配置，默认使用 PaddleOCR-VL-1.5
     let engine_type = db
-        .web_search_get_setting("ocr.engine_type")
+        .get_setting("ocr.engine_type")
         .map_err(|e| AppError::database(format!("读取 OCR 引擎配置失败: {}", e)))?
         .unwrap_or_else(|| OcrEngineType::PaddleOcrVl.as_str().to_string());
 
@@ -103,15 +103,15 @@ pub async fn ocr_get_engine_type(state: State<'_, AppState>) -> Result<String> {
 
 /// 获取 OCR/题目集任务是否启用 VLM 推理
 #[tauri::command]
-pub async fn ocr_get_thinking_enabled(state: State<'_, AppState>) -> Result<bool> {
+pub async fn get_ocr_thinking_enabled(state: State<'_, AppState>) -> Result<bool> {
     Ok(state.llm_manager.is_ocr_thinking_enabled())
 }
 
 /// 设置 OCR/题目集任务是否启用 VLM 推理
 #[tauri::command]
-pub async fn ocr_set_thinking_enabled(enabled: bool, state: State<'_, AppState>) -> Result<bool> {
+pub async fn set_ocr_thinking_enabled(enabled: bool, state: State<'_, AppState>) -> Result<bool> {
     let db = &state.database;
-    db.web_search_save_setting(
+    db.save_setting(
         "ocr.enable_thinking",
         if enabled { "true" } else { "false" },
     )
@@ -121,7 +121,7 @@ pub async fn ocr_set_thinking_enabled(enabled: bool, state: State<'_, AppState>)
 
 /// 设置 OCR 引擎类型
 #[tauri::command]
-pub async fn ocr_set_engine_type(engine_type: String, state: State<'_, AppState>) -> Result<bool> {
+pub async fn set_ocr_engine_type(engine_type: String, state: State<'_, AppState>) -> Result<bool> {
     // M5 fix: 严格验证引擎类型，拒绝非法输入
     let parsed = OcrEngineType::try_from_str(&engine_type).ok_or_else(|| {
         AppError::validation(format!(
@@ -131,7 +131,7 @@ pub async fn ocr_set_engine_type(engine_type: String, state: State<'_, AppState>
     })?;
 
     let db = &state.database;
-    db.web_search_save_setting("ocr.engine_type", parsed.as_str())
+    db.save_setting("ocr.engine_type", parsed.as_str())
         .map_err(|e| AppError::database(format!("保存 OCR 引擎配置失败: {}", e)))?;
 
     Ok(true)
@@ -170,7 +170,7 @@ pub struct ValidateOcrModelResponse {
 
 /// 获取 OCR 引擎的 prompt 模板
 #[tauri::command]
-pub async fn ocr_get_prompt_template(engine_type: String, mode: String) -> Result<String> {
+pub async fn get_ocr_prompt_template(engine_type: String, mode: String) -> Result<String> {
     use crate::ocr_adapters::OcrMode;
 
     let engine = OcrEngineType::from_str(&engine_type);
@@ -187,14 +187,14 @@ pub async fn ocr_get_prompt_template(engine_type: String, mode: String) -> Resul
 /// 返回通过一键分配或手动配置的所有 OCR 模型
 /// 包含自动迁移逻辑：将旧版本 PaddleOCR-VL 模型名称自动更新为 1.5 版本
 #[tauri::command]
-pub async fn ocr_get_available_models(
+pub async fn get_available_ocr_models(
     state: State<'_, AppState>,
 ) -> Result<Vec<AvailableOcrModelResponse>> {
     let db = &state.database;
 
     // 从数据库读取配置的 OCR 模型列表
     let models_json = db
-        .web_search_get_setting("ocr.available_models")
+        .get_setting("ocr.available_models")
         .map_err(|e| AppError::database(format!("读取 OCR 模型配置失败: {}", e)))?;
 
     if let Some(json) = models_json {
@@ -253,7 +253,7 @@ pub async fn ocr_get_available_models(
 
         if needs_save {
             if let Ok(updated_json) = serde_json::to_string(&models) {
-                let _ = db.web_search_save_setting("ocr.available_models", &updated_json);
+                let _ = db.save_setting("ocr.available_models", &updated_json);
             }
         }
 
@@ -301,7 +301,7 @@ pub async fn ocr_get_available_models(
         };
         // 持久化以便后续优先级调整生效
         if let Ok(json) = serde_json::to_string(&vec![&system_entry]) {
-            let _ = db.web_search_save_setting("ocr.available_models", &json);
+            let _ = db.save_setting("ocr.available_models", &json);
         }
         return Ok(vec![AvailableOcrModelResponse {
             config_id: system_entry.config_id,
@@ -344,7 +344,7 @@ pub struct AvailableOcrModelResponse {
 
 /// 保存 OCR 模型配置列表
 #[tauri::command]
-pub async fn ocr_save_available_models(
+pub async fn save_available_ocr_models(
     models: Vec<SaveOcrModelRequest>,
     state: State<'_, AppState>,
 ) -> Result<bool> {
@@ -367,7 +367,7 @@ pub async fn ocr_save_available_models(
     let json = serde_json::to_string(&configs)
         .map_err(|e| AppError::database(format!("序列化 OCR 模型配置失败: {}", e)))?;
 
-    db.web_search_save_setting("ocr.available_models", &json)
+    db.save_setting("ocr.available_models", &json)
         .map_err(|e| AppError::database(format!("保存 OCR 模型配置失败: {}", e)))?;
 
     Ok(true)
@@ -391,7 +391,7 @@ pub struct SaveOcrModelRequest {
 ///
 /// 接收完整的有序列表，按数组顺序重新编号 priority
 #[tauri::command]
-pub async fn ocr_update_engine_priority(
+pub async fn update_ocr_engine_priority(
     engine_list: Vec<UpdateOcrPriorityItem>,
     state: State<'_, AppState>,
 ) -> Result<bool> {
@@ -399,7 +399,7 @@ pub async fn ocr_update_engine_priority(
 
     // 读取当前配置
     let models_json = db
-        .web_search_get_setting("ocr.available_models")
+        .get_setting("ocr.available_models")
         .map_err(|e| AppError::database(format!("读取 OCR 模型配置失败: {}", e)))?
         .unwrap_or_else(|| "[]".to_string());
 
@@ -419,7 +419,7 @@ pub async fn ocr_update_engine_priority(
 
     let json = serde_json::to_string(&models)
         .map_err(|e| AppError::database(format!("序列化 OCR 模型配置失败: {}", e)))?;
-    db.web_search_save_setting("ocr.available_models", &json)
+    db.save_setting("ocr.available_models", &json)
         .map_err(|e| AppError::database(format!("保存 OCR 模型配置失败: {}", e)))?;
 
     Ok(true)
@@ -445,7 +445,7 @@ pub async fn add_ocr_engine(
     let db = &state.database;
 
     let models_json = db
-        .web_search_get_setting("ocr.available_models")
+        .get_setting("ocr.available_models")
         .map_err(|e| AppError::database(format!("读取 OCR 模型配置失败: {}", e)))?
         .unwrap_or_else(|| "[]".to_string());
 
@@ -494,7 +494,7 @@ pub async fn add_ocr_engine(
 
     let json = serde_json::to_string(&models)
         .map_err(|e| AppError::database(format!("序列化 OCR 模型配置失败: {}", e)))?;
-    db.web_search_save_setting("ocr.available_models", &json)
+    db.save_setting("ocr.available_models", &json)
         .map_err(|e| AppError::database(format!("保存 OCR 模型配置失败: {}", e)))?;
 
     Ok(true)
@@ -506,7 +506,7 @@ pub async fn remove_ocr_engine(config_id: String, state: State<'_, AppState>) ->
     let db = &state.database;
 
     let models_json = db
-        .web_search_get_setting("ocr.available_models")
+        .get_setting("ocr.available_models")
         .map_err(|e| AppError::database(format!("读取 OCR 模型配置失败: {}", e)))?
         .unwrap_or_else(|| "[]".to_string());
 
@@ -534,7 +534,7 @@ pub async fn remove_ocr_engine(config_id: String, state: State<'_, AppState>) ->
 
     let json = serde_json::to_string(&models)
         .map_err(|e| AppError::database(format!("序列化 OCR 模型配置失败: {}", e)))?;
-    db.web_search_save_setting("ocr.available_models", &json)
+    db.save_setting("ocr.available_models", &json)
         .map_err(|e| AppError::database(format!("保存 OCR 模型配置失败: {}", e)))?;
 
     Ok(true)
@@ -587,7 +587,7 @@ pub struct OcrTestRegion {
 ///
 /// 用于对比不同 OCR 引擎的速度和质量
 #[tauri::command]
-pub async fn ocr_test_engine(
+pub async fn test_ocr_engine(
     request: OcrTestRequest,
     state: State<'_, AppState>,
 ) -> Result<OcrTestResponse> {
@@ -599,7 +599,7 @@ pub async fn ocr_test_engine(
     // 优先使用用户配置的名称（通过 config_id 查找），回退到适配器名称
     let engine_info = if let Some(ref cid) = request.config_id {
         let db = &state.database;
-        db.web_search_get_setting("ocr.available_models")
+        db.get_setting("ocr.available_models")
             .ok()
             .flatten()
             .and_then(|json| serde_json::from_str::<Vec<OcrModelConfig>>(&json).ok())

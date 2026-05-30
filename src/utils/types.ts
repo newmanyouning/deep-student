@@ -1,5 +1,5 @@
-import type { ChatMessage, RagSourceInfo } from '../types';
-export type { ChatMessage, RagSourceInfo };
+import type { MistakeItem, ChatMessage, RagSourceInfo } from '../types';
+export type { MistakeItem, ChatMessage, RagSourceInfo };
 
 export interface GraphRecallStageLogDto {
   name: string;
@@ -198,7 +198,7 @@ export interface SaveMistakeRequest {
 
 export interface SaveMistakeResponse {
   success: boolean;
-  final_mistake_item?: Record<string, unknown>;
+  final_mistake_item?: MistakeItem;
   source?: 'auto' | 'manual' | string;
 }
 

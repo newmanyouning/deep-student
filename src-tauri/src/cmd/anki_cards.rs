@@ -17,7 +17,7 @@ type Result<T> = std::result::Result<T, AppError>;
 ///
 /// 直接从 ADAPTER_REGISTRY 动态获取，不使用数据库缓存
 #[tauri::command]
-pub async fn anki_cards_get_model_adapter_options(
+pub async fn get_model_adapter_options(
     _state: State<'_, AppState>,
 ) -> Result<Vec<serde_json::Value>> {
     // 直接从注册表获取，不再使用数据库缓存
@@ -26,7 +26,7 @@ pub async fn anki_cards_get_model_adapter_options(
 
 /// 保存自定义模型适配器选项
 #[tauri::command]
-pub async fn anki_cards_save_model_adapter_options(
+pub async fn save_model_adapter_options(
     state: State<'_, AppState>,
     options: Vec<serde_json::Value>,
 ) -> Result<()> {
@@ -47,7 +47,7 @@ pub async fn anki_cards_save_model_adapter_options(
 
     state
         .database
-        .web_search_save_setting("model_adapter_options", &options_json)
+        .save_setting("model_adapter_options", &options_json)
         .map_err(|e| AppError::database(format!("保存模型适配器选项失败: {}", e)))?;
 
     println!("模型适配器选项保存成功");
@@ -66,7 +66,7 @@ pub async fn reset_model_adapter_options(
 
     state
         .database
-        .web_search_save_setting("model_adapter_options", &options_json)
+        .save_setting("model_adapter_options", &options_json)
         .map_err(|e| AppError::database(format!("重置模型适配器选项失败: {}", e)))?;
 
     println!("模型适配器选项重置成功");

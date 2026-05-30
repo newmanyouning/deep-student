@@ -7,7 +7,6 @@ use std::sync::Arc;
 use tauri::{State, Window};
 
 use crate::chat_v2::database::ChatV2Database;
-use crate::chat_v2::error::{ChatV2Error, ChatV2Result};
 use crate::chat_v2::pipeline::ChatV2Pipeline;
 use crate::chat_v2::state::{ChatV2State, StreamGuard};
 use crate::chat_v2::types::{
@@ -132,18 +131,15 @@ fn ensure_workspace_creator(
     coordinator: &WorkspaceCoordinator,
     workspace_id: &str,
     session_id: &str,
-) -> ChatV2Result<()> {
+) -> Result<(), String> {
     let workspace = coordinator
-        .get_workspace(workspace_id)
-        .map_err(|e| ChatV2Error::Other(e))?
-        .ok_or_else(|| {
-            ChatV2Error::Other(format!("Workspace not found: {}", workspace_id))
-        })?;
+        .get_workspace(workspace_id)?
+        .ok_or_else(|| format!("Workspace not found: {}", workspace_id))?;
 
     if workspace.creator_session_id != session_id {
-        return Err(ChatV2Error::Other(
+        return Err(
             "Permission denied: only workspace creator can perform this action".to_string(),
-        ));
+        );
     }
 
     Ok(())
@@ -159,10 +155,8 @@ pub async fn workspace_create(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     request: CreateWorkspaceRequest,
-) -> ChatV2Result<CreateWorkspaceResponse> {
-    let workspace = coordinator
-        .create_workspace(&session_id, request.name)
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<CreateWorkspaceResponse, String> {
+    let workspace = coordinator.create_workspace(&session_id, request.name)?;
 
     Ok(CreateWorkspaceResponse {
         workspace_id: workspace.id,
@@ -177,13 +171,9 @@ pub async fn workspace_get(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
-) -> ChatV2Result<Option<WorkspaceInfo>> {
-    coordinator
-        .ensure_member_or_creator(&workspace_id, &session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
-    let workspace = coordinator
-        .get_workspace(&workspace_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<Option<WorkspaceInfo>, String> {
+    coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
+    let workspace = coordinator.get_workspace(&workspace_id)?;
 
     Ok(workspace.map(|w| WorkspaceInfo {
         id: w.id,
@@ -201,11 +191,9 @@ pub async fn workspace_close(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
-) -> ChatV2Result<()> {
+) -> Result<(), String> {
     ensure_workspace_creator(coordinator.inner().as_ref(), &workspace_id, &session_id)?;
-    coordinator
-        .close_workspace(&workspace_id)
-        .map_err(|e| ChatV2Error::Other(e))
+    coordinator.close_workspace(&workspace_id)
 }
 
 /// 删除工作区
@@ -214,11 +202,9 @@ pub async fn workspace_delete(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
-) -> ChatV2Result<()> {
+) -> Result<(), String> {
     ensure_workspace_creator(coordinator.inner().as_ref(), &workspace_id, &session_id)?;
-    coordinator
-        .delete_workspace(&workspace_id)
-        .map_err(|e| ChatV2Error::Other(e))
+    coordinator.delete_workspace(&workspace_id)
 }
 
 /// 创建 Agent
@@ -227,10 +213,8 @@ pub async fn workspace_create_agent(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     db: State<'_, Arc<ChatV2Database>>,
     request: CreateAgentRequest,
-) -> ChatV2Result<CreateAgentResponse> {
-    coordinator
-        .ensure_member_or_creator(&request.workspace_id, &request.requester_session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<CreateAgentResponse, String> {
+    coordinator.ensure_member_or_creator(&request.workspace_id, &request.requester_session_id)?;
     let role = match request.role.as_deref() {
         Some("coordinator") => AgentRole::Coordinator,
         _ => AgentRole::Worker,
@@ -249,7 +233,9 @@ pub async fn workspace_create_agent(
 
     // 🔧 P0-2 修复：创建 ChatSession 记录，存储 system_prompt
     // 这样 workspace_run_agent 才能正确获取到技能的系统提示词
-    let conn = db.get_conn_safe()?;
+    let conn = db
+        .get_conn_safe()
+        .map_err(|e| format!("Failed to get db connection: {}", e))?;
 
     use crate::chat_v2::repo::ChatV2Repo;
     use crate::chat_v2::types::{ChatSession, PersistStatus};
@@ -284,30 +270,27 @@ pub async fn workspace_create_agent(
         tags: None,
     };
 
-    ChatV2Repo::create_session_with_conn(&conn, &session)?;
+    ChatV2Repo::create_session_with_conn(&conn, &session)
+        .map_err(|e| format!("Failed to create agent session: {}", e))?;
 
     // 在工作区中注册 Agent 元数据
-    let agent = coordinator
-        .register_agent(
-            &request.workspace_id,
-            &agent_session_id,
-            role.clone(),
-            request.skill_id.clone(),
-            None, // metadata 已存储在 ChatSession 中
-        )
-        .map_err(|e| ChatV2Error::Other(e))?;
+    let agent = coordinator.register_agent(
+        &request.workspace_id,
+        &agent_session_id,
+        role.clone(),
+        request.skill_id.clone(),
+        None, // metadata 已存储在 ChatSession 中
+    )?;
 
     // 如果有初始任务，发送任务消息
     if let Some(task) = &request.initial_task {
-        coordinator
-            .send_message(
-                &request.workspace_id,
-                &agent_session_id,
-                None,
-                MessageType::Task,
-                task.clone(),
-            )
-            .map_err(|e| ChatV2Error::Other(e))?;
+        coordinator.send_message(
+            &request.workspace_id,
+            &agent_session_id,
+            None,
+            MessageType::Task,
+            task.clone(),
+        )?;
     }
 
     Ok(CreateAgentResponse {
@@ -325,13 +308,9 @@ pub async fn workspace_list_agents(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
-) -> ChatV2Result<Vec<AgentInfo>> {
-    coordinator
-        .ensure_member_or_creator(&workspace_id, &session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
-    let agents = coordinator
-        .list_agents(&workspace_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<Vec<AgentInfo>, String> {
+    coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
+    let agents = coordinator.list_agents(&workspace_id)?;
 
     Ok(agents
         .into_iter()
@@ -352,7 +331,7 @@ pub async fn workspace_send_message(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     request: WorkspaceSendMessageRequest,
-) -> ChatV2Result<SendMessageResponse> {
+) -> Result<SendMessageResponse, String> {
     let message_type = match request.message_type.as_deref() {
         Some("progress") => MessageType::Progress,
         Some("result") => MessageType::Result,
@@ -362,20 +341,16 @@ pub async fn workspace_send_message(
         _ => MessageType::Task,
     };
     if request.target_session_id.is_some() && matches!(message_type, MessageType::Broadcast) {
-        return Err(ChatV2Error::Validation(
-            "Broadcast message must not specify target_session_id".to_string(),
-        ));
+        return Err("Broadcast message must not specify target_session_id".to_string());
     }
 
-    let message = coordinator
-        .send_message(
-            &request.workspace_id,
-            &session_id,
-            request.target_session_id.as_deref(),
-            message_type,
-            request.content,
-        )
-        .map_err(|e| ChatV2Error::Other(e))?;
+    let message = coordinator.send_message(
+        &request.workspace_id,
+        &session_id,
+        request.target_session_id.as_deref(),
+        message_type,
+        request.content,
+    )?;
 
     Ok(SendMessageResponse {
         message_id: message.id,
@@ -390,13 +365,9 @@ pub async fn workspace_list_messages(
     session_id: String,
     workspace_id: String,
     limit: Option<usize>,
-) -> ChatV2Result<Vec<MessageInfo>> {
-    coordinator
-        .ensure_member_or_creator(&workspace_id, &session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
-    let messages = coordinator
-        .list_messages(&workspace_id, limit.unwrap_or(50))
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<Vec<MessageInfo>, String> {
+    coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
+    let messages = coordinator.list_messages(&workspace_id, limit.unwrap_or(50))?;
 
     Ok(messages
         .into_iter()
@@ -420,10 +391,8 @@ pub async fn workspace_set_context(
     workspace_id: String,
     key: String,
     value: serde_json::Value,
-) -> ChatV2Result<()> {
-    coordinator
-        .set_context(&workspace_id, &key, value, &session_id)
-        .map_err(|e| ChatV2Error::Other(e))
+) -> Result<(), String> {
+    coordinator.set_context(&workspace_id, &key, value, &session_id)
 }
 
 /// 获取工作区上下文
@@ -433,13 +402,9 @@ pub async fn workspace_get_context(
     session_id: String,
     workspace_id: String,
     key: String,
-) -> ChatV2Result<Option<serde_json::Value>> {
-    coordinator
-        .ensure_member_or_creator(&workspace_id, &session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
-    let ctx = coordinator
-        .get_context(&workspace_id, &key)
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<Option<serde_json::Value>, String> {
+    coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
+    let ctx = coordinator.get_context(&workspace_id, &key)?;
     Ok(ctx.map(|c| c.value))
 }
 
@@ -449,13 +414,9 @@ pub async fn workspace_list_documents(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
-) -> ChatV2Result<Vec<DocumentInfo>> {
-    coordinator
-        .ensure_member_or_creator(&workspace_id, &session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
-    let documents = coordinator
-        .list_documents(&workspace_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<Vec<DocumentInfo>, String> {
+    coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
+    let documents = coordinator.list_documents(&workspace_id)?;
 
     Ok(documents
         .into_iter()
@@ -477,13 +438,9 @@ pub async fn workspace_get_document(
     session_id: String,
     workspace_id: String,
     document_id: String,
-) -> ChatV2Result<Option<String>> {
-    coordinator
-        .ensure_member_or_creator(&workspace_id, &session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
-    let doc = coordinator
-        .get_document(&workspace_id, &document_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<Option<String>, String> {
+    coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
+    let doc = coordinator.get_document(&workspace_id, &document_id)?;
     Ok(doc.map(|d| d.content))
 }
 
@@ -493,26 +450,32 @@ pub async fn workspace_list_all(
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     db: State<'_, Arc<ChatV2Database>>,
-) -> ChatV2Result<Vec<WorkspaceInfo>> {
-    let conn = db.get_conn_safe()?;
+) -> Result<Vec<WorkspaceInfo>, String> {
+    let conn = db
+        .get_conn_safe()
+        .map_err(|e| format!("Failed to get connection: {}", e))?;
 
-    let mut stmt = conn.prepare(
-        "SELECT workspace_id, name, status, creator_session_id, created_at, updated_at
-     FROM workspace_index
-     WHERE status = 'active'
-     ORDER BY created_at DESC",
-    )?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT workspace_id, name, status, creator_session_id, created_at, updated_at
+         FROM workspace_index
+         WHERE status = 'active'
+         ORDER BY created_at DESC",
+        )
+        .map_err(|e| format!("Failed to prepare statement: {}", e))?;
 
-    let workspaces = stmt.query_map([], |row| {
-        Ok(WorkspaceInfo {
-            id: row.get(0)?,
-            name: row.get(1)?,
-            status: row.get(2)?,
-            creator_session_id: row.get(3)?,
-            created_at: row.get(4)?,
-            updated_at: row.get(5)?,
+    let workspaces = stmt
+        .query_map([], |row| {
+            Ok(WorkspaceInfo {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                status: row.get(2)?,
+                creator_session_id: row.get(3)?,
+                created_at: row.get(4)?,
+                updated_at: row.get(5)?,
+            })
         })
-    })?;
+        .map_err(|e| format!("Failed to query workspaces: {}", e))?;
 
     let mut result = Vec::new();
     for ws in workspaces {
@@ -546,13 +509,11 @@ pub async fn workspace_run_agent(
     chat_v2_state: State<'_, Arc<ChatV2State>>,
     pipeline: State<'_, Arc<ChatV2Pipeline>>,
     db: State<'_, Arc<ChatV2Database>>,
-) -> ChatV2Result<RunAgentResponse> {
+) -> Result<RunAgentResponse, String> {
     let workspace_id = &request.workspace_id;
     let agent_session_id = &request.agent_session_id;
 
-    coordinator
-        .ensure_member_or_creator(workspace_id, &request.requester_session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+    coordinator.ensure_member_or_creator(workspace_id, &request.requester_session_id)?;
 
     log::info!(
         "[Workspace::handlers] [RUN_AGENT_START] workspace_run_agent: workspace_id={}, agent_session_id={}, has_reminder={}",
@@ -566,9 +527,7 @@ pub async fn workspace_run_agent(
         "[Workspace::handlers] [RUN_AGENT] Step 1: Listing agents for workspace {}",
         workspace_id
     );
-    let agents = coordinator
-        .list_agents(workspace_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+    let agents = coordinator.list_agents(workspace_id)?;
     log::debug!(
         "[Workspace::handlers] [RUN_AGENT] Found {} agents in workspace {}",
         agents.len(),
@@ -577,14 +536,14 @@ pub async fn workspace_run_agent(
     let agent = agents
         .iter()
         .find(|a| a.session_id == *agent_session_id)
-        .ok_or_else(|| ChatV2Error::Other(format!("Agent not found: {}", agent_session_id)))?;
+        .ok_or_else(|| format!("Agent not found: {}", agent_session_id))?;
     let is_worker = matches!(agent.role, AgentRole::Worker);
 
     // 只有 Worker 可以被自动运行
     if matches!(agent.role, AgentRole::Coordinator) {
-        return Err(ChatV2Error::Validation(
+        return Err(
             "Coordinator agents cannot be auto-run, they are driven by user input".to_string(),
-        ));
+        );
     }
 
     // 2. 从 inbox 获取待处理消息
@@ -594,9 +553,7 @@ pub async fn workspace_run_agent(
         "[Workspace::handlers] [RUN_AGENT] Step 2: Draining inbox for agent {}",
         agent_session_id
     );
-    let messages = coordinator
-        .drain_inbox(workspace_id, agent_session_id, 10)
-        .map_err(|e| ChatV2Error::Other(e))?;
+    let messages = coordinator.drain_inbox(workspace_id, agent_session_id, 10)?;
     log::info!(
         "[Workspace::handlers] [RUN_AGENT] Drained {} messages from inbox for agent {}",
         messages.len(),
@@ -686,23 +643,19 @@ pub async fn workspace_run_agent(
                     max_retries: None,
                 });
 
-                return Err(ChatV2Error::Other(format!(
+                return Err(format!(
                     "Agent {} has an active stream, and {} drained message(s) failed to restore. Please wait for completion and retry manually.",
                     agent_session_id,
                     rollback_failures.len()
-                )));
+                ));
             }
 
-            return Err(ChatV2Error::Other(
-                "Agent has an active stream. Please wait for completion.".to_string(),
-            ));
+            return Err("Agent has an active stream. Please wait for completion.".to_string());
         }
     };
 
     // 5. 更新 Agent 状态为 Running
-    coordinator
-        .update_agent_status(workspace_id, agent_session_id, AgentStatus::Running)
-        .map_err(|e| ChatV2Error::Other(e))?;
+    coordinator.update_agent_status(workspace_id, agent_session_id, AgentStatus::Running)?;
 
     // 🆕 P1 修复：标记子代理任务为 Running（支持重启恢复）
     // 🔧 P38 修复：子代理 session ID 实际是 agent_worker_ 前缀
@@ -726,11 +679,12 @@ pub async fn workspace_run_agent(
     }
 
     // 6. 获取 Agent 的 System Prompt（从 metadata）
-    let conn = db.get_conn_safe()?;
-    let session = crate::chat_v2::repo::ChatV2Repo::get_session_with_conn(&conn, agent_session_id)?
-        .ok_or_else(|| {
-            ChatV2Error::Other(format!("Agent session not found: {}", agent_session_id))
-        })?;
+    let conn = db
+        .get_conn_safe()
+        .map_err(|e| format!("Failed to get db connection: {}", e))?;
+    let session = crate::chat_v2::repo::ChatV2Repo::get_session_with_conn(&conn, agent_session_id)
+        .map_err(|e| format!("Failed to get agent session: {}", e))?
+        .ok_or_else(|| format!("Agent session not found: {}", agent_session_id))?;
 
     let system_prompt = session
         .metadata
@@ -1096,10 +1050,8 @@ pub async fn workspace_cancel_agent(
     session_id: String,
     workspace_id: String,
     agent_session_id: String,
-) -> ChatV2Result<bool> {
-    coordinator
-        .ensure_member_or_creator(&workspace_id, &session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<bool, String> {
+    coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
 
     let cancelled = chat_v2_state.cancel_stream(&agent_session_id);
     if cancelled {
@@ -1148,19 +1100,15 @@ pub struct ManualWakeResponse {
 pub async fn workspace_manual_wake(
     request: ManualWakeRequest,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
-) -> ChatV2Result<ManualWakeResponse> {
-    coordinator
-        .ensure_member_or_creator(&request.workspace_id, &request.requester_session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<ManualWakeResponse, String> {
+    coordinator.ensure_member_or_creator(&request.workspace_id, &request.requester_session_id)?;
 
-    let sleep_manager = coordinator
-        .get_sleep_manager(&request.workspace_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+    let sleep_manager = coordinator.get_sleep_manager(&request.workspace_id)?;
 
     // 🔧 P33 修复：获取唤醒结果信息，用于发射事件
     let wake_result = sleep_manager
         .manual_wake(&request.sleep_id, request.message.clone())
-        .map_err(|e| ChatV2Error::Other(format!("Failed to wake: {:?}", e)))?;
+        .map_err(|e| format!("Failed to wake: {:?}", e))?;
 
     let success = wake_result.is_some();
 
@@ -1188,18 +1136,14 @@ pub async fn workspace_cancel_sleep(
     workspace_id: String,
     sleep_id: String,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
-) -> ChatV2Result<bool> {
-    coordinator
-        .ensure_member_or_creator(&workspace_id, &session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<bool, String> {
+    coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
 
-    let sleep_manager = coordinator
-        .get_sleep_manager(&workspace_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+    let sleep_manager = coordinator.get_sleep_manager(&workspace_id)?;
 
     let cancelled = sleep_manager
         .cancel(&sleep_id)
-        .map_err(|e| ChatV2Error::Other(format!("Failed to cancel sleep: {:?}", e)))?;
+        .map_err(|e| format!("Failed to cancel sleep: {:?}", e))?;
 
     log::info!(
         "[Workspace::handlers] Cancel sleep: sleep_id={}, cancelled={}",
@@ -1243,10 +1187,8 @@ pub async fn workspace_restore_executions(
     _chat_v2_state: State<'_, Arc<ChatV2State>>,
     _pipeline: State<'_, Arc<ChatV2Pipeline>>,
     _db: State<'_, Arc<ChatV2Database>>,
-) -> ChatV2Result<RestoreExecutionsResponse> {
-    coordinator
-        .ensure_member_or_creator(&workspace_id, &session_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+) -> Result<RestoreExecutionsResponse, String> {
+    coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
 
     log::info!(
         "[Workspace::handlers] workspace_restore_executions: workspace_id={}",
@@ -1256,12 +1198,10 @@ pub async fn workspace_restore_executions(
     let mut restored_agent_ids = Vec::new();
 
     // 1. 获取需要恢复的子代理任务
-    let task_manager = coordinator
-        .get_task_manager(&workspace_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+    let task_manager = coordinator.get_task_manager(&workspace_id)?;
     let tasks_to_restore = task_manager
         .get_tasks_to_restore()
-        .map_err(|e| ChatV2Error::Other(format!("Failed to get tasks to restore: {:?}", e)))?;
+        .map_err(|e| format!("Failed to get tasks to restore: {:?}", e))?;
 
     // 2. 为每个需要恢复的任务发射 worker_ready 事件
     for task in &tasks_to_restore {
@@ -1310,9 +1250,7 @@ pub async fn workspace_restore_executions(
     }
 
     // 3. 检查活跃的睡眠块
-    let sleep_manager = coordinator
-        .get_sleep_manager(&workspace_id)
-        .map_err(|e| ChatV2Error::Other(e))?;
+    let sleep_manager = coordinator.get_sleep_manager(&workspace_id)?;
     let active_sleep_ids = sleep_manager.get_active_sleep_ids();
     let has_active_sleeps = !active_sleep_ids.is_empty();
 

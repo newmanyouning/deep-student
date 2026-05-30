@@ -40,7 +40,7 @@ type LogPhase =
   | 'template:load'   // 多模板加载
   | 'template:resolve'// 模板解析（per-card）
   | 'export:apkg'     // APKG 导出
-  | 'db:query'        // DB 查询（anki_list_document_sessions 等）
+  | 'db:query'        // DB 查询（list_document_sessions 等）
   | 'system';         // 系统事件
 
 interface LogEntry {

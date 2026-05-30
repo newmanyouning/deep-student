@@ -11,6 +11,30 @@ import type { ExamSheetSessionDetail } from '../utils/types';
 // Core Data Models (matching backend Rust structs)
 // ============================================================================
 
+// 统一的链接状态枚举
+export enum LinkageStatus {
+  Unlinked = 0,   // 未关联
+  Reserved = 1,   // 已预占（等待激活）
+  Completed = 2,  // 已完成（双向激活）
+  Failed = 3,     // 失败
+}
+
+// 链接状态标签映射
+export const LinkageStatusLabels: Record<LinkageStatus, string> = {
+  [LinkageStatus.Unlinked]: '未关联',
+  [LinkageStatus.Reserved]: '已预占',
+  [LinkageStatus.Completed]: '已完成',
+  [LinkageStatus.Failed]: '失败',
+};
+
+// 链接状态颜色映射（用于UI显示）
+export const LinkageStatusColors: Record<LinkageStatus, string> = {
+  [LinkageStatus.Unlinked]: 'text-gray-500',
+  [LinkageStatus.Reserved]: 'text-yellow-500',
+  [LinkageStatus.Completed]: 'text-green-500',
+  [LinkageStatus.Failed]: 'text-red-500',
+};
+
 export interface RagSourceInfo {
   document_id: string;
   file_name: string;
@@ -134,6 +158,43 @@ export interface ChatMessage {
   }>;
 }
 
+/**
+ * @deprecated 2026-01 清理：错题功能已废弃，保留以兼容旧数据。
+ * ⚠️ 仍有以下文件引用（2026-02-08 确认）：
+ *   - src/utils/tauriApi.ts（废弃函数 getMistakeDetails / updateMistake / runtimeAutosaveCommit 等）
+ *   - src/utils/ankiSourceBuilder.ts（buildContentFromMistake）
+ *   - src/app/services/saveRequestHandler.ts
+ *   - src/stores/anki/types.ts（MistakeSummary 别名）
+ * 待上述调用方迁移后再删除此类型。
+ */
+export interface MistakeItem {
+  id: string;
+  created_at: string;
+  question_images: string[];
+  analysis_images: string[];
+  user_question: string;
+  ocr_text: string;
+  ocr_note?: string | null;
+  tags: string[];
+  mistake_type: string;
+  status: string;
+  chat_category: string;
+  updated_at: string;
+  chat_history: ChatMessage[];
+  question_image_urls?: string[];
+  mistake_summary?: string | null;
+  user_error_analysis?: string | null;
+  /** @deprecated irec 模块已废弃 */
+  irec_card_id?: string;
+  /** @deprecated irec 模块已废弃 */
+  irec_status?: number;
+  chat_metadata?: ChatMetadata | null;
+  exam_sheet?: ExamSheetLink | null;
+  examSheet?: ExamSheetLink | null;
+  last_accessed_at?: string;
+  autosave_signature?: string | null;
+}
+
 export interface ChatMetadata {
   title: string;
   summary?: string | null;
@@ -145,6 +206,73 @@ export interface ChatMetadata {
 // ============================================================================
 // API Request/Response Types
 // ============================================================================
+
+export interface GeneralChatSessionRequest {
+  userQuestion: string;
+  questionImageFiles?: Array<string | { base64: string } | File>;
+  docAttachments?: DocumentAttachment[];
+  enableChainOfThought?: boolean;
+  /** 新架构兼容：前端预生成的会话 ID */
+  sessionId?: string;
+}
+
+export interface GeneralChatSessionResponse {
+  session_id: string;
+  business_session_id: string;
+  generation_id: number;
+  metadata?: ChatMetadata | null;
+}
+
+export interface GenerateChatMetadataResponse {
+  metadata?: ChatMetadata | null;
+}
+
+export interface UpdateChatMetadataNoteResponse {
+  metadata?: ChatMetadata | null;
+}
+
+export interface UpdateOcrNoteResponse {
+  ocr_note?: string | null;
+}
+
+export interface ContinueChatResponse {
+  new_assistant_message: string;
+}
+
+export interface RuntimeAutosaveCommitSnapshot {
+  history: ChatMessage[];
+  normalizedHistory: ChatMessage[];
+  thinkingContent?: Record<string, string>;
+  summaryContent?: string | null;
+  summaryComplete?: boolean;
+  signaturePayload: string;
+  stableIds?: string[];
+}
+
+export interface RuntimeAutosaveCommitRequest {
+  businessSessionId?: string | null;
+  snapshot: RuntimeAutosaveCommitSnapshot;
+  saveSource?: string;
+  saveReason?: string;
+  reason?: string;
+  chatCategory?: 'analysis' | 'general_chat';
+  chatMetadata?: ChatMetadata | null;
+  autosaveSignature?: string | null;
+  generationId?: number | null;
+}
+
+export interface RuntimeAutosaveCommitResponse {
+  success: boolean;
+  sessionId?: string | null;
+  /** @deprecated 使用 sessionId */
+  mistakeId?: string | null;
+  finalItem?: MistakeItem;
+  /** @deprecated 使用 finalItem */
+  finalMistakeItem?: MistakeItem;
+  reason?: string | null;
+}
+
+export type TempStreamState = 'in_progress' | 'completed' | 'failed';
 
 // ============================================================================
 // API Configuration Types
@@ -873,6 +1001,17 @@ export interface AnkiConnectResult {
 
 export interface ExamSheetSessionLinkResponse {
   success: boolean;
+}
+
+export interface ExamSheetSessionUnlinkRequest {
+  session_id: string;
+  card_id?: string | null;
+  /** @deprecated 2026-01 清理：错题功能已废弃，保留兼容 */
+  mistake_id?: string;
+}
+
+export interface ExamSheetSessionUnlinkResponse {
+  detail: ExamSheetSessionDetail;
 }
 
 export interface PdfOcrTextBlock {

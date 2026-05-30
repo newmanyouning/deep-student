@@ -158,13 +158,15 @@ pub async fn chat_v2_switch_variant(
     session_id: String,
     message_id: String,
     variant_id: String,
-) -> ChatV2Result<()> {
+) -> Result<(), String> {
     info!(
         "[ChatV2::VariantHandler] switch_variant: session_id={}, message_id={}, variant_id={}",
         session_id, message_id, variant_id
     );
 
-    switch_variant_impl(&db, &session_id, &message_id, &variant_id).await
+    switch_variant_impl(&db, &session_id, &message_id, &variant_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 async fn switch_variant_impl(
@@ -227,13 +229,15 @@ pub async fn chat_v2_delete_variant(
     session_id: String,
     message_id: String,
     variant_id: String,
-) -> ChatV2Result<DeleteVariantResult> {
+) -> Result<DeleteVariantResult, String> {
     info!(
         "[ChatV2::VariantHandler] delete_variant: session_id={}, message_id={}, variant_id={}",
         session_id, message_id, variant_id
     );
 
-    delete_variant_impl(&db, &window, &session_id, &message_id, &variant_id).await
+    delete_variant_impl(&db, &window, &session_id, &message_id, &variant_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 async fn delete_variant_impl(
@@ -407,7 +411,7 @@ pub async fn chat_v2_retry_variant(
     variant_id: String,
     model_override: Option<String>,
     options: Option<SendOptions>,
-) -> ChatV2Result<()> {
+) -> Result<(), String> {
     info!(
         "[ChatV2::VariantHandler] retry_variant: session_id={}, message_id={}, variant_id={}, model_override={:?}",
         session_id, message_id, variant_id, model_override
@@ -426,6 +430,7 @@ pub async fn chat_v2_retry_variant(
         options,
     )
     .await
+    .map_err(|e| e.to_string())
 }
 
 /// 批量重试变体
@@ -447,7 +452,7 @@ pub async fn chat_v2_retry_variants(
     message_id: String,
     variant_ids: Vec<String>,
     options: Option<SendOptions>,
-) -> ChatV2Result<()> {
+) -> Result<(), String> {
     info!(
         "[ChatV2::VariantHandler] retry_variants: session_id={}, message_id={}, variant_count={}",
         session_id,
@@ -467,6 +472,7 @@ pub async fn chat_v2_retry_variants(
         options,
     )
     .await
+    .map_err(|e| e.to_string())
 }
 
 async fn retry_variant_impl(
@@ -1045,13 +1051,15 @@ pub async fn chat_v2_cancel_variant(
     llm_manager: State<'_, Arc<LLMManager>>,
     session_id: String,
     variant_id: String,
-) -> ChatV2Result<()> {
+) -> Result<(), String> {
     info!(
         "[ChatV2::VariantHandler] cancel_variant: session_id={}, variant_id={}",
         session_id, variant_id
     );
 
-    cancel_variant_impl(&db, &state, &llm_manager, &session_id, &variant_id).await
+    cancel_variant_impl(&db, &state, &llm_manager, &session_id, &variant_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
 async fn cancel_variant_impl(

@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { getErrorMessage } from './errorUtils';
 import { invokeWithDebug } from './shared';
-import type { DatabaseInfo, TestDatabaseSwitchResponse } from './types';
+import type { DatabaseInfo, TestDatabaseSwitchResponse, MistakeItem } from './types';
 
 // 合并相邻的assistant消息：
 // - 如果出现 [assistant(无内容但含工具/来源)] + [assistant(有内容)]，
@@ -183,7 +183,7 @@ export async function ocrExtractText(options: {
 */
 
 /** @deprecated 错题库功能已废弃（2026-01 清理），仅保留存根供 dev test panels 使用 */
-export async function getMistakeDetails(_id: string): Promise<Record<string, unknown> | null> {
+export async function getMistakeDetails(_id: string): Promise<MistakeItem | null> {
   console.warn('[DEPRECATED] getMistakeDetails is deprecated, migrate callers (2026-01 cleanup)');
   return null;
 }

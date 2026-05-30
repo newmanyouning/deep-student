@@ -555,5 +555,3 @@ DeepStudent would not be possible without these outstanding open-source projects
 <p align="center">
   <sub>Made with ❤️ for Lifelong Learners</sub>
 </p>
-t e s t  
- 

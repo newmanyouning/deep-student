@@ -9,32 +9,64 @@ use std::time::Instant;
 use tauri::State;
 
 use crate::chat_v2::database::ChatV2Database;
-use crate::chat_v2::error::{ChatV2Error, ChatV2Result};
+use crate::chat_v2::error::ChatV2Error;
 use crate::chat_v2::repo::ChatV2Repo;
 use crate::chat_v2::types::LoadSessionResponse;
 
 /// 加载会话完整数据
+///
+/// 从数据库加载会话的所有相关数据，用于前端初始化会话视图。
+///
+/// ## 参数
+/// - `session_id`: 会话 ID
+/// - `db`: Chat V2 独立数据库
+///
+/// ## 返回
+/// - `Ok(LoadSessionResponse)`: 会话完整数据
+/// - `Err(String)`: 会话不存在或加载失败
+///
+/// ## 响应结构
+/// ```json
+/// {
+///   "session": { ... },
+///   "messages": [ ... ],
+///   "blocks": [ ... ],
+///   "state": { ... }
+/// }
+/// ```
 #[tauri::command]
 pub async fn chat_v2_load_session(
     session_id: String,
     db: State<'_, Arc<ChatV2Database>>,
-) -> ChatV2Result<LoadSessionResponse> {
+) -> Result<LoadSessionResponse, String> {
     let t0 = Instant::now();
-    log::info!("[ChatV2::handlers] chat_v2_load_session: session_id={}", session_id);
+    log::info!(
+        "[ChatV2::handlers] chat_v2_load_session: session_id={}",
+        session_id
+    );
 
+    // 验证会话 ID 格式
+    // 🔧 2026-01-20: 支持 agent_ 前缀的 Worker 会话 ID
+    // 🔧 2026-01-20: 支持 subagent_ 前缀的子代理会话 ID
     if !session_id.starts_with("sess_")
         && !session_id.starts_with("agent_")
         && !session_id.starts_with("subagent_")
     {
-        return Err(ChatV2Error::Validation(format!("Invalid session ID format: {}", session_id)));
+        return Err(
+            ChatV2Error::Validation(format!("Invalid session ID format: {}", session_id)).into(),
+        );
     }
 
+    // 从数据库加载会话完整数据
     let response = load_session_from_db(&session_id, &db)?;
 
     let elapsed_ms = t0.elapsed().as_millis();
     log::info!(
         "[ChatV2::handlers] Loaded session: session_id={}, messages={}, blocks={}, elapsed_ms={}",
-        session_id, response.messages.len(), response.blocks.len(), elapsed_ms
+        session_id,
+        response.messages.len(),
+        response.blocks.len(),
+        elapsed_ms
     );
 
     Ok(response)

@@ -625,7 +625,7 @@ pub struct DebugIntegrityReport {
 
 /// 记录前端调试消息
 #[tauri::command]
-pub async fn log_debug_message(message: String) -> Result<(), AppError> {
+pub async fn log_debug_message(message: String) -> Result<(), String> {
     use tracing::info;
     info!(target: "frontend_debug", "{}", message);
     println!("🔍 [FRONTEND] {}", message);
@@ -669,12 +669,12 @@ pub struct MigrationRecord {
 #[tauri::command]
 pub async fn debug_vfs_migration_status(
     vfs_db: State<'_, std::sync::Arc<crate::vfs::database::VfsDatabase>>,
-) -> Result<VfsMigrationDiagnostic, AppError> {
+) -> Result<VfsMigrationDiagnostic, String> {
     use tracing::info;
 
     info!("[DEBUG] Diagnosing VFS migration status...");
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| AppError::unknown(e.to_string()))?;
+    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
 
     // 1. 获取记录的版本号（从 Refinery 表读取）
     let recorded_version: u32 = conn
@@ -688,7 +688,7 @@ pub async fn debug_vfs_migration_status(
     // 2. 获取迁移历史（从 Refinery 表读取）
     let mut stmt = conn.prepare(
         "SELECT version, name, applied_on, 1 as success FROM refinery_schema_history ORDER BY version"
-    ).map_err(|e| AppError::unknown(e.to_string()))?;
+    ).map_err(|e| e.to_string())?;
 
     let migration_history: Vec<MigrationRecord> = stmt
         .query_map([], |row| {
@@ -699,18 +699,18 @@ pub async fn debug_vfs_migration_status(
                 success: row.get::<_, i32>(3)? == 1,
             })
         })
-        .map_err(|e| AppError::unknown(e.to_string()))?
+        .map_err(|e| e.to_string())?
         .filter_map(log_and_skip_err)
         .collect();
 
     // 3. 获取 resources 表的列
     let mut stmt = conn
         .prepare("SELECT name FROM pragma_table_info('resources')")
-        .map_err(|e| AppError::unknown(e.to_string()))?;
+        .map_err(|e| e.to_string())?;
 
     let resources_columns: Vec<String> = stmt
         .query_map([], |row| row.get(0))
-        .map_err(|e| AppError::unknown(e.to_string()))?
+        .map_err(|e| e.to_string())?
         .filter_map(log_and_skip_err)
         .collect();
 

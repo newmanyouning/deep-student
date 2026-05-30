@@ -25,7 +25,6 @@ use tauri::{AppHandle, Manager, State};
 #[cfg(feature = "data_governance")]
 use super::audit::{AuditFilter, AuditLog, AuditOperation, AuditRepository, AuditStatus};
 use super::commands_backup::{get_app_data_dir, sanitize_path_for_user};
-use super::error::{DataGovernanceError, DataGovernanceResult};
 use super::commands_types::{
     AuditLogPagedResponse, AuditLogResponse, DatabaseDetailResponse, DatabaseHealthStatus,
     DatabaseStatusResponse, HealthCheckResponse, MaintenanceStatusResponse,
@@ -97,7 +96,7 @@ fn read_persisted_migration_error(app_data_dir: &Path) -> Option<(String, String
     Some((error, timestamp))
 }
 
-fn get_live_app_data_dir(app: &tauri::AppHandle) -> DataGovernanceResult<std::path::PathBuf> {
+fn get_live_app_data_dir(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
     if let Some(state) = app.try_state::<crate::commands::AppState>() {
         return Ok(state.file_manager.get_writable_app_data_dir());
     }
@@ -109,10 +108,10 @@ fn get_live_app_data_dir(app: &tauri::AppHandle) -> DataGovernanceResult<std::pa
 ///
 /// 当备份/恢复/数据迁移等数据治理操作正在进行时，
 /// 同步命令不应访问数据库文件，否则会绕过维护模式造成数据不一致。
-pub(super) fn check_maintenance_mode(app: &tauri::AppHandle) -> DataGovernanceResult<()> {
+pub(super) fn check_maintenance_mode(app: &tauri::AppHandle) -> Result<(), String> {
     if let Some(state) = app.try_state::<crate::commands::AppState>() {
         if state.database.is_in_maintenance_mode() {
-            return Err(DataGovernanceError::Internal("数据治理操作正在进行（维护模式），请稍后再试。".to_string()));
+            return Err("数据治理操作正在进行（维护模式），请稍后再试。".to_string());
         }
     }
     Ok(())
@@ -184,23 +183,23 @@ pub(super) const SYNC_LOCK_TIMEOUT_SECS: u64 = 60;
 fn refresh_schema_registry_from_dir(
     app_data_dir: &Path,
     registry_state: &Arc<RwLock<SchemaRegistry>>,
-) -> DataGovernanceResult<SchemaRegistry> {
+) -> Result<SchemaRegistry, String> {
     let latest_registry = super::init::get_current_schema_state(app_data_dir).map_err(|e| {
         tracing::error!(
             "[data_governance] 刷新 SchemaRegistry 失败 ({}): {}",
             app_data_dir.display(),
             e
         );
-        DataGovernanceError::Internal(format!(
+        format!(
             "刷新 SchemaRegistry 失败 ({}): {}",
             sanitize_path_for_user(app_data_dir),
             e
-        ))
+        )
     })?;
 
     let mut guard = registry_state
         .write()
-        .map_err(|e| DataGovernanceError::Internal(format!("写入 SchemaRegistry 状态失败: {}", e)))?;
+        .map_err(|e| format!("写入 SchemaRegistry 状态失败: {}", e))?;
     *guard = latest_registry.clone();
 
     Ok(latest_registry)
@@ -209,7 +208,7 @@ fn refresh_schema_registry_from_dir(
 fn refresh_schema_registry_from_live_state(
     app: &tauri::AppHandle,
     registry_state: &Arc<RwLock<SchemaRegistry>>,
-) -> DataGovernanceResult<SchemaRegistry> {
+) -> Result<SchemaRegistry, String> {
     let app_data_dir = get_live_app_data_dir(app)?;
     refresh_schema_registry_from_dir(&app_data_dir, registry_state)
 }
@@ -415,7 +414,7 @@ pub(super) fn try_save_audit_log(app: &tauri::AppHandle, log: AuditLog) {
 #[tauri::command]
 pub fn data_governance_get_maintenance_status(
     app: AppHandle,
-) -> DataGovernanceResult<MaintenanceStatusResponse> {
+) -> Result<MaintenanceStatusResponse, String> {
     let in_maintenance = if let Some(state) = app.try_state::<crate::commands::AppState>() {
         state.database.is_in_maintenance_mode()
     } else {
@@ -434,7 +433,7 @@ pub fn data_governance_get_maintenance_status(
 pub fn data_governance_get_schema_registry(
     app: AppHandle,
     registry: State<'_, Arc<RwLock<SchemaRegistry>>>,
-) -> DataGovernanceResult<SchemaRegistryResponse> {
+) -> Result<SchemaRegistryResponse, String> {
     let registry = refresh_schema_registry_from_live_state(&app, registry.inner())?;
 
     Ok(SchemaRegistryResponse {
@@ -467,11 +466,11 @@ pub fn data_governance_get_audit_logs(
     status: Option<String>,
     limit: Option<usize>,
     offset: Option<usize>,
-) -> DataGovernanceResult<AuditLogPagedResponse> {
+) -> Result<AuditLogPagedResponse, String> {
     // 从审计数据库获取连接
     let conn = audit_db
         .get_conn()
-        .map_err(|e| DataGovernanceError::Database(format!("获取审计数据库连接失败: {}", e)))?;
+        .map_err(|e| format!("获取审计数据库连接失败: {}", e))?;
 
     let parsed_status = match status.as_deref() {
         Some("Started") => Some(AuditStatus::Started),
@@ -479,10 +478,10 @@ pub fn data_governance_get_audit_logs(
         Some("Failed") => Some(AuditStatus::Failed),
         Some("Partial") => Some(AuditStatus::Partial),
         Some(other) => {
-            return Err(DataGovernanceError::InvalidArgument(format!(
+            return Err(format!(
                 "无效的状态过滤值: {}。可选值: Completed, Failed, Partial",
                 other
-            )))
+            ))
         }
         None => None,
     };
@@ -498,7 +497,7 @@ pub fn data_governance_get_audit_logs(
 
     // 分页查询审计日志
     let result = AuditRepository::query_paged(&conn, filter)
-        .map_err(|e| DataGovernanceError::Database(format!("查询审计日志失败: {}", e)))?;
+        .map_err(|e| format!("查询审计日志失败: {}", e))?;
 
     Ok(AuditLogPagedResponse {
         logs: result
@@ -536,25 +535,25 @@ pub fn data_governance_cleanup_audit_logs(
     keep_recent: Option<usize>,
     before_days: Option<u64>,
     confirmation_token: String,
-) -> DataGovernanceResult<u64> {
+) -> Result<u64, String> {
     // ── 安全验证：确认令牌 ──
     const TOKEN_PREFIX: &str = "AUDIT_CLEANUP_";
     const TOKEN_VALIDITY_SECS: i64 = 60;
 
     if !confirmation_token.starts_with(TOKEN_PREFIX) {
-        return Err(DataGovernanceError::InvalidArgument("审计清理令牌格式无效，需要 AUDIT_CLEANUP_{unix_timestamp}".to_string()));
+        return Err("审计清理令牌格式无效，需要 AUDIT_CLEANUP_{unix_timestamp}".to_string());
     }
     let ts_str = &confirmation_token[TOKEN_PREFIX.len()..];
     let token_ts: i64 = ts_str
         .parse()
-        .map_err(|_| DataGovernanceError::InvalidArgument("审计清理令牌中的时间戳无效".to_string()))?;
+        .map_err(|_| "审计清理令牌中的时间戳无效".to_string())?;
     let now_ts = chrono::Utc::now().timestamp();
     let diff = (now_ts - token_ts).abs();
     if diff > TOKEN_VALIDITY_SECS {
-        return Err(DataGovernanceError::InvalidArgument(format!(
+        return Err(format!(
             "审计清理令牌已过期（差值 {}s，允许 {}s 内）",
             diff, TOKEN_VALIDITY_SECS
-        )));
+        ));
     }
 
     // ── 安全验证：最小保留下限 ──
@@ -563,24 +562,24 @@ pub fn data_governance_cleanup_audit_logs(
 
     if let Some(keep) = keep_recent {
         if keep < MIN_KEEP_RECENT {
-            return Err(DataGovernanceError::InvalidArgument(format!(
+            return Err(format!(
                 "keep_recent 不得低于 {}，当前值: {}",
                 MIN_KEEP_RECENT, keep
-            )));
+            ));
         }
     }
     if let Some(days) = before_days {
         if days < MIN_BEFORE_DAYS {
-            return Err(DataGovernanceError::InvalidArgument(format!(
+            return Err(format!(
                 "before_days 不得低于 {} 天，当前值: {}",
                 MIN_BEFORE_DAYS, days
-            )));
+            ));
         }
     }
 
     let conn = audit_db
         .get_conn()
-        .map_err(|e| DataGovernanceError::Database(format!("获取审计数据库连接失败: {}", e)))?;
+        .map_err(|e| format!("获取审计数据库连接失败: {}", e))?;
 
     // ── 清理前先记录审计日志 ──
     #[cfg(feature = "data_governance")]
@@ -620,7 +619,7 @@ pub fn data_governance_cleanup_audit_logs(
                     .fail(e.to_string()),
                 );
             }
-            DataGovernanceError::Database(format!("清理审计日志失败: {}", e))
+            format!("清理审计日志失败: {}", e)
         })?
     } else {
         let days = before_days.unwrap_or(DEFAULT_MAX_AGE_DAYS as u64);
@@ -638,7 +637,7 @@ pub fn data_governance_cleanup_audit_logs(
                     .fail(e.to_string()),
                 );
             }
-            DataGovernanceError::Database(format!("清理审计日志失败: {}", e))
+            format!("清理审计日志失败: {}", e)
         })?
     };
 
@@ -673,7 +672,7 @@ pub fn data_governance_cleanup_audit_logs(
 pub fn data_governance_get_migration_status(
     app_handle: AppHandle,
     registry: State<'_, Arc<RwLock<SchemaRegistry>>>,
-) -> DataGovernanceResult<MigrationStatusResponse> {
+) -> Result<MigrationStatusResponse, String> {
     use tracing::{debug, warn};
 
     let registry = refresh_schema_registry_from_live_state(&app_handle, registry.inner())?;
@@ -757,7 +756,7 @@ pub fn data_governance_get_migration_status(
 pub fn data_governance_run_health_check(
     app: AppHandle,
     registry: State<'_, Arc<RwLock<SchemaRegistry>>>,
-) -> DataGovernanceResult<HealthCheckResponse> {
+) -> Result<HealthCheckResponse, String> {
     use tracing::{info, warn};
 
     info!("🔍 [HealthCheck] 开始运行健康检查...");
@@ -897,7 +896,7 @@ pub fn data_governance_get_database_status(
     app: AppHandle,
     registry: State<'_, Arc<RwLock<SchemaRegistry>>>,
     database_id: String,
-) -> DataGovernanceResult<Option<DatabaseDetailResponse>> {
+) -> Result<Option<DatabaseDetailResponse>, String> {
     let registry = refresh_schema_registry_from_live_state(&app, registry.inner())?;
 
     let db_id = match database_id.as_str() {
@@ -906,10 +905,10 @@ pub fn data_governance_get_database_status(
         "mistakes" => DatabaseId::Mistakes,
         "llm_usage" => DatabaseId::LlmUsage,
         _ => {
-            return Err(DataGovernanceError::InvalidArgument(format!(
+            return Err(format!(
                 "未知的数据库 ID: {}。可选值: vfs, chat_v2, mistakes, llm_usage",
                 database_id
-            )))
+            ))
         }
     };
 
@@ -951,7 +950,7 @@ pub fn data_governance_get_database_status(
 pub fn data_governance_get_migration_diagnostic_report(
     app_handle: AppHandle,
     registry: State<'_, Arc<RwLock<SchemaRegistry>>>,
-) -> DataGovernanceResult<String> {
+) -> Result<String, String> {
     use std::fmt::Write;
 
     let app_data_dir = get_live_app_data_dir(&app_handle)?;
@@ -1169,7 +1168,7 @@ pub fn data_governance_get_migration_diagnostic_report(
 #[tauri::command]
 pub fn data_governance_run_slot_c_empty_db_test(
     app_handle: AppHandle,
-) -> DataGovernanceResult<SlotMigrationTestResponse> {
+) -> Result<SlotMigrationTestResponse, String> {
     let app_data_dir = get_live_app_data_dir(&app_handle)?;
     Ok(run_slot_c_empty_db_test(&app_data_dir))
 }
@@ -1178,7 +1177,7 @@ pub fn data_governance_run_slot_c_empty_db_test(
 #[tauri::command]
 pub fn data_governance_run_slot_d_clone_db_test(
     app_handle: AppHandle,
-) -> DataGovernanceResult<SlotMigrationTestResponse> {
+) -> Result<SlotMigrationTestResponse, String> {
     let app_data_dir = get_live_app_data_dir(&app_handle)?;
     Ok(run_slot_d_clone_db_test(&app_data_dir))
 }

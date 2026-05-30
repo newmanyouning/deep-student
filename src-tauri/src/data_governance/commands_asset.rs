@@ -7,7 +7,6 @@ use tracing::{error, info, warn};
 
 use super::backup::{AssetBackupConfig, AssetType, AssetTypeStats, BackupManager};
 use crate::backup_common::BACKUP_GLOBAL_LIMITER;
-use super::error::{DataGovernanceError, DataGovernanceResult};
 
 use super::commands_backup::{
     ensure_existing_path_within_backup_dir, get_active_data_dir, get_app_data_dir, get_backup_dir,
@@ -29,7 +28,7 @@ use super::commands_restore::RestoreResultResponse;
 pub async fn data_governance_scan_assets(
     app: tauri::AppHandle,
     asset_types: Option<Vec<String>>,
-) -> DataGovernanceResult<AssetScanResponse> {
+) -> Result<AssetScanResponse, String> {
     info!("[data_governance] 扫描资产目录");
 
     let active_dir = get_active_data_dir(&app)?;
@@ -42,7 +41,7 @@ pub async fn data_governance_scan_assets(
     // 扫描资产（使用活动数据空间目录，与 FileManager 运行时绑定的位置一致）
     let stats = super::backup::assets::scan_assets(&active_dir, &types).map_err(|e| {
         error!("[data_governance] 扫描资产失败: {}", e);
-        DataGovernanceError::Internal(format!("扫描资产失败: {}", e))
+        format!("扫描资产失败: {}", e)
     })?;
 
     // 计算总计
@@ -122,7 +121,7 @@ pub async fn data_governance_restore_with_assets(
     app: tauri::AppHandle,
     backup_id: String,
     restore_assets: Option<bool>,
-) -> DataGovernanceResult<RestoreResultResponse> {
+) -> Result<RestoreResultResponse, String> {
     let validated_backup_id = validate_backup_id(&backup_id)?;
     let restore_assets = restore_assets.unwrap_or(false);
     info!(
@@ -135,7 +134,7 @@ pub async fn data_governance_restore_with_assets(
     let backup_dir = get_backup_dir(&app_data_dir);
 
     if !backup_dir.exists() {
-        return Err(DataGovernanceError::Internal("备份目录不存在。请前往「设置 > 数据治理 > 备份」检查备份目录配置".to_string()));
+        return Err("备份目录不存在。请前往「设置 > 数据治理 > 备份」检查备份目录配置".to_string());
     }
 
     // 全局互斥：避免与正在运行的备份/恢复/ZIP 导入导出并发
@@ -143,7 +142,7 @@ pub async fn data_governance_restore_with_assets(
         .clone()
         .acquire_owned()
         .await
-        .map_err(|e| DataGovernanceError::Internal(format!("获取全局备份锁失败: {}", e)))?;
+        .map_err(|e| format!("获取全局备份锁失败: {}", e))?;
 
     // 创建备份管理器
     let mut manager = BackupManager::new(backup_dir.clone());
@@ -153,13 +152,13 @@ pub async fn data_governance_restore_with_assets(
     // 获取备份清单
     let manifests = manager.list_backups().map_err(|e| {
         error!("[data_governance] 获取备份列表失败: {}", e);
-        DataGovernanceError::Internal(format!("获取备份列表失败: {}", e))
+        format!("获取备份列表失败: {}", e)
     })?;
 
     let manifest = manifests
         .iter()
         .find(|m| m.backup_id == validated_backup_id)
-        .ok_or_else(|| DataGovernanceError::NotFound(format!("备份不存在: {}", validated_backup_id)))?;
+        .ok_or_else(|| format!("备份不存在: {}", validated_backup_id))?;
 
     let manifest_dir = backup_dir.join(&manifest.backup_id);
     ensure_existing_path_within_backup_dir(&manifest_dir, &backup_dir)?;
@@ -190,11 +189,11 @@ pub async fn data_governance_restore_with_assets(
         let required = (db_size + asset_size).saturating_mul(2);
         match crate::backup_common::get_available_disk_space(&app_data_dir) {
             Ok(available) if available < required => {
-                return Err(DataGovernanceError::Internal(format!(
+                return Err(format!(
                     "磁盘空间不足：需要 {:.1} MB，仅剩 {:.1} MB。请清理存储空间后重试",
                     required as f64 / 1024.0 / 1024.0,
                     available as f64 / 1024.0 / 1024.0
-                )));
+                ));
             }
             Err(e) => {
                 warn!("[data_governance] 磁盘空间检查失败（继续恢复）: {}", e);
@@ -247,10 +246,10 @@ pub async fn data_governance_restore_with_assets(
         }
         Err(e) => {
             error!("[data_governance] 恢复失败: {}", e);
-            Err(DataGovernanceError::Restore(format!(
+            Err(format!(
                 "恢复备份失败: {}。请前往「设置 > 数据治理」查看备份状态或重试",
                 e
-            )))
+            ))
         }
     }
 }
@@ -269,7 +268,7 @@ pub async fn data_governance_restore_with_assets(
 pub async fn data_governance_verify_backup_with_assets(
     app: tauri::AppHandle,
     backup_id: String,
-) -> DataGovernanceResult<BackupVerifyWithAssetsResponse> {
+) -> Result<BackupVerifyWithAssetsResponse, String> {
     let validated_backup_id = validate_backup_id(&backup_id)?;
     info!(
         "[data_governance] 验证备份（含资产）: {}",
@@ -280,7 +279,7 @@ pub async fn data_governance_verify_backup_with_assets(
     let backup_dir = get_backup_dir(&app_data_dir);
 
     if !backup_dir.exists() {
-        return Err(DataGovernanceError::Internal("备份目录不存在。请前往「设置 > 数据治理 > 备份」检查备份目录配置".to_string()));
+        return Err("备份目录不存在。请前往「设置 > 数据治理 > 备份」检查备份目录配置".to_string());
     }
 
     let mut manager = BackupManager::new(backup_dir);
@@ -291,17 +290,17 @@ pub async fn data_governance_verify_backup_with_assets(
         .clone()
         .acquire_owned()
         .await
-        .map_err(|e| DataGovernanceError::Internal(format!("获取全局备份锁失败: {}", e)))?;
+        .map_err(|e| format!("获取全局备份锁失败: {}", e))?;
 
     // 获取备份列表并查找指定的备份
     let manifests = manager
         .list_backups()
-        .map_err(|e| DataGovernanceError::Internal(format!("获取备份列表失败: {}", e)))?;
+        .map_err(|e| format!("获取备份列表失败: {}", e))?;
 
     let manifest = manifests
         .iter()
         .find(|m| m.backup_id == validated_backup_id)
-        .ok_or_else(|| DataGovernanceError::NotFound(format!("备份不存在: {}", validated_backup_id)))?;
+        .ok_or_else(|| format!("备份不存在: {}", validated_backup_id))?;
 
     let manifest_dir = app_data_dir.join("backups").join(&manifest.backup_id);
     ensure_existing_path_within_backup_dir(&manifest_dir, &app_data_dir.join("backups"))?;
@@ -309,7 +308,7 @@ pub async fn data_governance_verify_backup_with_assets(
     // 验证备份
     let verify_result = manager
         .verify_with_assets(manifest)
-        .map_err(|e| DataGovernanceError::Internal(format!("验证失败: {}", e)))?;
+        .map_err(|e| format!("验证失败: {}", e))?;
 
     let has_assets = manifest.assets.is_some();
     let asset_file_count = manifest.assets.as_ref().map(|a| a.total_files).unwrap_or(0);

@@ -14,6 +14,7 @@ import type {
   AnkiGenerationOptions,
   CustomAnkiTemplate,
   AnkiCardTemplate,
+  MistakeItem,
 } from '../../types';
 
 // ============================================================================
@@ -175,17 +176,10 @@ export interface AnkiConnectSliceActions {
 // ============================================================================
 
 /**
- * 错题摘要（自包含类型，原为 MistakeItem 别名，2026-05 解耦）
+ * 错题摘要（使用现有的 MistakeItem 类型）
+ * 直接从 src/types 导入以保持兼容性
  */
-export interface MistakeSummary {
-  id: string;
-  user_question: string;
-  tags: string[];
-  mistake_type: string;
-  created_at: string;
-  chat_history: Record<string, unknown>[];
-  chat_metadata?: { title?: string } | null;
-}
+export type MistakeSummary = MistakeItem;
 
 /**
  * 导入相关状态

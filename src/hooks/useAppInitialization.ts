@@ -16,14 +16,14 @@ import { setPendingSettingsTab } from '../utils/pendingSettingsTab';
 // 初始化字体设置（应用启动时调用）
 const initializeFontSetting = async () => {
   try {
-    const storedValue = await invoke('web_search_get_setting', { key: UI_FONT_STORAGE_KEY }) as string;
+    const storedValue = await invoke('get_setting', { key: UI_FONT_STORAGE_KEY }) as string;
     const fontValue = storedValue || DEFAULT_UI_FONT;
     applyFontToDocument(fontValue);
   } catch {
     applyFontToDocument(DEFAULT_UI_FONT);
   }
   try {
-    const storedValue = await invoke('web_search_get_setting', { key: UI_FONT_SIZE_STORAGE_KEY }) as string;
+    const storedValue = await invoke('get_setting', { key: UI_FONT_SIZE_STORAGE_KEY }) as string;
     const fontSizeValue = clampFontSize(parseFloat(storedValue));
     applyFontSizeToDocument(fontSizeValue);
   } catch {
@@ -84,12 +84,12 @@ export const useAppInitialization = (): UseAppInitializationReturn => {
         // 初始化字体设置（应用启动时加载保存的字体）
         initializeFontSetting().catch(console.warn);
 
-        // Step 2: 数据库连接检查（通过 web_search_get_setting 实际查询数据库验证连接可用性）
+        // Step 2: 数据库连接检查（通过 get_setting 实际查询数据库验证连接可用性）
         // 🔧 时序修复：版本更新时数据库可能正在执行迁移，首次检查可能失败。
         // 添加重试机制，避免迁移期间的瞬态失败导致 banner 永久显示。
         let dbCheckOk = false;
         try {
-          await invoke('web_search_get_setting', { key: 'app_initialized' });
+          await invoke('get_setting', { key: 'app_initialized' });
           dbCheckOk = true;
         } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : String(err);
@@ -109,7 +109,7 @@ export const useAppInitialization = (): UseAppInitializationReturn => {
               await new Promise(resolve => setTimeout(resolve, delay));
               if (cancelledRef.current) return;
               try {
-                await invoke('web_search_get_setting', { key: 'app_initialized' });
+                await invoke('get_setting', { key: 'app_initialized' });
                 // 重试成功：清除错误状态
                 console.log('[Init] Database check succeeded on retry, clearing error banner');
                 updateStep('database', true);

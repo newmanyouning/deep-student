@@ -41,7 +41,7 @@ export const SecurityStatusIndicator: React.FC<SecurityStatusIndicatorProps> = (
         return;
       }
       
-      const result = await invoke<SecurityStatus>('web_search_get_security_status');
+      const result = await invoke<SecurityStatus>('get_security_status');
       
       // 更新缓存
       statusCache.data = result;

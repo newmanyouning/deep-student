@@ -9,7 +9,6 @@ use crate::vfs::indexing::VfsFullIndexingService;
 use crate::vfs::lance_store::VfsLanceStore;
 
 use super::audit_log::{self, MemoryAuditLogItem};
-use super::error::MemoryResult;
 use super::service::{
     MemoryConfigOutput, MemoryListItem, MemorySearchResult, MemoryService, MemoryWriteOutput,
     SmartWriteOutput, WriteMode,
@@ -78,31 +77,31 @@ fn get_memory_service(
     MemoryService::new(vfs_db.clone(), lance_store.clone(), llm_manager.clone())
 }
 
-fn parse_memory_type(memory_type: Option<&str>) -> MemoryResult<super::service::MemoryType> {
+fn parse_memory_type(memory_type: Option<&str>) -> Result<super::service::MemoryType, String> {
     match memory_type.map(|s| s.trim().to_lowercase()) {
         Some(s) if s == "fact" => Ok(super::service::MemoryType::Fact),
         Some(s) if s == "study" => Ok(super::service::MemoryType::Study),
         Some(s) if s == "note" => Ok(super::service::MemoryType::Note),
-        Some(s) => Err(super::error::MemoryError::Validation(format!(
+        Some(s) => Err(format!(
             "Invalid memory_type '{}', expected one of: fact, study, note",
             s
-        ))),
+        )),
         None => Ok(super::service::MemoryType::Fact),
     }
 }
 
 fn parse_memory_purpose(
     memory_purpose: Option<&str>,
-) -> MemoryResult<Option<super::service::MemoryPurpose>> {
+) -> Result<Option<super::service::MemoryPurpose>, String> {
     match memory_purpose.map(|s| s.trim().to_lowercase()) {
         Some(s) if s == "internalized" => Ok(Some(super::service::MemoryPurpose::Internalized)),
         Some(s) if s == "memorized" => Ok(Some(super::service::MemoryPurpose::Memorized)),
         Some(s) if s == "supplementary" => Ok(Some(super::service::MemoryPurpose::Supplementary)),
         Some(s) if s == "systemic" => Ok(Some(super::service::MemoryPurpose::Systemic)),
-        Some(s) => Err(super::error::MemoryError::Validation(format!(
+        Some(s) => Err(format!(
             "Invalid memory_purpose '{}', expected one of: internalized, memorized, supplementary, systemic",
             s
-        ))),
+        )),
         None => Ok(None),
     }
 }
@@ -163,9 +162,10 @@ pub async fn memory_get_config(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<MemoryConfigOutput> {
+) -> Result<MemoryConfigOutput, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    service.get_config()}
+    service.get_config().map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn memory_set_root_folder(
@@ -173,11 +173,12 @@ pub async fn memory_set_root_folder(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<()> {
+) -> Result<(), String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     service
         .set_root_folder(&folder_id)
-        }
+        .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn memory_set_privacy_mode(
@@ -185,9 +186,10 @@ pub async fn memory_set_privacy_mode(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<()> {
+) -> Result<(), String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    service.set_privacy_mode(enabled)}
+    service.set_privacy_mode(enabled).map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn memory_create_root_folder(
@@ -195,22 +197,24 @@ pub async fn memory_create_root_folder(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<String> {
+) -> Result<String, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     service
         .create_root_folder(&title)
-        }
+        .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn memory_get_or_create_root_folder(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<String> {
+) -> Result<String, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     service
         .get_or_create_root_folder()
-        }
+        .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn memory_search(
@@ -219,13 +223,14 @@ pub async fn memory_search(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<Vec<MemorySearchResult>> {
+) -> Result<Vec<MemorySearchResult>, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     let k = top_k.unwrap_or(5).clamp(1, 100);
     service
         .search_with_rerank(&query, k, false)
         .await
-        }
+        .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn memory_read(
@@ -233,13 +238,14 @@ pub async fn memory_read(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<Option<MemoryReadOutput>> {
+) -> Result<Option<MemoryReadOutput>, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
 
-    match service.read(&note_id)? {
+    match service.read(&note_id).map_err(|e| e.to_string())? {
         Some((note, content)) => {
             let folder_path = service
-                .get_note_folder_path(&note_id)?;
+                .get_note_folder_path(&note_id)
+                .map_err(|e| e.to_string())?;
 
             Ok(Some(MemoryReadOutput {
                 note_id: note.id,
@@ -263,7 +269,7 @@ pub async fn memory_write(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<MemoryWriteOutput> {
+) -> Result<MemoryWriteOutput, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     let write_mode = mode
         .map(|m| WriteMode::from_str(&m))
@@ -273,7 +279,8 @@ pub async fn memory_write(
         match write_mode {
             WriteMode::Append => {
                 let current = service
-                    .read(&target_note_id)?
+                    .read(&target_note_id)
+                    .map_err(|e| e.to_string())?
                     .map(|(_, existing)| existing)
                     .unwrap_or_default();
                 let final_content = if current.is_empty() {
@@ -282,14 +289,17 @@ pub async fn memory_write(
                     format!("{}\n\n{}", current, content)
                 };
                 service
-                    .update_by_id(&target_note_id, Some(&title), Some(&final_content))?
+                    .update_by_id(&target_note_id, Some(&title), Some(&final_content))
+                    .map_err(|e| e.to_string())?
             }
             _ => service
-                .update_by_id(&target_note_id, Some(&title), Some(&content))?,
+                .update_by_id(&target_note_id, Some(&title), Some(&content))
+                .map_err(|e| e.to_string())?,
         }
     } else {
         service
-            .write(folder_path.as_deref(), &title, &content, write_mode)?
+            .write(folder_path.as_deref(), &title, &content, write_mode)
+            .map_err(|e| e.to_string())?
     };
 
     // ★ P2-2 修复：写入后立即触发索引，保证 write-then-search SLA
@@ -313,21 +323,23 @@ pub async fn memory_list(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<Vec<MemoryListItem>> {
+) -> Result<Vec<MemoryListItem>, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     let safe_limit = limit.unwrap_or(100).clamp(1, 500);
     service
         .list(folder_path.as_deref(), safe_limit, offset.unwrap_or(0))
-        }
+        .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn memory_get_tree(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<Option<crate::vfs::types::FolderTreeNode>> {
+) -> Result<Option<crate::vfs::types::FolderTreeNode>, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    service.get_tree()}
+    service.get_tree().map_err(|e| e.to_string())
+}
 
 /// 添加记忆关联（双向）
 #[tauri::command]
@@ -337,11 +349,12 @@ pub async fn memory_add_relation(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<()> {
+) -> Result<(), String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     service
         .add_relation(&note_id_a, &note_id_b)
-        }
+        .map_err(|e| e.to_string())
+}
 
 /// 移除记忆关联（双向）
 #[tauri::command]
@@ -351,11 +364,12 @@ pub async fn memory_remove_relation(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<()> {
+) -> Result<(), String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     service
         .remove_relation(&note_id_a, &note_id_b)
-        }
+        .map_err(|e| e.to_string())
+}
 
 /// 获取关联记忆 ID 列表
 #[tauri::command]
@@ -364,9 +378,10 @@ pub async fn memory_get_related(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<Vec<String>> {
+) -> Result<Vec<String>, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    service.get_related_ids(&note_id)}
+    service.get_related_ids(&note_id).map_err(|e| e.to_string())
+}
 
 /// 更新记忆标签
 #[tauri::command]
@@ -376,11 +391,12 @@ pub async fn memory_update_tags(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<()> {
+) -> Result<(), String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     service
         .update_tags(&note_id, tags)
-        }
+        .map_err(|e| e.to_string())
+}
 
 /// 获取记忆标签
 #[tauri::command]
@@ -389,9 +405,10 @@ pub async fn memory_get_tags(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<Vec<String>> {
+) -> Result<Vec<String>, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    service.get_tags(&note_id)}
+    service.get_tags(&note_id).map_err(|e| e.to_string())
+}
 
 /// 批量删除记忆
 #[tauri::command]
@@ -400,7 +417,7 @@ pub async fn memory_batch_delete(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<BatchOperationResult> {
+) -> Result<BatchOperationResult, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     let total = note_ids.len();
     let mut succeeded = 0usize;
@@ -439,7 +456,7 @@ pub async fn memory_batch_move(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<BatchOperationResult> {
+) -> Result<BatchOperationResult, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     let total = note_ids.len();
     let mut succeeded = 0usize;
@@ -474,11 +491,12 @@ pub async fn memory_move_to_folder(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<()> {
+) -> Result<(), String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     service
         .move_to_folder(&note_id, &target_folder_path)
-        }
+        .map_err(|e| e.to_string())
+}
 
 // ★ 修复风险2：按 note_id 更新记忆
 #[tauri::command]
@@ -489,10 +507,11 @@ pub async fn memory_update_by_id(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<MemoryWriteOutput> {
+) -> Result<MemoryWriteOutput, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     let result = service
-        .update_by_id(&note_id, title.as_deref(), content.as_deref())?;
+        .update_by_id(&note_id, title.as_deref(), content.as_deref())
+        .map_err(|e| e.to_string())?;
 
     // ★ P2-2 修复：更新后立即触发索引，保证 write-then-search SLA
     trigger_immediate_index(
@@ -514,9 +533,9 @@ pub async fn memory_delete(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<()> {
+) -> Result<(), String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    service.delete(&note_id).await?;
+    service.delete(&note_id).await.map_err(|e| e.to_string())?;
     service.spawn_post_write_maintenance();
     Ok(())
 }
@@ -527,11 +546,12 @@ pub async fn memory_set_auto_create_subfolders(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<()> {
+) -> Result<(), String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     let cfg = super::config::MemoryConfig::new(service.vfs_db_ref().clone());
     cfg.set_auto_create_subfolders(enabled)
-        }
+        .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn memory_set_default_category(
@@ -539,11 +559,12 @@ pub async fn memory_set_default_category(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<()> {
+) -> Result<(), String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     let cfg = super::config::MemoryConfig::new(service.vfs_db_ref().clone());
     cfg.set_default_category(&category)
-        }
+        .map_err(|e| e.to_string())
+}
 
 #[tauri::command]
 pub async fn memory_set_auto_extract_frequency(
@@ -551,22 +572,23 @@ pub async fn memory_set_auto_extract_frequency(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<()> {
+) -> Result<(), String> {
     let freq = match frequency.trim().to_lowercase().as_str() {
         "off" => super::config::AutoExtractFrequency::Off,
         "balanced" => super::config::AutoExtractFrequency::Balanced,
         "aggressive" => super::config::AutoExtractFrequency::Aggressive,
         other => {
-            return Err(super::error::MemoryError::Validation(format!(
+            return Err(format!(
                 "Invalid auto extract frequency '{}', expected one of: off, balanced, aggressive",
                 other
-            )));
+            ));
         }
     };
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     let cfg = super::config::MemoryConfig::new(service.vfs_db_ref().clone());
     cfg.set_auto_extract_frequency(freq)
-        }
+        .map_err(|e| e.to_string())
+}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -582,14 +604,15 @@ pub async fn memory_export_all(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<Vec<MemoryExportItem>> {
+) -> Result<Vec<MemoryExportItem>, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    let items = service.list(None, 500, 0)?;
+    let items = service.list(None, 500, 0).map_err(|e| e.to_string())?;
 
     let mut results = Vec::with_capacity(items.len());
     for item in &items {
         let content = service
-            .read(&item.id)?
+            .read(&item.id)
+            .map_err(|e| e.to_string())?
             .map(|(_, c)| c)
             .unwrap_or_default();
         results.push(MemoryExportItem {
@@ -614,9 +637,9 @@ pub async fn memory_get_profile(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<Vec<MemoryProfileSection>> {
+) -> Result<Vec<MemoryProfileSection>, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    let root_id = match service.get_root_folder_id()? {
+    let root_id = match service.get_root_folder_id().map_err(|e| e.to_string())? {
         Some(id) => id,
         None => return Ok(vec![]),
     };
@@ -627,7 +650,8 @@ pub async fn memory_get_profile(
     );
 
     let categories = cat_mgr
-        .load_all_category_summaries(&root_id)?;
+        .load_all_category_summaries(&root_id)
+        .map_err(|e| e.to_string())?;
 
     if !categories.is_empty() {
         return Ok(categories
@@ -639,7 +663,7 @@ pub async fn memory_get_profile(
             .collect());
     }
 
-    match service.get_profile_summary()? {
+    match service.get_profile_summary().map_err(|e| e.to_string())? {
         Some(profile) => Ok(vec![MemoryProfileSection {
             category: "画像".to_string(),
             content: profile,
@@ -659,12 +683,12 @@ pub async fn memory_write_smart(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<SmartWriteOutput> {
+) -> Result<SmartWriteOutput, String> {
     if title.trim().is_empty() {
-        return Err(super::error::MemoryError::Validation("标题不能为空".to_string()));
+        return Err("标题不能为空".to_string());
     }
     if content.trim().is_empty() {
-        return Err(super::error::MemoryError::Validation("内容不能为空".to_string()));
+        return Err("内容不能为空".to_string());
     }
 
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
@@ -681,7 +705,8 @@ pub async fn memory_write_smart(
             purpose,
             idempotency_key.as_deref(),
         )
-        .await?;
+        .await
+        .map_err(|e| e.to_string())?;
 
     if result.event != "NONE" && result.event != "FILTERED" {
         service.spawn_post_write_maintenance();
@@ -699,7 +724,7 @@ pub async fn memory_write_batch(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<MemoryBatchWriteOutput> {
+) -> Result<MemoryBatchWriteOutput, String> {
     if items.is_empty() {
         return Ok(MemoryBatchWriteOutput {
             total: 0,
@@ -750,7 +775,8 @@ pub async fn memory_write_batch(
                     purpose,
                     item.idempotency_key.as_deref(),
                 )
-                .await?,
+                .await
+                .map_err(|e| e.to_string())?,
             _ => service
                 .write_explicit_memory(
                     item.folder_path
@@ -760,7 +786,8 @@ pub async fn memory_write_batch(
                     &item.content,
                     mem_type,
                     purpose,
-                )?,
+                )
+                .map_err(|e| e.to_string())?,
         };
 
         match output.event.as_str() {
@@ -811,7 +838,7 @@ pub async fn memory_get_audit_logs(
     operation_filter: Option<String>,
     success_filter: Option<bool>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> MemoryResult<Vec<MemoryAuditLogItem>> {
+) -> Result<Vec<MemoryAuditLogItem>, String> {
     let limit = limit.unwrap_or(50).clamp(1, 200);
     let offset = offset.unwrap_or(0);
     audit_log::query_audit_logs(
@@ -822,7 +849,8 @@ pub async fn memory_get_audit_logs(
         operation_filter.as_deref(),
         success_filter,
     )
-    }
+    .map_err(|e| e.to_string())
+}
 
 /// 将记忆导出为 ChatAnki 卡片格式的文档内容
 ///
@@ -836,11 +864,12 @@ pub async fn memory_to_anki_document(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     llm_manager: State<'_, Arc<LLMManager>>,
-) -> MemoryResult<MemoryAnkiDocument> {
+) -> Result<MemoryAnkiDocument, String> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
     let limit = limit.unwrap_or(200).clamp(1, 1000);
     let items = service
-        .list(folder_path.as_deref(), limit, 0)?;
+        .list(folder_path.as_deref(), limit, 0)
+        .map_err(|e| e.to_string())?;
 
     let purpose = purpose_filter.as_deref();
 
@@ -858,7 +887,8 @@ pub async fn memory_to_anki_document(
         }
 
         let content =
-            crate::vfs::repos::note_repo::VfsNoteRepo::get_note_content(&vfs_db, &item.id)?
+            crate::vfs::repos::note_repo::VfsNoteRepo::get_note_content(&vfs_db, &item.id)
+                .map_err(|e| e.to_string())?
                 .unwrap_or_default();
 
         let text = if content.is_empty() {

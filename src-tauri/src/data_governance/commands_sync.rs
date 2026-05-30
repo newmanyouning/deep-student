@@ -8,7 +8,6 @@ use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "data_governance")]
 use super::audit::{AuditLog, AuditOperation};
-use super::error::{DataGovernanceError, DataGovernanceResult};
 use super::schema_registry::DatabaseId;
 use super::sync::{
     ChangeLogEntry, DatabaseSyncState, MergeStrategy, PendingChanges, SyncChangeWithData,
@@ -238,7 +237,7 @@ async fn drain_blob_deletion_queue(
 #[tauri::command]
 pub async fn data_governance_get_sync_status(
     app: tauri::AppHandle,
-) -> DataGovernanceResult<SyncStatusResponse> {
+) -> Result<SyncStatusResponse, String> {
     debug!("[data_governance] 获取同步状态");
 
     // P0-6: 维护模式检查——禁止在备份/恢复/迁移期间访问数据库文件
@@ -433,7 +432,7 @@ pub async fn data_governance_detect_conflicts(
     app: tauri::AppHandle,
     cloud_manifest_json: Option<String>,
     cloud_config: Option<CloudStorageConfig>,
-) -> DataGovernanceResult<ConflictDetectionResponse> {
+) -> Result<ConflictDetectionResponse, String> {
     info!("[data_governance] 开始检测同步冲突");
 
     // P0-6: 维护模式检查——禁止在备份/恢复/迁移期间访问数据库文件
@@ -465,18 +464,18 @@ pub async fn data_governance_detect_conflicts(
     // 1) 显式传入的 cloud_manifest_json（用于测试/调试）
     // 2) 传入 cloud_config 时，从云端下载清单
     let cloud_manifest: Option<SyncManifest> = if let Some(cloud_json) = cloud_manifest_json {
-        Some(serde_json::from_str(&cloud_json).map_err(|e| DataGovernanceError::Serialization(format!("解析云端清单失败: {}", e)))?)
+        Some(serde_json::from_str(&cloud_json).map_err(|e| format!("解析云端清单失败: {}", e))?)
     } else if let Some(cfg) = cloud_config {
         let storage = create_storage(&cfg)
             .await
-            .map_err(|e| DataGovernanceError::Sync(format!("创建云存储失败: {}", e)))?;
+            .map_err(|e| format!("创建云存储失败: {}", e))?;
         // [P0-2] 下载清单需要解密能力：用带密码的 manager 覆盖
         let crypto_manager =
             SyncManager::with_encryption(device_id.clone(), cfg.encryption_password.clone());
         let cloud = crypto_manager
             .download_manifest(storage.as_ref())
             .await
-            .map_err(|e| DataGovernanceError::Sync(format!("从云端下载清单失败: {}", e)))?;
+            .map_err(|e| format!("从云端下载清单失败: {}", e))?;
         Some(cloud)
     } else {
         None
@@ -485,7 +484,7 @@ pub async fn data_governance_detect_conflicts(
     // 如果有云端清单，进行比较
     if let Some(cloud_manifest) = cloud_manifest {
         let detection_result = SyncManager::detect_conflicts(&local_manifest, &cloud_manifest)
-            .map_err(|e| DataGovernanceError::Sync(format!("冲突检测失败: {}", e)))?;
+            .map_err(|e| format!("冲突检测失败: {}", e))?;
 
         info!(
             "[data_governance] 冲突检测完成: has_conflicts={}, needs_migration={}, db_conflicts={}, record_conflicts={}",
@@ -579,7 +578,7 @@ pub async fn data_governance_resolve_conflicts(
     app: tauri::AppHandle,
     strategy: String,
     cloud_manifest_json: String,
-) -> DataGovernanceResult<SyncResultResponse> {
+) -> Result<SyncResultResponse, String> {
     info!("[data_governance] 开始解决冲突，策略: {}", strategy);
 
     // P0-6: 维护模式检查——禁止在备份/恢复/迁移期间访问数据库文件
@@ -594,16 +593,16 @@ pub async fn data_governance_resolve_conflicts(
         "keep_latest" => MergeStrategy::KeepLatest,
         "manual" => MergeStrategy::Manual,
         _ => {
-            return Err(DataGovernanceError::InvalidArgument(format!(
+            return Err(format!(
                 "未知的合并策略: {}。可选值: keep_local, use_cloud, keep_latest, manual",
                 strategy
-            )))
+            ))
         }
     };
 
     // 解析云端清单
     let cloud_manifest: SyncManifest = serde_json::from_str(&cloud_manifest_json)
-        .map_err(|e| DataGovernanceError::Serialization(format!("解析云端清单失败: {}", e)))?;
+        .map_err(|e| format!("解析云端清单失败: {}", e))?;
 
     let active_dir = get_active_data_dir(&app)?;
 
@@ -628,7 +627,7 @@ pub async fn data_governance_resolve_conflicts(
 
     // 检测冲突
     let detection_result = SyncManager::detect_conflicts(&local_manifest, &cloud_manifest)
-        .map_err(|e| DataGovernanceError::Sync(format!("冲突检测失败: {}", e)))?;
+        .map_err(|e| format!("冲突检测失败: {}", e))?;
 
     // 如果没有冲突，直接返回成功
     if !detection_result.has_conflicts {
@@ -654,7 +653,7 @@ pub async fn data_governance_resolve_conflicts(
     // 应用合并策略处理记录级冲突
     let merge_result =
         SyncManager::apply_merge_strategy(merge_strategy, &detection_result.record_conflicts)
-            .map_err(|e| DataGovernanceError::Sync(format!("应用合并策略失败: {}", e)))?;
+            .map_err(|e| format!("应用合并策略失败: {}", e))?;
 
     let duration_ms = start.elapsed().as_millis() as u64;
 
@@ -731,7 +730,7 @@ pub async fn data_governance_run_sync(
     direction: String,
     cloud_config: Option<CloudStorageConfig>,
     strategy: Option<String>,
-) -> DataGovernanceResult<SyncExecutionResponse> {
+) -> Result<SyncExecutionResponse, String> {
     info!(
         "[data_governance] 开始执行同步: direction={}, strategy={:?}",
         direction, strategy
@@ -744,10 +743,10 @@ pub async fn data_governance_run_sync(
 
     // 解析同步方向
     let sync_direction = SyncDirection::from_str(&direction).ok_or_else(|| {
-        DataGovernanceError::InvalidArgument(format!(
+        format!(
             "无效的同步方向: {}。可选值: upload, download, bidirectional",
             direction
-        ))
+        )
     })?;
 
     // 解析合并策略
@@ -757,10 +756,10 @@ pub async fn data_governance_run_sync(
         "keep_latest" => MergeStrategy::KeepLatest,
         "manual" => MergeStrategy::Manual,
         s => {
-            return Err(DataGovernanceError::InvalidArgument(format!(
+            return Err(format!(
                 "无效的合并策略: {}。可选值: keep_local, use_cloud, keep_latest, manual",
                 s
-            )))
+            ))
         }
     };
 
@@ -769,7 +768,7 @@ pub async fn data_governance_run_sync(
         Some(cfg) => cfg,
         None => {
             // TODO: 从应用配置或状态中获取默认云存储配置
-            return Err(DataGovernanceError::Internal("未提供云存储配置。请在调用前配置云存储。".to_string()));
+            return Err("未提供云存储配置。请在调用前配置云存储。".to_string());
         }
     };
 
@@ -821,7 +820,7 @@ pub async fn data_governance_run_sync(
     // 创建云存储实例
     let storage = create_storage(&config)
         .await
-        .map_err(|e| DataGovernanceError::Sync(format!("创建云存储失败: {}", e)))?;
+        .map_err(|e| format!("创建云存储失败: {}", e))?;
 
     let active_dir = get_active_data_dir(&app)?;
     let app_data_dir = get_app_data_dir(&app)?;
@@ -861,7 +860,7 @@ pub async fn data_governance_run_sync(
         db_found = true;
 
         let conn = rusqlite::Connection::open(&db_path)
-            .map_err(|e| DataGovernanceError::Database(format!("打开数据库 {} 失败: {}", db_id.as_str(), e)))?;
+            .map_err(|e| format!("打开数据库 {} 失败: {}", db_id.as_str(), e))?;
 
         // 检查 __change_log 表是否存在
         let table_exists: bool = conn
@@ -880,7 +879,7 @@ pub async fn data_governance_run_sync(
             .map(|pending| {
                 SyncManager::filter_pending_changes_for_database(pending, db_id.as_str())
             })
-            .map_err(|e| DataGovernanceError::Database(format!("获取数据库 {} 待同步变更失败: {}", db_id.as_str(), e)))?;
+            .map_err(|e| format!("获取数据库 {} 待同步变更失败: {}", db_id.as_str(), e))?;
 
         if pending.has_changes() {
             let mut enriched = SyncManager::enrich_changes_with_data(
@@ -888,7 +887,7 @@ pub async fn data_governance_run_sync(
                 &pending.entries,
                 Some(&id_column_map()),
             )
-            .map_err(|e| DataGovernanceError::Database(format!("补全数据库 {} 变更数据失败: {}", db_id.as_str(), e)))?;
+            .map_err(|e| format!("补全数据库 {} 变更数据失败: {}", db_id.as_str(), e))?;
 
             // 为每条变更标注来源数据库名称，下载回放时按库路由
             for change in &mut enriched {
@@ -901,7 +900,7 @@ pub async fn data_governance_run_sync(
     }
 
     if !db_found {
-        return Err(DataGovernanceError::Internal("未找到可用的数据库。请先初始化数据库。".to_string()));
+        return Err("未找到可用的数据库。请先初始化数据库。".to_string());
     }
 
     // 构建带完整数据的 PendingChanges 用于上传
@@ -921,12 +920,12 @@ pub async fn data_governance_run_sync(
     );
 
     // 执行同步（异步操作），返回 (结果, 跳过数量)
-    let result: DataGovernanceResult<(SyncExecutionResult, usize)> = match sync_direction {
+    let result: Result<(SyncExecutionResult, usize), String> = match sync_direction {
         SyncDirection::Upload => {
             manager
                 .upload_enriched_changes(storage.as_ref(), &all_enriched, None)
                 .await
-                .map_err(|e| DataGovernanceError::Sync(format!("上传同步失败: {}", e)))?;
+                .map_err(|e| format!("上传同步失败: {}", e))?;
 
             // 先标记变更为已同步（若后续 manifest 上传失败会回滚）
             let mut marked_by_db: HashMap<String, Vec<i64>> = HashMap::new();
@@ -936,7 +935,7 @@ pub async fn data_governance_run_sync(
                     continue;
                 }
                 let conn = rusqlite::Connection::open(&db_path)
-                    .map_err(|e| DataGovernanceError::Database(format!("打开数据库失败: {}", e)))?;
+                    .map_err(|e| format!("打开数据库失败: {}", e))?;
                 let db_change_ids: Vec<i64> = all_enriched
                     .iter()
                     .filter(|c| c.database_name.as_deref() == Some(db_id.as_str()))
@@ -944,7 +943,7 @@ pub async fn data_governance_run_sync(
                     .collect();
                 if !db_change_ids.is_empty() {
                     SyncManager::mark_synced_with_timestamp(&conn, &db_change_ids)
-                        .map_err(|e| DataGovernanceError::Database(format!("标记变更失败: {}", e)))?;
+                        .map_err(|e| format!("标记变更失败: {}", e))?;
                     marked_by_db.insert(db_id.as_str().to_string(), db_change_ids);
                 }
             }
@@ -971,7 +970,7 @@ pub async fn data_governance_run_sync(
                 .await
             {
                 rollback_marked_sync_versions(&active_dir, &marked_by_db);
-                return Err(DataGovernanceError::Sync(format!("上传清单失败: {}", e)));
+                return Err(format!("上传清单失败: {}", e));
             }
 
             Ok((
@@ -991,7 +990,7 @@ pub async fn data_governance_run_sync(
             // [P0 Fix] Backend enforce prune gap detection
             let min_available = SyncManager::get_min_available_change_version(storage.as_ref())
                 .await
-                .map_err(|e| DataGovernanceError::Sync(format!("查询云端变更版本失败: {}", e)))?;
+                .map_err(|e| format!("查询云端变更版本失败: {}", e))?;
             let since_version = local_manifest
                 .databases
                 .values()
@@ -999,18 +998,18 @@ pub async fn data_governance_run_sync(
                 .min()
                 .unwrap_or(0);
             if SyncManager::has_prune_gap(since_version, min_available) {
-                return Err(DataGovernanceError::Sync(format!(
+                return Err(format!(
                     "检测到云端变更断层：本设备本地版本为 {}，云端最早可用版本为 {}。\
                      部分变更可能已被清理，请先通过 ZIP 完整恢复后重新同步。",
                     since_version,
                     min_available.map_or("无".to_string(), |v| v.to_string())
-                )));
+                ));
             }
 
             let (exec_result, downloaded_changes) = manager
                 .execute_download(storage.as_ref(), &local_manifest, merge_strategy)
                 .await
-                .map_err(|e| DataGovernanceError::Sync(format!("下载同步失败: {}", e)))?;
+                .map_err(|e| format!("下载同步失败: {}", e))?;
 
             // 下载的变更已包含完整数据，按来源数据库路由并应用
             let mut exec_result = exec_result;
@@ -1040,7 +1039,7 @@ pub async fn data_governance_run_sync(
             // [P0 Fix] Backend enforce prune gap detection
             let min_available = SyncManager::get_min_available_change_version(storage.as_ref())
                 .await
-                .map_err(|e| DataGovernanceError::Sync(format!("查询云端变更版本失败: {}", e)))?;
+                .map_err(|e| format!("查询云端变更版本失败: {}", e))?;
             let since_version = local_manifest
                 .databases
                 .values()
@@ -1048,12 +1047,12 @@ pub async fn data_governance_run_sync(
                 .min()
                 .unwrap_or(0);
             if SyncManager::has_prune_gap(since_version, min_available) {
-                return Err(DataGovernanceError::Sync(format!(
+                return Err(format!(
                     "检测到云端变更断层：本设备本地版本为 {}，云端最早可用版本为 {}。\
                      部分变更可能已被清理，请先通过 ZIP 完整恢复后重新同步。",
                     since_version,
                     min_available.map_or("无".to_string(), |v| v.to_string())
-                )));
+                ));
             }
 
             // execute_bidirectional 只负责下载，上传由此处统一执行
@@ -1065,7 +1064,7 @@ pub async fn data_governance_run_sync(
                     merge_strategy,
                 )
                 .await
-                .map_err(|e| DataGovernanceError::Sync(format!("双向同步失败: {}", e)))?;
+                .map_err(|e| format!("双向同步失败: {}", e))?;
 
             // [P0 Fix] 先应用下载的变更，再上传本地变更。
             // 这确保上传时不会推送已被下载覆盖的过时数据。
@@ -1123,7 +1122,7 @@ pub async fn data_governance_run_sync(
                 manager
                     .upload_enriched_changes(storage.as_ref(), &refs_vec, None)
                     .await
-                    .map_err(|e| DataGovernanceError::Sync(format!("上传变更失败: {}", e)))?;
+                    .map_err(|e| format!("上传变更失败: {}", e))?;
             }
 
             // 下载成功应用后再标记本地变更已同步；若 manifest 上传失败会回滚这些标记。
@@ -1134,7 +1133,7 @@ pub async fn data_governance_run_sync(
                     continue;
                 }
                 let conn = rusqlite::Connection::open(&db_path)
-                    .map_err(|e| DataGovernanceError::Database(format!("打开数据库失败: {}", e)))?;
+                    .map_err(|e| format!("打开数据库失败: {}", e))?;
                 let db_change_ids: Vec<i64> = filtered_enriched
                     .iter()
                     .filter(|c| c.database_name.as_deref() == Some(db_id.as_str()))
@@ -1142,7 +1141,7 @@ pub async fn data_governance_run_sync(
                     .collect();
                 if !db_change_ids.is_empty() {
                     SyncManager::mark_synced_with_timestamp(&conn, &db_change_ids)
-                        .map_err(|e| DataGovernanceError::Database(format!("标记变更失败: {}", e)))?;
+                        .map_err(|e| format!("标记变更失败: {}", e))?;
                     marked_by_db.insert(db_id.as_str().to_string(), db_change_ids);
                 }
             }
@@ -1176,7 +1175,7 @@ pub async fn data_governance_run_sync(
                 .await
             {
                 rollback_marked_sync_versions(&active_dir, &marked_by_db);
-                return Err(DataGovernanceError::Sync(format!("上传刷新清单失败: {}", e)));
+                return Err(format!("上传刷新清单失败: {}", e));
             }
 
             Ok((exec_result, total_skipped))
@@ -1418,7 +1417,7 @@ pub async fn data_governance_export_sync_data(
     app: tauri::AppHandle,
     window: Window,
     output_path: Option<String>,
-) -> DataGovernanceResult<SyncExportResponse> {
+) -> Result<SyncExportResponse, String> {
     info!("[data_governance] 导出同步数据");
 
     let active_dir = get_active_data_dir(&app)?;
@@ -1485,7 +1484,7 @@ pub async fn data_governance_export_sync_data(
 
     // 序列化
     let json = serde_json::to_string_pretty(&export_data)
-        .map_err(|e| DataGovernanceError::Serialization(format!("序列化导出数据失败: {}", e)))?;
+        .map_err(|e| format!("序列化导出数据失败: {}", e))?;
 
     // 确定输出路径（虚拟 URI 先导出到本地临时文件，再复制到目标 URI）
     let mut target_virtual_uri: Option<String> = None;
@@ -1493,7 +1492,7 @@ pub async fn data_governance_export_sync_data(
         Some(p) if crate::unified_file_manager::is_virtual_uri(&p) => {
             let temp_dir = app_data_dir.join("temp_sync_export");
             std::fs::create_dir_all(&temp_dir)
-                .map_err(|e| DataGovernanceError::Io(format!("创建同步临时导出目录失败: {}", e)))?;
+                .map_err(|e| format!("创建同步临时导出目录失败: {}", e))?;
             target_virtual_uri = Some(p);
             temp_dir.join(format!("sync_export_{}.json", uuid::Uuid::new_v4()))
         }
@@ -1507,18 +1506,18 @@ pub async fn data_governance_export_sync_data(
 
     // 确保父目录存在
     if let Some(parent) = output.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| DataGovernanceError::Io(format!("创建目录失败: {}", e)))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {}", e))?;
     }
 
     // 写入文件（本地）
-    std::fs::write(&output, &json).map_err(|e| DataGovernanceError::Io(format!("写入文件失败: {}", e)))?;
+    std::fs::write(&output, &json).map_err(|e| format!("写入文件失败: {}", e))?;
 
     let mut final_output_path = output.to_string_lossy().to_string();
     if let Some(target_uri) = target_virtual_uri {
         let staged = output.to_string_lossy().to_string();
         if let Err(err) = crate::unified_file_manager::copy_file(&window, &staged, &target_uri) {
             cleanup_temp_sync_file(Some(&output), "sync_export");
-            return Err(DataGovernanceError::Internal(format!("写入目标 URI 失败: {}", err)));
+            return Err(format!("写入目标 URI 失败: {}", err));
         }
         cleanup_temp_sync_file(Some(&output), "sync_export");
         final_output_path = target_uri;
@@ -1579,7 +1578,7 @@ pub async fn data_governance_import_sync_data(
     window: Window,
     input_path: String,
     strategy: Option<String>,
-) -> DataGovernanceResult<SyncImportResponse> {
+) -> Result<SyncImportResponse, String> {
     info!("[data_governance] 导入同步数据: path={}", input_path);
 
     let app_data_dir = get_app_data_dir(&app)?;
@@ -1590,7 +1589,7 @@ pub async fn data_governance_import_sync_data(
             let temp_dir = app_data_dir.join("temp_sync_import");
             let materialized =
                 crate::unified_file_manager::ensure_local_path(&window, &input_path, &temp_dir)
-                    .map_err(|e| DataGovernanceError::Internal(format!("无法读取导入文件: {}", e)))?;
+                    .map_err(|e| format!("无法读取导入文件: {}", e))?;
             let (path, cleanup) = materialized.into_owned();
             (path.clone(), cleanup.or(Some(path)))
         } else {
@@ -1600,8 +1599,8 @@ pub async fn data_governance_import_sync_data(
         };
 
     // 读取文件
-    let json = std::fs::read_to_string(&input_file_path)
-        .map_err(|e| DataGovernanceError::Io(format!("读取文件失败: {}", e)));
+    let json =
+        std::fs::read_to_string(&input_file_path).map_err(|e| format!("读取文件失败: {}", e));
     let json = match json {
         Ok(v) => v,
         Err(e) => {
@@ -1615,7 +1614,7 @@ pub async fn data_governance_import_sync_data(
         Ok(data) => data,
         Err(err) => {
             cleanup_temp_sync_file(cleanup_path.as_ref(), "sync_import");
-            return Err(DataGovernanceError::Serialization(format!("解析导入数据失败: {}", err)));
+            return Err(format!("解析导入数据失败: {}", err));
         }
     };
 
@@ -1645,7 +1644,7 @@ pub async fn data_governance_import_sync_data(
         Ok(d) => d,
         Err(err) => {
             cleanup_temp_sync_file(cleanup_path.as_ref(), "sync_import");
-            return Err(DataGovernanceError::Sync(format!("冲突检测失败: {}", err)));
+            return Err(format!("冲突检测失败: {}", err));
         }
     };
 
@@ -1657,10 +1656,10 @@ pub async fn data_governance_import_sync_data(
         "manual" => MergeStrategy::Manual,
         s => {
             cleanup_temp_sync_file(cleanup_path.as_ref(), "sync_import");
-            return Err(DataGovernanceError::InvalidArgument(format!(
+            return Err(format!(
                 "无效的合并策略: {}。可选值: keep_local, use_cloud, keep_latest, manual",
                 s
-            )));
+            ));
         }
     };
 
@@ -1703,10 +1702,10 @@ pub async fn data_governance_import_sync_data(
             Err(e) => {
                 error!("[data_governance] 应用导入变更失败: {}", e);
                 cleanup_temp_sync_file(cleanup_path.as_ref(), "sync_import");
-                return Err(DataGovernanceError::Internal(format!(
+                return Err(format!(
                     "应用导入变更失败: {}。请检查导入文件完整性后重试",
                     e
-                )));
+                ));
             }
         }
     }
@@ -1789,7 +1788,7 @@ pub async fn data_governance_run_sync_with_progress(
     direction: String,
     cloud_config: Option<CloudStorageConfig>,
     strategy: Option<String>,
-) -> DataGovernanceResult<SyncExecutionResponse> {
+) -> Result<SyncExecutionResponse, String> {
     info!(
         "[data_governance] 开始执行带进度的同步: direction={}, strategy={:?}",
         direction, strategy
@@ -1815,7 +1814,7 @@ pub async fn data_governance_run_sync_with_progress(
                 direction
             );
             emitter.emit_failed(&error_msg).await;
-            return Err(DataGovernanceError::Sync(error_msg));
+            return Err(error_msg);
         }
     };
 
@@ -1831,7 +1830,7 @@ pub async fn data_governance_run_sync_with_progress(
                 s
             );
             emitter.emit_failed(&error_msg).await;
-            return Err(DataGovernanceError::Sync(error_msg));
+            return Err(error_msg);
         }
     };
 
@@ -1841,7 +1840,7 @@ pub async fn data_governance_run_sync_with_progress(
         None => {
             let error_msg = "未提供云存储配置。请在调用前配置云存储。".to_string();
             emitter.emit_failed(&error_msg).await;
-            return Err(DataGovernanceError::Sync(error_msg));
+            return Err(error_msg);
         }
     };
 
@@ -1888,7 +1887,7 @@ pub async fn data_governance_run_sync_with_progress(
         Ok(Err(_)) => {
             let error_msg = "获取全局数据治理锁失败".to_string();
             emitter.emit_failed(&error_msg).await;
-            return Err(DataGovernanceError::Sync(error_msg));
+            return Err(error_msg);
         }
         Err(_) => {
             let error_msg = format!(
@@ -1896,7 +1895,7 @@ pub async fn data_governance_run_sync_with_progress(
                 SYNC_LOCK_TIMEOUT_SECS
             );
             emitter.emit_failed(&error_msg).await;
-            return Err(DataGovernanceError::Sync(error_msg));
+            return Err(error_msg);
         }
     };
 
@@ -1909,7 +1908,7 @@ pub async fn data_governance_run_sync_with_progress(
         Err(e) => {
             let error_msg = format!("创建云存储失败: {}", e);
             emitter.emit_failed(&error_msg).await;
-            return Err(DataGovernanceError::Sync(error_msg));
+            return Err(error_msg);
         }
     };
 
@@ -1976,7 +1975,7 @@ pub async fn data_governance_run_sync_with_progress(
             Err(e) => {
                 let error_msg = format!("打开数据库 {} 失败: {}", db_id.as_str(), e);
                 emitter.emit_failed(&error_msg).await;
-                return Err(DataGovernanceError::Sync(error_msg));
+                return Err(error_msg);
             }
         };
 
@@ -2011,7 +2010,7 @@ pub async fn data_governance_run_sync_with_progress(
                         let error_msg =
                             format!("补全数据库 {} 变更数据失败: {}", db_id.as_str(), e);
                         emitter.emit_failed(&error_msg).await;
-                        return Err(DataGovernanceError::Sync(error_msg));
+                        return Err(error_msg);
                     }
                 }
             }
@@ -2022,7 +2021,7 @@ pub async fn data_governance_run_sync_with_progress(
     if !db_found {
         let error_msg = "未找到可用的数据库。请先初始化数据库。".to_string();
         emitter.emit_failed(&error_msg).await;
-        return Err(DataGovernanceError::Sync(error_msg));
+        return Err(error_msg);
     }
 
     // 构建 PendingChanges 用于兼容 execute_upload 接口
@@ -2215,16 +2214,16 @@ async fn execute_upload_with_progress_v2(
     active_dir: &std::path::Path,
     app_data_dir: &std::path::Path,
     emitter: &OptionalEmitter,
-) -> DataGovernanceResult<(SyncExecutionResult, usize)> {
+) -> Result<(SyncExecutionResult, usize), String> {
     let start = std::time::Instant::now();
     let total = enriched.len() as u64;
 
     if enriched.is_empty() {
-        // 兜底：即使当前无 pending，也尝试刷新云端 manifest，修复”上次仅变更上传成功”的可见性缺口
+        // 兜底：即使当前无 pending，也尝试刷新云端 manifest，修复“上次仅变更上传成功”的可见性缺口
         manager
             .upload_manifest(storage, local_manifest)
             .await
-            .map_err(|e| DataGovernanceError::Sync(format!(“上传清单失败: {}”, e)))?;
+            .map_err(|e| format!("上传清单失败: {}", e))?;
     } else {
         emitter.emit_uploading(0, total, None).await;
 
@@ -2311,9 +2310,9 @@ async fn execute_upload_with_progress_v2(
 
             if !db_change_ids.is_empty() {
                 let conn = rusqlite::Connection::open(&db_path)
-                    .map_err(|e| DataGovernanceError::Database(format!("打开数据库失败: {}", e)))?;
+                    .map_err(|e| format!("打开数据库失败: {}", e))?;
                 SyncManager::mark_synced_with_timestamp(&conn, &db_change_ids)
-                    .map_err(|e| DataGovernanceError::Database(format!("标记变更失败: {}", e)))?;
+                    .map_err(|e| format!("标记变更失败: {}", e))?;
                 marked_by_db.insert(db_id.as_str().to_string(), db_change_ids);
             }
         }
@@ -2336,7 +2335,7 @@ async fn execute_upload_with_progress_v2(
             let refreshed_manifest = manager.create_manifest(refreshed_dbs);
             if let Err(e) = manager.upload_manifest(storage, &refreshed_manifest).await {
                 rollback_marked_sync_versions(active_dir, &marked_by_db);
-                return Err(DataGovernanceError::Sync(format!("上传清单失败: {}", e)));
+                return Err(format!("上传清单失败: {}", e));
             }
         }
     }
@@ -2419,7 +2418,7 @@ async fn execute_download_with_progress_v2(
     active_dir: &std::path::Path,
     app_data_dir: &std::path::Path,
     emitter: &OptionalEmitter,
-) -> DataGovernanceResult<(SyncExecutionResult, usize)> {
+) -> Result<(SyncExecutionResult, usize), String> {
     let _start = std::time::Instant::now();
 
     emitter.emit_downloading(0, 0, None).await;
@@ -2427,7 +2426,7 @@ async fn execute_download_with_progress_v2(
     let (exec_result, downloaded_changes) = manager
         .execute_download(storage, local_manifest, merge_strategy)
         .await
-        .map_err(|e| DataGovernanceError::Sync(format!("下载同步失败: {}", e)))?;
+        .map_err(|e| format!("下载同步失败: {}", e))?;
 
     let total = downloaded_changes.len() as u64;
     emitter.emit_downloading(total, total, None).await;
@@ -2518,14 +2517,14 @@ async fn execute_bidirectional_with_progress_v2(
     active_dir: &std::path::Path,
     app_data_dir: &std::path::Path,
     emitter: &OptionalEmitter,
-) -> DataGovernanceResult<(SyncExecutionResult, usize)> {
+) -> Result<(SyncExecutionResult, usize), String> {
     let _start = std::time::Instant::now();
 
     // 先执行下载同步（不先发射 downloading 事件，避免在无内容时发操导致百分比倒退）
     let (exec_result, change_ids, downloaded_changes) = manager
         .execute_bidirectional(storage, pending, local_manifest, merge_strategy)
         .await
-        .map_err(|e| DataGovernanceError::Sync(format!("双向同步失败: {}", e)))?;
+        .map_err(|e| format!("双向同步失败: {}", e))?;
 
     // 有下载内容时才发射 downloading 事件
     if !downloaded_changes.is_empty() {
@@ -2629,7 +2628,7 @@ async fn execute_bidirectional_with_progress_v2(
         manager
             .upload_enriched_changes(storage, &refs_vec, Some(byte_progress_cb))
             .await
-            .map_err(|e| DataGovernanceError::Sync(format!("上传变更失败: {}", e)))?;
+            .map_err(|e| format!("上传变更失败: {}", e))?;
 
         emitter
             .emit_uploading(upload_total, upload_total, None)
@@ -2654,9 +2653,9 @@ async fn execute_bidirectional_with_progress_v2(
 
         if !db_change_ids.is_empty() {
             let conn = rusqlite::Connection::open(&db_path)
-                .map_err(|e| DataGovernanceError::Database(format!("打开数据库失败: {}", e)))?;
+                .map_err(|e| format!("打开数据库失败: {}", e))?;
             SyncManager::mark_synced_with_timestamp(&conn, &db_change_ids)
-                .map_err(|e| DataGovernanceError::Database(format!("标记变更失败: {}", e)))?;
+                .map_err(|e| format!("标记变更失败: {}", e))?;
             marked_by_db.insert(db_id.as_str().to_string(), db_change_ids);
         }
     }
@@ -2684,7 +2683,7 @@ async fn execute_bidirectional_with_progress_v2(
         let refreshed_manifest = manager.create_manifest(refreshed_databases);
         if let Err(e) = manager.upload_manifest(storage, &refreshed_manifest).await {
             rollback_marked_sync_versions(active_dir, &marked_by_db);
-            return Err(DataGovernanceError::Sync(format!("上传刷新清单失败: {}", e)));
+            return Err(format!("上传刷新清单失败: {}", e));
         }
     }
 
@@ -2774,10 +2773,10 @@ pub async fn data_governance_mark_blob_deleted(
     relative_path: Option<String>,
     size: Option<u64>,
     cloud_config: CloudStorageConfig,
-) -> DataGovernanceResult<()> {
+) -> Result<(), String> {
     let storage = create_storage(&cloud_config)
         .await
-        .map_err(|e| DataGovernanceError::Sync(format!("创建云存储失败: {}", e)))?;
+        .map_err(|e| format!("创建云存储失败: {}", e))?;
 
     let device_id = get_device_id(&app);
     // [P0-2] 透传加密密码，确保 tombstone 清单也走 DSBK
@@ -2786,7 +2785,7 @@ pub async fn data_governance_mark_blob_deleted(
     manager
         .mark_blob_deleted(storage.as_ref(), &hash, relative_path, size)
         .await
-        .map_err(|e| DataGovernanceError::Sync(format!("标记 blob 删除失败: {}", e)))
+        .map_err(|e| format!("标记 blob 删除失败: {}", e))
 }
 
 /// 标记一个资产文件已被本地删除。
@@ -2802,10 +2801,10 @@ pub async fn data_governance_mark_asset_deleted(
     key: String,
     size: Option<u64>,
     cloud_config: CloudStorageConfig,
-) -> DataGovernanceResult<()> {
+) -> Result<(), String> {
     let storage = create_storage(&cloud_config)
         .await
-        .map_err(|e| DataGovernanceError::Sync(format!("创建云存储失败: {}", e)))?;
+        .map_err(|e| format!("创建云存储失败: {}", e))?;
 
     let device_id = get_device_id(&app);
     // [P0-2] 透传加密密码
@@ -2814,7 +2813,7 @@ pub async fn data_governance_mark_asset_deleted(
     manager
         .mark_asset_deleted(storage.as_ref(), &key, size)
         .await
-        .map_err(|e| DataGovernanceError::Sync(format!("标记资产删除失败: {}", e)))
+        .map_err(|e| format!("标记资产删除失败: {}", e))
 }
 
 // ==================== __sync_conflicts 查询与解决 ====================
@@ -2846,7 +2845,7 @@ pub async fn data_governance_list_record_conflicts(
     app: tauri::AppHandle,
     limit: Option<u32>,
     offset: Option<u32>,
-) -> DataGovernanceResult<Vec<RecordConflictRow>> {
+) -> Result<Vec<RecordConflictRow>, String> {
     let active_dir = get_active_data_dir(&app)?;
     let limit = limit.unwrap_or(200).min(2000) as i64;
     let offset = offset.unwrap_or(0) as i64;
@@ -2883,7 +2882,7 @@ pub async fn data_governance_list_record_conflicts(
                  ORDER BY detected_at DESC
                  LIMIT ?1 OFFSET ?2",
             )
-            .map_err(|e| DataGovernanceError::Database(format!("准备冲突查询失败: {}", e)))?;
+            .map_err(|e| format!("准备冲突查询失败: {}", e))?;
 
         let rows = stmt
             .query_map(rusqlite::params![limit, offset], |row| {
@@ -2901,7 +2900,7 @@ pub async fn data_governance_list_record_conflicts(
                     resolution: row.get(9)?,
                 })
             })
-            .map_err(|e| DataGovernanceError::Database(format!("执行冲突查询失败: {}", e)))?;
+            .map_err(|e| format!("执行冲突查询失败: {}", e))?;
 
         for r in rows.flatten() {
             out.push(r);
@@ -2914,7 +2913,7 @@ pub async fn data_governance_list_record_conflicts(
 #[tauri::command]
 pub async fn data_governance_count_record_conflicts(
     app: tauri::AppHandle,
-) -> DataGovernanceResult<HashMap<String, u64>> {
+) -> Result<HashMap<String, u64>, String> {
     let active_dir = get_active_data_dir(&app)?;
     let mut out: HashMap<String, u64> = HashMap::new();
 
@@ -2970,22 +2969,22 @@ pub async fn data_governance_resolve_record_conflict(
     record_id: String,
     resolution: String,
     merged_data_json: Option<String>,
-) -> DataGovernanceResult<()> {
+) -> Result<(), String> {
     let active_dir = get_active_data_dir(&app)?;
 
     // 找对应数据库
     let db_id = _DatabaseId::all_ordered()
         .into_iter()
         .find(|id| id.as_str() == database_name)
-        .ok_or_else(|| DataGovernanceError::NotFound(format!("未知数据库: {}", database_name)))?;
+        .ok_or_else(|| format!("未知数据库: {}", database_name))?;
     let db_path =
         crate::data_governance::commands_backup::resolve_database_path(&db_id, &active_dir);
 
     let conn = rusqlite::Connection::open(&db_path)
-        .map_err(|e| DataGovernanceError::Database(format!("打开数据库 {} 失败: {}", database_name, e)))?;
+        .map_err(|e| format!("打开数据库 {} 失败: {}", database_name, e))?;
 
     // 取出冲突记录的 local/cloud 两端数据
-    let get_side_data = |side: &str| -> DataGovernanceResult<Option<String>> {
+    let get_side_data = |side: &str| -> Result<Option<String>, String> {
         let r: Result<String, _> = conn.query_row(
             "SELECT data_json FROM __sync_conflicts
              WHERE table_name = ?1 AND record_id = ?2 AND side = ?3 AND resolved_at IS NULL
@@ -2996,23 +2995,23 @@ pub async fn data_governance_resolve_record_conflict(
         match r {
             Ok(s) => Ok(Some(s)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(DataGovernanceError::Database(format!("读取冲突数据失败: {}", e))),
+            Err(e) => Err(format!("读取冲突数据失败: {}", e)),
         }
     };
 
     let target_json =
         match resolution.as_str() {
             "keep_local" => get_side_data("local")?
-                .ok_or_else(|| DataGovernanceError::NotFound("找不到该冲突的 local side 数据".to_string()))?,
+                .ok_or_else(|| "找不到该冲突的 local side 数据".to_string())?,
             "keep_cloud" => get_side_data("cloud")?
-                .ok_or_else(|| DataGovernanceError::NotFound("找不到该冲突的 cloud side 数据".to_string()))?,
+                .ok_or_else(|| "找不到该冲突的 cloud side 数据".to_string())?,
             "merged" => merged_data_json
-                .ok_or_else(|| DataGovernanceError::InvalidArgument("resolution='merged' 时必须提供 merged_data_json".to_string()))?,
-            other => return Err(DataGovernanceError::InvalidArgument(format!("未知 resolution: {}", other))),
+                .ok_or_else(|| "resolution='merged' 时必须提供 merged_data_json".to_string())?,
+            other => return Err(format!("未知 resolution: {}", other)),
         };
 
     let data: serde_json::Value =
-        serde_json::from_str(&target_json).map_err(|e| DataGovernanceError::Serialization(format!("解析合并后数据失败: {}", e)))?;
+        serde_json::from_str(&target_json).map_err(|e| format!("解析合并后数据失败: {}", e))?;
 
     // 通过同步链路回写：构造一条 suppress=true 的 Update change 走 force 路径
     let now = chrono::Utc::now().to_rfc3339();
@@ -3030,7 +3029,7 @@ pub async fn data_governance_resolve_record_conflict(
 
     // 用普通 apply（策略已由用户表达完成，不需要再走 conflict_guard）
     SyncManager::apply_downloaded_changes(&conn, &[change], None)
-        .map_err(|e| DataGovernanceError::Database(format!("写回冲突解决失败: {}", e)))?;
+        .map_err(|e| format!("写回冲突解决失败: {}", e))?;
 
     // 标记该冲突的 local/cloud 两条记录都已解决
     conn.execute(
@@ -3039,7 +3038,7 @@ pub async fn data_governance_resolve_record_conflict(
          WHERE table_name = ?3 AND record_id = ?4 AND resolved_at IS NULL",
         rusqlite::params![&now, &resolution, &table_name, &record_id],
     )
-    .map_err(|e| DataGovernanceError::Database(format!("更新冲突状态失败: {}", e)))?;
+    .map_err(|e| format!("更新冲突状态失败: {}", e))?;
 
     Ok(())
 }
@@ -3049,7 +3048,7 @@ pub async fn data_governance_resolve_record_conflict(
 pub async fn data_governance_purge_resolved_conflicts(
     app: tauri::AppHandle,
     older_than_days: Option<u32>,
-) -> DataGovernanceResult<u64> {
+) -> Result<u64, String> {
     let active_dir = get_active_data_dir(&app)?;
     let cutoff_days = older_than_days.unwrap_or(30) as i64;
     let cutoff = (chrono::Utc::now() - chrono::Duration::days(cutoff_days)).to_rfc3339();
@@ -3105,7 +3104,7 @@ pub struct PruneGapResponse {
 pub async fn data_governance_detect_prune_gap(
     app: tauri::AppHandle,
     cloud_config: CloudStorageConfig,
-) -> DataGovernanceResult<PruneGapResponse> {
+) -> Result<PruneGapResponse, String> {
     use crate::cloud_storage::create_storage;
 
     check_maintenance_mode(&app)?;
@@ -3133,10 +3132,10 @@ pub async fn data_governance_detect_prune_gap(
     // 查询云端最小可用 version
     let storage = create_storage(&cloud_config)
         .await
-        .map_err(|e| DataGovernanceError::Sync(format!("创建云存储失败: {}", e)))?;
+        .map_err(|e| format!("创建云存储失败: {}", e))?;
     let min_available = SyncManager::get_min_available_change_version(storage.as_ref())
         .await
-        .map_err(|e| DataGovernanceError::Sync(format!("查询云端变更版本失败: {}", e)))?;
+        .map_err(|e| format!("查询云端变更版本失败: {}", e))?;
 
     let since_version = since_version.unwrap_or(0);
     let has_gap = SyncManager::has_prune_gap(since_version, min_available);

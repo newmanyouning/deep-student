@@ -12,8 +12,6 @@ use std::sync::LazyLock;
 use std::sync::{Arc, Mutex};
 use tauri::Manager;
 use tracing::{error, info, warn};
-
-use crate::models::AppError;
 fn console_logging_enabled() -> bool {
     match std::env::var("DSTU_CONSOLE_LOG") {
         Ok(v) => matches!(v.to_ascii_lowercase().as_str(), "1" | "true" | "yes"),
@@ -645,14 +643,14 @@ impl DebugLogger {
 
 // Tauri命令，用于从前端写入日志
 #[tauri::command]
-pub async fn write_debug_logs(app: tauri::AppHandle, logs: Vec<LogEntry>) -> Result<(), AppError> {
-    let app_data_dir = app.path().app_data_dir().map_err(|e| AppError::unknown(e.to_string()))?;
+pub async fn write_debug_logs(app: tauri::AppHandle, logs: Vec<LogEntry>) -> Result<(), String> {
+    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
 
     let logger = DebugLogger::new(app_data_dir);
 
     // 写入前端日志到frontend目录
     let frontend_dir = logger.log_dir.join("frontend");
-    std::fs::create_dir_all(&frontend_dir)?;
+    std::fs::create_dir_all(&frontend_dir).map_err(|e| e.to_string())?;
 
     // 按日期分组
     let mut grouped_logs: HashMap<String, Vec<LogEntry>> = HashMap::new();
@@ -672,7 +670,7 @@ pub async fn write_debug_logs(app: tauri::AppHandle, logs: Vec<LogEntry>) -> Res
         let file_path = frontend_dir.join(format!("{}.log", key));
         logger
             .write_logs_to_file(&file_path, &group_logs)
-            .map_err(|e| AppError::unknown(e.to_string()))?;
+            .map_err(|e| e.to_string())?;
     }
 
     Ok(())

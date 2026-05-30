@@ -602,50 +602,6 @@ impl ReviewPlanService {
 }
 
 // ============================================================================
-// 错误类型
-// ============================================================================
-
-/// 复习计划模块错误类型
-#[derive(Debug, Serialize)]
-pub enum ReviewPlanError {
-    /// 数据库/VFS 错误
-    Database(String),
-    /// 验证错误
-    Validation(String),
-    /// 未找到
-    NotFound(String),
-    /// 内部错误
-    Internal(String),
-}
-
-impl std::fmt::Display for ReviewPlanError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ReviewPlanError::Database(msg) => write!(f, "Review plan database error: {}", msg),
-            ReviewPlanError::Validation(msg) => write!(f, "Review plan validation error: {}", msg),
-            ReviewPlanError::NotFound(msg) => write!(f, "Review plan not found: {}", msg),
-            ReviewPlanError::Internal(msg) => write!(f, "Review plan internal error: {}", msg),
-        }
-    }
-}
-
-impl From<anyhow::Error> for ReviewPlanError {
-    fn from(e: anyhow::Error) -> Self {
-        let msg = format!("{:#}", e);
-        if msg.contains("not found") || msg.contains("NOT FOUND") {
-            ReviewPlanError::NotFound(msg)
-        } else if msg.contains("database") || msg.contains("Database") || msg.contains("rusqlite") {
-            ReviewPlanError::Database(msg)
-        } else {
-            ReviewPlanError::Internal(msg)
-        }
-    }
-}
-
-/// 复习计划 Result 别名
-pub type ReviewPlanResult<T> = std::result::Result<T, ReviewPlanError>;
-
-// ============================================================================
 // Tauri 命令
 // ============================================================================
 
@@ -657,11 +613,11 @@ pub async fn review_plan_create(
     question_id: String,
     exam_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<ReviewPlan> {
+) -> Result<ReviewPlan, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
     service
         .create_review_plan(&question_id, &exam_id)
-        .map_err(ReviewPlanError::from)
+        .map_err(|e| e.to_string())
 }
 
 /// 处理复习结果
@@ -672,14 +628,15 @@ pub async fn review_plan_process(
     user_answer: Option<String>,
     time_spent_seconds: Option<u32>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<ProcessReviewResult> {
+) -> Result<ProcessReviewResult, String> {
     if quality > 5 {
-        return Err(ReviewPlanError::Validation("Quality must be between 0 and 5".to_string()));
+        return Err("Quality must be between 0 and 5".to_string());
     }
 
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
-        .process_review(&plan_id, quality, user_answer, time_spent_seconds)?)
+    service
+        .process_review(&plan_id, quality, user_answer, time_spent_seconds)
+        .map_err(|e| e.to_string())
 }
 
 /// 获取到期复习
@@ -688,10 +645,11 @@ pub async fn review_plan_get_due(
     exam_id: Option<String>,
     until_date: Option<String>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<DueReviewsResult> {
+) -> Result<DueReviewsResult, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
-        .get_due_reviews(exam_id.as_deref(), until_date.as_deref())?)
+    service
+        .get_due_reviews(exam_id.as_deref(), until_date.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 /// 获取到期复习（带完整筛选）
@@ -699,10 +657,11 @@ pub async fn review_plan_get_due(
 pub async fn review_plan_get_due_with_filter(
     filter: DueReviewsFilter,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<DueReviewsResult> {
+) -> Result<DueReviewsResult, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
-        .get_due_reviews_with_filter(&filter)?)
+    service
+        .get_due_reviews_with_filter(&filter)
+        .map_err(|e| e.to_string())
 }
 
 /// 获取复习统计
@@ -710,10 +669,11 @@ pub async fn review_plan_get_due_with_filter(
 pub async fn review_plan_get_stats(
     exam_id: Option<String>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<ReviewStats> {
+) -> Result<ReviewStats, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
-        .get_review_stats(exam_id.as_deref())?)
+    service
+        .get_review_stats(exam_id.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 /// 刷新复习统计
@@ -721,10 +681,11 @@ pub async fn review_plan_get_stats(
 pub async fn review_plan_refresh_stats(
     exam_id: Option<String>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<ReviewStats> {
+) -> Result<ReviewStats, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
-        .refresh_review_stats(exam_id.as_deref())?)
+    service
+        .refresh_review_stats(exam_id.as_deref())
+        .map_err(|e| e.to_string())
 }
 
 /// 根据题目 ID 获取复习计划
@@ -732,10 +693,11 @@ pub async fn review_plan_refresh_stats(
 pub async fn review_plan_get_by_question(
     question_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<Option<ReviewPlan>> {
+) -> Result<Option<ReviewPlan>, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
-        .get_plan_by_question(&question_id)?)
+    service
+        .get_plan_by_question(&question_id)
+        .map_err(|e| e.to_string())
 }
 
 /// 获取复习计划
@@ -743,9 +705,9 @@ pub async fn review_plan_get_by_question(
 pub async fn review_plan_get(
     plan_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<Option<ReviewPlan>> {
+) -> Result<Option<ReviewPlan>, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service.get_plan(&plan_id)?)
+    service.get_plan(&plan_id).map_err(|e| e.to_string())
 }
 
 /// 暂停复习计划
@@ -753,9 +715,9 @@ pub async fn review_plan_get(
 pub async fn review_plan_suspend(
     plan_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<ReviewPlan> {
+) -> Result<ReviewPlan, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service.suspend_plan(&plan_id)?)
+    service.suspend_plan(&plan_id).map_err(|e| e.to_string())
 }
 
 /// 恢复复习计划
@@ -763,9 +725,9 @@ pub async fn review_plan_suspend(
 pub async fn review_plan_resume(
     plan_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<ReviewPlan> {
+) -> Result<ReviewPlan, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service.resume_plan(&plan_id)?)
+    service.resume_plan(&plan_id).map_err(|e| e.to_string())
 }
 
 /// 删除复习计划
@@ -773,9 +735,9 @@ pub async fn review_plan_resume(
 pub async fn review_plan_delete(
     plan_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<()> {
+) -> Result<(), String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service.delete_plan(&plan_id)?)
+    service.delete_plan(&plan_id).map_err(|e| e.to_string())
 }
 
 /// 获取复习历史
@@ -784,10 +746,11 @@ pub async fn review_plan_get_history(
     plan_id: String,
     limit: Option<u32>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<Vec<ReviewHistory>> {
+) -> Result<Vec<ReviewHistory>, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
-        .get_review_history(&plan_id, limit)?)
+    service
+        .get_review_history(&plan_id, limit)
+        .map_err(|e| e.to_string())
 }
 
 /// 批量为题目创建复习计划
@@ -796,10 +759,11 @@ pub async fn review_plan_batch_create(
     question_ids: Vec<String>,
     exam_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<BatchCreateResult> {
+) -> Result<BatchCreateResult, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
-        .batch_create_from_questions(&question_ids, &exam_id)?)
+    service
+        .batch_create_from_questions(&question_ids, &exam_id)
+        .map_err(|e| e.to_string())
 }
 
 /// 为题目集的所有题目创建复习计划
@@ -807,10 +771,11 @@ pub async fn review_plan_batch_create(
 pub async fn review_plan_create_for_exam(
     exam_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<BatchCreateResult> {
+) -> Result<BatchCreateResult, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
-        .create_plans_for_exam(&exam_id)?)
+    service
+        .create_plans_for_exam(&exam_id)
+        .map_err(|e| e.to_string())
 }
 
 /// 列出题目集的所有复习计划
@@ -820,10 +785,11 @@ pub async fn review_plan_list_by_exam(
     limit: Option<u32>,
     offset: Option<u32>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<DueReviewsResult> {
+) -> Result<DueReviewsResult, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
-        .list_plans_by_exam(&exam_id, limit, offset)?)
+    service
+        .list_plans_by_exam(&exam_id, limit, offset)
+        .map_err(|e| e.to_string())
 }
 
 /// 获取或创建复习计划
@@ -832,10 +798,11 @@ pub async fn review_plan_get_or_create(
     question_id: String,
     exam_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<ReviewPlan> {
+) -> Result<ReviewPlan, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
-        .get_or_create_plan(&question_id, &exam_id)?)
+    service
+        .get_or_create_plan(&question_id, &exam_id)
+        .map_err(|e| e.to_string())
 }
 
 /// 获取日历热力图数据
@@ -845,14 +812,15 @@ pub async fn review_plan_get_calendar_data(
     end_date: Option<String>,
     exam_id: Option<String>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> ReviewPlanResult<Vec<CalendarHeatmapData>> {
+) -> Result<Vec<CalendarHeatmapData>, String> {
     let service = ReviewPlanService::new(vfs_db.inner().clone());
-    Ok(service
+    service
         .get_calendar_data(
             start_date.as_deref(),
             end_date.as_deref(),
             exam_id.as_deref(),
-        )?)
+        )
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

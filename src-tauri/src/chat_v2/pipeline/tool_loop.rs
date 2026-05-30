@@ -456,7 +456,7 @@ impl ChatV2Pipeline {
                 // 🔧 P1-49: 读取 MCP 策略配置（whitelist/blacklist）
                 let (whitelist, blacklist) = if let Some(ref main_db) = self.main_db {
                     let whitelist: Vec<String> = main_db
-                        .web_search_get_setting("mcp.tools.whitelist")
+                        .get_setting("mcp.tools.whitelist")
                         .ok()
                         .flatten()
                         .map(|s| {
@@ -467,7 +467,7 @@ impl ChatV2Pipeline {
                         })
                         .unwrap_or_default();
                     let blacklist: Vec<String> = main_db
-                        .web_search_get_setting("mcp.tools.blacklist")
+                        .get_setting("mcp.tools.blacklist")
                         .ok()
                         .flatten()
                         .map(|s| {
@@ -1871,7 +1871,7 @@ impl ChatV2Pipeline {
         let effective_sensitivity = if let Some(ref db) = self.main_db {
             // 检查全局旁路开关
             let global_bypass = db
-                .web_search_get_setting("tool_approval.global_bypass")
+                .get_setting("tool_approval.global_bypass")
                 .ok()
                 .flatten()
                 .map(|v| v == "true")
@@ -1882,7 +1882,7 @@ impl ChatV2Pipeline {
             } else {
                 // 检查单工具覆盖
                 let override_key = format!("tool_approval.override.{}", tool_call.name);
-                if let Some(override_val) = db.web_search_get_setting(&override_key).ok().flatten() {
+                if let Some(override_val) = db.get_setting(&override_key).ok().flatten() {
                     match override_val.as_str() {
                         "low" => Some(ToolSensitivity::Low),
                         "medium" => Some(ToolSensitivity::Medium),
@@ -1909,14 +1909,14 @@ impl ChatV2Pipeline {
                     if let Some(v2_key) =
                         approval_scope::make_setting_key_v2(&tool_call.name, &tool_call.arguments)
                     {
-                        if let Ok(Some(v)) = db.web_search_get_setting(&v2_key) {
+                        if let Ok(Some(v)) = db.get_setting(&v2_key) {
                             return Some(v == "allow");
                         }
                     }
                     // v1 回退查询（保证旧"记住选择"仍生效）
                     let v1_key =
                         approval_scope::make_setting_key_v1(&tool_call.name, &tool_call.arguments);
-                    db.web_search_get_setting(&v1_key).ok().flatten().map(|v| v == "allow")
+                    db.get_setting(&v1_key).ok().flatten().map(|v| v == "allow")
                 });
 
                 // 使用持久化设置或内存缓存

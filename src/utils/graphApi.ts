@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { withGraphId } from './shared';
 import type { Tag, ProblemCard, CreateTagRequest, LegacyCreateTagRequest, TagHierarchy } from './shared';
 import type { GraphRecallTestResult } from './types';
-import type { ChatMessage } from '../types';
+import type { ChatMessage, MistakeItem } from '../types';
 
 export async function extractMemoriesFromChat(params: {
   conversation_id: string;
@@ -74,7 +74,7 @@ export async function getPendingMemoryCandidates(conversationId: string): Promis
       conversation_id: string;
       candidates: Array<{ content: string; category: string }>;
       created_at: string;
-    } | null>('anki_get_pending_memory_candidates', {
+    } | null>('get_pending_memory_candidates', {
       conversationId: conversationId,
     });
     return response;
@@ -1098,7 +1098,7 @@ export async function exportUnifiedBackupData(options: {
   timestamp: string;
   backup_type: string;
   traditional_data: {
-    mistakes: Record<string, unknown>[];
+    mistakes: MistakeItem[];
     reviews: any[];
     settings: {
       system_settings: Record<string, string>;
@@ -1135,7 +1135,7 @@ export async function exportUnifiedBackupData(options: {
       timestamp: string;
       backup_type: string;
       traditional_data: {
-        mistakes: Record<string, unknown>[];
+        mistakes: MistakeItem[];
         reviews: any[];
         settings: {
           system_settings: Record<string, string>;

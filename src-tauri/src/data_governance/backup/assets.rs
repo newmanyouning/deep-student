@@ -14,7 +14,6 @@
 //! - P0（高优先级）：images, notes_assets, documents, vfs_blobs, subjects, workspaces, textbooks
 //! - P1（低优先级）：audio, videos
 
-use super::super::error::DataGovernanceError;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -772,12 +771,15 @@ fn should_backup_file(
     path: &Path,
     metadata: &fs::Metadata,
     config: &AssetBackupConfig,
-) -> Result<(), DataGovernanceError> {
+) -> Result<(), String> {
+    // 检查文件大小
     if metadata.len() > config.max_file_size {
-        return Err(DataGovernanceError::Backup("file_too_large".into()));
+        return Err("file_too_large".to_string());
     }
+
+    // 检查敏感文件
     if config.skip_sensitive_files && is_sensitive_file(path) {
-        return Err(DataGovernanceError::Backup("sensitive_file".into()));
+        return Err("sensitive_file".to_string());
     }
 
     // 检查文件扩展名

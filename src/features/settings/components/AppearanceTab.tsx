@@ -103,7 +103,7 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
     let cancelled = false;
     (async () => {
       try {
-        const val = await tauriInvoke<string | null>('web_search_get_setting', { key: SIDEBAR_TRANSLUCENT_KEY }).catch(() => null);
+        const val = await tauriInvoke<string | null>('get_setting', { key: SIDEBAR_TRANSLUCENT_KEY }).catch(() => null);
         if (cancelled) return;
         const enabled = String(val ?? '').trim() === 'true';
         setSidebarTranslucent(enabled);
@@ -122,7 +122,7 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
     let cancelled = false;
     (async () => {
       try {
-        const raw = await tauriInvoke<string | null>('web_search_get_setting', {
+        const raw = await tauriInvoke<string | null>('get_setting', {
           key: POINTER_CURSOR_SETTING_KEY,
         }).catch(() => null);
         if (cancelled) return;
@@ -145,7 +145,7 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
     let cancelled = false;
     (async () => {
       try {
-        const raw = await tauriInvoke<string | null>('web_search_get_setting', {
+        const raw = await tauriInvoke<string | null>('get_setting', {
           key: THINKING_AUTO_COLLAPSE_KEY,
         }).catch(() => null);
         if (cancelled) return;
@@ -180,7 +180,7 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
     let cancelled = false;
     (async () => {
       try {
-        const raw = await tauriInvoke<string | null>('web_search_get_setting', {
+        const raw = await tauriInvoke<string | null>('get_setting', {
           key: MACOS_NATIVE_FONT_SMOOTHING_SETTING_KEY,
         }).catch(() => null);
         if (cancelled) return;
@@ -234,7 +234,7 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
     if (!invoke) return;
 
     try {
-      await (invoke as typeof tauriInvoke)('web_search_save_setting', { key: 'theme', value: nextMode });
+      await (invoke as typeof tauriInvoke)('save_setting', { key: 'theme', value: nextMode });
     } catch (error: unknown) {
       setThemeMode(previousMode);
       showGlobalNotification('error', getErrorMessage(error));
@@ -249,7 +249,7 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
     if (!invoke) return;
 
     try {
-      await (invoke as typeof tauriInvoke)('web_search_save_setting', {
+      await (invoke as typeof tauriInvoke)('save_setting', {
         key: MACOS_NATIVE_FONT_SMOOTHING_SETTING_KEY,
         value: String(checked),
       });
@@ -277,7 +277,7 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
     if (!invoke) return;
 
     try {
-      await (invoke as typeof tauriInvoke)('web_search_save_setting', {
+      await (invoke as typeof tauriInvoke)('save_setting', {
         key: SIDEBAR_TRANSLUCENT_KEY,
         value: String(checked),
       });
@@ -297,7 +297,7 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
     if (!invoke) return;
 
     try {
-      await (invoke as typeof tauriInvoke)('web_search_save_setting', {
+      await (invoke as typeof tauriInvoke)('save_setting', {
         key: POINTER_CURSOR_SETTING_KEY,
         value: String(checked),
       });
@@ -333,7 +333,7 @@ export const AppearanceTab: React.FC<AppearanceTabProps> = ({
     if (!invoke) return;
 
     try {
-      await (invoke as typeof tauriInvoke)('web_search_save_setting', {
+      await (invoke as typeof tauriInvoke)('save_setting', {
         key: THINKING_AUTO_COLLAPSE_KEY,
         value: String(checked),
       });

@@ -11,8 +11,8 @@ use tauri::{State, Window};
 
 use crate::chat_v2::approval_manager::{ApprovalManager, ApprovalResponse};
 use crate::chat_v2::approval_scope;
-use crate::chat_v2::error::{ChatV2Error, ChatV2Result};
 use crate::chat_v2::events::{event_types, ChatV2EventEmitter};
+// 🔧 P1-51: 引入数据库用于持久化审批选择
 use crate::database::Database;
 
 // ============================================================================
@@ -47,7 +47,7 @@ pub async fn chat_v2_tool_approval_respond(
     reason: Option<String>,
     remember: bool,
     arguments: Option<Value>,
-) -> ChatV2Result<()> {
+) -> Result<(), String> {
     log::info!(
         "[ChatV2::approval] Received approval response: session={}, tool_call_id={}, tool_name={}, approved={}, remember={}",
         session_id,
@@ -82,7 +82,7 @@ pub async fn chat_v2_tool_approval_respond(
             "approval_expired",
             None,
         );
-        return Err(ChatV2Error::Other("approval_expired".to_string()));
+        return Err("approval_expired".to_string());
     }
 
     // 🔧 P1-51: 如果用户选择"记住选择"，持久化到数据库
@@ -99,7 +99,7 @@ pub async fn chat_v2_tool_approval_respond(
             tool_call_id
         );
 
-        if let Err(e) = db.web_search_save_setting(&setting_key, setting_value) {
+        if let Err(e) = db.save_setting(&setting_key, setting_value) {
             log::error!(
                 "[ChatV2::approval] Failed to persist approval choice for '{}': {}",
                 tool_name,
@@ -121,7 +121,7 @@ pub async fn chat_v2_tool_approval_respond(
 pub async fn chat_v2_tool_approval_cancel(
     approval_manager: State<'_, Arc<ApprovalManager>>,
     tool_call_id: String,
-) -> ChatV2Result<()> {
+) -> Result<(), String> {
     log::info!(
         "[ChatV2::approval] Cancelling approval request: tool_call_id={}",
         tool_call_id
@@ -138,7 +138,7 @@ pub async fn chat_v2_tool_approval_cancel(
 /// 2. `settings` 表中所有 `tool_approval.scope.*` 持久化条目
 ///
 /// 只清内存会让重启后死而复生；只清 DB 会让未重启进程继续"记得"旧批准
-/// （R2-H2 就是后者 — 设置页只调 `web_search_web_search_delete_settings_by_prefix` 不碰内存）。
+/// （R2-H2 就是后者 — 设置页只调 `delete_settings_by_prefix` 不碰内存）。
 ///
 /// ## 返回
 /// 被删除的 DB 条目数
@@ -146,17 +146,20 @@ pub async fn chat_v2_tool_approval_cancel(
 pub async fn chat_v2_clear_approval_history(
     approval_manager: State<'_, Arc<ApprovalManager>>,
     db: State<'_, Arc<Database>>,
-) -> ChatV2Result<usize> {
+) -> Result<usize, String> {
+    // 1. 清内存
     approval_manager.clear_all_remembered();
 
+    // 2. 清 DB —— 两种前缀都要清（v2 `tool_approval.scope.<ns>:<tool>.` 和
+    //    v1 `tool_approval.scope.<tool>.` 共享同一个 "tool_approval.scope." 前缀）
     let deleted = db
-        .web_search_web_search_delete_settings_by_prefix("tool_approval.scope.")
+        .delete_settings_by_prefix("tool_approval.scope.")
         .map_err(|e| {
             log::error!(
                 "[ChatV2::approval] clear_approval_history: delete DB entries failed: {}",
                 e
             );
-            ChatV2Error::Database(format!("{}", e))
+            format!("{}", e)
         })?;
 
     log::info!(

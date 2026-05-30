@@ -112,7 +112,7 @@ pub use workspace::{
 
 // 重导出资源库类型（统一上下文注入系统）
 // NOTE: 这些类型仍被 pipeline/context/user_message_builder 等模块使用，暂不废弃。
-// resource_handlers 已于 2026-05-30 移除 (REF-014)。resource_repo 待评估后端迁移后废弃。
+// resource_repo 和 resource_handlers 已废弃，参见 P1-#9。
 pub use resource_types::{
     // 资源相关
     ContentBlock,

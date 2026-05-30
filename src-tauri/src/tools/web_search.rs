@@ -985,7 +985,7 @@ impl Default for ToolConfig {
 impl ToolConfig {
     /// 统一应用数据库配置覆盖。所有搜索执行路径必须调用此方法。
     ///
-    /// - `get_s`: 读取非敏感设置 (对应 `db.web_search_get_setting`)
+    /// - `get_s`: 读取非敏感设置 (对应 `db.get_setting`)
     /// - `get_secret`: 读取敏感设置 (对应 `db.get_secret`，自动回退到明文)
     pub fn apply_db_overrides(
         &mut self,

@@ -120,7 +120,7 @@ export const OcrEngineTestPanel: React.FC<OcrEngineTestPanelProps> = ({
       // M8 fix: 并行测试所有引擎，提升速度
       const promises = engineModels.map(async (model): Promise<OcrTestResponse> => {
         try {
-          return await invoke<OcrTestResponse>('ocr_test_engine', {
+          return await invoke<OcrTestResponse>('test_ocr_engine', {
             request: {
               imageBase64: selectedImage,
               engineType: model.engineType,

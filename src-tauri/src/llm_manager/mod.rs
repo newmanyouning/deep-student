@@ -403,14 +403,14 @@ mod tests {
 
         manager
             .db
-            .web_search_save_setting(
+            .save_setting(
                 "vendor_configs",
                 &serde_json::to_string(&vec![vendor]).unwrap(),
             )
             .expect("save vendors");
         manager
             .db
-            .web_search_save_setting(
+            .save_setting(
                 "model_profiles",
                 &serde_json::to_string(&vec![profile]).unwrap(),
             )
@@ -764,26 +764,26 @@ mod tests {
 
         manager
             .db
-            .web_search_save_setting("vendor_configs", "[]")
+            .save_setting("vendor_configs", "[]")
             .expect("seed vendor configs");
         manager
             .db
-            .web_search_save_setting("model_profiles", "[]")
+            .save_setting("model_profiles", "[]")
             .expect("seed model profiles");
         manager
             .db
-            .web_search_save_setting(
+            .save_setting(
                 HIDDEN_BUILTIN_MODEL_PROFILES_KEY,
                 r#"["builtin-gemini-3-flash"]"#,
             )
             .expect("seed hidden builtin ids");
         manager
             .db
-            .web_search_save_setting(BUILTIN_MODEL_PROFILES_SNAPSHOT_KEY, "[]")
+            .save_setting(BUILTIN_MODEL_PROFILES_SNAPSHOT_KEY, "[]")
             .expect("seed builtin snapshot");
         manager
             .db
-            .web_search_save_setting("builtin_caps_migration_v2", "done")
+            .save_setting("builtin_caps_migration_v2", "done")
             .expect("skip caps migration");
 
         let profiles = manager
@@ -809,15 +809,15 @@ mod tests {
 
         manager
             .db
-            .web_search_save_setting("vendor_configs", "[]")
+            .save_setting("vendor_configs", "[]")
             .expect("seed vendor configs");
         manager
             .db
-            .web_search_save_setting("model_profiles", "[]")
+            .save_setting("model_profiles", "[]")
             .expect("seed model profiles");
         manager
             .db
-            .web_search_save_setting(
+            .save_setting(
                 HIDDEN_BUILTIN_MODEL_PROFILES_KEY,
                 r#"["builtin-gemini-3-flash"]"#,
             )
@@ -833,7 +833,7 @@ mod tests {
             .expect("seed legacy builtin snapshot");
         manager
             .db
-            .web_search_save_setting("builtin_caps_migration_v2", "done")
+            .save_setting("builtin_caps_migration_v2", "done")
             .expect("skip caps migration");
 
         let profiles = manager
@@ -859,11 +859,11 @@ mod tests {
 
         manager
             .db
-            .web_search_save_setting("vendor_configs", "[]")
+            .save_setting("vendor_configs", "[]")
             .expect("seed vendor configs");
         manager
             .db
-            .web_search_save_setting("model_profiles", "[]")
+            .save_setting("model_profiles", "[]")
             .expect("seed model profiles");
 
         let known_builtin = profile(
@@ -897,11 +897,11 @@ mod tests {
 
         manager
             .db
-            .web_search_save_setting("vendor_configs", "[]")
+            .save_setting("vendor_configs", "[]")
             .expect("seed vendor configs");
         manager
             .db
-            .web_search_save_setting("model_profiles", "[]")
+            .save_setting("model_profiles", "[]")
             .expect("seed model profiles");
 
         manager
@@ -2261,7 +2261,7 @@ impl LLMManager {
     }
 
     fn read_builtin_profile_snapshot_map(&self) -> HashMap<String, ModelProfile> {
-        let raw = match self.db.web_search_get_setting(BUILTIN_MODEL_PROFILES_SNAPSHOT_KEY) {
+        let raw = match self.db.get_setting(BUILTIN_MODEL_PROFILES_SNAPSHOT_KEY) {
             Ok(Some(raw)) => raw,
             _ => return HashMap::new(),
         };
@@ -2284,12 +2284,12 @@ impl LLMManager {
         let json = serde_json::to_string(builtin_profiles)
             .map_err(|e| AppError::configuration(format!("序列化内置模型快照失败: {}", e)))?;
         self.db
-            .web_search_save_setting(BUILTIN_MODEL_PROFILES_SNAPSHOT_KEY, &json)
+            .save_setting(BUILTIN_MODEL_PROFILES_SNAPSHOT_KEY, &json)
             .map_err(|e| AppError::database(format!("保存内置模型快照失败: {}", e)))
     }
 
     fn read_hidden_builtin_model_profile_ids(&self) -> HashSet<String> {
-        let raw = match self.db.web_search_get_setting(HIDDEN_BUILTIN_MODEL_PROFILES_KEY) {
+        let raw = match self.db.get_setting(HIDDEN_BUILTIN_MODEL_PROFILES_KEY) {
             Ok(Some(raw)) => raw,
             _ => return HashSet::new(),
         };
@@ -2320,7 +2320,7 @@ impl LLMManager {
         let json = serde_json::to_string(&sorted_ids)
             .map_err(|e| AppError::configuration(format!("序列化隐藏内置模型列表失败: {}", e)))?;
         self.db
-            .web_search_save_setting(HIDDEN_BUILTIN_MODEL_PROFILES_KEY, &json)
+            .save_setting(HIDDEN_BUILTIN_MODEL_PROFILES_KEY, &json)
             .map_err(|e| AppError::database(format!("保存隐藏内置模型列表失败: {}", e)))
     }
 
@@ -2421,7 +2421,7 @@ impl LLMManager {
     }
 
     pub fn user_preference_prompt(&self) -> Option<String> {
-        let stored = match self.db.web_search_get_setting(USER_PREFERENCES_SETTING_KEY) {
+        let stored = match self.db.get_setting(USER_PREFERENCES_SETTING_KEY) {
             Ok(value) => value?,
             Err(err) => {
                 warn!("[UserPreferences] 读取失败: {}", err);
@@ -3150,12 +3150,12 @@ impl LLMManager {
     pub async fn bootstrap_vendor_model_config(&self) -> Result<()> {
         let vendor_exists = self
             .db
-            .web_search_get_setting("vendor_configs")
+            .get_setting("vendor_configs")
             .map_err(|e| AppError::database(format!("检测供应商配置失败: {}", e)))?
             .is_some();
         let profile_exists = self
             .db
-            .web_search_get_setting("model_profiles")
+            .get_setting("model_profiles")
             .map_err(|e| AppError::database(format!("检测模型条目失败: {}", e)))?
             .is_some();
 
@@ -3166,7 +3166,7 @@ impl LLMManager {
 
         let legacy_str = self
             .db
-            .web_search_get_setting("api_configs")
+            .get_setting("api_configs")
             .map_err(|e| AppError::database(format!("获取旧版API配置失败: {}", e)))?
             .unwrap_or_else(|| "[]".to_string());
 
@@ -3209,12 +3209,12 @@ impl LLMManager {
     async fn repair_vendor_model_protocol_settings(&self) -> Result<()> {
         let raw_vendors = self
             .db
-            .web_search_get_setting("vendor_configs")
+            .get_setting("vendor_configs")
             .map_err(|e| AppError::database(format!("读取供应商配置失败: {}", e)))?
             .unwrap_or_else(|| "[]".to_string());
         let raw_profiles = self
             .db
-            .web_search_get_setting("model_profiles")
+            .get_setting("model_profiles")
             .map_err(|e| AppError::database(format!("读取模型条目失败: {}", e)))?
             .unwrap_or_else(|| "[]".to_string());
 
@@ -3304,7 +3304,7 @@ impl LLMManager {
     async fn read_user_vendor_configs(&self) -> Result<Vec<VendorConfig>> {
         let raw = self
             .db
-            .web_search_get_setting("vendor_configs")
+            .get_setting("vendor_configs")
             .map_err(|e| AppError::database(format!("获取供应商配置失败: {}", e)))?
             .unwrap_or_else(|| "[]".to_string());
 
@@ -3476,7 +3476,7 @@ impl LLMManager {
         let json = serde_json::to_string(&sanitized)
             .map_err(|e| AppError::configuration(format!("序列化供应商配置失败: {}", e)))?;
         self.db
-            .web_search_save_setting("vendor_configs", &json)
+            .save_setting("vendor_configs", &json)
             .map_err(|e| AppError::database(format!("保存供应商配置失败: {}", e)))?;
         Ok(())
     }
@@ -3494,7 +3494,7 @@ impl LLMManager {
         const BUILTIN_CAPS_MIGRATION_KEY: &str = "builtin_caps_migration_v2";
         if self
             .db
-            .web_search_get_setting(BUILTIN_CAPS_MIGRATION_KEY)
+            .get_setting(BUILTIN_CAPS_MIGRATION_KEY)
             .ok()
             .flatten()
             .is_none()
@@ -3533,8 +3533,8 @@ impl LLMManager {
             // 同时清除快照，让后续 merge 基于干净状态重建
             let _ = self
                 .db
-                .web_search_save_setting(BUILTIN_MODEL_PROFILES_SNAPSHOT_KEY, "[]");
-            let _ = self.db.web_search_save_setting(BUILTIN_CAPS_MIGRATION_KEY, "done");
+                .save_setting(BUILTIN_MODEL_PROFILES_SNAPSHOT_KEY, "[]");
+            let _ = self.db.save_setting(BUILTIN_CAPS_MIGRATION_KEY, "done");
             info!("[VendorModel] 能力字段迁移完成");
         }
 
@@ -3576,7 +3576,7 @@ impl LLMManager {
     async fn read_user_model_profiles(&self) -> Result<Vec<ModelProfile>> {
         let raw = self
             .db
-            .web_search_get_setting("model_profiles")
+            .get_setting("model_profiles")
             .map_err(|e| AppError::database(format!("获取模型条目失败: {}", e)))?
             .unwrap_or_else(|| "[]".to_string());
 
@@ -3662,7 +3662,7 @@ impl LLMManager {
         let json = serde_json::to_string(&sanitized)
             .map_err(|e| AppError::configuration(format!("序列化模型条目失败: {}", e)))?;
         self.db
-            .web_search_save_setting("model_profiles", &json)
+            .save_setting("model_profiles", &json)
             .map_err(|e| AppError::database(format!("保存模型条目失败: {}", e)))?;
         Ok(())
     }
@@ -4223,7 +4223,7 @@ impl LLMManager {
         use crate::ocr_adapters::OcrEngineType;
 
         let configs = self.get_api_configs().await?;
-        let available = self.ocr_get_available_models().await;
+        let available = self.get_available_ocr_models().await;
 
         let mut enabled_models: Vec<&OcrModelConfig> =
             available.iter().filter(|m| m.enabled).collect();
@@ -4297,7 +4297,7 @@ impl LLMManager {
         use crate::ocr_adapters::{OcrAdapterFactory, OcrEngineType, OcrTaskType};
 
         let configs = self.get_api_configs().await?;
-        let available = self.ocr_get_available_models().await;
+        let available = self.get_available_ocr_models().await;
 
         let mut enabled_models: Vec<&OcrModelConfig> =
             available.iter().filter(|m| m.enabled).collect();
@@ -4364,8 +4364,8 @@ impl LLMManager {
     /// 包含自动迁移逻辑：
     /// 1. 将旧版本 PaddleOCR-VL 模型名称自动更新为 1.5 版本
     /// 2. 从旧 ocr.engine_type 单选迁移到新优先级列表
-    pub async fn ocr_get_available_models(&self) -> Vec<OcrModelConfig> {
-        if let Ok(Some(json)) = self.db.web_search_get_setting("ocr.available_models") {
+    pub async fn get_available_ocr_models(&self) -> Vec<OcrModelConfig> {
+        if let Ok(Some(json)) = self.db.get_setting("ocr.available_models") {
             if let Ok(mut models) = serde_json::from_str::<Vec<OcrModelConfig>>(&json) {
                 let mut needs_save = crate::cmd::ocr::migrate_paddle_ocr_models(&mut models);
 
@@ -4410,7 +4410,7 @@ impl LLMManager {
                 // 迁移：如果所有 priority 都是 0 且存在旧 ocr.engine_type 设置，
                 // 则根据旧单选设置调整优先级
                 if models.len() > 1 && models.iter().all(|m| m.priority == 0) {
-                    if let Ok(Some(old_engine)) = self.db.web_search_get_setting("ocr.engine_type") {
+                    if let Ok(Some(old_engine)) = self.db.get_setting("ocr.engine_type") {
                         for (i, model) in models.iter_mut().enumerate() {
                             if model.engine_type == old_engine {
                                 model.priority = 0; // 旧选中的排第一
@@ -4434,7 +4434,7 @@ impl LLMManager {
 
                 if needs_save {
                     if let Ok(updated_json) = serde_json::to_string(&models) {
-                        let _ = self.db.web_search_save_setting("ocr.available_models", &updated_json);
+                        let _ = self.db.save_setting("ocr.available_models", &updated_json);
                     }
                 }
                 return models;
@@ -4662,7 +4662,7 @@ impl LLMManager {
         let configs = self.get_api_configs().await?;
 
         // 尝试从 ocr.available_models 中查找对应引擎的配置 ID
-        if let Ok(Some(available_models_json)) = self.db.web_search_get_setting("ocr.available_models") {
+        if let Ok(Some(available_models_json)) = self.db.get_setting("ocr.available_models") {
             if let Ok(available_models) =
                 serde_json::from_str::<Vec<OcrModelConfig>>(&available_models_json)
             {
@@ -4695,7 +4695,7 @@ impl LLMManager {
     /// 默认关闭：OCR 和结构化任务不需要深度推理，关闭可显著降低延迟和成本。
     pub fn is_ocr_thinking_enabled(&self) -> bool {
         self.db
-            .web_search_get_setting("ocr.enable_thinking")
+            .get_setting("ocr.enable_thinking")
             .ok()
             .flatten()
             .map(|v| v.to_lowercase() == "true")
@@ -4706,10 +4706,10 @@ impl LLMManager {
     ///
     /// 默认按 FreeText 策略：OCR-VLM 引擎优先于通用 VLM。
     /// 回退到 `ocr.engine_type` 设置，最终默认 PaddleOCR-VL-1.5。
-    pub async fn ocr_get_engine_type(&self) -> crate::ocr_adapters::OcrEngineType {
+    pub async fn get_ocr_engine_type(&self) -> crate::ocr_adapters::OcrEngineType {
         use crate::ocr_adapters::OcrEngineType;
 
-        let available = self.ocr_get_available_models().await;
+        let available = self.get_available_ocr_models().await;
         let mut enabled: Vec<&OcrModelConfig> = available.iter().filter(|m| m.enabled).collect();
         // FreeText 策略：专业 OCR 引擎优先
         enabled.sort_by_key(|m| {
@@ -4724,7 +4724,7 @@ impl LLMManager {
         // 回退到 legacy 设置
         let engine_str = self
             .db
-            .web_search_get_setting("ocr.engine_type")
+            .get_setting("ocr.engine_type")
             .ok()
             .flatten()
             .unwrap_or_else(|| "paddle_ocr_vl".to_string());
@@ -4738,7 +4738,7 @@ impl LLMManager {
     pub async fn get_ocr_adapter(&self) -> std::sync::Arc<dyn crate::ocr_adapters::OcrAdapter> {
         use crate::ocr_adapters::OcrAdapterFactory;
 
-        let engine_type = self.ocr_get_engine_type().await;
+        let engine_type = self.get_ocr_engine_type().await;
         OcrAdapterFactory::create(engine_type)
     }
 
@@ -4755,7 +4755,7 @@ impl LLMManager {
         let config = self.get_ocr_model_config().await?;
 
         // 从 available_models 中查找该 config_id 对应的引擎类型
-        let available = self.ocr_get_available_models().await;
+        let available = self.get_available_ocr_models().await;
         let effective_engine =
             if let Some(ocr_model) = available.iter().find(|m| m.config_id == config.id) {
                 let declared = OcrEngineType::from_str(&ocr_model.engine_type);
@@ -4908,7 +4908,7 @@ impl LLMManager {
 
     // 获取模型分配配置
     pub async fn get_model_assignments(&self) -> Result<ModelAssignments> {
-        let assignments_str = self.db.web_search_get_setting("model_assignments")
+        let assignments_str = self.db.get_setting("model_assignments")
             .map_err(|e| AppError::database(format!("获取模型分配配置失败: {}", e)))?
             .unwrap_or_else(|| r#"{"model2_config_id": null, "review_analysis_model_config_id": null, "anki_card_model_config_id": null, "qbank_ai_grading_model_config_id": null}"#.to_string());
 
@@ -4924,7 +4924,7 @@ impl LLMManager {
             .map_err(|e| AppError::configuration(format!("序列化模型分配配置失败: {}", e)))?;
 
         self.db
-            .web_search_save_setting("model_assignments", &assignments_str)
+            .save_setting("model_assignments", &assignments_str)
             .map_err(|e| AppError::database(format!("保存模型分配配置失败: {}", e)))?;
 
         Ok(())
@@ -5018,7 +5018,7 @@ impl LLMManager {
         // 条件广告 web_search（仅由消息级选择控制）
         let selected_engines_list = self
             .db
-            .web_search_get_setting("session.selected_search_engines")
+            .get_setting("session.selected_search_engines")
             .ok()
             .flatten()
             .unwrap_or_default();
@@ -5082,7 +5082,7 @@ impl LLMManager {
         // ===== MCP 工具广告（经由前端SDK桥接） =====
         let cache_ttl_ms: u64 = self
             .db
-            .web_search_get_setting("mcp.performance.cache_ttl_ms")
+            .get_setting("mcp.performance.cache_ttl_ms")
             .ok()
             .flatten()
             .and_then(|v| v.parse::<u64>().ok())
@@ -5090,13 +5090,13 @@ impl LLMManager {
         let cache_ttl = Duration::from_millis(cache_ttl_ms);
         let namespace_prefix = self
             .db
-            .web_search_get_setting("mcp.tools.namespace_prefix")
+            .get_setting("mcp.tools.namespace_prefix")
             .ok()
             .flatten()
             .unwrap_or_default();
         let advertise_all = self
             .db
-            .web_search_get_setting("mcp.tools.advertise_all_tools")
+            .get_setting("mcp.tools.advertise_all_tools")
             .ok()
             .flatten()
             .map(|v| v.to_lowercase())
@@ -5104,7 +5104,7 @@ impl LLMManager {
             .unwrap_or(false);
         let whitelist: Vec<String> = self
             .db
-            .web_search_get_setting("mcp.tools.whitelist")
+            .get_setting("mcp.tools.whitelist")
             .ok()
             .flatten()
             .map(|s| {
@@ -5116,7 +5116,7 @@ impl LLMManager {
             .unwrap_or_else(|| Vec::new());
         let blacklist: Vec<String> = self
             .db
-            .web_search_get_setting("mcp.tools.blacklist")
+            .get_setting("mcp.tools.blacklist")
             .ok()
             .flatten()
             .map(|s| {
@@ -5128,7 +5128,7 @@ impl LLMManager {
             .unwrap_or_else(|| Vec::new());
         let selected: Vec<String> = self
             .db
-            .web_search_get_setting("session.selected_mcp_tools")
+            .get_setting("session.selected_mcp_tools")
             .ok()
             .flatten()
             .map(|s| {
@@ -5219,7 +5219,7 @@ impl LLMManager {
     pub async fn preheat_mcp_tools_public(&self, window: &Window) -> usize {
         let ttl_ms: u64 = self
             .db
-            .web_search_get_setting("mcp.performance.cache_ttl_ms")
+            .get_setting("mcp.performance.cache_ttl_ms")
             .ok()
             .flatten()
             .and_then(|v| v.parse::<u64>().ok())

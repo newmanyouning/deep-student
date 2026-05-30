@@ -3,7 +3,7 @@
 //! 用于快速恢复常用API配置的工具模块
 
 use crate::llm_manager::{ApiConfig, LLMManager};
-use crate::models::{AppError, ModelAssignments};
+use crate::models::ModelAssignments;
 use anyhow::Result;
 
 /// 创建常用的默认API配置
@@ -152,7 +152,7 @@ pub fn create_default_model_assignments() -> ModelAssignments {
 #[tauri::command]
 pub async fn restore_default_api_configs(
     llm_manager: tauri::State<'_, std::sync::Arc<LLMManager>>,
-) -> Result<String, AppError> {
+) -> Result<String, String> {
     // 创建默认配置
     let default_configs = create_default_api_configs();
 
@@ -160,7 +160,7 @@ pub async fn restore_default_api_configs(
     llm_manager
         .save_api_configurations(&default_configs)
         .await
-        .map_err(|e| AppError::unknown(format!("保存默认配置失败: {}", e)))?;
+        .map_err(|e| format!("保存默认配置失败: {}", e))?;
 
     // 创建默认模型分配
     let default_assignments = create_default_model_assignments();
@@ -169,7 +169,7 @@ pub async fn restore_default_api_configs(
     llm_manager
         .save_model_assignments(&default_assignments)
         .await
-        .map_err(|e| AppError::unknown(format!("保存模型分配失败: {}", e)))?;
+        .map_err(|e| format!("保存模型分配失败: {}", e))?;
 
     Ok("✅ 默认API配置已恢复！请填入您的API密钥并启用相应配置。".to_string())
 }
@@ -178,11 +178,11 @@ pub async fn restore_default_api_configs(
 #[tauri::command]
 pub async fn check_api_config_status(
     llm_manager: tauri::State<'_, std::sync::Arc<LLMManager>>,
-) -> Result<serde_json::Value, AppError> {
+) -> Result<serde_json::Value, String> {
     let configs = llm_manager
         .get_api_configs()
         .await
-        .map_err(|e| AppError::unknown(format!("获取配置失败: {}", e)))?;
+        .map_err(|e| format!("获取配置失败: {}", e))?;
 
     let assignments = llm_manager.get_model_assignments().await;
 

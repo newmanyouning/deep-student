@@ -497,7 +497,7 @@ export const ShadApiEditModal: React.FC<ApiEditModalProps> = ({
     (async () => {
       try {
         if (!invoke) return;
-        const result: any = await invoke('anki_cards_get_model_adapter_options');
+        const result: any = await invoke('get_model_adapter_options');
         if (Array.isArray(result)) {
           const allowed = new Set(SUPPORTED_MODEL_ADAPTERS);
           const mapped = result

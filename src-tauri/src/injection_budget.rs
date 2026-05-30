@@ -434,7 +434,7 @@ impl InjectionBudgetManager {
     /// 从数据库配置创建管理器
     pub async fn from_database_config(db: &crate::database::Database) -> Result<Self, String> {
         let config_json = db
-            .web_search_get_setting("injection_budget.config")
+            .get_setting("injection_budget.config")
             .map_err(|e| format!("Failed to load injection budget config: {}", e))?;
 
         let config = if let Some(json_str) = config_json {
@@ -455,7 +455,7 @@ impl InjectionBudgetManager {
         let json_str = serde_json::to_string(&self.config)
             .map_err(|e| format!("Failed to serialize injection budget config: {}", e))?;
 
-        db.web_search_save_setting("injection_budget.config", &json_str)
+        db.save_setting("injection_budget.config", &json_str)
             .map_err(|e| format!("Failed to save injection budget config: {}", e))
     }
 }

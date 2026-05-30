@@ -30,6 +30,7 @@ import { MobileLayoutProvider, MobileHeaderProvider, UnifiedMobileHeader, Mobile
 import { GlobalPomodoroWidget } from '@/features/pomodoro';
 // 🚀 性能优化：IrecServiceSwitcher, IrecGraphFlow, IrecGraphFlowDemo, CrepeDemoPage, ChatV2IntegrationTest, BridgeToIrec 改为懒加载
 import { TauriAPI } from './utils/tauriApi';
+// ★ MistakeItem 类型导入已废弃（2026-01 清理）
 import { isWindows, isMacOS } from './utils/platform';
 // 🚀 性能优化：ChatV2Page 改为懒加载，见 lazyComponents.tsx
 // 🚀 P0-1 性能优化：NoteEditorPortal 改为懒加载，避免 CrepeEditor → mermaid (~1.6MB) 进入首屏 bundle
@@ -627,7 +628,7 @@ function App() {
     // 桌面端读取用户设置
     const loadSetting = async () => {
       try {
-        const v = await invoke<string>('web_search_get_setting', { key: 'topbar.top_margin' });
+        const v = await invoke<string>('get_setting', { key: 'topbar.top_margin' });
         if (cancelled) return;
         const value = String(v ?? '').trim();
         if (value) {
@@ -665,7 +666,7 @@ function App() {
 
     const loadFontSmoothingSetting = async () => {
       try {
-        const value = await invoke<string | null>('web_search_get_setting', {
+        const value = await invoke<string | null>('get_setting', {
           key: MACOS_NATIVE_FONT_SMOOTHING_SETTING_KEY,
         });
         if (cancelled) return;
@@ -710,7 +711,7 @@ function App() {
 
     (async () => {
       try {
-        const val = await invoke<string | null>('web_search_get_setting', { key: SIDEBAR_TRANSLUCENT_KEY });
+        const val = await invoke<string | null>('get_setting', { key: SIDEBAR_TRANSLUCENT_KEY });
         if (cancelled) return;
         document.documentElement.setAttribute(
           'data-sidebar-translucent',
@@ -730,7 +731,7 @@ function App() {
 
     const loadPointerCursorSetting = async () => {
       try {
-        const val = await invoke<string | null>('web_search_get_setting', { key: POINTER_CURSOR_SETTING_KEY });
+        const val = await invoke<string | null>('get_setting', { key: POINTER_CURSOR_SETTING_KEY });
         if (cancelled) return;
         applyPointerCursorPreference(String(val ?? '').trim() !== 'false');
       } catch {

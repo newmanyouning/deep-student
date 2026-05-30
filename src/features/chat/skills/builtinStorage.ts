@@ -101,7 +101,7 @@ export async function getBuiltinSkillCustomization(
 
   try {
     const key = getStorageKey(skillId);
-    const stored = await invoke<string | null>('web_search_get_setting', { key });
+    const stored = await invoke<string | null>('get_setting', { key });
 
     if (!stored || typeof stored !== 'string') {
       return null;
@@ -151,7 +151,7 @@ export async function saveBuiltinSkillCustomization(
     };
     const value = JSON.stringify(data);
 
-    await invoke('web_search_save_setting', { key, value });
+    await invoke('save_setting', { key, value });
     console.log(LOG_PREFIX, `Saved custom data for ${skillId}`);
   } catch (error: unknown) {
     console.error(LOG_PREFIX, `Failed to save custom data for ${skillId}:`, error);
@@ -173,7 +173,7 @@ export async function resetBuiltinSkillCustomization(
 
   try {
     const key = getStorageKey(skillId);
-    await invoke('web_search_delete_setting', { key });
+    await invoke('delete_setting', { key });
     console.log(LOG_PREFIX, `Reset ${skillId} to defaults`);
   } catch (error: unknown) {
     console.error(LOG_PREFIX, `Failed to reset ${skillId}:`, error);

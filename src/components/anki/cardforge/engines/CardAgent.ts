@@ -477,7 +477,7 @@ export class CardAgent {
           };
 
         case 'cancel':
-          await invoke('anki_delete_document_session', { documentId: input.documentId });
+          await invoke('delete_document_session', { documentId: input.documentId });
           return {
             ok: true,
             message: '已取消文档处理',
@@ -1448,7 +1448,7 @@ export class CardAgent {
    */
   private async getSegmentCount(documentId: string): Promise<number> {
     try {
-      const tasks = await invoke<BackendDocumentTask[]>('anki_get_document_tasks', { documentId });
+      const tasks = await invoke<BackendDocumentTask[]>('get_document_tasks', { documentId });
       return tasks.length;
     } catch {
       return 1;
@@ -1460,7 +1460,7 @@ export class CardAgent {
    */
   private async getTaskStatus(documentId: string): Promise<TaskInfo[]> {
     try {
-      const tasks = await invoke<BackendDocumentTask[]>('anki_get_document_tasks', { documentId });
+      const tasks = await invoke<BackendDocumentTask[]>('get_document_tasks', { documentId });
       return tasks.map((t) => ({
         taskId: t.id,
         segmentIndex: t.segment_index,

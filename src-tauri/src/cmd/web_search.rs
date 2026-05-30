@@ -14,7 +14,7 @@ type Result<T> = std::result::Result<T, AppError>;
 // =====================
 
 #[tauri::command]
-pub async fn web_search_test_connectivity(
+pub async fn test_web_search_connectivity(
     engine: Option<String>,
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value> {
@@ -25,7 +25,7 @@ pub async fn web_search_test_connectivity(
 
     let db = &state.database;
     cfg.apply_db_overrides(
-        |k| db.web_search_get_setting(k).ok().flatten(),
+        |k| db.get_setting(k).ok().flatten(),
         |k| db.get_secret(k).ok().flatten(),
     );
 
@@ -58,7 +58,7 @@ pub async fn web_search_test_connectivity(
 }
 /// 一键体检所有搜索引擎连通性
 #[tauri::command]
-pub async fn web_search_test_all_engines(state: State<'_, AppState>) -> Result<serde_json::Value> {
+pub async fn test_all_search_engines(state: State<'_, AppState>) -> Result<serde_json::Value> {
     use crate::tools::web_search;
     use std::collections::HashMap;
 
@@ -68,7 +68,7 @@ pub async fn web_search_test_all_engines(state: State<'_, AppState>) -> Result<s
 
     let db = &state.database;
     cfg.apply_db_overrides(
-        |k| db.web_search_get_setting(k).ok().flatten(),
+        |k| db.get_setting(k).ok().flatten(),
         |k| db.get_secret(k).ok().flatten(),
     );
 
@@ -177,7 +177,7 @@ pub async fn web_search_test_all_engines(state: State<'_, AppState>) -> Result<s
 }
 /// 检查安全存储状态（缓存版本，避免频繁的钥匙串访问）
 #[tauri::command]
-pub async fn web_search_get_security_status(_state: State<'_, AppState>) -> Result<serde_json::Value> {
+pub async fn get_security_status(_state: State<'_, AppState>) -> Result<serde_json::Value> {
     let migration_completed = true;
 
     // 🚨 钥匙串功能已彻底禁用，移除所有相关代码
@@ -202,24 +202,24 @@ pub async fn web_search_get_security_status(_state: State<'_, AppState>) -> Resu
 }
 /// 获取中文可信站点白名单配置
 #[tauri::command]
-pub async fn web_search_get_cn_whitelist_config(state: State<'_, AppState>) -> Result<serde_json::Value> {
+pub async fn get_cn_whitelist_config(state: State<'_, AppState>) -> Result<serde_json::Value> {
     let db = &state.database;
 
     // 读取配置
     let enabled = db
-        .web_search_get_setting("web_search.cn_whitelist.enabled")
+        .get_setting("web_search.cn_whitelist.enabled")
         .unwrap_or(None)
         .and_then(|s| s.parse::<bool>().ok())
         .unwrap_or(false);
 
     let use_default = db
-        .web_search_get_setting("web_search.cn_whitelist.use_default")
+        .get_setting("web_search.cn_whitelist.use_default")
         .unwrap_or(None)
         .and_then(|s| s.parse::<bool>().ok())
         .unwrap_or(true);
 
     let custom_sites = db
-        .web_search_get_setting("web_search.cn_whitelist.custom_sites")
+        .get_setting("web_search.cn_whitelist.custom_sites")
         .unwrap_or(None)
         .map(|s| {
             // 兼容性处理：尝试JSON解析，失败则按逗号分隔
@@ -258,13 +258,13 @@ pub async fn detect_tool_conflicts(_state: State<'_, AppState>) -> Result<Vec<To
 
 /// 获取工具命名空间配置
 #[tauri::command]
-pub async fn web_search_get_tools_namespace_config(state: State<'_, AppState>) -> Result<serde_json::Value> {
+pub async fn get_tools_namespace_config(state: State<'_, AppState>) -> Result<serde_json::Value> {
     let db = &state.database;
 
-    let namespace_prefix = db.web_search_get_setting("mcp.tools.namespace_prefix").unwrap_or(None);
+    let namespace_prefix = db.get_setting("mcp.tools.namespace_prefix").unwrap_or(None);
 
     let conflict_resolution = db
-        .web_search_get_setting("mcp.tools.conflict_resolution")
+        .get_setting("mcp.tools.conflict_resolution")
         .unwrap_or(None)
         .unwrap_or_else(|| "use_local".to_string());
 
@@ -285,13 +285,13 @@ pub async fn web_search_get_tools_namespace_config(state: State<'_, AppState>) -
 
 /// 获取Provider策略配置
 #[tauri::command]
-pub async fn web_search_get_provider_strategies_config(
+pub async fn get_provider_strategies_config(
     state: State<'_, AppState>,
 ) -> Result<serde_json::Value> {
     // 读取web_search.provider_strategies配置
     let provider_strategies_setting = state
         .database
-        .web_search_get_setting("web_search.provider_strategies")
+        .get_setting("web_search.provider_strategies")
         .unwrap_or(None);
 
     let provider_strategies_config = if let Some(setting_str) = provider_strategies_setting {
@@ -311,7 +311,7 @@ pub async fn web_search_get_provider_strategies_config(
 
 /// 保存Provider策略配置
 #[tauri::command]
-pub async fn web_search_save_provider_strategies_config(
+pub async fn save_provider_strategies_config(
     strategies: crate::tools::web_search::ProviderStrategies,
     state: State<'_, AppState>,
 ) -> Result<bool> {
@@ -321,7 +321,7 @@ pub async fn web_search_save_provider_strategies_config(
 
     state
         .database
-        .web_search_save_setting("web_search.provider_strategies", &strategies_json)
+        .save_setting("web_search.provider_strategies", &strategies_json)
         .map_err(|e| AppError::from(format!("保存Provider策略失败: {}", e)))?;
 
     log::info!("Provider策略配置已保存");
@@ -330,7 +330,7 @@ pub async fn web_search_save_provider_strategies_config(
 
 /// 获取功能开关配置
 #[tauri::command]
-pub async fn web_search_get_feature_flags(state: State<'_, AppState>) -> Result<serde_json::Value> {
+pub async fn get_feature_flags(state: State<'_, AppState>) -> Result<serde_json::Value> {
     use crate::feature_flags::FeatureFlagManager;
 
     // 获取应用版本（可以从配置或环境变量中读取）
@@ -364,7 +364,7 @@ pub async fn web_search_get_feature_flags(state: State<'_, AppState>) -> Result<
 }
 /// 更新功能开关状态
 #[tauri::command]
-pub async fn web_search_update_feature_flag(
+pub async fn update_feature_flag(
     state: State<'_, AppState>,
     feature_name: String,
     action: String,
@@ -445,7 +445,7 @@ pub async fn is_feature_enabled(
 
 /// 测试搜索引擎连接
 #[tauri::command]
-pub async fn web_search_test_engine(
+pub async fn test_search_engine(
     state: State<'_, AppState>,
     engine: String,
 ) -> Result<serde_json::Value> {
@@ -508,7 +508,7 @@ pub async fn web_search_test_engine(
 
 /// 保存设置（敏感键自动使用安全存储）
 #[tauri::command]
-pub async fn web_search_save_setting(key: String, value: String, state: State<'_, AppState>) -> Result<bool> {
+pub async fn save_setting(key: String, value: String, state: State<'_, AppState>) -> Result<bool> {
     let db = &state.database;
     // 使用 save_secret 自动判断是否需要安全存储
     db.save_secret(&key, &value)
@@ -518,7 +518,7 @@ pub async fn web_search_save_setting(key: String, value: String, state: State<'_
 
 /// 读取设置（敏感键自动从安全存储读取）
 #[tauri::command]
-pub async fn web_search_get_setting(key: String, state: State<'_, AppState>) -> Result<Option<String>> {
+pub async fn get_setting(key: String, state: State<'_, AppState>) -> Result<Option<String>> {
     let db = &state.database;
     // 使用 get_secret 自动判断是否需要从安全存储读取
     db.get_secret(&key)
@@ -527,7 +527,7 @@ pub async fn web_search_get_setting(key: String, state: State<'_, AppState>) -> 
 
 /// 删除设置
 #[tauri::command]
-pub async fn web_search_delete_setting(key: String, state: State<'_, AppState>) -> Result<bool> {
+pub async fn delete_setting(key: String, state: State<'_, AppState>) -> Result<bool> {
     let db = &state.database;
     db.delete_secret(&key)
         .map_err(|e| AppError::database(format!("删除设置失败: {}", e)))
@@ -535,22 +535,22 @@ pub async fn web_search_delete_setting(key: String, state: State<'_, AppState>) 
 
 /// 按前缀查询设置列表（用于工具权限管理等）
 #[tauri::command]
-pub async fn web_search_web_search_get_settings_by_prefix(
+pub async fn get_settings_by_prefix(
     prefix: String,
     state: State<'_, AppState>,
 ) -> Result<Vec<(String, String, String)>> {
     let db = &state.database;
-    db.web_search_web_search_get_settings_by_prefix(&prefix)
+    db.get_settings_by_prefix(&prefix)
         .map_err(|e| AppError::database(format!("按前缀查询设置失败: {}", e)))
 }
 
 /// 按前缀批量删除设置
 #[tauri::command]
-pub async fn web_search_web_search_delete_settings_by_prefix(
+pub async fn delete_settings_by_prefix(
     prefix: String,
     state: State<'_, AppState>,
 ) -> Result<usize> {
     let db = &state.database;
-    db.web_search_web_search_delete_settings_by_prefix(&prefix)
+    db.delete_settings_by_prefix(&prefix)
         .map_err(|e| AppError::database(format!("按前缀批量删除设置失败: {}", e)))
 }

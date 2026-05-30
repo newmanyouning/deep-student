@@ -13,10 +13,10 @@
 //! 所有命令以 `chat_v2_` 前缀命名，以区分旧版聊天命令。
 //!
 //! ## 错误处理
-//! 所有命令返回 `ChatV2Result<T>`，使用 ChatV2Error 枚举。
+//! 所有命令返回 `Result<T, String>`，使用 `ChatV2Error::to_string()` 格式化错误。
 //!
 //! ## 资源操作
-//! 资源操作已完全迁移至 VFS 模块。resource_handlers.rs 已于 2026-05-30 移除 (REF-014)。
+//! 资源相关操作已迁移至 VFS 模块（vfs_* 命令），不再使用旧的 resource_* 命令。
 
 pub mod approval_handlers;
 pub mod ask_user_handlers; // 🆕 用户提问命令处理器
@@ -27,6 +27,7 @@ pub mod load_session;
 pub mod manage_session;
 pub mod migration;
 pub mod ocr;
+pub mod resource_handlers; // ⚠️ DEPRECATED: 前端已迁移到 VFS (vfs_* 命令)，resource_* 命令零引用。参见 P1-#9。
 pub mod search_handlers;
 pub mod send_message;
 pub mod variant_handlers;

@@ -145,7 +145,7 @@ export const OcrSettingsSection: React.FC = () => {
   const loadConfig = useCallback(async () => {
     try {
       setLoading(true);
-      const getSetting = (key: string) => invoke<string | null>('web_search_get_setting', { key }).catch(() => null);
+      const getSetting = (key: string) => invoke<string | null>('get_setting', { key }).catch(() => null);
 
       const [enabled, skipForMultimodal, threshold, ocrImages, ocrScannedPdf] = await Promise.all([
         getSetting('ocr.enabled'),
@@ -182,7 +182,7 @@ export const OcrSettingsSection: React.FC = () => {
   const saveSetting = useCallback(async (key: string, value: string) => {
     try {
       setSaving(true);
-      await invoke('web_search_save_setting', { key, value });
+      await invoke('save_setting', { key, value });
       showGlobalNotification('success', t('common:config_saved', '配置已保存'));
     } finally {
       setSaving(false);
@@ -226,7 +226,7 @@ export const OcrSettingsSection: React.FC = () => {
   const handleReset = useCallback(async () => {
     try {
       setSaving(true);
-      const save = (key: string, value: string) => invoke('web_search_save_setting', { key, value });
+      const save = (key: string, value: string) => invoke('save_setting', { key, value });
       await Promise.all([
         save('ocr.enabled', 'true'),
         save('ocr.skip_for_multimodal', 'false'),

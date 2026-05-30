@@ -8,7 +8,7 @@
 //!
 //! ## 设计原则
 //! - 所有命令前缀 `dstu_folder_`
-//! - 返回 `DstuResult<T>` 格式
+//! - 返回 `Result<T, String>` 格式
 //! - 使用 `#[serde(rename_all = "camelCase")]`
 //! - 异步命令使用 `tokio::task::spawn_blocking`
 //!
@@ -25,7 +25,6 @@ use crate::vfs::{
     folder_errors, FolderResourcesResult, FolderTreeNode, VfsDatabase, VfsFolder, VfsFolderItem,
     VfsFolderRepo, MAX_FOLDER_TITLE_LENGTH, MAX_INJECT_RESOURCES,
 };
-use super::error::{DstuError, DstuResult};
 
 // ============================================================================
 // 参数验证辅助函数
@@ -57,34 +56,36 @@ fn contains_unicode_bypass_chars(s: &str) -> bool {
 }
 
 /// 验证字符串长度和字符集
-fn validate_string_input(s: &str, field_name: &str, max_len: usize) -> DstuResult<()> {
+fn validate_string_input(s: &str, field_name: &str, max_len: usize) -> Result<(), String> {
     if contains_invalid_chars(s) {
         warn!(
             "[DSTU::folder_handlers] validate_string_input: {} contains invalid control characters",
             field_name
         );
-        return Err(DstuError::invalid_input(format!("{} 包含非法字符", field_name)));
+        return Err(format!("{} 包含非法字符", field_name));
     }
+    // HIGH-R002修复: 检测Unicode规范化绕过
     if contains_unicode_bypass_chars(s) {
         warn!(
             "[DSTU::folder_handlers] validate_string_input: {} contains Unicode bypass characters",
             field_name
         );
-        return Err(DstuError::invalid_input(format!("{} 包含非法Unicode字符", field_name)));
+        return Err(format!("{} 包含非法Unicode字符", field_name));
     }
+    // 验证路径分隔符（MEDIUM-009修复）
     if s.contains('/') || s.contains('\\') || s.contains("..") {
         warn!(
             "[DSTU::folder_handlers] validate_string_input: {} contains path separators",
             field_name
         );
-        return Err(DstuError::invalid_input(format!("{} 不能包含路径分隔符", field_name)));
+        return Err(format!("{} 不能包含路径分隔符", field_name));
     }
     if s.len() > max_len {
         warn!(
             "[DSTU::folder_handlers] validate_string_input: {} exceeds max length {}",
             field_name, max_len
         );
-        return Err(DstuError::invalid_input(format!("{} 长度超过限制", field_name)));
+        return Err(format!("{} 长度超过限制", field_name));
     }
     Ok(())
 }
@@ -138,34 +139,37 @@ pub async fn dstu_folder_create(
     parent_id: Option<String>,
     icon: Option<String>,
     color: Option<String>,
-) -> DstuResult<VfsFolder> {
+) -> Result<VfsFolder, String> {
     info!(
         "[DSTU::folder_handlers] dstu_folder_create: title={}, parent_id={:?}",
         title, parent_id
     );
 
+    // 验证标题非空
     if title.trim().is_empty() {
-        return Err(DstuError::invalid_input("文件夹标题不能为空".to_string()));
+        return Err("文件夹标题不能为空".to_string());
     }
 
+    // 验证标题长度和字符集
     validate_string_input(&title, "文件夹标题", MAX_FOLDER_TITLE_LENGTH)?;
 
+    // 验证icon（如果提供）
     if let Some(ref icon_str) = icon {
         validate_string_input(icon_str, "图标", 50)?;
     }
 
+    // 验证color（如果提供）- CRITICAL-003修复
     if let Some(ref color_str) = color {
         if !is_valid_color(color_str) {
             warn!(
                 "[DSTU::folder_handlers] dstu_folder_create: invalid color format: {}",
                 color_str
             );
-            return Err(DstuError::invalid_input(
-                "颜色格式错误，请使用 #RRGGBB 格式或预定义颜色名称".to_string(),
-            ));
+            return Err("颜色格式错误，请使用 #RRGGBB 格式或预定义颜色名称".to_string());
         }
     }
 
+    // 特殊处理 "root" - 转换为 None（根级文件夹）
     let actual_parent_id = match parent_id.as_deref() {
         Some("root") | Some("") => None,
         _ => parent_id,
@@ -173,22 +177,41 @@ pub async fn dstu_folder_create(
 
     let vfs_db = vfs_db.inner().clone();
 
-    let folder = tokio::task::spawn_blocking(move || -> DstuResult<VfsFolder> {
-        let conn = vfs_db.get_conn_safe()?;
+    tokio::task::spawn_blocking(move || {
+        let conn = match vfs_db.get_conn_safe() {
+            Ok(c) => c,
+            Err(e) => {
+                error!(
+                    "[DSTU::folder_handlers] dstu_folder_create: get_conn_safe FAILED - error={}",
+                    e
+                );
+                return Err(e.to_string());
+            }
+        };
 
+        // 创建文件夹对象
         let folder = VfsFolder::new(title, actual_parent_id, icon, color);
 
-        VfsFolderRepo::create_folder_with_conn(&conn, &folder)?;
-
-        info!(
-            "[DSTU::folder_handlers] dstu_folder_create: SUCCESS - folder_id={}",
-            folder.id
-        );
-        Ok(folder)
+        // 使用 FolderRepo 创建文件夹（包含深度/数量检查）
+        match VfsFolderRepo::create_folder_with_conn(&conn, &folder) {
+            Ok(()) => {
+                info!(
+                    "[DSTU::folder_handlers] dstu_folder_create: SUCCESS - folder_id={}",
+                    folder.id
+                );
+                Ok(folder)
+            }
+            Err(e) => {
+                error!(
+                    "[DSTU::folder_handlers] dstu_folder_create: FAILED - error={}",
+                    e
+                );
+                Err(e.to_string())
+            }
+        }
     })
-    .await??;
-
-    Ok(folder)
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 /// 获取文件夹详情
@@ -202,7 +225,7 @@ pub async fn dstu_folder_create(
 pub async fn dstu_folder_get(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: String,
-) -> DstuResult<Option<VfsFolder>> {
+) -> Result<Option<VfsFolder>, String> {
     info!(
         "[DSTU::folder_handlers] dstu_folder_get: folder_id={}",
         folder_id
@@ -225,11 +248,12 @@ pub async fn dstu_folder_get(
                     "[DSTU::folder_handlers] dstu_folder_get: FAILED - folder_id={}, error={}",
                     folder_id, e
                 );
-                Err(e.into())
+                Err(e.to_string())
             }
         },
     )
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 /// 重命名文件夹
@@ -242,30 +266,33 @@ pub async fn dstu_folder_rename(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: String,
     title: String,
-) -> DstuResult<()> {
+) -> Result<(), String> {
     info!(
         "[DSTU::folder_handlers] dstu_folder_rename: folder_id={}, title={}",
         folder_id, title
     );
 
+    // 验证标题非空
     if title.trim().is_empty() {
-        return Err(DstuError::invalid_input("文件夹标题不能为空".to_string()));
+        return Err("文件夹标题不能为空".to_string());
     }
 
+    // 验证标题长度和字符集
     validate_string_input(&title, "文件夹标题", MAX_FOLDER_TITLE_LENGTH)?;
 
     let vfs_db = vfs_db.inner().clone();
 
-    tokio::task::spawn_blocking(move || -> DstuResult<()> {
+    tokio::task::spawn_blocking(move || {
+        // 获取现有文件夹
         let mut folder = match VfsFolderRepo::get_folder(&vfs_db, &folder_id) {
             Ok(Some(f)) => f,
             Ok(None) => {
                 warn!("[DSTU::folder_handlers] dstu_folder_rename: FAILED - folder not found: {}", folder_id);
-                return Err(DstuError::not_found(format!("Folder not found: {}", folder_id)));
+                return Err("资源不存在".to_string());
             }
             Err(e) => {
                 error!("[DSTU::folder_handlers] dstu_folder_rename: FAILED - get_folder error={}", e);
-                return Err(e.into());
+                return Err(e.to_string());
             }
         };
 
@@ -280,11 +307,12 @@ pub async fn dstu_folder_rename(
             }
             Err(e) => {
                 error!("[DSTU::folder_handlers] dstu_folder_rename: FAILED - update_folder error={}", e);
-                Err(e.into())
+                Err(e.to_string())
             }
         }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 /// 删除文件夹
@@ -297,7 +325,7 @@ pub async fn dstu_folder_rename(
 pub async fn dstu_folder_delete(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: String,
-) -> DstuResult<()> {
+) -> Result<(), String> {
     info!(
         "[DSTU::folder_handlers] dstu_folder_delete: folder_id={}",
         folder_id
@@ -305,15 +333,27 @@ pub async fn dstu_folder_delete(
 
     let vfs_db = vfs_db.inner().clone();
 
-    tokio::task::spawn_blocking(move || -> DstuResult<()> {
-        VfsFolderRepo::delete_folder(&vfs_db, &folder_id)?;
-        info!(
-            "[DSTU::folder_handlers] dstu_folder_delete: SUCCESS - folder_id={}",
-            folder_id
-        );
-        Ok(())
+    tokio::task::spawn_blocking(move || {
+        // 软删除文件夹，级联软删除子文件夹和内容项（设置 deleted_at）
+        match VfsFolderRepo::delete_folder(&vfs_db, &folder_id) {
+            Ok(()) => {
+                info!(
+                    "[DSTU::folder_handlers] dstu_folder_delete: SUCCESS - folder_id={}",
+                    folder_id
+                );
+                Ok(())
+            }
+            Err(e) => {
+                error!(
+                    "[DSTU::folder_handlers] dstu_folder_delete: FAILED - folder_id={}, error={}",
+                    folder_id, e
+                );
+                Err(e.to_string())
+            }
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 /// 移动文件夹
@@ -332,26 +372,36 @@ pub async fn dstu_folder_move(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: String,
     new_parent_id: Option<String>,
-) -> DstuResult<()> {
+) -> Result<(), String> {
     info!(
         "[DSTU::folder_handlers] dstu_folder_move: folder_id={}, new_parent_id={:?}",
         folder_id, new_parent_id
     );
 
+    // 检查是否移动到自己
     if let Some(ref parent_id) = new_parent_id {
         if parent_id == &folder_id {
-            return Err(DstuError::invalid_input(folder_errors::INVALID_PARENT.to_string()));
+            return Err(folder_errors::INVALID_PARENT.to_string());
         }
     }
 
     let vfs_db = vfs_db.inner().clone();
 
-    tokio::task::spawn_blocking(move || -> DstuResult<()> {
-        VfsFolderRepo::move_folder(&vfs_db, &folder_id, new_parent_id.as_deref())?;
-        info!("[DSTU::folder_handlers] dstu_folder_move: SUCCESS - folder_id={}, new_parent_id={:?}", folder_id, new_parent_id);
-        Ok(())
+    tokio::task::spawn_blocking(move || {
+        // 调用 FolderRepo 移动文件夹（内部包含所有验证）
+        match VfsFolderRepo::move_folder(&vfs_db, &folder_id, new_parent_id.as_deref()) {
+            Ok(()) => {
+                info!("[DSTU::folder_handlers] dstu_folder_move: SUCCESS - folder_id={}, new_parent_id={:?}", folder_id, new_parent_id);
+                Ok(())
+            }
+            Err(e) => {
+                error!("[DSTU::folder_handlers] dstu_folder_move: FAILED - folder_id={}, new_parent_id={:?}, error={}", folder_id, new_parent_id, e);
+                Err(e.to_string())
+            }
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 /// 设置文件夹展开状态
@@ -364,7 +414,7 @@ pub async fn dstu_folder_set_expanded(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: String,
     is_expanded: bool,
-) -> DstuResult<()> {
+) -> Result<(), String> {
     info!(
         "[DSTU::folder_handlers] dstu_folder_set_expanded: folder_id={}, is_expanded={}",
         folder_id, is_expanded
@@ -372,12 +422,20 @@ pub async fn dstu_folder_set_expanded(
 
     let vfs_db = vfs_db.inner().clone();
 
-    tokio::task::spawn_blocking(move || -> DstuResult<()> {
-        VfsFolderRepo::set_folder_expanded(&vfs_db, &folder_id, is_expanded)?;
-        info!("[DSTU::folder_handlers] dstu_folder_set_expanded: SUCCESS - folder_id={}, is_expanded={}", folder_id, is_expanded);
-        Ok(())
+    tokio::task::spawn_blocking(move || {
+        match VfsFolderRepo::set_folder_expanded(&vfs_db, &folder_id, is_expanded) {
+            Ok(()) => {
+                info!("[DSTU::folder_handlers] dstu_folder_set_expanded: SUCCESS - folder_id={}, is_expanded={}", folder_id, is_expanded);
+                Ok(())
+            }
+            Err(e) => {
+                error!("[DSTU::folder_handlers] dstu_folder_set_expanded: FAILED - folder_id={}, is_expanded={}, error={}", folder_id, is_expanded, e);
+                Err(e.to_string())
+            }
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 // ============================================================================
@@ -404,74 +462,156 @@ pub async fn dstu_folder_add_item(
     folder_id: Option<String>,
     item_type: String,
     item_id: String,
-) -> DstuResult<VfsFolderItem> {
+) -> Result<VfsFolderItem, String> {
     info!(
         "[DSTU::folder_handlers] dstu_folder_add_item: folder_id={:?}, item_type={}, item_id={}",
         folder_id, item_type, item_id
     );
 
+    // 验证 item_type
+    // ★ P0-3 修复：扩展支持 image/file 类型，与 moveItem、附件、引用模式保持一致
+    // ★ 知识导图集成：添加 mindmap 类型支持
     let valid_types = [
-        "note", "textbook", "exam", "translation", "essay",
-        "image", "file", "mindmap",
+        "note",
+        "textbook",
+        "exam",
+        "translation",
+        "essay",
+        "image",
+        "file",
+        "mindmap",
     ];
     if !valid_types.contains(&item_type.as_str()) {
-        warn!("[DSTU::folder_handlers] dstu_folder_add_item: invalid item_type: {}", item_type);
-        return Err(DstuError::invalid_input("参数格式错误".to_string()));
+        warn!(
+            "[DSTU::folder_handlers] dstu_folder_add_item: invalid item_type: {}",
+            item_type
+        );
+        return Err("参数格式错误".to_string());
     }
 
     let vfs_db = vfs_db.inner().clone();
 
-    tokio::task::spawn_blocking(move || -> DstuResult<VfsFolderItem> {
+    tokio::task::spawn_blocking(move || {
+        // 检查文件夹存在性（如果指定了文件夹）
         if let Some(ref fid) = folder_id {
-            if !VfsFolderRepo::folder_exists(&vfs_db, fid)? {
-                warn!("[DSTU::folder_handlers] dstu_folder_add_item: FAILED - folder not found: {}", fid);
-                return Err(DstuError::not_found(format!("Folder not found: {}", fid)));
+            match VfsFolderRepo::folder_exists(&vfs_db, fid) {
+                Ok(exists) => {
+                    if !exists {
+                        warn!("[DSTU::folder_handlers] dstu_folder_add_item: FAILED - folder not found: {}", fid);
+                        return Err("目标文件夹不存在".to_string());
+                    }
+                }
+                Err(e) => {
+                    error!("[DSTU::folder_handlers] dstu_folder_add_item: FAILED - folder_exists error={}", e);
+                    return Err(e.to_string());
+                }
             }
         }
 
-        let item = VfsFolderItem::new(folder_id.clone(), item_type.clone(), item_id.clone());
+        // 创建 folder_item
+        let item = VfsFolderItem::new(
+            folder_id.clone(),
+            item_type.clone(),
+            item_id.clone(),
+        );
 
-        VfsFolderRepo::add_item_to_folder(&vfs_db, &item)?;
-        info!("[DSTU::folder_handlers] dstu_folder_add_item: SUCCESS - item_id={}, folder_id={:?}", item_id, folder_id);
-        Ok(item)
+        // 添加到文件夹（使用 INSERT OR REPLACE 处理唯一约束）
+        match VfsFolderRepo::add_item_to_folder(&vfs_db, &item) {
+            Ok(()) => {
+                info!("[DSTU::folder_handlers] dstu_folder_add_item: SUCCESS - item_id={}, folder_id={:?}", item_id, folder_id);
+                Ok(item)
+            }
+            Err(e) => {
+                error!("[DSTU::folder_handlers] dstu_folder_add_item: FAILED - item_id={}, folder_id={:?}, error={}", item_id, folder_id, e);
+                Err(e.to_string())
+            }
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 /// 从文件夹移除内容
+///
+/// 将资源从所有文件夹中移除（实际上是删除 folder_items 记录）。
+///
+/// ## 参数
+/// - `item_type`: 资源类型
+/// - `item_id`: 资源 ID
 #[tauri::command]
 pub async fn dstu_folder_remove_item(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     item_type: String,
     item_id: String,
-) -> DstuResult<()> {
-    info!("[DSTU::folder_handlers] dstu_folder_remove_item: item_type={}, item_id={}", item_type, item_id);
+) -> Result<(), String> {
+    info!(
+        "[DSTU::folder_handlers] dstu_folder_remove_item: item_type={}, item_id={}",
+        item_type, item_id
+    );
+
     let vfs_db = vfs_db.inner().clone();
-    tokio::task::spawn_blocking(move || -> DstuResult<()> {
-        VfsFolderRepo::remove_item_from_folder(&vfs_db, &item_type, &item_id)?;
-        info!("[DSTU::folder_handlers] dstu_folder_remove_item: SUCCESS - item_id={}", item_id);
-        Ok(())
+
+    tokio::task::spawn_blocking(move || {
+        match VfsFolderRepo::remove_item_from_folder(&vfs_db, &item_type, &item_id) {
+            Ok(()) => {
+                info!("[DSTU::folder_handlers] dstu_folder_remove_item: SUCCESS - item_id={}", item_id);
+                Ok(())
+            }
+            Err(e) => {
+                error!("[DSTU::folder_handlers] dstu_folder_remove_item: FAILED - item_id={}, error={}", item_id, e);
+                Err(e.to_string())
+            }
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 /// 移动内容到另一文件夹
+///
+/// ## 参数
+/// - `item_type`: 资源类型
+/// - `item_id`: 资源 ID
+/// - `new_folder_id`: 新文件夹 ID（NULL 表示移动到根级）
 #[tauri::command]
 pub async fn dstu_folder_move_item(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     item_type: String,
     item_id: String,
     new_folder_id: Option<String>,
-) -> DstuResult<()> {
-    info!("[DSTU::folder_handlers] dstu_folder_move_item: item_type={}, item_id={}, new_folder_id={:?}", item_type, item_id, new_folder_id);
+) -> Result<(), String> {
+    info!(
+        "[DSTU::folder_handlers] dstu_folder_move_item: item_type={}, item_id={}, new_folder_id={:?}",
+        item_type, item_id, new_folder_id
+    );
+
     let vfs_db = vfs_db.inner().clone();
-    tokio::task::spawn_blocking(move || -> DstuResult<()> {
-        info!("[DSTU::folder_handlers] dstu_folder_move_item: entering spawn_blocking for item {}", item_id);
-        VfsFolderRepo::move_item_to_folder(&vfs_db, &item_type, &item_id, new_folder_id.as_deref())?;
-        info!("[DSTU::folder_handlers] dstu_folder_move_item: SUCCESS - moved item {} to folder {:?}", item_id, new_folder_id);
-        Ok(())
+
+    tokio::task::spawn_blocking(move || {
+        info!(
+            "[DSTU::folder_handlers] dstu_folder_move_item: entering spawn_blocking for item {}",
+            item_id
+        );
+
+        match VfsFolderRepo::move_item_to_folder(&vfs_db, &item_type, &item_id, new_folder_id.as_deref()) {
+            Ok(()) => {
+                info!(
+                    "[DSTU::folder_handlers] dstu_folder_move_item: SUCCESS - moved item {} to folder {:?}",
+                    item_id, new_folder_id
+                );
+                Ok(())
+            }
+            Err(e) => {
+                error!(
+                    "[DSTU::folder_handlers] dstu_folder_move_item: FAILED - item={}, error={}",
+                    item_id, e
+                );
+                Err(e.to_string())
+            }
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 // ============================================================================
@@ -485,15 +625,29 @@ pub async fn dstu_folder_move_item(
 #[tauri::command]
 pub async fn dstu_folder_list(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<Vec<VfsFolder>> {
+) -> Result<Vec<VfsFolder>, String> {
     info!("[DSTU::folder_handlers] dstu_folder_list");
+
     let vfs_db = vfs_db.inner().clone();
-    tokio::task::spawn_blocking(move || -> DstuResult<Vec<VfsFolder>> {
-        let folders = VfsFolderRepo::list_all_folders(&vfs_db)?;
-        info!("[DSTU::folder_handlers] dstu_folder_list: SUCCESS - count={}", folders.len());
-        Ok(folders)
+
+    tokio::task::spawn_blocking(move || match VfsFolderRepo::list_all_folders(&vfs_db) {
+        Ok(folders) => {
+            info!(
+                "[DSTU::folder_handlers] dstu_folder_list: SUCCESS - count={}",
+                folders.len()
+            );
+            Ok(folders)
+        }
+        Err(e) => {
+            error!(
+                "[DSTU::folder_handlers] dstu_folder_list: FAILED - error={}",
+                e
+            );
+            Err(e.to_string())
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 /// 获取文件夹树结构
@@ -503,15 +657,29 @@ pub async fn dstu_folder_list(
 #[tauri::command]
 pub async fn dstu_folder_get_tree(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<Vec<FolderTreeNode>> {
+) -> Result<Vec<FolderTreeNode>, String> {
     info!("[DSTU::folder_handlers] dstu_folder_get_tree");
+
     let vfs_db = vfs_db.inner().clone();
-    tokio::task::spawn_blocking(move || -> DstuResult<Vec<FolderTreeNode>> {
-        let tree = VfsFolderRepo::get_folder_tree_all(&vfs_db)?;
-        info!("[DSTU::folder_handlers] dstu_folder_get_tree: SUCCESS - root_nodes={}", tree.len());
-        Ok(tree)
+
+    tokio::task::spawn_blocking(move || match VfsFolderRepo::get_folder_tree_all(&vfs_db) {
+        Ok(tree) => {
+            info!(
+                "[DSTU::folder_handlers] dstu_folder_get_tree: SUCCESS - root_nodes={}",
+                tree.len()
+            );
+            Ok(tree)
+        }
+        Err(e) => {
+            error!(
+                "[DSTU::folder_handlers] dstu_folder_get_tree: FAILED - error={}",
+                e
+            );
+            Err(e.to_string())
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 /// 获取文件夹下所有内容项
@@ -525,15 +693,28 @@ pub async fn dstu_folder_get_tree(
 pub async fn dstu_folder_get_items(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: Option<String>,
-) -> DstuResult<Vec<VfsFolderItem>> {
-    info!("[DSTU::folder_handlers] dstu_folder_get_items: folder_id={:?}", folder_id);
+) -> Result<Vec<VfsFolderItem>, String> {
+    info!(
+        "[DSTU::folder_handlers] dstu_folder_get_items: folder_id={:?}",
+        folder_id
+    );
+
     let vfs_db = vfs_db.inner().clone();
-    tokio::task::spawn_blocking(move || -> DstuResult<Vec<VfsFolderItem>> {
-        let items = VfsFolderRepo::get_folder_items_all(&vfs_db, folder_id.as_deref())?;
-        info!("[DSTU::folder_handlers] dstu_folder_get_items: SUCCESS - folder_id={:?}, count={}", folder_id, items.len());
-        Ok(items)
+
+    tokio::task::spawn_blocking(move || {
+        match VfsFolderRepo::get_folder_items_all(&vfs_db, folder_id.as_deref()) {
+            Ok(items) => {
+                info!("[DSTU::folder_handlers] dstu_folder_get_items: SUCCESS - folder_id={:?}, count={}", folder_id, items.len());
+                Ok(items)
+            }
+            Err(e) => {
+                error!("[DSTU::folder_handlers] dstu_folder_get_items: FAILED - folder_id={:?}, error={}", folder_id, e);
+                Err(e.to_string())
+            }
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 // ============================================================================
@@ -572,24 +753,43 @@ pub async fn dstu_folder_get_all_resources(
     folder_id: String,
     include_subfolders: bool,
     include_content: bool,
-) -> DstuResult<FolderResourcesResult> {
+) -> Result<FolderResourcesResult, String> {
     info!(
         "[DSTU::folder_handlers] dstu_folder_get_all_resources: folder_id={}, include_subfolders={}, include_content={}",
         folder_id, include_subfolders, include_content
     );
+
     let vfs_db = vfs_db.inner().clone();
-    tokio::task::spawn_blocking(move || -> DstuResult<FolderResourcesResult> {
-        let result = VfsFolderRepo::get_all_resources(&vfs_db, &folder_id, include_subfolders, include_content)?;
-        if result.total_count > MAX_INJECT_RESOURCES {
-            warn!(
-                "[DSTU::folder_handlers] Folder {} contains {} resources, exceeds recommended limit {}",
-                folder_id, result.total_count, MAX_INJECT_RESOURCES
-            );
+
+    tokio::task::spawn_blocking(move || {
+        // 调用 FolderRepo 的递归查询方法
+        match VfsFolderRepo::get_all_resources(
+            &vfs_db,
+            &folder_id,
+            include_subfolders,
+            include_content,
+        ) {
+            Ok(result) => {
+                // 检查资源数量限制
+                if result.total_count > MAX_INJECT_RESOURCES {
+                    warn!(
+                        "[DSTU::folder_handlers] Folder {} contains {} resources, exceeds recommended limit {}",
+                        folder_id,
+                        result.total_count,
+                        MAX_INJECT_RESOURCES
+                    );
+                }
+                info!("[DSTU::folder_handlers] dstu_folder_get_all_resources: SUCCESS - folder_id={}, total_count={}", folder_id, result.total_count);
+                Ok(result)
+            }
+            Err(e) => {
+                error!("[DSTU::folder_handlers] dstu_folder_get_all_resources: FAILED - folder_id={}, error={}", folder_id, e);
+                Err(e.to_string())
+            }
         }
-        info!("[DSTU::folder_handlers] dstu_folder_get_all_resources: SUCCESS - folder_id={}, total_count={}", folder_id, result.total_count);
-        Ok(result)
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 // ============================================================================
@@ -606,15 +806,34 @@ pub async fn dstu_folder_get_all_resources(
 pub async fn dstu_folder_reorder(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_ids: Vec<String>,
-) -> DstuResult<()> {
-    info!("[DSTU::folder_handlers] dstu_folder_reorder: folder_ids={:?}", folder_ids);
+) -> Result<(), String> {
+    info!(
+        "[DSTU::folder_handlers] dstu_folder_reorder: folder_ids={:?}",
+        folder_ids
+    );
+
     let vfs_db = vfs_db.inner().clone();
-    tokio::task::spawn_blocking(move || -> DstuResult<()> {
-        VfsFolderRepo::reorder_folders(&vfs_db, &folder_ids)?;
-        info!("[DSTU::folder_handlers] dstu_folder_reorder: SUCCESS - count={}", folder_ids.len());
-        Ok(())
+
+    tokio::task::spawn_blocking(move || {
+        match VfsFolderRepo::reorder_folders(&vfs_db, &folder_ids) {
+            Ok(()) => {
+                info!(
+                    "[DSTU::folder_handlers] dstu_folder_reorder: SUCCESS - count={}",
+                    folder_ids.len()
+                );
+                Ok(())
+            }
+            Err(e) => {
+                error!(
+                    "[DSTU::folder_handlers] dstu_folder_reorder: FAILED - error={}",
+                    e
+                );
+                Err(e.to_string())
+            }
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 /// 重新排序文件夹内容项
@@ -629,15 +848,28 @@ pub async fn dstu_folder_reorder_items(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: Option<String>,
     item_ids: Vec<String>,
-) -> DstuResult<()> {
-    info!("[DSTU::folder_handlers] dstu_folder_reorder_items: folder_id={:?}, item_ids={:?}", folder_id, item_ids);
+) -> Result<(), String> {
+    info!(
+        "[DSTU::folder_handlers] dstu_folder_reorder_items: folder_id={:?}, item_ids={:?}",
+        folder_id, item_ids
+    );
+
     let vfs_db = vfs_db.inner().clone();
-    tokio::task::spawn_blocking(move || -> DstuResult<()> {
-        VfsFolderRepo::reorder_items(&vfs_db, folder_id.as_deref(), &item_ids)?;
-        info!("[DSTU::folder_handlers] dstu_folder_reorder_items: SUCCESS - folder_id={:?}, count={}", folder_id, item_ids.len());
-        Ok(())
+
+    tokio::task::spawn_blocking(move || {
+        match VfsFolderRepo::reorder_items(&vfs_db, folder_id.as_deref(), &item_ids) {
+            Ok(()) => {
+                info!("[DSTU::folder_handlers] dstu_folder_reorder_items: SUCCESS - folder_id={:?}, count={}", folder_id, item_ids.len());
+                Ok(())
+            }
+            Err(e) => {
+                error!("[DSTU::folder_handlers] dstu_folder_reorder_items: FAILED - folder_id={:?}, error={}", folder_id, e);
+                Err(e.to_string())
+            }
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 // ============================================================================
@@ -667,7 +899,7 @@ pub struct BreadcrumbItem {
 pub async fn dstu_folder_get_breadcrumbs(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: String,
-) -> DstuResult<Vec<BreadcrumbItem>> {
+) -> Result<Vec<BreadcrumbItem>, String> {
     info!(
         "[DSTU::folder_handlers] dstu_folder_get_breadcrumbs: folder_id={}",
         folder_id
@@ -675,9 +907,16 @@ pub async fn dstu_folder_get_breadcrumbs(
 
     let vfs_db = vfs_db.inner().clone();
 
-    tokio::task::spawn_blocking(move || -> DstuResult<Vec<BreadcrumbItem>> {
-        let conn = vfs_db.get_conn_safe()?;
+    tokio::task::spawn_blocking(move || {
+        let conn = match vfs_db.get_conn_safe() {
+            Ok(c) => c,
+            Err(e) => {
+                error!("[DSTU::folder_handlers] dstu_folder_get_breadcrumbs: get_conn_safe FAILED - error={}", e);
+                return Err(e.to_string());
+            }
+        };
 
+        // 使用递归 CTE 向上追溯到根文件夹
         let mut stmt = match conn.prepare(
             r#"
             WITH RECURSIVE folder_path AS (
@@ -692,24 +931,36 @@ pub async fn dstu_folder_get_breadcrumbs(
             "#,
         ) {
             Ok(s) => s,
-            Err(_) => {
-                return Err(DstuError::database_error("数据库查询失败".to_string()));
+            Err(e) => {
+                error!("[DSTU::folder_handlers] dstu_folder_get_breadcrumbs: prepare FAILED - folder_id={}, error={}", folder_id, e);
+                return Err("数据库查询失败".to_string());
             }
         };
 
-        let breadcrumbs: Vec<BreadcrumbItem> = stmt
+        let breadcrumbs_result: Result<Vec<BreadcrumbItem>, _> = stmt
             .query_map(rusqlite::params![&folder_id], |row| {
                 Ok(BreadcrumbItem {
                     id: row.get(0)?,
                     name: row.get(1)?,
                 })
-            })?
-            .collect::<std::result::Result<Vec<_>, _>>()?;
+            })
+            .map_err(|e| format!("Query failed: {}", e))?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| format!("Collect failed: {}", e));
 
-        info!("[DSTU::folder_handlers] dstu_folder_get_breadcrumbs: SUCCESS - folder_id={}, count={}", folder_id, breadcrumbs.len());
-        Ok(breadcrumbs)
+        match breadcrumbs_result {
+            Ok(breadcrumbs) => {
+                info!("[DSTU::folder_handlers] dstu_folder_get_breadcrumbs: SUCCESS - folder_id={}, count={}", folder_id, breadcrumbs.len());
+                Ok(breadcrumbs)
+            }
+            Err(e) => {
+                error!("[DSTU::folder_handlers] dstu_folder_get_breadcrumbs: FAILED - folder_id={}, error={}", folder_id, e);
+                Err(e)
+            }
+        }
     })
-    .await?
+    .await
+    .map_err(|e| format!("Task join error: {}", e))?
 }
 
 // ============================================================================

@@ -6,7 +6,7 @@ const MAX_TOPK: usize = 20;
 const DEFAULT_THRESHOLD: f32 = 0.6;
 
 pub fn is_enabled(db: &Database) -> bool {
-    db.web_search_get_setting("graph_rag.enabled")
+    db.get_setting("graph_rag.enabled")
         .ok()
         .flatten()
         .map(|v| v.to_ascii_lowercase())
@@ -15,7 +15,7 @@ pub fn is_enabled(db: &Database) -> bool {
 }
 
 pub fn topk(db: &Database) -> usize {
-    db.web_search_get_setting("graph_rag.top_k")
+    db.get_setting("graph_rag.top_k")
         .ok()
         .flatten()
         .and_then(|v| v.parse::<usize>().ok())
@@ -24,7 +24,7 @@ pub fn topk(db: &Database) -> usize {
 }
 
 pub fn threshold(db: &Database) -> f32 {
-    db.web_search_get_setting("graph_rag.threshold")
+    db.get_setting("graph_rag.threshold")
         .ok()
         .flatten()
         .and_then(|v| v.parse::<f32>().ok())
@@ -33,7 +33,7 @@ pub fn threshold(db: &Database) -> f32 {
 }
 
 pub fn dynamic_enabled(db: &Database) -> bool {
-    db.web_search_get_setting("graph_rag.dynamic")
+    db.get_setting("graph_rag.dynamic")
         .ok()
         .flatten()
         .map(|v| v.to_ascii_lowercase())

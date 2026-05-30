@@ -39,6 +39,7 @@ export type {
   DocumentTaskUI,
   DialogsState,
   PanelsState,
+  MistakeSummary,
 } from './types';
 
 export {

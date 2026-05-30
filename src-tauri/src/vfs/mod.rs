@@ -32,8 +32,6 @@ pub mod index_service;
 pub mod indexing;
 pub mod lance_store;
 pub mod multimodal_service;
-pub mod ocr_storage;
-pub mod ocr_storage_handlers;
 pub mod ocr_utils;
 pub mod pdf_processing_service;
 pub mod ref_handlers;

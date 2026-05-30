@@ -8,7 +8,7 @@ use rusqlite::OptionalExtension;
 use serde_json::Value;
 use tauri::{State, Window};
 
-use super::error::{DstuError, DstuResult};
+use super::error::DstuError;
 
 /// 记录并跳过迭代中的错误，避免静默丢弃
 fn log_and_skip_err<T, E: std::fmt::Display>(result: std::result::Result<T, E>) -> Option<T> {
@@ -113,7 +113,7 @@ pub async fn dstu_list(
     path: String,
     options: Option<DstuListOptions>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<Vec<DstuNode>> {
+) -> Result<Vec<DstuNode>, String> {
     let options = options.unwrap_or_default();
 
     log::info!(
@@ -130,7 +130,7 @@ pub async fn dstu_list(
 async fn dstu_list_folder_first(
     options: &DstuListOptions,
     vfs_db: &Arc<VfsDatabase>,
-) -> DstuResult<Vec<DstuNode>> {
+) -> Result<Vec<DstuNode>, String> {
     let mut results = Vec::new();
 
     // 🔧 P0-07 修复: 统一 root 约定，支持 null、""、"root" 作为根目录
@@ -243,7 +243,7 @@ async fn dstu_list_folder_first(
                                  // 列出根级文件夹
         let root_folders = match crate::vfs::VfsFolderRepo::list_folders_by_parent(vfs_db, None) {
             Ok(folders) => folders,
-            Err(e) => return Err(DstuError::Internal(e.to_string())),
+            Err(e) => return Err(e.to_string()),
         };
         for folder in root_folders {
             results.push(DstuNode::folder(&folder.id, &folder.title, &folder.title));
@@ -252,7 +252,7 @@ async fn dstu_list_folder_first(
         // 列出根级资源（folder_id IS NULL 的资源）
         let root_items = match crate::vfs::VfsFolderRepo::list_items_by_folder(vfs_db, None) {
             Ok(items) => items,
-            Err(e) => return Err(DstuError::Internal(e.to_string())),
+            Err(e) => return Err(e.to_string()),
         };
 
         for item in root_items {
@@ -274,7 +274,7 @@ async fn dstu_list_folder_first(
         // 这样 list_unassigned_* 函数才能正确排除已移动到其他文件夹的资源
         let all_assigned_ids = match crate::vfs::VfsFolderRepo::list_all_assigned_item_ids(vfs_db) {
             Ok(ids) => ids,
-            Err(e) => return Err(DstuError::Internal(e.to_string())),
+            Err(e) => return Err(e.to_string()),
         };
 
         // 列出未分配资源（不在任何文件夹中的资源）
@@ -294,18 +294,18 @@ async fn dstu_list_folder_first(
                     "[DSTU::handlers] dstu_list: folder not found: {}",
                     actual_folder_id
                 );
-                return Err(DstuError::not_found("文件夹不存在"));
+                return Err("文件夹不存在".to_string());
             }
-            Err(e) => return Err(DstuError::Internal(e.to_string())),
+            Err(e) => return Err(e.to_string()),
         };
 
         let folder_path = crate::vfs::VfsFolderRepo::build_folder_path(vfs_db, actual_folder_id)
-            ?;
+            .map_err(|e| e.to_string())?;
 
         // 列出子文件夹
         let sub_folders =
             crate::vfs::VfsFolderRepo::list_folders_by_parent(vfs_db, Some(actual_folder_id))
-                ?;
+                .map_err(|e| e.to_string())?;
         for sub_folder in sub_folders {
             // ★ 记忆系统改造：隐藏 __system__ 等系统保留文件夹
             if is_memory_system_hidden_name(&sub_folder.title) {
@@ -321,7 +321,7 @@ async fn dstu_list_folder_first(
 
         // 列出文件夹内的资源
         let items = crate::vfs::VfsFolderRepo::list_items_by_folder(vfs_db, Some(actual_folder_id))
-            ?;
+            .map_err(|e| e.to_string())?;
 
         for item in items {
             if let Some(type_filter) = options.get_type_filter() {
@@ -405,7 +405,7 @@ async fn dstu_list_folder_first(
 pub async fn dstu_get(
     path: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<Option<DstuNode>> {
+) -> Result<Option<DstuNode>, String> {
     log::info!("[DSTU::handlers] dstu_get: path={}", path);
 
     // 统一路径解析：新格式 /{resource_id}
@@ -417,7 +417,7 @@ pub async fn dstu_get(
                 path,
                 e
             );
-            return Err(DstuError::Internal(e.to_string()));
+            return Err(e.to_string());
         }
     };
 
@@ -432,7 +432,7 @@ pub async fn dstu_get(
                     id,
                     e
                 );
-                return Err(DstuError::Internal(e.to_string()));
+                return Err(e.to_string());
             }
         },
         "textbooks" => match VfsTextbookRepo::get_textbook(&vfs_db, &id) {
@@ -444,7 +444,7 @@ pub async fn dstu_get(
                     id,
                     e
                 );
-                return Err(DstuError::Internal(e.to_string()));
+                return Err(e.to_string());
             }
         },
         "exams" => match VfsExamRepo::get_exam_sheet(&vfs_db, &id) {
@@ -456,7 +456,7 @@ pub async fn dstu_get(
                     id,
                     e
                 );
-                return Err(DstuError::Internal(e.to_string()));
+                return Err(e.to_string());
             }
         },
         "translations" => {
@@ -465,7 +465,7 @@ pub async fn dstu_get(
                 Ok(None) => None,
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_get: FAILED - get_translation error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
         }
@@ -480,7 +480,7 @@ pub async fn dstu_get(
                         Ok(None) => None,
                         Err(e) => {
                             log::error!("[DSTU::handlers] dstu_get: FAILED - get_session error, id={}, error={}", id, e);
-                            return Err(DstuError::Internal(e.to_string()));
+                            return Err(e.to_string());
                         }
                     }
                 }
@@ -490,7 +490,7 @@ pub async fn dstu_get(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
         }
@@ -516,7 +516,7 @@ pub async fn dstu_get(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
         }
@@ -529,7 +529,7 @@ pub async fn dstu_get(
                     id,
                     e
                 );
-                return Err(DstuError::Internal(e.to_string()));
+                return Err(e.to_string());
             }
         },
         "files" => match VfsFileRepo::get_file(&vfs_db, &id) {
@@ -541,7 +541,7 @@ pub async fn dstu_get(
                     id,
                     e
                 );
-                return Err(DstuError::Internal(e.to_string()));
+                return Err(e.to_string());
             }
         },
         _ => {
@@ -587,7 +587,7 @@ pub async fn dstu_create(
     options: DstuCreateOptions,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<DstuNode> {
+) -> Result<DstuNode, String> {
     log::info!(
         "[DSTU::handlers] dstu_create: path={}, type={:?}, name={}",
         path,
@@ -708,10 +708,10 @@ pub async fn dstu_create(
                 "[DSTU::handlers] dstu_create: FAILED - unsupported type {:?}",
                 options.node_type
             );
-            return Err(DstuError::Internal(format!(
+            return Err(format!(
                 "Unsupported resource type: {:?}",
                 options.node_type
-            )));
+            ));
         }
     };
 
@@ -766,7 +766,7 @@ pub async fn dstu_create(
                         "[DSTU::handlers] dstu_create: FAILED - type=note, error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
         }
@@ -837,7 +837,7 @@ pub async fn dstu_create(
                         "[DSTU::handlers] dstu_create: FAILED - type=translation, error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -891,7 +891,7 @@ pub async fn dstu_create(
                             "[DSTU::handlers] dstu_create: FAILED - type=essay, error={}",
                             e
                         );
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 };
 
@@ -986,7 +986,7 @@ pub async fn dstu_create(
                         "[DSTU::handlers] dstu_create: FAILED - type=exam, error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1034,7 +1034,7 @@ pub async fn dstu_create(
                         "[DSTU::handlers] dstu_create: FAILED - type=mindmap, error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1046,7 +1046,7 @@ pub async fn dstu_create(
                 Some(b64) if !b64.is_empty() => b64,
                 _ => {
                     log::error!("[DSTU::handlers] dstu_create: FAILED - file_base64 is required for images/files");
-                    return Err(DstuError::internal("file_base64 is required for images/files creation"));
+                    return Err("file_base64 is required for images/files creation".to_string());
                 }
             };
 
@@ -1064,11 +1064,11 @@ pub async fn dstu_create(
                     "[DSTU::handlers] dstu_create: FAILED - base64 payload too large: {} bytes",
                     file_base64.len()
                 );
-                return Err(DstuError::Internal(format!(
+                return Err(format!(
                     "Base64 payload exceeds limit: {} bytes (max: {} bytes)",
                     file_base64.len(),
                     max_base64_len
-                )));
+                ));
             }
 
             // 解码 Base64 数据
@@ -1079,7 +1079,7 @@ pub async fn dstu_create(
                         "[DSTU::handlers] dstu_create: FAILED - base64 decode error: {}",
                         e
                     );
-                    return Err(DstuError::Internal(format!("Invalid base64 data: {}", e)));
+                    return Err(format!("Invalid base64 data: {}", e));
                 }
             };
 
@@ -1089,11 +1089,11 @@ pub async fn dstu_create(
                     "[DSTU::handlers] dstu_create: FAILED - file too large: {} bytes",
                     file_data.len()
                 );
-                return Err(DstuError::Internal(format!(
+                return Err(format!(
                     "File size exceeds limit: {} bytes (max: {} bytes)",
                     file_data.len(),
                     max_file_size
-                )));
+                ));
             }
 
             // 从 metadata 提取 MIME 类型和文件大小
@@ -1163,7 +1163,7 @@ pub async fn dstu_create(
                         "[DSTU::handlers] dstu_create: FAILED - blob store error: {}",
                         e
                     );
-                    return Err(DstuError::Internal(format!("Failed to store blob: {}", e)));
+                    return Err(format!("Failed to store blob: {}", e));
                 }
             };
 
@@ -1205,14 +1205,14 @@ pub async fn dstu_create(
                         file_type,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
             file_to_dstu_node(&file)
         }
         _ => {
-            return Err(DstuError::invalid_node_type(resource_type));
+            return Err(DstuError::invalid_node_type(resource_type).to_string());
         }
     };
 
@@ -1241,7 +1241,7 @@ pub async fn dstu_update(
     resource_type: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<DstuNode> {
+) -> Result<DstuNode, String> {
     log::info!(
         "[DSTU::handlers] dstu_update: path={}, type={}, content_len={}",
         path,
@@ -1276,7 +1276,7 @@ pub async fn dstu_update(
     let id = path.trim_start_matches('/').to_string();
     if id.is_empty() {
         log::error!("[DSTU::handlers] dstu_update: FAILED - empty path");
-        return Err(DstuError::invalid_path("Update path must contain resource ID"));
+        return Err(DstuError::invalid_path("Update path must contain resource ID").to_string());
     }
 
     // 根据类型路由到对应 Repo
@@ -1305,7 +1305,7 @@ pub async fn dstu_update(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1313,18 +1313,18 @@ pub async fn dstu_update(
         }
         "textbooks" | "textbook" => {
             // 教材内容是 PDF，不支持直接更新内容
-            return Err(DstuError::not_supported("Textbook content update not supported"));
+            return Err("Textbook content update not supported".to_string());
         }
         "translations" | "translation" | "exams" | "exam" | "essays" | "essay" | "images"
         | "image" | "files" | "file" => {
             // TODO: 实现其他类型的 Repo 调用
-            return Err(DstuError::Internal(format!(
+            return Err(format!(
                 "{} update not yet implemented via DSTU",
                 resource_type
-            )));
+            ));
         }
         _ => {
-            return Err(DstuError::invalid_node_type(&resource_type));
+            return Err(DstuError::invalid_node_type(&resource_type).to_string());
         }
     };
 
@@ -1348,7 +1348,7 @@ pub async fn dstu_delete(
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> DstuResult<()> {
+) -> Result<(), String> {
     log::info!("[DSTU::handlers] dstu_delete: path={}", path);
 
     // 统一路径解析：支持简化 ID 和新格式路径
@@ -1360,7 +1360,7 @@ pub async fn dstu_delete(
                 path,
                 e
             );
-            return Err(DstuError::Internal(e.to_string()));
+            return Err(e.to_string());
         }
     };
 
@@ -1455,7 +1455,7 @@ pub async fn dstu_move(
     dst: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<DstuNode> {
+) -> Result<DstuNode, String> {
     log::info!("[DSTU::handlers] dstu_move: src={}, dst={}", src, dst);
 
     // 统一路径解析
@@ -1467,7 +1467,7 @@ pub async fn dstu_move(
                 src,
                 e
             );
-            return Err(DstuError::Internal(e.to_string()));
+            return Err(e.to_string());
         }
     };
     let resource_type = src_type;
@@ -1482,7 +1482,7 @@ pub async fn dstu_move(
         "mindmaps" => "mindmap",
         "files" | "images" | "attachments" => "file",
         _ => {
-            return Err(DstuError::invalid_node_type(resource_type));
+            return Err(DstuError::invalid_node_type(resource_type).to_string());
         }
     };
 
@@ -1497,11 +1497,11 @@ pub async fn dstu_move(
                     dst,
                     e
                 );
-                return Err(DstuError::Internal(e.to_string()));
+                return Err(e.to_string());
             }
         };
         if dst_type != "folders" {
-            return Err(DstuError::invalid_input("Destination must be a folder"));
+            return Err("Destination must be a folder".to_string());
         }
         Some(dst_id)
     };
@@ -1515,7 +1515,7 @@ pub async fn dstu_move(
             src_id,
             e
         );
-        return Err(DstuError::Internal(e.to_string()));
+        return Err(e.to_string());
     }
 
     let node = match get_resource_by_type_and_id(&vfs_db, &resource_type, &src_id).await {
@@ -1525,7 +1525,7 @@ pub async fn dstu_move(
                 "[DSTU::handlers] dstu_move: FAILED - resource not found after move, id={}",
                 src_id
             );
-            return Err(DstuError::not_found(&src));
+            return Err(DstuError::not_found(&src).to_string());
         }
         Err(e) => {
             log::error!(
@@ -1533,7 +1533,7 @@ pub async fn dstu_move(
                 src_id,
                 e
             );
-            return Err(DstuError::Internal(e));
+            return Err(e);
         }
     };
 
@@ -1564,7 +1564,7 @@ pub async fn dstu_rename(
     new_name: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<DstuNode> {
+) -> Result<DstuNode, String> {
     log::info!(
         "[DSTU::handlers] dstu_rename: path={}, new_name={}",
         path,
@@ -1580,7 +1580,7 @@ pub async fn dstu_rename(
                 path,
                 e
             );
-            return Err(DstuError::Internal(e.to_string()));
+            return Err(e.to_string());
         }
     };
 
@@ -1611,7 +1611,7 @@ pub async fn dstu_rename(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1633,7 +1633,7 @@ pub async fn dstu_rename(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1656,7 +1656,7 @@ pub async fn dstu_rename(
                 ),
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_rename: FAILED - update_session error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
 
@@ -1665,7 +1665,7 @@ pub async fn dstu_rename(
                 Ok(Some(s)) => s,
                 Ok(None) => {
                     log::error!("[DSTU::handlers] dstu_rename: FAILED - essay not found after rename, id={}", id);
-                    return Err(DstuError::not_found(&path));
+                    return Err(DstuError::not_found(&path).to_string());
                 }
                 Err(e) => {
                     log::error!(
@@ -1673,7 +1673,7 @@ pub async fn dstu_rename(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1723,7 +1723,7 @@ pub async fn dstu_rename(
                         id,
                         e
                     );
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 };
 
@@ -1746,7 +1746,7 @@ pub async fn dstu_rename(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1768,7 +1768,7 @@ pub async fn dstu_rename(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1790,7 +1790,7 @@ pub async fn dstu_rename(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1823,7 +1823,7 @@ pub async fn dstu_rename(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1838,7 +1838,7 @@ pub async fn dstu_rename(
                         "[DSTU::handlers] dstu_rename: FAILED - folder not found, id={}",
                         id
                     );
-                    return Err(DstuError::not_found(&path));
+                    return Err(DstuError::not_found(&path).to_string());
                 }
                 Err(e) => {
                     log::error!(
@@ -1846,7 +1846,7 @@ pub async fn dstu_rename(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1863,7 +1863,7 @@ pub async fn dstu_rename(
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_rename: FAILED - update_folder error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
 
@@ -1879,7 +1879,7 @@ pub async fn dstu_rename(
                 }))
         }
         _ => {
-            return Err(DstuError::invalid_node_type(resource_type));
+            return Err(DstuError::invalid_node_type(resource_type).to_string());
         }
     };
 
@@ -1928,7 +1928,7 @@ pub async fn dstu_copy(
     dst: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<DstuNode> {
+) -> Result<DstuNode, String> {
     log::info!("[DSTU::handlers] dstu_copy: src={}, dst={}", src, dst);
 
     // 统一路径解析
@@ -1940,7 +1940,7 @@ pub async fn dstu_copy(
                 src,
                 e
             );
-            return Err(DstuError::Internal(e.to_string()));
+            return Err(e.to_string());
         }
     };
 
@@ -1955,11 +1955,11 @@ pub async fn dstu_copy(
                     "[DSTU::handlers] dstu_copy: FAILED - invalid dst path, error={}",
                     e
                 );
-                return Err(DstuError::Internal(format!("Invalid destination path: {}", e)));
+                return Err(format!("Invalid destination path: {}", e));
             }
         };
         if dst_type != "folders" {
-            return Err(DstuError::invalid_input("Destination must be a folder"));
+            return Err("Destination must be a folder".to_string());
         }
         Some(dst_id)
     };
@@ -1975,7 +1975,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - note not found, id={}",
                         src_id
                     );
-                    return Err(DstuError::not_found(&src));
+                    return Err(DstuError::not_found(&src).to_string());
                 }
                 Err(e) => {
                     log::error!(
@@ -1983,7 +1983,7 @@ pub async fn dstu_copy(
                         src_id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -1992,7 +1992,7 @@ pub async fn dstu_copy(
                 Ok(None) => String::new(),
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_copy: FAILED - get_note_content error, id={}, error={}", src_id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2017,7 +2017,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - create_note error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2048,7 +2048,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - textbook not found, id={}",
                         src_id
                     );
-                    return Err(DstuError::not_found(&src));
+                    return Err(DstuError::not_found(&src).to_string());
                 }
                 Err(e) => {
                     log::error!(
@@ -2056,7 +2056,7 @@ pub async fn dstu_copy(
                         src_id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2097,7 +2097,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - create_textbook error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2128,11 +2128,11 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - translation not found, id={}",
                         src_id
                     );
-                    return Err(DstuError::not_found(&src));
+                    return Err(DstuError::not_found(&src).to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_copy: FAILED - get_translation error, id={}, error={}", src_id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2142,7 +2142,7 @@ pub async fn dstu_copy(
                 Ok(None) => String::from(r#"{"source":"","translated":""}"#),
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_copy: FAILED - get_translation_content error, id={}, error={}", src_id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2186,7 +2186,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - create_translation error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2217,11 +2217,11 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - exam not found, id={}",
                         src_id
                     );
-                    return Err(DstuError::not_found(&src));
+                    return Err(DstuError::not_found(&src).to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_copy: FAILED - get_exam_sheet error, id={}, error={}", src_id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2252,7 +2252,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - create_exam_sheet error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2283,7 +2283,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - essay session not found, id={}",
                         src_id
                     );
-                    return Err(DstuError::not_found(&src));
+                    return Err(DstuError::not_found(&src).to_string());
                 }
                 Err(e) => {
                     log::error!(
@@ -2291,7 +2291,7 @@ pub async fn dstu_copy(
                         src_id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2317,7 +2317,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - create_session error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2348,7 +2348,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - file not found, id={}",
                         src_id
                     );
-                    return Err(DstuError::not_found(&src));
+                    return Err(DstuError::not_found(&src).to_string());
                 }
                 Err(e) => {
                     log::error!(
@@ -2356,7 +2356,7 @@ pub async fn dstu_copy(
                         src_id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2387,7 +2387,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - create_file error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2418,7 +2418,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - mindmap not found, id={}",
                         src_id
                     );
-                    return Err(DstuError::not_found(&src));
+                    return Err(DstuError::not_found(&src).to_string());
                 }
                 Err(e) => {
                     log::error!(
@@ -2426,7 +2426,7 @@ pub async fn dstu_copy(
                         src_id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2439,7 +2439,7 @@ pub async fn dstu_copy(
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_copy: FAILED - get_mindmap_content error, id={}, error={}", src_id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2467,7 +2467,7 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - create_mindmap error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -2481,14 +2481,14 @@ pub async fn dstu_copy(
                         "[DSTU::handlers] dstu_copy: FAILED - circular reference detected, src={}, dest={}",
                         src_id, dest_id
                     );
-                    return Err(DstuError::invalid_input("Cannot copy a folder into itself or its subfolder"));
+                    return Err("Cannot copy a folder into itself or its subfolder".to_string());
                 }
             }
             // 递归复制文件夹
             copy_folder_recursive(&vfs_db, &src_id, dest_folder_id.clone(), 0)?
         }
         _ => {
-            return Err(DstuError::invalid_node_type(src_resource_type));
+            return Err(DstuError::invalid_node_type(src_resource_type).to_string());
         }
     };
 
@@ -2517,7 +2517,7 @@ fn is_subfolder_of(
     vfs_db: &Arc<VfsDatabase>,
     potential_child: &str,
     potential_parent: &str,
-) -> DstuResult<bool> {
+) -> Result<bool, String> {
     // 如果目标和源相同，则是循环引用
     if potential_child == potential_parent {
         return Ok(true);
@@ -2533,7 +2533,7 @@ fn is_subfolder_of(
         let folder = match VfsFolderRepo::get_folder(vfs_db, &current_id) {
             Ok(Some(f)) => f,
             Ok(None) => return Ok(false), // 文件夹不存在，到达终点
-            Err(e) => return Err(DstuError::Internal(e.to_string())),
+            Err(e) => return Err(e.to_string()),
         };
 
         // 获取父文件夹 ID
@@ -2573,17 +2573,17 @@ fn copy_folder_recursive(
     src_folder_id: &str,
     dest_parent_id: Option<String>,
     depth: usize,
-) -> DstuResult<DstuNode> {
+) -> Result<DstuNode, String> {
     // 1. 检查递归深度限制
     if depth >= MAX_COPY_DEPTH {
         log::warn!(
             "[DSTU::handlers] copy_folder_recursive: max depth reached, src_folder_id={}",
             src_folder_id
         );
-        return Err(DstuError::Internal(format!(
+        return Err(format!(
             "文件夹复制深度超出限制（最大 {} 层）",
             MAX_COPY_DEPTH
-        )));
+        ));
     }
 
     // 2. 获取原文件夹信息
@@ -2594,7 +2594,7 @@ fn copy_folder_recursive(
                 "[DSTU::handlers] copy_folder_recursive: folder not found, id={}",
                 src_folder_id
             );
-            return Err(DstuError::Internal(format!("文件夹不存在: {}", src_folder_id)));
+            return Err(format!("文件夹不存在: {}", src_folder_id));
         }
         Err(e) => {
             log::error!(
@@ -2602,7 +2602,7 @@ fn copy_folder_recursive(
                 src_folder_id,
                 e
             );
-            return Err(DstuError::Internal(e.to_string()));
+            return Err(e.to_string());
         }
     };
 
@@ -2625,7 +2625,7 @@ fn copy_folder_recursive(
             "[DSTU::handlers] copy_folder_recursive: create_folder error, error={}",
             e
         );
-        return Err(DstuError::Internal(e.to_string()));
+        return Err(e.to_string());
     }
 
     log::info!(
@@ -2714,20 +2714,20 @@ fn copy_resource_to_folder(
     vfs_db: &Arc<VfsDatabase>,
     item: &VfsFolderItem,
     dest_folder_id: &str,
-) -> DstuResult<()> {
+) -> Result<(), String> {
     match item.item_type.as_str() {
         "note" => {
             // 复制笔记
             let note = match VfsNoteRepo::get_note(vfs_db, &item.item_id) {
                 Ok(Some(n)) => n,
-                Ok(None) => return Err(DstuError::Internal(format!("笔记不存在: {}", item.item_id))),
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Ok(None) => return Err(format!("笔记不存在: {}", item.item_id)),
+                Err(e) => return Err(e.to_string()),
             };
 
             let content = match VfsNoteRepo::get_note_content(vfs_db, &item.item_id) {
                 Ok(Some(c)) => c,
                 Ok(None) => String::new(),
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Err(e) => return Err(e.to_string()),
             };
 
             let new_note = match VfsNoteRepo::create_note(
@@ -2739,7 +2739,7 @@ fn copy_resource_to_folder(
                 },
             ) {
                 Ok(n) => n,
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Err(e) => return Err(e.to_string()),
             };
 
             // 添加到目标文件夹
@@ -2748,7 +2748,7 @@ fn copy_resource_to_folder(
                 "note".to_string(),
                 new_note.id.clone(),
             );
-            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item)?;
+            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item).map_err(|e| e.to_string())?;
 
             log::debug!(
                 "[DSTU::handlers] copy_resource_to_folder: copied note {} -> {}",
@@ -2760,8 +2760,8 @@ fn copy_resource_to_folder(
             // 复制教材
             let textbook = match VfsTextbookRepo::get_textbook(vfs_db, &item.item_id) {
                 Ok(Some(t)) => t,
-                Ok(None) => return Err(DstuError::Internal(format!("教材不存在: {}", item.item_id))),
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Ok(None) => return Err(format!("教材不存在: {}", item.item_id)),
+                Err(e) => return Err(e.to_string()),
             };
 
             let new_sha256 = format!(
@@ -2779,7 +2779,7 @@ fn copy_resource_to_folder(
                 textbook.original_path.as_deref(),
             ) {
                 Ok(t) => t,
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Err(e) => return Err(e.to_string()),
             };
 
             let folder_item = VfsFolderItem::new(
@@ -2787,7 +2787,7 @@ fn copy_resource_to_folder(
                 "file".to_string(),
                 new_textbook.id.clone(),
             );
-            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item)?;
+            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item).map_err(|e| e.to_string())?;
 
             log::debug!(
                 "[DSTU::handlers] copy_resource_to_folder: copied textbook {} -> {}",
@@ -2799,14 +2799,14 @@ fn copy_resource_to_folder(
             // 复制翻译
             let translation = match VfsTranslationRepo::get_translation(vfs_db, &item.item_id) {
                 Ok(Some(t)) => t,
-                Ok(None) => return Err(DstuError::Internal(format!("翻译不存在: {}", item.item_id))),
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Ok(None) => return Err(format!("翻译不存在: {}", item.item_id)),
+                Err(e) => return Err(e.to_string()),
             };
 
             let content = match VfsTranslationRepo::get_translation_content(vfs_db, &item.item_id) {
                 Ok(Some(c)) => c,
                 Ok(None) => String::from(r#"{"source":"","translated":""}"#),
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Err(e) => return Err(e.to_string()),
             };
 
             let content_json: Value = serde_json::from_str(&content)
@@ -2835,7 +2835,7 @@ fn copy_resource_to_folder(
                 },
             ) {
                 Ok(t) => t,
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Err(e) => return Err(e.to_string()),
             };
 
             let folder_item = VfsFolderItem::new(
@@ -2843,7 +2843,7 @@ fn copy_resource_to_folder(
                 "translation".to_string(),
                 new_translation.id.clone(),
             );
-            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item)?;
+            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item).map_err(|e| e.to_string())?;
 
             log::debug!(
                 "[DSTU::handlers] copy_resource_to_folder: copied translation {} -> {}",
@@ -2855,8 +2855,8 @@ fn copy_resource_to_folder(
             // 复制题目集
             let exam = match VfsExamRepo::get_exam_sheet(vfs_db, &item.item_id) {
                 Ok(Some(e)) => e,
-                Ok(None) => return Err(DstuError::Internal(format!("题目集不存在: {}", item.item_id))),
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Ok(None) => return Err(format!("题目集不存在: {}", item.item_id)),
+                Err(e) => return Err(e.to_string()),
             };
 
             let new_temp_id = format!("copy_{}", nanoid::nanoid!(10));
@@ -2873,7 +2873,7 @@ fn copy_resource_to_folder(
                 },
             ) {
                 Ok(e) => e,
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Err(e) => return Err(e.to_string()),
             };
 
             let folder_item = VfsFolderItem::new(
@@ -2881,7 +2881,7 @@ fn copy_resource_to_folder(
                 "exam".to_string(),
                 new_exam.id.clone(),
             );
-            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item)?;
+            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item).map_err(|e| e.to_string())?;
 
             log::debug!(
                 "[DSTU::handlers] copy_resource_to_folder: copied exam {} -> {}",
@@ -2893,8 +2893,8 @@ fn copy_resource_to_folder(
             // 复制作文会话
             let session = match VfsEssayRepo::get_session(vfs_db, &item.item_id) {
                 Ok(Some(s)) => s,
-                Ok(None) => return Err(DstuError::Internal(format!("作文会话不存在: {}", item.item_id))),
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Ok(None) => return Err(format!("作文会话不存在: {}", item.item_id)),
+                Err(e) => return Err(e.to_string()),
             };
 
             let new_session = match VfsEssayRepo::create_session(
@@ -2907,7 +2907,7 @@ fn copy_resource_to_folder(
                 },
             ) {
                 Ok(s) => s,
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Err(e) => return Err(e.to_string()),
             };
 
             let folder_item = VfsFolderItem::new(
@@ -2915,7 +2915,7 @@ fn copy_resource_to_folder(
                 "essay".to_string(),
                 new_session.id.clone(),
             );
-            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item)?;
+            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item).map_err(|e| e.to_string())?;
 
             log::debug!(
                 "[DSTU::handlers] copy_resource_to_folder: copied essay {} -> {}",
@@ -2927,8 +2927,8 @@ fn copy_resource_to_folder(
             // 复制文件/图片
             let file = match VfsFileRepo::get_file(vfs_db, &item.item_id) {
                 Ok(Some(f)) => f,
-                Ok(None) => return Err(DstuError::Internal(format!("文件不存在: {}", item.item_id))),
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Ok(None) => return Err(format!("文件不存在: {}", item.item_id)),
+                Err(e) => return Err(e.to_string()),
             };
 
             let new_sha256 = format!("{}_{}", file.sha256, chrono::Utc::now().timestamp_millis());
@@ -2944,7 +2944,7 @@ fn copy_resource_to_folder(
                 file.original_path.as_deref(),
             ) {
                 Ok(f) => f,
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Err(e) => return Err(e.to_string()),
             };
 
             let folder_item = VfsFolderItem::new(
@@ -2952,7 +2952,7 @@ fn copy_resource_to_folder(
                 "file".to_string(),
                 new_file.id.clone(),
             );
-            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item)?;
+            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item).map_err(|e| e.to_string())?;
 
             log::debug!(
                 "[DSTU::handlers] copy_resource_to_folder: copied file {} -> {}",
@@ -2965,8 +2965,8 @@ fn copy_resource_to_folder(
             let mindmap =
                 match crate::vfs::repos::VfsMindMapRepo::get_mindmap(vfs_db, &item.item_id) {
                     Ok(Some(m)) => m,
-                    Ok(None) => return Err(DstuError::Internal(format!("知识导图不存在: {}", item.item_id))),
-                    Err(e) => return Err(DstuError::Internal(e.to_string())),
+                    Ok(None) => return Err(format!("知识导图不存在: {}", item.item_id)),
+                    Err(e) => return Err(e.to_string()),
                 };
 
             let content =
@@ -2977,7 +2977,7 @@ fn copy_resource_to_folder(
                         r#"{"version":"1.0","root":{"id":"root","text":"根节点","children":[]}}"#
                             .to_string()
                     }
-                    Err(e) => return Err(DstuError::Internal(e.to_string())),
+                    Err(e) => return Err(e.to_string()),
                 };
 
             let new_mindmap = match crate::vfs::repos::VfsMindMapRepo::create_mindmap(
@@ -2991,7 +2991,7 @@ fn copy_resource_to_folder(
                 },
             ) {
                 Ok(m) => m,
-                Err(e) => return Err(DstuError::Internal(e.to_string())),
+                Err(e) => return Err(e.to_string()),
             };
 
             let folder_item = VfsFolderItem::new(
@@ -2999,7 +2999,7 @@ fn copy_resource_to_folder(
                 "mindmap".to_string(),
                 new_mindmap.id.clone(),
             );
-            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item)?;
+            VfsFolderRepo::add_item_to_folder(vfs_db, &folder_item).map_err(|e| e.to_string())?;
 
             log::debug!(
                 "[DSTU::handlers] copy_resource_to_folder: copied mindmap {} -> {}",
@@ -3035,7 +3035,7 @@ pub async fn dstu_search(
     query: String,
     options: Option<DstuListOptions>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<Vec<DstuNode>> {
+) -> Result<Vec<DstuNode>, String> {
     log::info!("[DSTU::handlers] dstu_search: query={}", query);
 
     let options = options.unwrap_or_default();
@@ -3054,7 +3054,7 @@ pub async fn dstu_search(
 pub async fn dstu_get_content(
     path: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<String> {
+) -> Result<String, String> {
     log::info!("[DSTU::handlers] dstu_get_content: path={}", path);
 
     let (resource_type, id) = match extract_resource_info(&path) {
@@ -3065,7 +3065,7 @@ pub async fn dstu_get_content(
                 path,
                 e
             );
-            return Err(DstuError::Internal(e.to_string()));
+            return Err(e.to_string());
         }
     };
 
@@ -3089,7 +3089,7 @@ pub async fn dstu_get_exam_content(
     exam_id: String,
     is_multimodal: bool,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<Vec<crate::chat_v2::resource_types::ContentBlock>> {
+) -> Result<Vec<crate::chat_v2::resource_types::ContentBlock>, String> {
     log::info!(
         "[DSTU::handlers] dstu_get_exam_content: exam_id={}, is_multimodal={}",
         exam_id,
@@ -3115,7 +3115,7 @@ pub async fn dstu_set_metadata(
     metadata: Value,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<()> {
+) -> Result<(), String> {
     log::info!("[DSTU::handlers] dstu_set_metadata: path={}", path);
 
     // 🔧 P0-13 修复：支持简单路径（/{id}）和真实路径（/folder/subfolder/id）
@@ -3147,7 +3147,7 @@ pub async fn dstu_set_metadata(
                         "[DSTU::handlers] dstu_set_metadata: unsupported item_type: {}",
                         other
                     );
-                    return Err(DstuError::invalid_node_type(other));
+                    return Err(DstuError::invalid_node_type(other).to_string());
                 }
             };
             (resource_type.to_string(), folder_item.item_id.clone())
@@ -3168,7 +3168,7 @@ pub async fn dstu_set_metadata(
                         "[DSTU::handlers] dstu_set_metadata: FAILED - cannot infer type from id={}",
                         id
                     );
-                    return Err(DstuError::not_found("资源不存在"));
+                    return Err("资源不存在".to_string());
                 }
 
                 log::info!(
@@ -3179,12 +3179,12 @@ pub async fn dstu_set_metadata(
                 (resource_type.to_string(), id)
             } else {
                 log::warn!("[DSTU::handlers] dstu_set_metadata: FAILED - resource not found by cached_path, path={}", normalized_path);
-                return Err(DstuError::not_found("资源不存在"));
+                return Err("资源不存在".to_string());
             }
         }
         Err(e) => {
             log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - get_folder_item_by_cached_path error, path={}, error={}", path, e);
-            return Err(DstuError::Internal(e.to_string()));
+            return Err(e.to_string());
         }
     };
 
@@ -3230,7 +3230,7 @@ pub async fn dstu_set_metadata(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -3241,7 +3241,7 @@ pub async fn dstu_set_metadata(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
                 updated_note.is_favorite = favorite;
             }
@@ -3260,7 +3260,7 @@ pub async fn dstu_set_metadata(
                     ),
                     Err(e) => {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - set_favorite error, id={}, error={}", id, e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 }
             }
@@ -3274,7 +3274,7 @@ pub async fn dstu_set_metadata(
                     ),
                     Err(e) => {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - set_quality_rating error, id={}, error={}", id, e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 }
             }
@@ -3284,11 +3284,11 @@ pub async fn dstu_set_metadata(
                     Ok(Some(t)) => t,
                     Ok(None) => {
                         log::warn!("[DSTU::handlers] dstu_set_metadata: FAILED - translation not found, id={}", id);
-                        return Err(DstuError::not_found("资源不存在"));
+                        return Err("资源不存在".to_string());
                     }
                     Err(e) => {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - get_translation error, id={}, error={}", id, e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 };
 
@@ -3313,7 +3313,7 @@ pub async fn dstu_set_metadata(
                             "[DSTU::handlers] dstu_set_metadata: FAILED - json serialize error={}",
                             e
                         );
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 };
 
@@ -3325,7 +3325,7 @@ pub async fn dstu_set_metadata(
                             "[DSTU::handlers] dstu_set_metadata: FAILED - get_conn error={}",
                             e
                         );
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 };
                 if let Err(e) = conn.execute(
@@ -3336,7 +3336,7 @@ pub async fn dstu_set_metadata(
                         "[DSTU::handlers] dstu_set_metadata: FAILED - execute error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
 
@@ -3345,11 +3345,11 @@ pub async fn dstu_set_metadata(
                 Ok(Some(t)) => t,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_metadata: FAILED - translation not found after update, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - get_translation error after update, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             translation_to_dstu_node(&updated)
@@ -3385,18 +3385,18 @@ pub async fn dstu_set_metadata(
                     custom_prompt,
                 ) {
                     log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - update_session error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
 
                 let session = match VfsEssayRepo::get_session(&vfs_db, &id) {
                     Ok(Some(s)) => s,
                     Ok(None) => {
                         log::warn!("[DSTU::handlers] dstu_set_metadata: FAILED - session not found after update, id={}", id);
-                        return Err(DstuError::internal("操作失败"));
+                        return Err("操作失败".to_string());
                     }
                     Err(e) => {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - get_session error after update, id={}, error={}", id, e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 };
                 session_to_dstu_node(&session)
@@ -3409,7 +3409,7 @@ pub async fn dstu_set_metadata(
                                 "[DSTU::handlers] dstu_set_metadata: FAILED - get_conn error={}",
                                 e
                             );
-                            return Err(DstuError::Internal(e.to_string()));
+                            return Err(e.to_string());
                         }
                     };
                     let now = chrono::Utc::now()
@@ -3420,7 +3420,7 @@ pub async fn dstu_set_metadata(
                         rusqlite::params![favorite as i32, now, id],
                     ) {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - set essay favorite error={}", e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                     log::info!(
                         "[DSTU::handlers] dstu_set_metadata: set essay favorite={}, id={}",
@@ -3438,7 +3438,7 @@ pub async fn dstu_set_metadata(
                         ),
                         Err(e) => {
                             log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - update_title error={}", e);
-                            return Err(DstuError::Internal(e.to_string()));
+                            return Err(e.to_string());
                         }
                     }
                 }
@@ -3451,7 +3451,7 @@ pub async fn dstu_set_metadata(
                                 "[DSTU::handlers] dstu_set_metadata: FAILED - get_conn error={}",
                                 e
                             );
-                            return Err(DstuError::Internal(e.to_string()));
+                            return Err(e.to_string());
                         }
                     };
                     let now = chrono::Utc::now()
@@ -3462,7 +3462,7 @@ pub async fn dstu_set_metadata(
                         rusqlite::params![grade_level, now, id],
                     ) {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - set essay grade_level error={}", e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                     log::info!(
                         "[DSTU::handlers] dstu_set_metadata: set essay gradeLevel={}, id={}",
@@ -3479,7 +3479,7 @@ pub async fn dstu_set_metadata(
                                 "[DSTU::handlers] dstu_set_metadata: FAILED - get_conn error={}",
                                 e
                             );
-                            return Err(DstuError::Internal(e.to_string()));
+                            return Err(e.to_string());
                         }
                     };
                     let now = chrono::Utc::now()
@@ -3490,7 +3490,7 @@ pub async fn dstu_set_metadata(
                         rusqlite::params![essay_type, now, id],
                     ) {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - set essay essay_type error={}", e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                     log::info!(
                         "[DSTU::handlers] dstu_set_metadata: set essay essayType={}, id={}",
@@ -3503,11 +3503,11 @@ pub async fn dstu_set_metadata(
                     Ok(Some(e)) => e,
                     Ok(None) => {
                         log::warn!("[DSTU::handlers] dstu_set_metadata: FAILED - essay not found after update, id={}", id);
-                        return Err(DstuError::internal("操作失败"));
+                        return Err("操作失败".to_string());
                     }
                     Err(e) => {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - get_essay error after update, id={}, error={}", id, e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 };
                 essay_to_dstu_node(&updated)
@@ -3525,7 +3525,7 @@ pub async fn dstu_set_metadata(
                         ),
                         Err(e) => {
                             log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - set textbook reading_progress error={}", e);
-                            return Err(DstuError::Internal(e.to_string()));
+                            return Err(e.to_string());
                         }
                     }
                 }
@@ -3544,7 +3544,7 @@ pub async fn dstu_set_metadata(
                     ),
                     Err(e) => {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - set textbook favorite error={}", e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 }
             }
@@ -3562,7 +3562,7 @@ pub async fn dstu_set_metadata(
                     ),
                     Err(e) => {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - set textbook title error={}", e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 }
             }
@@ -3571,11 +3571,11 @@ pub async fn dstu_set_metadata(
                 Ok(Some(t)) => t,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_metadata: FAILED - textbook not found after update, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - get_textbook error after update, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             textbook_to_dstu_node(&updated)
@@ -3591,7 +3591,7 @@ pub async fn dstu_set_metadata(
                     ),
                     Err(e) => {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - set exam favorite error={}", e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 }
             }
@@ -3608,7 +3608,7 @@ pub async fn dstu_set_metadata(
                             "[DSTU::handlers] dstu_set_metadata: FAILED - set exam name error={}",
                             e
                         );
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 }
             }
@@ -3617,11 +3617,11 @@ pub async fn dstu_set_metadata(
                 Ok(Some(e)) => e,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_metadata: FAILED - exam not found after update, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - get_exam_sheet error after update, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             exam_to_dstu_node(&updated)
@@ -3637,7 +3637,7 @@ pub async fn dstu_set_metadata(
                     ),
                     Err(e) => {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - set file favorite error={}", e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 }
             }
@@ -3654,7 +3654,7 @@ pub async fn dstu_set_metadata(
                             "[DSTU::handlers] dstu_set_metadata: FAILED - set file name error={}",
                             e
                         );
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 }
             }
@@ -3663,11 +3663,11 @@ pub async fn dstu_set_metadata(
                 Ok(Some(f)) => f,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_metadata: FAILED - file not found after update, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - get_file error after update, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             file_to_dstu_node(&updated)
@@ -3688,7 +3688,7 @@ pub async fn dstu_set_metadata(
                     }
                     Err(e) => {
                         log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - set mindmap favorite error={}", e);
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 }
             }
@@ -3724,7 +3724,7 @@ pub async fn dstu_set_metadata(
                             "[DSTU::handlers] dstu_set_metadata: FAILED - update mindmap error={}",
                             e
                         );
-                        return Err(DstuError::Internal(e.to_string()));
+                        return Err(e.to_string());
                     }
                 }
             }
@@ -3738,11 +3738,11 @@ pub async fn dstu_set_metadata(
                 Ok(Some(m)) => m,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_metadata: FAILED - mindmap not found after update, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - get_mindmap error after update, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             mindmap_to_dstu_node(&updated)
@@ -3756,11 +3756,11 @@ pub async fn dstu_set_metadata(
                         "[DSTU::handlers] dstu_set_metadata: FAILED - folder not found, id={}",
                         id
                     );
-                    return Err(DstuError::not_found(&path));
+                    return Err(DstuError::not_found(&path).to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - get_folder error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -3818,7 +3818,7 @@ pub async fn dstu_set_metadata(
             if has_changes {
                 if let Err(e) = crate::vfs::VfsFolderRepo::update_folder(&vfs_db, &updated_folder) {
                     log::error!("[DSTU::handlers] dstu_set_metadata: FAILED - update_folder error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             } else {
                 log::warn!("[DSTU::handlers] dstu_set_metadata: no valid metadata fields provided for folder, id={}", id);
@@ -3836,7 +3836,7 @@ pub async fn dstu_set_metadata(
                 }))
         }
         _ => {
-            return Err(DstuError::invalid_node_type(resource_type));
+            return Err(DstuError::invalid_node_type(resource_type).to_string());
         }
     };
 
@@ -3879,7 +3879,7 @@ pub async fn dstu_restore(
     path: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<DstuNode> {
+) -> Result<DstuNode, String> {
     log::info!("[DSTU::handlers] dstu_restore: path={}", path);
 
     // 统一路径解析
@@ -3891,7 +3891,7 @@ pub async fn dstu_restore(
                 path,
                 e
             );
-            return Err(DstuError::Internal(e.to_string()));
+            return Err(e.to_string());
         }
     };
 
@@ -3903,7 +3903,7 @@ pub async fn dstu_restore(
             id,
             e
         );
-        return Err(DstuError::Internal(e));
+        return Err(e);
     }
 
     // 恢复成功后获取资源节点信息
@@ -4105,7 +4105,7 @@ pub async fn dstu_purge(
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> DstuResult<()> {
+) -> Result<(), String> {
     log::info!("[DSTU::handlers] dstu_purge: path={}", path);
 
     // 统一路径解析
@@ -4117,7 +4117,7 @@ pub async fn dstu_purge(
                 path,
                 e
             );
-            return Err(DstuError::Internal(e.to_string()));
+            return Err(e.to_string());
         }
     };
 
@@ -4140,10 +4140,10 @@ pub async fn dstu_purge(
                 resource_type,
                 id
             );
-            return Err(DstuError::Internal(format!(
+            return Err(format!(
                 "资源 {} (type={}) 不在回收站中，无法永久删除。请先将其移到回收站。",
                 id, resource_type
-            )));
+            ));
         }
     }
 
@@ -4177,7 +4177,7 @@ pub async fn dstu_purge(
             id,
             e
         );
-        return Err(DstuError::Internal(e));
+        return Err(e);
     }
 
     // 发射永久删除事件
@@ -4226,7 +4226,7 @@ pub async fn dstu_set_favorite(
     favorite: bool,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<()> {
+) -> Result<(), String> {
     log::info!(
         "[DSTU::handlers] dstu_set_favorite: path={}, favorite={}",
         path,
@@ -4242,7 +4242,7 @@ pub async fn dstu_set_favorite(
                 path,
                 e
             );
-            return Err(DstuError::Internal(e.to_string()));
+            return Err(e.to_string());
         }
     };
 
@@ -4261,7 +4261,7 @@ pub async fn dstu_set_favorite(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
             // 获取更新后的笔记
@@ -4269,11 +4269,11 @@ pub async fn dstu_set_favorite(
                 Ok(Some(n)) => n,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_favorite: FAILED - note not found after set_favorite, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - get_note error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             note_to_dstu_node(&note)
@@ -4283,7 +4283,7 @@ pub async fn dstu_set_favorite(
                 Ok(_) => log::info!("[DSTU::handlers] dstu_set_favorite: SUCCESS - type=textbook, id={}, favorite={}", id, favorite),
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - type=textbook, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
             // 获取更新后的教材
@@ -4291,11 +4291,11 @@ pub async fn dstu_set_favorite(
                 Ok(Some(t)) => t,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_favorite: FAILED - textbook not found after set_favorite, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - get_textbook error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             textbook_to_dstu_node(&textbook)
@@ -4313,7 +4313,7 @@ pub async fn dstu_set_favorite(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
             // 获取更新后的题目集
@@ -4321,11 +4321,11 @@ pub async fn dstu_set_favorite(
                 Ok(Some(e)) => e,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_favorite: FAILED - exam not found after set_favorite, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - get_exam_sheet error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             exam_to_dstu_node(&exam)
@@ -4343,7 +4343,7 @@ pub async fn dstu_set_favorite(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
             // 获取更新后的文件夹
@@ -4351,11 +4351,11 @@ pub async fn dstu_set_favorite(
                 Ok(Some(f)) => f,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_favorite: FAILED - folder not found after set_favorite, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - get_folder error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             // 文件夹需要特殊处理，返回folder节点
@@ -4386,18 +4386,18 @@ pub async fn dstu_set_favorite(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
             let file = match VfsFileRepo::get_file(&vfs_db, &id) {
                 Ok(Some(f)) => f,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_favorite: FAILED - file not found after set_favorite, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - get_file error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             file_to_dstu_node(&file)
@@ -4408,7 +4408,7 @@ pub async fn dstu_set_favorite(
                 Ok(_) => log::info!("[DSTU::handlers] dstu_set_favorite: SUCCESS - type=translation, id={}, favorite={}", id, favorite),
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - type=translation, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
             // 获取更新后的翻译
@@ -4416,11 +4416,11 @@ pub async fn dstu_set_favorite(
                 Ok(Some(t)) => t,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_favorite: FAILED - translation not found after set_favorite, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - get_translation error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             translation_to_dstu_node(&translation)
@@ -4442,17 +4442,17 @@ pub async fn dstu_set_favorite(
                                 Ok(Some(essay)) => essay_to_dstu_node(&essay),
                                 Ok(None) => {
                                     log::warn!("[DSTU::handlers] dstu_set_favorite: FAILED - essay not found, id={}", id);
-                                    return Err(DstuError::internal("操作失败"));
+                                    return Err("操作失败".to_string());
                                 }
                                 Err(e) => {
                                     log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - get_essay error, id={}, error={}", id, e);
-                                    return Err(DstuError::Internal(e.to_string()));
+                                    return Err(e.to_string());
                                 }
                             }
                         }
                         Err(e) => {
                             log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - get_session error, id={}, error={}", id, e);
-                            return Err(DstuError::Internal(e.to_string()));
+                            return Err(e.to_string());
                         }
                     }
                 }
@@ -4462,7 +4462,7 @@ pub async fn dstu_set_favorite(
                         id,
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
         }
@@ -4472,7 +4472,7 @@ pub async fn dstu_set_favorite(
                 Ok(_) => log::info!("[DSTU::handlers] dstu_set_favorite: SUCCESS - type=mindmap, id={}, favorite={}", id, favorite),
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - type=mindmap, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
             // 获取更新后的知识导图
@@ -4480,20 +4480,20 @@ pub async fn dstu_set_favorite(
                 Ok(Some(m)) => m,
                 Ok(None) => {
                     log::warn!("[DSTU::handlers] dstu_set_favorite: FAILED - mindmap not found after set_favorite, id={}", id);
-                    return Err(DstuError::internal("操作失败"));
+                    return Err("操作失败".to_string());
                 }
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_set_favorite: FAILED - get_mindmap error, id={}, error={}", id, e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
             mindmap_to_dstu_node(&mindmap)
         }
         _ => {
-            return Err(DstuError::Internal(format!(
+            return Err(format!(
                 "Resource type '{}' does not support favorite operation",
                 resource_type
-            )));
+            ));
         }
     };
 
@@ -4529,7 +4529,7 @@ pub async fn dstu_list_deleted(
     limit: Option<u32>,
     offset: Option<u32>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<Vec<DstuNode>> {
+) -> Result<Vec<DstuNode>, String> {
     log::info!("[DSTU::handlers] dstu_list_deleted: type={}", resource_type);
 
     let limit = limit.unwrap_or(100);
@@ -4544,7 +4544,7 @@ pub async fn dstu_list_deleted(
                         "[DSTU::handlers] dstu_list_deleted: FAILED - list_deleted_notes error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -4590,7 +4590,7 @@ pub async fn dstu_list_deleted(
                 Ok(t) => t,
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_list_deleted: FAILED - list_deleted_textbooks error={}", e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -4639,7 +4639,7 @@ pub async fn dstu_list_deleted(
                         "[DSTU::handlers] dstu_list_deleted: FAILED - list_deleted_exams error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -4697,7 +4697,7 @@ pub async fn dstu_list_deleted(
                 Ok(t) => t,
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_list_deleted: FAILED - list_deleted_translations error={}", e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -4744,7 +4744,7 @@ pub async fn dstu_list_deleted(
                 Ok(s) => s,
                 Err(e) => {
                     log::error!("[DSTU::handlers] dstu_list_deleted: FAILED - list_deleted_sessions error={}", e);
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             };
 
@@ -4813,7 +4813,7 @@ pub async fn dstu_purge_all(
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> DstuResult<usize> {
+) -> Result<usize, String> {
     log::info!("[DSTU::handlers] dstu_purge_all: type={}", resource_type);
 
     // ★ P1 修复：在 purge 之前收集所有待清理的 resource_ids
@@ -4855,7 +4855,7 @@ pub async fn dstu_purge_all(
                     "[DSTU::handlers] dstu_purge_all: FAILED - type=notes, error={}",
                     e
                 );
-                return Err(DstuError::Internal(e.to_string()));
+                return Err(e.to_string());
             }
         },
         "textbooks" => {
@@ -4873,15 +4873,15 @@ pub async fn dstu_purge_all(
                         "[DSTU::handlers] dstu_purge_all: FAILED - type=textbooks, error={}",
                         e
                     );
-                    return Err(DstuError::Internal(e.to_string()));
+                    return Err(e.to_string());
                 }
             }
         }
         _ => {
-            return Err(DstuError::Internal(format!(
+            return Err(format!(
                 "Resource type '{}' does not support purge_all operation",
                 resource_type
-            )));
+            ));
         }
     };
 
@@ -4936,16 +4936,16 @@ pub async fn dstu_delete_many(
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> DstuResult<usize> {
+) -> Result<usize, String> {
     log::info!("[DSTU::handlers] dstu_delete_many: {} paths", paths.len());
 
     // 批量操作数量限制检查
     if paths.len() > MAX_BATCH_SIZE {
-        return Err(DstuError::Internal(format!(
+        return Err(format!(
             "批量操作数量超出限制：最多允许 {} 个，实际 {} 个",
             MAX_BATCH_SIZE,
             paths.len()
-        )));
+        ));
     }
 
     if paths.is_empty() {
@@ -4959,7 +4959,7 @@ pub async fn dstu_delete_many(
             Ok((rt, rid)) => (rt, rid),
             Err(e) => {
                 log::warn!("[DSTU::handlers] Invalid path {}: {}", path, e);
-                return Err(DstuError::Internal(format!("无效的资源路径 '{}': {}", path, e)));
+                return Err(format!("无效的资源路径 '{}': {}", path, e));
             }
         };
         parsed_items.push((path.clone(), resource_type, id));
@@ -5007,13 +5007,13 @@ pub async fn dstu_delete_many(
 
     // 在事务中执行所有删除操作
     let deleted_paths: Vec<String> = tokio::task::spawn_blocking(move || {
-        let conn = vfs_db_clone.get_conn_safe()?;
+        let conn = vfs_db_clone.get_conn_safe().map_err(|e| e.to_string())?;
 
         // 开始事务
         conn.execute("BEGIN IMMEDIATE", [])
-            .map_err(|e| DstuError::DatabaseError(format!("开始事务失败: {}", e)))?;
+            .map_err(|e| format!("开始事务失败: {}", e))?;
 
-        let transaction_result = (|| -> DstuResult<Vec<String>> {
+        let transaction_result = (|| -> Result<Vec<String>, String> {
             let mut deleted = Vec::with_capacity(items_for_delete.len());
 
             for (path, resource_type, id) in &items_for_delete {
@@ -5028,7 +5028,7 @@ pub async fn dstu_delete_many(
         match transaction_result {
             Ok(deleted) => {
                 conn.execute("COMMIT", [])
-                    .map_err(|e| DstuError::DatabaseError(format!("提交事务失败: {}", e)))?;
+                    .map_err(|e| format!("提交事务失败: {}", e))?;
                 log::info!(
                     "[DSTU::handlers] dstu_delete_many: 事务提交成功，删除 {} 项资源",
                     deleted.len()
@@ -5043,7 +5043,7 @@ pub async fn dstu_delete_many(
         }
     })
     .await
-    ??;
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     // 事务成功后，发射所有删除事件
     let success_count = deleted_paths.len();
@@ -5098,16 +5098,16 @@ pub async fn dstu_restore_many(
     paths: Vec<String>,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<usize> {
+) -> Result<usize, String> {
     log::info!("[DSTU::handlers] dstu_restore_many: {} paths", paths.len());
 
     // 批量操作数量限制检查
     if paths.len() > MAX_BATCH_SIZE {
-        return Err(DstuError::Internal(format!(
+        return Err(format!(
             "批量操作数量超出限制：最多允许 {} 个，实际 {} 个",
             MAX_BATCH_SIZE,
             paths.len()
-        )));
+        ));
     }
 
     if paths.is_empty() {
@@ -5119,13 +5119,13 @@ pub async fn dstu_restore_many(
 
     // 在事务中执行所有恢复操作，收集成功恢复的路径用于后续发射事件
     let restored_paths: Vec<String> = tokio::task::spawn_blocking(move || {
-        let conn = vfs_db_clone.get_conn_safe()?;
+        let conn = vfs_db_clone.get_conn_safe().map_err(|e| e.to_string())?;
 
         // 开始事务
         conn.execute("BEGIN IMMEDIATE", [])
-            .map_err(|e| DstuError::DatabaseError(format!("开始事务失败: {}", e)))?;
+            .map_err(|e| format!("开始事务失败: {}", e))?;
 
-        let transaction_result = (|| -> DstuResult<Vec<String>> {
+        let transaction_result = (|| -> Result<Vec<String>, String> {
             let mut restored = Vec::with_capacity(paths_clone.len());
 
             for path in &paths_clone {
@@ -5133,13 +5133,13 @@ pub async fn dstu_restore_many(
                 let (resource_type, id) = match extract_resource_info(path) {
                     Ok((rt, rid)) => (rt, rid),
                     Err(e) => {
-                        return Err(DstuError::Internal(format!("路径解析失败 ({}): {}", path, e)));
+                        return Err(format!("路径解析失败 ({}): {}", path, e));
                     }
                 };
 
                 // 使用事务版本的 restore_resource_by_type
                 restore_resource_by_type_with_conn(&conn, &resource_type, &id)
-                    .map_err(|e| DstuError::DatabaseError(format!("恢复失败 (type={}, id={}): {}", resource_type, id, e)))?;
+                    .map_err(|e| format!("恢复失败 (type={}, id={}): {}", resource_type, id, e))?;
 
                 restored.push(path.clone());
             }
@@ -5151,7 +5151,7 @@ pub async fn dstu_restore_many(
         match transaction_result {
             Ok(restored) => {
                 conn.execute("COMMIT", [])
-                    .map_err(|e| DstuError::DatabaseError(format!("提交事务失败: {}", e)))?;
+                    .map_err(|e| format!("提交事务失败: {}", e))?;
                 log::info!(
                     "[DSTU::handlers] dstu_restore_many: 事务提交成功，恢复 {} 项资源",
                     restored.len()
@@ -5166,7 +5166,7 @@ pub async fn dstu_restore_many(
         }
     })
     .await
-    ??;
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     let success_count = restored_paths.len();
 
@@ -5202,7 +5202,7 @@ pub async fn dstu_move_many(
     dest_folder: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<usize> {
+) -> Result<usize, String> {
     log::info!(
         "[DSTU::handlers] dstu_move_many: {} paths to {}",
         paths.len(),
@@ -5211,11 +5211,11 @@ pub async fn dstu_move_many(
 
     // 批量操作数量限制检查
     if paths.len() > MAX_BATCH_SIZE {
-        return Err(DstuError::Internal(format!(
+        return Err(format!(
             "批量操作数量超出限制：最多允许 {} 个，实际 {} 个",
             MAX_BATCH_SIZE,
             paths.len()
-        )));
+        ));
     }
 
     // 目标文件夹路径解析
@@ -5230,11 +5230,11 @@ pub async fn dstu_move_many(
                     dest_folder,
                     e
                 );
-                return Err(DstuError::Internal(e.to_string()));
+                return Err(e.to_string());
             }
         };
         if dst_type != "folders" {
-            return Err(DstuError::invalid_input("Destination must be a folder"));
+            return Err("Destination must be a folder".to_string());
         }
         Some(dst_id)
     };
@@ -5294,14 +5294,14 @@ pub async fn dstu_move_many(
 
 /// 注册资源变化监听（当前实现为前端事件通道占位）
 #[tauri::command]
-pub async fn dstu_watch(path: String) -> DstuResult<()> {
+pub async fn dstu_watch(path: String) -> Result<(), String> {
     log::info!("[DSTU::handlers] dstu_watch: path={}", path);
     Ok(())
 }
 
 /// 取消资源变化监听（当前实现为前端事件通道占位）
 #[tauri::command]
-pub async fn dstu_unwatch(path: String) -> DstuResult<()> {
+pub async fn dstu_unwatch(path: String) -> Result<(), String> {
     log::info!("[DSTU::handlers] dstu_unwatch: path={}", path);
     Ok(())
 }
@@ -5326,7 +5326,7 @@ pub async fn dstu_search_in_folder(
     query: String,
     options: Option<DstuListOptions>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<Vec<DstuNode>> {
+) -> Result<Vec<DstuNode>, String> {
     log::info!(
         "[DSTU::handlers] dstu_search_in_folder: folder={:?}, query={}",
         folder_id,
@@ -5345,18 +5345,18 @@ pub async fn dstu_search_in_folder(
                     "[DSTU::handlers] dstu_get_nodes_in_folder: FAILED - folder not found, id={}",
                     fid
                 );
-                return Err(DstuError::Internal(format!("Folder not found: {}", fid)));
+                return Err(format!("Folder not found: {}", fid));
             }
             Err(e) => {
                 log::error!("[DSTU::handlers] dstu_get_nodes_in_folder: FAILED - get_folder error, id={}, error={}", fid, e);
-                return Err(DstuError::Internal(e.to_string()));
+                return Err(e.to_string());
             }
         };
         let items = match crate::vfs::VfsFolderRepo::list_items_by_folder(&vfs_db, Some(fid)) {
             Ok(i) => i,
             Err(e) => {
                 log::error!("[DSTU::handlers] dstu_get_nodes_in_folder: FAILED - list_items_by_folder error, folder_id={}, error={}", fid, e);
-                return Err(DstuError::Internal(e.to_string()));
+                return Err(e.to_string());
             }
         };
 
@@ -5518,7 +5518,7 @@ pub async fn dstu_search_in_folder(
 /// ## 返回
 /// 解析后的路径结构
 #[tauri::command]
-pub async fn dstu_parse_path(path: String) -> DstuResult<DstuParsedPath> {
+pub async fn dstu_parse_path(path: String) -> Result<DstuParsedPath, String> {
     log::info!("[DSTU::handlers] dstu_parse_path: path={}", path);
 
     // 处理空路径
@@ -5601,7 +5601,7 @@ pub async fn dstu_build_path(
     folder_id: Option<String>,
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<String> {
+) -> Result<String, String> {
     log::info!(
         "[DSTU::handlers] dstu_build_path: folder_id={:?}, resource_id={}",
         folder_id,
@@ -5611,7 +5611,7 @@ pub async fn dstu_build_path(
     let folder_path = match folder_id {
         Some(ref fid) => {
             // 获取文件夹路径
-            crate::vfs::VfsFolderRepo::build_folder_path(&vfs_db, fid)?
+            crate::vfs::VfsFolderRepo::build_folder_path(&vfs_db, fid).map_err(|e| e.to_string())?
         }
         None => String::new(), // 根目录
     };
@@ -5644,7 +5644,7 @@ pub async fn dstu_build_path(
 pub async fn dstu_get_resource_location(
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<ResourceLocation> {
+) -> Result<ResourceLocation, String> {
     log::info!(
         "[DSTU::handlers] dstu_get_resource_location: resource_id={}",
         resource_id
@@ -5655,7 +5655,7 @@ pub async fn dstu_get_resource_location(
         DstuParsedPath::infer_resource_type(&resource_id).unwrap_or_else(|| "unknown".to_string());
 
     // 从 folder_items 表查找资源所在的文件夹
-    let conn = vfs_db.get_conn_safe()?;
+    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
 
     let folder_item: Option<(Option<String>, Option<String>)> = conn
         .query_row(
@@ -5664,7 +5664,7 @@ pub async fn dstu_get_resource_location(
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .optional()
-        ?;
+        .map_err(|e| e.to_string())?;
 
     let (folder_id, cached_path) = folder_item.unwrap_or((None, None));
 
@@ -5713,7 +5713,7 @@ pub async fn dstu_get_resource_location(
 pub async fn dstu_get_resource_by_path(
     path: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<Option<DstuNode>> {
+) -> Result<Option<DstuNode>, String> {
     log::info!("[DSTU::handlers] dstu_get_resource_by_path: path={}", path);
 
     // 先解析路径
@@ -5742,27 +5742,27 @@ pub async fn dstu_get_resource_by_path(
             "note" => match VfsNoteRepo::get_note(&vfs_db, resource_id) {
                 Ok(Some(note)) => Ok(Some(note_to_dstu_node(&note))),
                 Ok(None) => Ok(None),
-                Err(e) => Err(DstuError::Internal(e.to_string())),
+                Err(e) => Err(e.to_string()),
             },
             "textbook" => match VfsTextbookRepo::get_textbook(&vfs_db, resource_id) {
                 Ok(Some(tb)) => Ok(Some(textbook_to_dstu_node(&tb))),
                 Ok(None) => Ok(None),
-                Err(e) => Err(DstuError::Internal(e.to_string())),
+                Err(e) => Err(e.to_string()),
             },
             "exam" => match VfsExamRepo::get_exam_sheet(&vfs_db, resource_id) {
                 Ok(Some(exam)) => Ok(Some(exam_to_dstu_node(&exam))),
                 Ok(None) => Ok(None),
-                Err(e) => Err(DstuError::Internal(e.to_string())),
+                Err(e) => Err(e.to_string()),
             },
             "translation" => match VfsTranslationRepo::get_translation(&vfs_db, resource_id) {
                 Ok(Some(tr)) => Ok(Some(translation_to_dstu_node(&tr))),
                 Ok(None) => Ok(None),
-                Err(e) => Err(DstuError::Internal(e.to_string())),
+                Err(e) => Err(e.to_string()),
             },
             "essay" => match VfsEssayRepo::get_session(&vfs_db, resource_id) {
                 Ok(Some(session)) => Ok(Some(session_to_dstu_node(&session))),
                 Ok(None) => Ok(None),
-                Err(e) => Err(DstuError::Internal(e.to_string())),
+                Err(e) => Err(e.to_string()),
             },
             "folder" => match crate::vfs::VfsFolderRepo::get_folder(&vfs_db, resource_id) {
                 Ok(Some(folder)) => Ok(Some(DstuNode::folder(
@@ -5771,7 +5771,7 @@ pub async fn dstu_get_resource_by_path(
                     &folder.title,
                 ))),
                 Ok(None) => Ok(None),
-                Err(e) => Err(DstuError::Internal(e.to_string())),
+                Err(e) => Err(e.to_string()),
             },
             _ => {
                 log::warn!(
@@ -5810,7 +5810,7 @@ pub async fn dstu_move_to_folder(
     target_folder_id: Option<String>,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<ResourceLocation> {
+) -> Result<ResourceLocation, String> {
     log::info!(
         "[DSTU::handlers] dstu_move_to_folder: resource_id={}, target_folder_id={:?}",
         resource_id,
@@ -5826,7 +5826,7 @@ pub async fn dstu_move_to_folder(
     let resource_type_for_blocking = resource_type.clone();
 
     let result = tokio::task::spawn_blocking(move || {
-        let conn = vfs_db_clone.get_conn_safe()?;
+        let conn = vfs_db_clone.get_conn_safe().map_err(|e| e.to_string())?;
         let canonical_resource_type = canonical_folder_item_type(&resource_type_for_blocking);
 
         // 获取移动前的旧路径
@@ -5837,7 +5837,7 @@ pub async fn dstu_move_to_folder(
                 |row| row.get(0),
             )
             .optional()
-            ?
+            .map_err(|e| e.to_string())?
             .unwrap_or_else(|| format!("/{}", resource_id_for_blocking));
 
         // 构建目标文件夹路径
@@ -5865,7 +5865,7 @@ pub async fn dstu_move_to_folder(
                 |row| row.get(0),
             )
             .optional()
-            ?;
+            .map_err(|e| e.to_string())?;
 
         if existing.is_some() {
             // 更新现有记录
@@ -5878,7 +5878,7 @@ pub async fn dstu_move_to_folder(
                     &resource_id_for_blocking
                 ],
             )
-            ?;
+            .map_err(|e| e.to_string())?;
         } else {
             // 创建新记录
             let item_id = format!("fi_{}", nanoid::nanoid!(10));
@@ -5898,7 +5898,7 @@ pub async fn dstu_move_to_folder(
                     now_ms
                 ],
             )
-            ?;
+            .map_err(|e| e.to_string())?;
         }
 
         log::info!(
@@ -5906,7 +5906,7 @@ pub async fn dstu_move_to_folder(
             resource_id_for_blocking, target_folder_id
         );
 
-        Ok::<(ResourceLocation, String), DstuError>((ResourceLocation {
+        Ok::<(ResourceLocation, String), String>((ResourceLocation {
             id: resource_id_for_blocking,
             resource_type: resource_type_for_blocking,
             folder_id: target_folder_id,
@@ -5916,7 +5916,7 @@ pub async fn dstu_move_to_folder(
         }, old_path))
     })
     .await
-    ?;
+    .map_err(|e| format!("Task join error: {}", e))?;
 
     // 解构结果并发射移动事件
     let (location, old_path) = result?;
@@ -5969,7 +5969,7 @@ pub async fn dstu_batch_move(
     request: BatchMoveRequest,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<BatchMoveResult> {
+) -> Result<BatchMoveResult, String> {
     log::info!(
         "[DSTU::handlers] dstu_batch_move: item_ids={:?}, target_folder_id={:?}",
         request.item_ids,
@@ -5996,7 +5996,7 @@ pub async fn dstu_batch_move(
         Vec<(ResourceLocation, String, String)>,
         Vec<FailedMoveItem>,
     ) = tokio::task::spawn_blocking(move || {
-        let conn = vfs_db_clone.get_conn_safe()?;
+        let conn = vfs_db_clone.get_conn_safe().map_err(|e| e.to_string())?;
 
         // 构建目标文件夹路径（只需要构建一次）
         let folder_path = match &target_folder_id {
@@ -6027,10 +6027,10 @@ pub async fn dstu_batch_move(
             }
         }
 
-        Ok::<_, DstuError>((successes, failures))
+        Ok::<_, String>((successes, failures))
     })
     .await
-    ??;
+    .map_err(|e| format!("Task join error: {}", e))??;
 
     // 对成功项发射移动事件
     let successes: Vec<ResourceLocation> = move_results
@@ -6093,7 +6093,7 @@ fn move_single_item(
     resource_id: &str,
     target_folder_id: &Option<String>,
     folder_path: &str,
-) -> DstuResult<(ResourceLocation, String, String)> {
+) -> Result<(ResourceLocation, String, String), String> {
     // 推断资源类型
     let resource_type =
         DstuParsedPath::infer_resource_type(resource_id).unwrap_or_else(|| "unknown".to_string());
@@ -6107,7 +6107,7 @@ fn move_single_item(
             |row| row.get(0),
         )
         .optional()
-        .map_err(|e| DstuError::DatabaseError(format!("查询旧路径失败 ({}): {}", resource_id, e)))?
+        .map_err(|e| format!("查询旧路径失败 ({}): {}", resource_id, e))?
         .unwrap_or_else(|| format!("/{}", resource_id));
 
     // 构建完整路径
@@ -6126,7 +6126,7 @@ fn move_single_item(
             |row| row.get(0),
         )
         .optional()
-        .map_err(|e| DstuError::DatabaseError(format!("查询现有记录失败 ({}): {}", resource_id, e)))?;
+        .map_err(|e| format!("查询现有记录失败 ({}): {}", resource_id, e))?;
 
     if existing.is_some() {
         // 更新现有记录
@@ -6134,7 +6134,7 @@ fn move_single_item(
             "UPDATE folder_items SET folder_id = ?1, cached_path = ?2, updated_at = ?3 WHERE item_type = ?4 AND item_id = ?5 AND deleted_at IS NULL",
             rusqlite::params![target_folder_id, &full_path, now_ms, canonical_resource_type, resource_id],
         )
-        .map_err(|e| DstuError::DatabaseError(format!("更新 folder_items 失败 ({}): {}", resource_id, e)))?;
+        .map_err(|e| format!("更新 folder_items 失败 ({}): {}", resource_id, e))?;
     } else {
         // 创建新记录
         let item_id = format!("fi_{}", nanoid::nanoid!(10));
@@ -6154,7 +6154,7 @@ fn move_single_item(
                 now_ms
             ],
         )
-        .map_err(|e| DstuError::DatabaseError(format!("插入 folder_items 失败 ({}): {}", resource_id, e)))?;
+        .map_err(|e| format!("插入 folder_items 失败 ({}): {}", resource_id, e))?;
     }
 
     let location = ResourceLocation {
@@ -6187,7 +6187,7 @@ fn move_single_item(
 pub async fn dstu_refresh_path_cache(
     resource_id: Option<String>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<usize> {
+) -> Result<usize, String> {
     log::info!(
         "[DSTU::handlers] dstu_refresh_path_cache: resource_id={:?}",
         resource_id
@@ -6196,7 +6196,7 @@ pub async fn dstu_refresh_path_cache(
     let vfs_db_clone = vfs_db.inner().clone();
 
     let result = tokio::task::spawn_blocking(move || {
-        let conn = vfs_db_clone.get_conn_safe()?;
+        let conn = vfs_db_clone.get_conn_safe().map_err(|e| e.to_string())?;
 
         // 先收集所有数据
         let items: Vec<(String, Option<String>, String)> = if let Some(ref rid) = resource_id {
@@ -6205,7 +6205,7 @@ pub async fn dstu_refresh_path_cache(
                 .prepare(
                     "SELECT id, folder_id, item_id FROM folder_items WHERE item_type = ?1 AND item_id = ?2 AND deleted_at IS NULL",
                 )
-                ?;
+                .map_err(|e| e.to_string())?;
             let rows: Vec<_> = stmt
                 .query_map(
                     rusqlite::params![
@@ -6223,7 +6223,7 @@ pub async fn dstu_refresh_path_cache(
                     ))
                     },
                 )
-                ?
+                .map_err(|e| e.to_string())?
                 .filter_map(log_and_skip_err)
                 .collect();
             rows
@@ -6231,7 +6231,7 @@ pub async fn dstu_refresh_path_cache(
             // 全量刷新
             let mut stmt = conn
                 .prepare("SELECT id, folder_id, item_id FROM folder_items WHERE deleted_at IS NULL")
-                ?;
+                .map_err(|e| e.to_string())?;
             let rows: Vec<_> = stmt
                 .query_map([], |row| {
                     Ok((
@@ -6240,7 +6240,7 @@ pub async fn dstu_refresh_path_cache(
                         row.get::<_, String>(2)?,
                     ))
                 })
-                ?
+                .map_err(|e| e.to_string())?
                 .filter_map(log_and_skip_err)
                 .collect();
             rows
@@ -6267,7 +6267,7 @@ pub async fn dstu_refresh_path_cache(
                 "UPDATE folder_items SET cached_path = ?1 WHERE id = ?2",
                 rusqlite::params![&full_path, &item_row_id],
             )
-            ?;
+            .map_err(|e| e.to_string())?;
 
             updated_count += 1;
         }
@@ -6276,10 +6276,10 @@ pub async fn dstu_refresh_path_cache(
             "[DSTU::handlers] dstu_refresh_path_cache: SUCCESS - updated {} entries",
             updated_count
         );
-        Ok::<usize, DstuError>(updated_count)
+        Ok::<usize, String>(updated_count)
     })
     .await
-    ?;
+    .map_err(|e| format!("Task join error: {}", e))?;
 
     result
 }
@@ -6296,7 +6296,7 @@ pub async fn dstu_refresh_path_cache(
 pub async fn dstu_get_path_by_id(
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<String> {
+) -> Result<String, String> {
     log::info!(
         "[DSTU::handlers] dstu_get_path_by_id: resource_id={}",
         resource_id
@@ -6304,7 +6304,7 @@ pub async fn dstu_get_path_by_id(
 
     // 调用 VFS 的路径获取函数
     let path = crate::vfs::ref_handlers::get_resource_path_internal(&vfs_db, &resource_id)
-        ?;
+        .map_err(|e| e.to_string())?;
 
     log::info!(
         "[DSTU::handlers] dstu_get_path_by_id: SUCCESS - path={}",

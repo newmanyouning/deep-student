@@ -91,7 +91,7 @@ export const ParamsTab: React.FC<ParamsTabProps> = ({
   const handleFtsToggle = useCallback(async (v: boolean) => {
     setExtra((prev: any) => ({ ...prev, chatSemanticFtsPrefilter: v }));
     try {
-      await invoke?.('web_search_save_setting', { key: 'search.chat.semantic.fts_prefilter.enabled', value: v ? '1' : '0' });
+      await invoke?.('save_setting', { key: 'search.chat.semantic.fts_prefilter.enabled', value: v ? '1' : '0' });
       showGlobalNotification('success', t('settings:notifications.semantic_fts_save_success'));
     } catch (error: unknown) {
       showGlobalNotification('error', t('settings:notifications.semantic_fts_save_error', { error: getErrorMessage(error) }));

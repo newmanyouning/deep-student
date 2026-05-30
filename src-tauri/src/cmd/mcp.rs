@@ -19,7 +19,7 @@ type Result<T> = std::result::Result<T, AppError>;
 // =================================================
 
 #[tauri::command]
-pub async fn mcp_get_status(state: State<'_, AppState>) -> Result<serde_json::Value> {
+pub async fn get_mcp_status(state: State<'_, AppState>) -> Result<serde_json::Value> {
     // 后端 MCP 已熔断，返回兼容状态供旧 UI 使用；前端组件已改为读取前端 SDK 状态
     let mut status = serde_json::json!({
         "available": false,
@@ -29,16 +29,16 @@ pub async fn mcp_get_status(state: State<'_, AppState>) -> Result<serde_json::Va
         "server_info": null,
         "tools_count": 0,
         "last_error": "backend_mcp_disabled",
-        "namespace_prefix": state.database.web_search_get_setting("mcp.tools.namespace_prefix").ok().flatten().unwrap_or_default(),
-        "conflict_resolution": state.database.web_search_get_setting("mcp.tools.conflict_resolution").ok().flatten().unwrap_or_else(|| "use_namespace".into()),
+        "namespace_prefix": state.database.get_setting("mcp.tools.namespace_prefix").ok().flatten().unwrap_or_default(),
+        "conflict_resolution": state.database.get_setting("mcp.tools.conflict_resolution").ok().flatten().unwrap_or_else(|| "use_namespace".into()),
         "cache_state": {
-            "ttl_ms": state.database.web_search_get_setting("mcp.tools.cache_ttl_ms").ok().flatten().and_then(|v| v.parse::<u64>().ok()).unwrap_or(300_000),
+            "ttl_ms": state.database.get_setting("mcp.tools.cache_ttl_ms").ok().flatten().and_then(|v| v.parse::<u64>().ok()).unwrap_or(300_000),
             "last_built_at": null
         }
     });
 
     // MCP 启用状态由消息级选择决定（会话选择非空即视为启用）
-    if let Ok(Some(selected)) = state.database.web_search_get_setting("session.selected_mcp_tools") {
+    if let Ok(Some(selected)) = state.database.get_setting("session.selected_mcp_tools") {
         let enabled_now = !selected.trim().is_empty();
         status["enabled"] = serde_json::json!(enabled_now);
         if !enabled_now {
@@ -52,14 +52,14 @@ pub async fn mcp_get_status(state: State<'_, AppState>) -> Result<serde_json::Va
 }
 
 #[tauri::command]
-pub async fn mcp_get_tools(_state: State<'_, AppState>) -> Result<Vec<serde_json::Value>> {
+pub async fn get_mcp_tools(_state: State<'_, AppState>) -> Result<Vec<serde_json::Value>> {
     // 后端 MCP 已禁用，返回空（由前端SDK提供工具列表）
     Ok(vec![])
 }
 
 #[cfg(feature = "mcp")]
 #[tauri::command]
-pub async fn mcp_test_connection(
+pub async fn test_mcp_connection(
     app_handle: AppHandle,
     command: String,
     args: Vec<String>,
@@ -76,7 +76,7 @@ pub async fn mcp_test_connection(
 
 #[cfg(not(feature = "mcp"))]
 #[tauri::command]
-pub async fn mcp_test_connection(
+pub async fn test_mcp_connection(
     _app_handle: AppHandle,
     command: String,
     args: Vec<String>,
@@ -92,7 +92,7 @@ pub async fn mcp_test_connection(
 /// 测试 MCP WebSocket 连接
 #[cfg(feature = "mcp")]
 #[tauri::command]
-pub async fn mcp_test_websocket(
+pub async fn test_mcp_websocket(
     url: String,
     env: Option<HashMap<String, String>>,
     _state: State<'_, AppState>,
@@ -103,7 +103,7 @@ pub async fn mcp_test_websocket(
 
 #[cfg(not(feature = "mcp"))]
 #[tauri::command]
-pub async fn mcp_test_websocket(
+pub async fn test_mcp_websocket(
     url: String,
     env: Option<HashMap<String, String>>,
     state: State<'_, AppState>,
@@ -115,7 +115,7 @@ pub async fn mcp_test_websocket(
 /// 测试 MCP SSE 连接
 #[cfg(feature = "mcp")]
 #[tauri::command]
-pub async fn mcp_test_sse(
+pub async fn test_mcp_sse(
     endpoint: String,
     api_key: String,
     env: Option<HashMap<String, String>>,
@@ -132,7 +132,7 @@ pub async fn mcp_test_sse(
 
 #[cfg(not(feature = "mcp"))]
 #[tauri::command]
-pub async fn mcp_test_sse(
+pub async fn test_mcp_sse(
     endpoint: String,
     api_key: String,
     env: Option<HashMap<String, String>>,
@@ -145,7 +145,7 @@ pub async fn mcp_test_sse(
 /// 测试 MCP HTTP 连接 (Streamable HTTP)
 #[cfg(feature = "mcp")]
 #[tauri::command]
-pub async fn mcp_test_http(
+pub async fn test_mcp_http(
     endpoint: String,
     api_key: String,
     env: Option<HashMap<String, String>>,
@@ -162,7 +162,7 @@ pub async fn mcp_test_http(
 
 #[cfg(not(feature = "mcp"))]
 #[tauri::command]
-pub async fn mcp_test_http(
+pub async fn test_mcp_http(
     endpoint: String,
     api_key: String,
     env: Option<HashMap<String, String>>,
@@ -226,7 +226,7 @@ pub async fn mcp_stdio_close(session_id: String) -> Result<()> {
 /// 使用 rmcp（或内部回退）测试 Streamable HTTP MCP 服务器
 #[cfg(feature = "mcp")]
 #[tauri::command]
-pub async fn mcp_test_rmcp_streamable(
+pub async fn test_rmcp_streamable_http(
     url: String,
     api_key: Option<String>,
 ) -> Result<serde_json::Value> {
@@ -235,7 +235,7 @@ pub async fn mcp_test_rmcp_streamable(
 
 #[cfg(not(feature = "mcp"))]
 #[tauri::command]
-pub async fn mcp_test_rmcp_streamable(
+pub async fn test_rmcp_streamable_http(
     url: String,
     api_key: Option<String>,
 ) -> Result<serde_json::Value> {
@@ -243,7 +243,7 @@ pub async fn mcp_test_rmcp_streamable(
     Ok(serde_json::json!({"success": false, "error": "backend_mcp_disabled"}))
 }
 #[tauri::command]
-pub async fn mcp_save_config(
+pub async fn save_mcp_config(
     config: serde_json::Value,
     state: State<'_, AppState>,
 ) -> Result<bool> {
@@ -254,12 +254,12 @@ pub async fn mcp_save_config(
     // 传输配置
     if let Some(transport) = config.get("transport") {
         if let Some(transport_type) = transport.get("type").and_then(|v| v.as_str()) {
-            db.web_search_save_setting("mcp.transport.type", transport_type)?;
+            db.save_setting("mcp.transport.type", transport_type)?;
 
             match transport_type {
                 "stdio" => {
                     if let Some(command) = transport.get("command").and_then(|v| v.as_str()) {
-                        db.web_search_save_setting("mcp.transport.command", command)?;
+                        db.save_setting("mcp.transport.command", command)?;
                     }
                     if let Some(args) = transport.get("args").and_then(|v| v.as_array()) {
                         let args_str = args
@@ -267,15 +267,15 @@ pub async fn mcp_save_config(
                             .filter_map(|v| v.as_str())
                             .collect::<Vec<_>>()
                             .join(",");
-                        db.web_search_save_setting("mcp.transport.args", &args_str)?;
+                        db.save_setting("mcp.transport.args", &args_str)?;
                     }
                     if let Some(framing) = transport.get("framing").and_then(|v| v.as_str()) {
-                        db.web_search_save_setting("mcp.transport.framing", framing)?;
+                        db.save_setting("mcp.transport.framing", framing)?;
                     }
                 }
                 "websocket" => {
                     if let Some(url) = transport.get("url").and_then(|v| v.as_str()) {
-                        db.web_search_save_setting("mcp.transport.url", url)?;
+                        db.save_setting("mcp.transport.url", url)?;
                     }
                 }
                 _ => {}
@@ -286,10 +286,10 @@ pub async fn mcp_save_config(
     // 工具配置
     if let Some(tools) = config.get("tools") {
         if let Some(cache_ttl_ms) = tools.get("cache_ttl_ms").and_then(|v| v.as_u64()) {
-            db.web_search_save_setting("mcp.tools.cache_ttl_ms", &cache_ttl_ms.to_string())?;
+            db.save_setting("mcp.tools.cache_ttl_ms", &cache_ttl_ms.to_string())?;
         }
         if let Some(advertise_all) = tools.get("advertise_all_tools").and_then(|v| v.as_bool()) {
-            db.web_search_save_setting("mcp.tools.advertise_all_tools", &advertise_all.to_string())?;
+            db.save_setting("mcp.tools.advertise_all_tools", &advertise_all.to_string())?;
         }
         if let Some(whitelist) = tools.get("whitelist").and_then(|v| v.as_array()) {
             let whitelist_str = whitelist
@@ -297,7 +297,7 @@ pub async fn mcp_save_config(
                 .filter_map(|v| v.as_str())
                 .collect::<Vec<_>>()
                 .join(",");
-            db.web_search_save_setting("mcp.tools.whitelist", &whitelist_str)?;
+            db.save_setting("mcp.tools.whitelist", &whitelist_str)?;
         }
         if let Some(blacklist) = tools.get("blacklist").and_then(|v| v.as_array()) {
             let blacklist_str = blacklist
@@ -305,32 +305,32 @@ pub async fn mcp_save_config(
                 .filter_map(|v| v.as_str())
                 .collect::<Vec<_>>()
                 .join(",");
-            db.web_search_save_setting("mcp.tools.blacklist", &blacklist_str)?;
+            db.save_setting("mcp.tools.blacklist", &blacklist_str)?;
         }
     }
 
     // 性能配置
     if let Some(performance) = config.get("performance") {
         if let Some(timeout_ms) = performance.get("timeout_ms").and_then(|v| v.as_u64()) {
-            db.web_search_save_setting("mcp.performance.timeout_ms", &timeout_ms.to_string())?;
+            db.save_setting("mcp.performance.timeout_ms", &timeout_ms.to_string())?;
         }
         if let Some(rate_limit) = performance
             .get("rate_limit_per_second")
             .and_then(|v| v.as_u64())
         {
-            db.web_search_save_setting(
+            db.save_setting(
                 "mcp.performance.rate_limit_per_second",
                 &rate_limit.to_string(),
             )?;
         }
         if let Some(cache_max_size) = performance.get("cache_max_size").and_then(|v| v.as_u64()) {
-            db.web_search_save_setting(
+            db.save_setting(
                 "mcp.performance.cache_max_size",
                 &cache_max_size.to_string(),
             )?;
         }
         if let Some(cache_ttl_ms) = performance.get("cache_ttl_ms").and_then(|v| v.as_u64()) {
-            db.web_search_save_setting("mcp.performance.cache_ttl_ms", &cache_ttl_ms.to_string())?;
+            db.save_setting("mcp.performance.cache_ttl_ms", &cache_ttl_ms.to_string())?;
         }
     }
 
@@ -483,7 +483,7 @@ mod mcp_test_helpers {
         url: String,
         api_key: Option<String>,
     ) -> serde_json::Value {
-        match crate::mcp::rmcp::mcp_test_rmcp_streamable(&url, api_key.clone()).await {
+        match crate::mcp::rmcp::test_rmcp_streamable_http(&url, api_key.clone()).await {
             Ok(outcome) => json!({
                 "success": outcome.success,
                 "step": outcome.step,

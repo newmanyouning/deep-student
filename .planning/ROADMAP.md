@@ -81,4 +81,4 @@ Plans:
 - [ ] TBD (promote with /gsd-review-backlog when ready)
 
 ---
-*Last updated: 2026-05-30 CST — v1.2 active, Refactoring Framework established, Syntax Audit completed (no updates needed)*
+*Last updated: 2026-05-15 — v1.2 active, Phase 8 starting*

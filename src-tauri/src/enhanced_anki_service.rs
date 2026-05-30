@@ -396,7 +396,7 @@ impl EnhancedAnkiService {
             entry.current_task_id.clone()
         };
 
-        let doc_tasks = match self.doc_processor.anki_get_document_tasks(&document_id) {
+        let doc_tasks = match self.doc_processor.get_document_tasks(&document_id) {
             Ok(tasks) => tasks,
             Err(err) => {
                 warn!("获取文档任务失败，暂停将尝试仅中止当前任务: {}", err);
@@ -504,7 +504,7 @@ impl EnhancedAnkiService {
 
         let mut remaining: Vec<DocumentTask> = self
             .doc_processor
-            .anki_get_document_tasks(&document_id)
+            .get_document_tasks(&document_id)
             .map_err(|e| {
                 if let Some(mut entry) = DOCUMENT_STATES.get_mut(&document_id) {
                     entry.running = false;
@@ -580,46 +580,46 @@ impl EnhancedAnkiService {
     }
 
     /// 获取文档任务列表
-    pub fn anki_get_document_tasks(&self, document_id: String) -> Result<Vec<DocumentTask>, AppError> {
-        self.doc_processor.anki_get_document_tasks(&document_id)
+    pub fn get_document_tasks(&self, document_id: String) -> Result<Vec<DocumentTask>, AppError> {
+        self.doc_processor.get_document_tasks(&document_id)
     }
 
     /// 获取任务的卡片列表
-    pub fn anki_get_task_cards(&self, task_id: String) -> Result<Vec<AnkiCard>, AppError> {
+    pub fn get_task_cards(&self, task_id: String) -> Result<Vec<AnkiCard>, AppError> {
         self.db
             .get_cards_for_task(&task_id)
             .map_err(|e| AppError::database(format!("获取任务卡片失败: {}", e)))
     }
 
     /// 更新卡片
-    pub fn anki_update_card(&self, card: AnkiCard) -> Result<(), AppError> {
+    pub fn update_anki_card(&self, card: AnkiCard) -> Result<(), AppError> {
         self.db
-            .anki_update_card(&card)
+            .update_anki_card(&card)
             .map_err(|e| AppError::database(format!("更新卡片失败: {}", e)))
     }
 
     /// 删除卡片
-    pub fn anki_delete_card(&self, card_id: String) -> Result<(), AppError> {
+    pub fn delete_anki_card(&self, card_id: String) -> Result<(), AppError> {
         self.db
-            .anki_delete_card(&card_id)
+            .delete_anki_card(&card_id)
             .map_err(|e| AppError::database(format!("删除卡片失败: {}", e)))
     }
 
     /// 删除任务
-    pub fn anki_delete_document_task(&self, task_id: String) -> Result<(), AppError> {
+    pub fn delete_document_task(&self, task_id: String) -> Result<(), AppError> {
         self.db
-            .anki_delete_document_task(&task_id)
+            .delete_document_task(&task_id)
             .map_err(|e| AppError::database(format!("删除任务失败: {}", e)))
     }
 
     /// 删除文档会话
-    pub async fn anki_delete_document_session(&self, document_id: String) -> Result<(), AppError> {
+    pub async fn delete_document_session(&self, document_id: String) -> Result<(), AppError> {
         if let Some(mut entry) = DOCUMENT_STATES.get_mut(&document_id) {
             entry.paused = true;
             entry.running = false;
         }
 
-        if let Ok(tasks) = self.doc_processor.anki_get_document_tasks(&document_id) {
+        if let Ok(tasks) = self.doc_processor.get_document_tasks(&document_id) {
             for task in tasks
                 .into_iter()
                 .filter(|t| matches!(t.status, TaskStatus::Processing | TaskStatus::Streaming))
@@ -638,7 +638,7 @@ impl EnhancedAnkiService {
         }
 
         self.db
-            .anki_delete_document_session(&document_id)
+            .delete_document_session(&document_id)
             .map_err(|e| AppError::database(format!("删除文档会话失败: {}", e)))?;
 
         DOCUMENT_STATES.remove(&document_id);
@@ -646,7 +646,7 @@ impl EnhancedAnkiService {
     }
 
     /// 导出选定内容为APKG
-    pub async fn anki_export_apkg_for_selection(
+    pub async fn export_apkg_for_selection(
         &self,
         document_id: Option<String>,
         task_ids: Option<Vec<String>>,
@@ -761,9 +761,9 @@ impl EnhancedAnkiService {
     }
 
     /// 获取文档任务计数（冒烟测试/调试用途）
-    pub async fn anki_get_document_task_counts(&self, document_id: String) -> DocumentTaskCountsDto {
+    pub async fn get_document_task_counts(&self, document_id: String) -> DocumentTaskCountsDto {
         let mut counts = DocumentTaskCountsDto::default();
-        if let Ok(tasks) = self.doc_processor.anki_get_document_tasks(&document_id) {
+        if let Ok(tasks) = self.doc_processor.get_document_tasks(&document_id) {
             counts.total = tasks.len() as u32;
             for t in tasks {
                 match t.status {
@@ -821,7 +821,7 @@ mod tests {
                 .or_default()
                 .paused = true;
             // find first incomplete task and mark paused
-            if let Ok(doc_tasks) = self.doc_processor.anki_get_document_tasks(&document_id) {
+            if let Ok(doc_tasks) = self.doc_processor.get_document_tasks(&document_id) {
                 if let Some(t) = doc_tasks.into_iter().find(|t| {
                     matches!(
                         t.status,
@@ -843,7 +843,7 @@ mod tests {
                 .or_default()
                 .paused = false;
             // set paused tasks back to Pending
-            if let Ok(tasks) = self.doc_processor.anki_get_document_tasks(&document_id) {
+            if let Ok(tasks) = self.doc_processor.get_document_tasks(&document_id) {
                 for t in tasks.into_iter() {
                     if matches!(t.status, TaskStatus::Paused) {
                         self.doc_processor
@@ -919,7 +919,7 @@ mod tests {
             .expect("pause");
 
         // verify one task paused
-        let tasks = dps.anki_get_document_tasks(&doc_id).expect("tasks");
+        let tasks = dps.get_document_tasks(&doc_id).expect("tasks");
         assert!(
             tasks.iter().any(|t| matches!(t.status, TaskStatus::Paused)),
             "no task paused"
@@ -999,7 +999,7 @@ mod tests {
         assert!(!flag, "document paused flag not cleared");
 
         // check at least one pending exists (previous paused -> pending)
-        let tasks = dps.anki_get_document_tasks(&doc_id).expect("tasks");
+        let tasks = dps.get_document_tasks(&doc_id).expect("tasks");
         assert!(
             tasks
                 .iter()

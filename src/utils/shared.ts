@@ -18,6 +18,15 @@ import {
   ChatMessage,
   RagSourceInfo,
   DocumentAttachment,
+  GeneralChatSessionRequest,
+  GeneralChatSessionResponse,
+  GenerateChatMetadataResponse,
+  UpdateChatMetadataNoteResponse,
+  UpdateOcrNoteResponse,
+  ExamSheetSessionUnlinkRequest,
+  ExamSheetSessionUnlinkResponse,
+  RuntimeAutosaveCommitRequest,
+  RuntimeAutosaveCommitResponse,
 } from '../types';
 import { normalizeHistoryForBackend } from './normalizeHistory';
 import { t } from './i18n';
@@ -107,6 +116,9 @@ export const convertHistoryToUnifiedMessages = (history?: ChatMessage[] | null):
   });
 };
 
+// 重新导出类型以保持兼容性
+// ★ 2026-01 清理：MistakeItem 仍需导出以保持向后兼容
+import { MistakeItem } from '../types';
 function sanitizeArgs(value: any, depth = 0): any {
   const redactKeys = /^(api[_-]?key|apikey|apiKey|authorization|auth|token|password)$/i;
   if (value == null) return value;

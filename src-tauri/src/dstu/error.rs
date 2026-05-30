@@ -102,11 +102,6 @@ impl DstuError {
         DstuError::DatabaseError(msg.into())
     }
 
-    /// 创建无效输入错误
-    pub fn invalid_input(msg: impl Into<String>) -> Self {
-        DstuError::InvalidPath(msg.into())
-    }
-
     /// 创建内部错误
     pub fn internal(msg: impl Into<String>) -> Self {
         DstuError::Internal(msg.into())
@@ -131,20 +126,6 @@ impl From<std::io::Error> for DstuError {
 impl From<serde_json::Error> for DstuError {
     fn from(err: serde_json::Error) -> Self {
         DstuError::SerializationError(err.to_string())
-    }
-}
-
-// 实现从 VfsError 到 DstuError 的转换
-impl From<crate::vfs::error::VfsError> for DstuError {
-    fn from(e: crate::vfs::error::VfsError) -> Self {
-        DstuError::VfsError(e.to_string())
-    }
-}
-
-// 实现从 tokio JoinError 到 DstuError 的转换
-impl From<tokio::task::JoinError> for DstuError {
-    fn from(e: tokio::task::JoinError) -> Self {
-        DstuError::Internal(format!("Task join error: {}", e))
     }
 }
 

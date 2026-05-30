@@ -2,7 +2,6 @@
 //!
 //! 支持 WebDAV 和 S3 兼容存储的统一配置
 
-use crate::models::AppError;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -164,10 +163,10 @@ impl CloudStorageConfig {
     }
 
     /// 验证配置是否完整
-    pub fn validate(&self) -> Result<(), AppError> {
+    pub fn validate(&self) -> Result<(), String> {
         match self.provider {
             StorageProvider::WebDav => {
-                let config = self.webdav.as_ref().ok_or_else(|| AppError::validation("缺少 WebDAV 配置"))?;
+                let config = self.webdav.as_ref().ok_or("缺少 WebDAV 配置")?;
                 if config.endpoint.trim().is_empty() {
                     return Err("WebDAV endpoint 不能为空".into());
                 }

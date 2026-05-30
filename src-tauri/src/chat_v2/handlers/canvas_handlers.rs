@@ -8,12 +8,14 @@
 //! 3. 前端调用此命令返回编辑结果
 //! 4. 后端恢复工具执行流程
 
-use crate::chat_v2::error::ChatV2Result;
 use crate::chat_v2::tools::canvas_executor::{handle_edit_result, CanvasAIEditResult};
 
 /// 处理前端返回的 Canvas 编辑结果
+///
+/// 前端在执行完 AI 编辑请求后，调用此命令返回结果。
+/// 后端通过 request_id 匹配等待的回调，恢复工具执行流程。
 #[tauri::command]
-pub fn chat_v2_canvas_edit_result(result: CanvasAIEditResult) -> ChatV2Result<()> {
+pub fn chat_v2_canvas_edit_result(result: CanvasAIEditResult) -> Result<(), String> {
     log::debug!(
         "[canvas_handlers] Received edit result: request_id={}, success={}",
         result.request_id,

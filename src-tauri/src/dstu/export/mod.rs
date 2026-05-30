@@ -30,7 +30,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
-use crate::dstu::error::{DstuError, DstuResult};
+use crate::dstu::error::DstuError;
 use crate::dstu::handler_utils::extract_resource_info;
 use crate::dstu::types::DstuNodeType;
 use crate::vfs::VfsDatabase;
@@ -276,13 +276,13 @@ impl ExportRegistry {
 pub async fn dstu_export_formats(
     path: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<Vec<String>> {
+) -> Result<Vec<String>, String> {
     log::info!("[DSTU::export] dstu_export_formats: path={}", path);
 
     // 验证路径合法性
-    let _ = extract_resource_info(&path)?;
+    let _ = extract_resource_info(&path).map_err(|e| e.to_string())?;
 
-    let node_type = infer_node_type_from_path(&path).map_err(DstuError::Internal)?;
+    let node_type = infer_node_type_from_path(&path)?;
 
     let registry = ExportRegistry::new();
     let formats = registry
@@ -300,7 +300,7 @@ pub async fn dstu_export(
     path: String,
     format: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> DstuResult<DstuExportResult> {
+) -> Result<DstuExportResult, String> {
     log::info!(
         "[DSTU::export] dstu_export: path={}, format={}",
         path,
@@ -308,10 +308,10 @@ pub async fn dstu_export(
     );
 
     let export_format =
-        ExportFormat::from_str(&format).ok_or_else(|| DstuError::NotSupported(format!("不支持的导出格式: {}", format)))?;
+        ExportFormat::from_str(&format).ok_or_else(|| format!("不支持的导出格式: {}", format))?;
 
-    let (_resource_type_str, id) = extract_resource_info(&path)?;
-    let node_type = infer_node_type_from_path(&path).map_err(DstuError::Internal)?;
+    let (_resource_type_str, id) = extract_resource_info(&path).map_err(|e| e.to_string())?;
+    let node_type = infer_node_type_from_path(&path)?;
 
     let registry = ExportRegistry::new();
 
@@ -322,7 +322,8 @@ pub async fn dstu_export(
         registry.export(&vfs_db_inner, node_type, &id_owned, export_format)
     })
     .await
-    .map_err(|e| DstuError::Internal(format!("导出任务失败: {}", e)))??;
+    .map_err(|e| format!("导出任务失败: {}", e))?
+    .map_err(|e| e.to_string())?;
 
     Ok(DstuExportResult::from(payload))
 }

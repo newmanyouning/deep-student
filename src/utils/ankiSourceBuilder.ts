@@ -1,4 +1,4 @@
-import { ChatMessage } from '../types';
+import { ChatMessage, MistakeItem } from '../types';
 // ★ 图谱模块已废弃 - 本地占位类型
 type ProblemCard = { 
   id: string; 
@@ -167,7 +167,59 @@ export const buildContentFromChatHistory = (
   };
 };
 
+export const buildContentFromMistake = (mistake: MistakeItem): string => {
+  const lines: string[] = [];
+  lines.push(`# 分析库错题导出`);
+  lines.push(`- 错题ID: ${mistake.id}`);
+  lines.push(`- 错题类型: ${mistake.mistake_type || t('utils.anki.not_filled')}`);
+  lines.push(`- 标签: ${Array.isArray(mistake.tags) && mistake.tags.length > 0 ? mistake.tags.join('、') : t('utils.anki.none')}`);
+  if (mistake.chat_metadata?.title) {
+    lines.push(`- 对话标题: ${mistake.chat_metadata.title}`);
+  }
+  lines.push('');
 
+  if (mistake.ocr_text) {
+    lines.push('## OCR识别内容');
+    lines.push('```');
+    lines.push(normalizeNewlines(mistake.ocr_text));
+    lines.push('```');
+    lines.push('');
+  }
+
+  if (mistake.user_question) {
+    lines.push('## 用户原始问题');
+    lines.push(normalizeNewlines(mistake.user_question));
+    lines.push('');
+  }
+
+  if (mistake.mistake_summary) {
+    lines.push('## 错题总结');
+    lines.push(normalizeNewlines(mistake.mistake_summary));
+    lines.push('');
+  }
+
+  if (mistake.user_error_analysis) {
+    lines.push('## 错误原因分析');
+    lines.push(normalizeNewlines(mistake.user_error_analysis));
+    lines.push('');
+  }
+
+  const chatHistoryText = formatChatHistory(Array.isArray(mistake.chat_history) ? mistake.chat_history : []);
+  lines.push('## 历史聊天记录');
+  lines.push(chatHistoryText);
+  lines.push('');
+
+  const questionImageCount = Array.isArray(mistake.question_images) ? mistake.question_images.length : 0;
+  const analysisImageCount = Array.isArray(mistake.analysis_images) ? mistake.analysis_images.length : 0;
+  if (questionImageCount + analysisImageCount > 0) {
+    lines.push(`（提示：已清理题目/解析图片附件，共计 ${questionImageCount + analysisImageCount} 张）`);
+    lines.push('');
+  }
+
+  lines.push('> 本文档由系统自动生成，已移除所有文档与图片附件，仅保留文本内容供制卡使用。');
+
+  return lines.join('\n');
+};
 
 // ★ 2026-02 清理：buildContentFromIrecCard 已删除（图谱模块废弃）
 

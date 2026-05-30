@@ -42,7 +42,6 @@ pub mod commands_sync;
 pub mod commands_types;
 pub mod commands_zip;
 pub mod dto;
-pub mod error;
 pub mod init;
 pub mod migration;
 pub mod plugin;

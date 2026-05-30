@@ -13,8 +13,6 @@ use std::path::Path;
 use std::sync::OnceLock;
 use tracing::{debug, error, info};
 
-use crate::models::AppError;
-
 /// 线程安全的 Pdfium 包装
 ///
 /// pdfium-render 0.8.37 移除了 `PdfiumLibraryBindings` 的 `Send + Sync` trait bound，
@@ -186,7 +184,7 @@ fn extract_text_from_document(document: &PdfDocument) -> Result<String, String> 
 
 /// Tauri 命令：测试 pdfium 加载状态，返回诊断信息
 #[tauri::command]
-pub fn test_pdfium_status() -> Result<std::collections::HashMap<String, String>, AppError> {
+pub fn test_pdfium_status() -> Result<std::collections::HashMap<String, String>, String> {
     let mut info = std::collections::HashMap::new();
 
     // 1. 报告 exe 路径

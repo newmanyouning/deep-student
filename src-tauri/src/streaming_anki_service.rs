@@ -2268,7 +2268,7 @@ impl StreamingAnkiService {
             if let Some(content) = card.error_content.clone() {
                 if !content.starts_with(RETRY_ASSIGNMENT_MARK) {
                     card.error_content = Some(format!("{}\n{}", RETRY_ASSIGNMENT_MARK, content));
-                    if let Err(e) = self.db.anki_update_card(card) {
+                    if let Err(e) = self.db.update_anki_card(card) {
                         error!("标记错误卡片为待修复失败: {}", e);
                     }
                 }

@@ -286,7 +286,7 @@ impl DocumentProcessingService {
     }
 
     /// 获取文档的所有任务
-    pub fn anki_get_document_tasks(&self, document_id: &str) -> Result<Vec<DocumentTask>, AppError> {
+    pub fn get_document_tasks(&self, document_id: &str) -> Result<Vec<DocumentTask>, AppError> {
         self.db
             .get_tasks_for_document(document_id)
             .map_err(|e| AppError::database(format!("获取文档任务失败: {}", e)))
@@ -314,7 +314,7 @@ impl DocumentProcessingService {
     /// 删除文档及其所有任务
     pub fn delete_document(&self, document_id: &str) -> Result<(), AppError> {
         self.db
-            .anki_delete_document_session(document_id)
+            .delete_document_session(document_id)
             .map_err(|e| AppError::database(format!("删除文档失败: {}", e)))
     }
 

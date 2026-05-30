@@ -3445,7 +3445,7 @@ impl Database {
     }
 
     /// 保存设置
-    pub fn web_search_save_setting(&self, key: &str, value: &str) -> Result<()> {
+    pub fn save_setting(&self, key: &str, value: &str) -> Result<()> {
         let conn = self.get_conn_safe()?;
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)",
@@ -3455,7 +3455,7 @@ impl Database {
     }
 
     /// 获取设置
-    pub fn web_search_get_setting(&self, key: &str) -> Result<Option<String>> {
+    pub fn get_setting(&self, key: &str) -> Result<Option<String>> {
         let conn = self.get_conn_safe()?;
         conn.query_row(
             "SELECT value FROM settings WHERE key = ?1",
@@ -3467,14 +3467,14 @@ impl Database {
     }
 
     /// 删除设置
-    pub fn web_search_delete_setting(&self, key: &str) -> Result<bool> {
+    pub fn delete_setting(&self, key: &str) -> Result<bool> {
         let conn = self.get_conn_safe()?;
         let changes = conn.execute("DELETE FROM settings WHERE key = ?1", params![key])?;
         Ok(changes > 0)
     }
 
     /// 按前缀查询设置（用于工具权限管理等批量查询场景）
-    pub fn web_search_web_search_get_settings_by_prefix(&self, prefix: &str) -> Result<Vec<(String, String, String)>> {
+    pub fn get_settings_by_prefix(&self, prefix: &str) -> Result<Vec<(String, String, String)>> {
         let conn = self.get_conn_safe()?;
         let mut stmt = conn.prepare(
             "SELECT key, value, updated_at FROM settings WHERE key LIKE ?1 ORDER BY updated_at DESC",
@@ -3495,7 +3495,7 @@ impl Database {
     }
 
     /// 按前缀批量删除设置
-    pub fn web_search_web_search_delete_settings_by_prefix(&self, prefix: &str) -> Result<usize> {
+    pub fn delete_settings_by_prefix(&self, prefix: &str) -> Result<usize> {
         let conn = self.get_conn_safe()?;
         let pattern = format!("{}%", prefix);
         let changes = conn.execute("DELETE FROM settings WHERE key LIKE ?1", params![pattern])?;
@@ -3570,7 +3570,7 @@ impl Database {
                 match secure_store.save_secret(key, value) {
                     Ok(_) => {
                         // 成功保存到安全存储，从数据库删除明文（如果存在）
-                        let _ = self.web_search_delete_setting(key);
+                        let _ = self.delete_setting(key);
                         return Ok(());
                     }
                     Err(e) => {
@@ -3584,7 +3584,7 @@ impl Database {
         }
 
         // 回退到普通数据库存储
-        self.web_search_save_setting(key, value)
+        self.save_setting(key, value)
     }
 
     /// 获取敏感设置（优先从安全存储获取）
@@ -3609,7 +3609,7 @@ impl Database {
         }
 
         // 回退到普通数据库存储
-        self.web_search_get_setting(key)
+        self.get_setting(key)
     }
 
     /// 删除敏感设置（同时从安全存储和数据库删除）
@@ -3627,7 +3627,7 @@ impl Database {
         }
 
         // 从数据库删除
-        let db_deleted = self.web_search_delete_setting(key)?;
+        let db_deleted = self.delete_setting(key)?;
 
         Ok(deleted || db_deleted)
     }
@@ -3722,12 +3722,12 @@ impl Database {
         assignments: &crate::models::ModelAssignments,
     ) -> Result<()> {
         let assignments_json = serde_json::to_string(assignments)?;
-        self.web_search_save_setting("model_assignments", &assignments_json)
+        self.save_setting("model_assignments", &assignments_json)
     }
 
     /// 获取模型分配配置
     pub fn get_model_assignments(&self) -> Result<Option<crate::models::ModelAssignments>> {
-        match self.web_search_get_setting("model_assignments")? {
+        match self.get_setting("model_assignments")? {
             Some(json_str) => {
                 let assignments: crate::models::ModelAssignments = serde_json::from_str(&json_str)?;
                 Ok(Some(assignments))
@@ -3739,12 +3739,12 @@ impl Database {
     /// 保存API配置列表
     pub fn save_api_configs(&self, configs: &[crate::llm_manager::ApiConfig]) -> Result<()> {
         let configs_json = serde_json::to_string(configs)?;
-        self.web_search_save_setting("api_configs", &configs_json)
+        self.save_setting("api_configs", &configs_json)
     }
 
     /// 获取API配置列表
     pub fn get_api_configs(&self) -> Result<Vec<crate::llm_manager::ApiConfig>> {
-        match self.web_search_get_setting("api_configs")? {
+        match self.get_setting("api_configs")? {
             Some(json_str) => {
                 let configs: Vec<crate::llm_manager::ApiConfig> = serde_json::from_str(&json_str)?;
                 // 兼容旧字段（supports_tools）已在反序列化时通过别名处理，这里无需额外转换。
@@ -4235,7 +4235,7 @@ impl Database {
     }
 
     /// 更新Anki卡片
-    pub fn anki_update_card(&self, card: &AnkiCard) -> Result<()> {
+    pub fn update_anki_card(&self, card: &AnkiCard) -> Result<()> {
         let conn = self.get_conn_safe()?;
         let updated_at = chrono::Utc::now().to_rfc3339();
         conn.execute(
@@ -4262,14 +4262,14 @@ impl Database {
     }
 
     /// 删除Anki卡片
-    pub fn anki_delete_card(&self, card_id: &str) -> Result<()> {
+    pub fn delete_anki_card(&self, card_id: &str) -> Result<()> {
         let conn = self.get_conn_safe()?;
         conn.execute("DELETE FROM anki_cards WHERE id = ?1", params![card_id])?;
         Ok(())
     }
 
     /// 删除文档任务及其所有卡片
-    pub fn anki_delete_document_task(&self, task_id: &str) -> Result<()> {
+    pub fn delete_document_task(&self, task_id: &str) -> Result<()> {
         let conn = self.get_conn_safe()?;
         // 由于设置了ON DELETE CASCADE，删除任务会自动删除关联的卡片
         conn.execute("DELETE FROM document_tasks WHERE id = ?1", params![task_id])?;
@@ -4277,7 +4277,7 @@ impl Database {
     }
 
     /// 删除整个文档会话（所有任务和卡片）
-    pub fn anki_delete_document_session(&self, document_id: &str) -> Result<()> {
+    pub fn delete_document_session(&self, document_id: &str) -> Result<()> {
         let conn = self.get_conn_safe()?;
         // 由于设置了ON DELETE CASCADE，删除任务会自动删除关联的卡片
         conn.execute(
@@ -5541,7 +5541,7 @@ impl Database {
     }
 
     /// 🔧 Phase 1: 按 document_id 分组汇总任务信息（用于任务管理页面）
-    pub fn anki_list_document_sessions(&self, limit: u32) -> Result<Vec<serde_json::Value>> {
+    pub fn list_document_sessions(&self, limit: u32) -> Result<Vec<serde_json::Value>> {
         let conn = self.get_conn_safe()?;
         // 确保 source_session_id 列存在（兼容旧数据库）
         let _ = conn.execute(
@@ -5591,7 +5591,7 @@ impl Database {
     }
 
     /// 🔧 Phase 2: 卡片库统计数据（用于任务管理页面统计卡片）
-    pub fn anki_get_stats(&self) -> Result<serde_json::Value> {
+    pub fn get_anki_stats(&self) -> Result<serde_json::Value> {
         let conn = self.get_conn_safe()?;
         let total_cards: i64 =
             conn.query_row("SELECT COUNT(*) FROM anki_cards", [], |r| r.get(0))?;
@@ -5657,7 +5657,7 @@ impl Database {
         Ok(cards)
     }
 
-    pub fn anki_list_library_cards(
+    pub fn list_anki_library_cards(
         &self,
         _subject: Option<&str>,
         template_id: Option<&str>,

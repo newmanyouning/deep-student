@@ -19,7 +19,6 @@ use super::commands_backup::{
     acquire_backup_global_permit, ensure_existing_path_within_backup_dir, get_app_data_dir,
     get_backup_dir, validate_backup_id, BackupJobStartResponse,
 };
-use super::error::{DataGovernanceError, DataGovernanceResult};
 
 /// 异步后台恢复（带进度事件）
 ///
@@ -46,7 +45,7 @@ pub async fn data_governance_restore_backup(
     backup_job_state: State<'_, BackupJobManagerState>,
     backup_id: String,
     restore_assets: Option<bool>,
-) -> DataGovernanceResult<BackupJobStartResponse> {
+) -> Result<BackupJobStartResponse, String> {
     let validated_backup_id = validate_backup_id(&backup_id)?;
 
     info!(
@@ -669,13 +668,14 @@ async fn execute_restore_with_progress(
         }
         match rusqlite::Connection::open(&db_path) {
             Ok(conn) => {
-                let tx_res = (|| -> DataGovernanceResult<(usize, usize)> {
-                    conn.execute("BEGIN IMMEDIATE", [])?;
-                    let result: DataGovernanceResult<(usize, usize)> = super::sync::SyncManager::reset_sync_baseline_after_restore(&conn)
-                        .map_err(|e| DataGovernanceError::Internal(format!("{}", e)));
+                let tx_res = (|| -> Result<(usize, usize), String> {
+                    conn.execute("BEGIN IMMEDIATE", [])
+                        .map_err(|e| e.to_string())?;
+                    let result = super::sync::SyncManager::reset_sync_baseline_after_restore(&conn)
+                        .map_err(|e| format!("{}", e));
                     match result {
                         Ok(stats) => {
-                            conn.execute("COMMIT", [])?;
+                            conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
                             Ok(stats)
                         }
                         Err(e) => {
