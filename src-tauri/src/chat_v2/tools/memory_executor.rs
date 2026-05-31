@@ -998,7 +998,7 @@ impl ToolExecutor for MemoryToolExecutor {
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    e,
+                    e.to_string(),
                     duration_ms as u64,
                 ))
             }

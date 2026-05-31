@@ -489,7 +489,7 @@ impl ChatAnkiToolExecutor {
                 Some(ctx.block_id.clone()),
                 call.name.clone(),
                 call.arguments.clone(),
-                error_key,
+                error_key.to_string(),
                 start_time.elapsed().as_millis() as u64,
             );
             let _ = ctx.save_tool_block(&result);
@@ -1315,7 +1315,7 @@ impl ChatAnkiToolExecutor {
                 Some(ctx.block_id.clone()),
                 call.name.clone(),
                 call.arguments.clone(),
-                error_key,
+                error_key.to_string(),
                 start_time.elapsed().as_millis() as u64,
             );
             let _ = ctx.save_tool_block(&result);
@@ -1597,7 +1597,7 @@ impl ChatAnkiToolExecutor {
                 Some(ctx.block_id.clone()),
                 call.name.clone(),
                 call.arguments.clone(),
-                error_key,
+                error_key.to_string(),
                 start_time.elapsed().as_millis() as u64,
             );
             let _ = ctx.save_tool_block(&result);
@@ -1648,7 +1648,7 @@ impl ChatAnkiToolExecutor {
                 Some(ctx.block_id.clone()),
                 call.name.clone(),
                 call.arguments.clone(),
-                error_key,
+                error_key.to_string(),
                 start_time.elapsed().as_millis() as u64,
             );
             let _ = ctx.save_tool_block(&result);
@@ -1931,7 +1931,7 @@ impl ChatAnkiToolExecutor {
                 Some(ctx.block_id.clone()),
                 call.name.clone(),
                 call.arguments.clone(),
-                error_key,
+                error_key.to_string(),
                 start_time.elapsed().as_millis() as u64,
             );
             let _ = ctx.save_tool_block(&result);

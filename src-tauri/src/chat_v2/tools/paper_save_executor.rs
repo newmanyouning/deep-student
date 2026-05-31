@@ -1284,7 +1284,7 @@ impl ToolExecutor for PaperSaveExecutor {
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    e,
+                    e.to_string(),
                     duration,
                 );
 

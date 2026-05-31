@@ -1193,7 +1193,7 @@ impl ToolExecutor for SessionToolExecutor {
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    error,
+                    error.to_string(),
                     duration_ms,
                 );
 
