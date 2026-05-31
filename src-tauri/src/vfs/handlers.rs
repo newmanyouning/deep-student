@@ -149,16 +149,14 @@ fn validate_id_format(id: &str, prefix: &str, param_name: &str) -> VfsResult<()>
         return Err(VfsError::InvalidArgument {
             param: param_name.to_string(),
             reason: "ID contains invalid Unicode characters".to_string(),
-        }
-        .to_string());
+        });
     }
 
     if !id.starts_with(prefix) {
         return Err(VfsError::InvalidArgument {
             param: param_name.to_string(),
             reason: format!("Invalid {} format: {}", param_name, id),
-        }
-        .to_string());
+        });
     }
     Ok(())
 }
@@ -172,16 +170,14 @@ fn validate_id_format_any(id: &str, prefixes: &[&str], param_name: &str) -> VfsR
         return Err(VfsError::InvalidArgument {
             param: param_name.to_string(),
             reason: "ID contains invalid Unicode characters".to_string(),
-        }
-        .to_string());
+        });
     }
 
     if !prefixes.iter().any(|p| id.starts_with(p)) {
         return Err(VfsError::InvalidArgument {
             param: param_name.to_string(),
             reason: format!("Invalid {} format: {}", param_name, id),
-        }
-        .to_string());
+        });
     }
 
     Ok(())
@@ -469,8 +465,7 @@ pub async fn vfs_create_note(
                 "笔记内容大小超出限制（最大 {}MB）",
                 MAX_NOTE_SIZE / 1024 / 1024
             ),
-        }
-        .to_string());
+        });
     }
 
     // 验证标题
@@ -478,8 +473,7 @@ pub async fn vfs_create_note(
         return Err(VfsError::InvalidArgument {
             param: "title".to_string(),
             reason: "Title cannot be empty".to_string(),
-        }
-        .to_string());
+        });
     }
 
     // 调用 VfsNoteRepo::create_note
@@ -530,8 +524,7 @@ pub async fn vfs_update_note(
                 "笔记内容大小超出限制（最大 {}MB）",
                 MAX_NOTE_SIZE / 1024 / 1024
             ),
-        }
-        .to_string());
+        });
     }
 
     // 验证笔记 ID 格式
@@ -805,8 +798,7 @@ pub async fn vfs_search_all(
         return Err(VfsError::InvalidArgument {
             param: "query".to_string(),
             reason: "Search query cannot be empty".to_string(),
-        }
-        .to_string());
+        });
     }
 
     let types = params.types.as_ref();
@@ -1133,8 +1125,7 @@ pub async fn vfs_update_path_cache(
         return Err(VfsError::InvalidArgument {
             param: "folder_id".to_string(),
             reason: format!("Invalid folder ID format: {}", folder_id),
-        }
-        .to_string());
+        });
     }
 
     // 获取数据库连接
@@ -1960,8 +1951,7 @@ pub async fn vfs_upload_file(
                 "Unsupported mime type or file extension: {} ({})",
                 params.mime_type, params.name
             ),
-        }
-        .to_string());
+        });
     }
 
     let max_size = VfsAttachmentRepo::max_upload_size_bytes(&params.mime_type);
@@ -1971,8 +1961,7 @@ pub async fn vfs_upload_file(
         return Err(VfsError::InvalidArgument {
             param: "base64_content".to_string(),
             reason: format!("File too large: max {}MB, got {:.2}MB", max_mb, actual_mb),
-        }
-        .to_string());
+        });
     }
 
     let mut hasher = Sha256::new();
@@ -4574,8 +4563,7 @@ pub async fn vfs_get_mindmap(
         return Err(VfsError::InvalidArgument {
             param: "mindmap_id".to_string(),
             reason: format!("Invalid mindmap ID format: {}", mindmap_id),
-        }
-        .to_string());
+        });
     }
 
     Ok(VfsMindMapRepo::get_mindmap(&vfs_db, &mindmap_id)?)
@@ -4593,8 +4581,7 @@ pub async fn vfs_get_mindmap_content(
         return Err(VfsError::InvalidArgument {
             param: "mindmap_id".to_string(),
             reason: format!("Invalid mindmap ID format: {}", mindmap_id),
-        }
-        .to_string());
+        });
     }
 
     Ok(VfsMindMapRepo::get_mindmap_content(&vfs_db, &mindmap_id)?)
@@ -4615,8 +4602,7 @@ pub async fn vfs_get_mindmap_versions(
         return Err(VfsError::InvalidArgument {
             param: "mindmap_id".to_string(),
             reason: format!("Invalid mindmap ID format: {}", mindmap_id),
-        }
-        .to_string());
+        });
     }
 
     Ok(VfsMindMapRepo::get_versions(&vfs_db, &mindmap_id)?)
@@ -4637,8 +4623,7 @@ pub async fn vfs_get_mindmap_version_content(
         return Err(VfsError::InvalidArgument {
             param: "version_id".to_string(),
             reason: format!("Invalid version ID format: {}", version_id),
-        }
-        .to_string());
+        });
     }
 
     Ok(VfsMindMapRepo::get_version_content(&vfs_db, &version_id)?)
@@ -4656,8 +4641,7 @@ pub async fn vfs_get_mindmap_version(
         return Err(VfsError::InvalidArgument {
             param: "version_id".to_string(),
             reason: format!("Invalid version ID format: {}", version_id),
-        }
-        .to_string());
+        });
     }
 
     Ok(VfsMindMapRepo::get_version(&vfs_db, &version_id)?)
@@ -4676,8 +4660,7 @@ pub async fn vfs_update_mindmap(
         return Err(VfsError::InvalidArgument {
             param: "mindmap_id".to_string(),
             reason: format!("Invalid mindmap ID format: {}", mindmap_id),
-        }
-        .to_string());
+        });
     }
 
     let update_params = VfsUpdateMindMapParams {
@@ -4706,8 +4689,7 @@ pub async fn vfs_delete_mindmap(
         return Err(VfsError::InvalidArgument {
             param: "mindmap_id".to_string(),
             reason: format!("Invalid mindmap ID format: {}", mindmap_id),
-        }
-        .to_string());
+        });
     }
 
     Ok(VfsMindMapRepo::delete_mindmap(&vfs_db, &mindmap_id)?)

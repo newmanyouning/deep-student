@@ -448,7 +448,7 @@ impl StreamingAnkiService {
                 }
                 template_info.push_str("template_id 白名单（只能从下列值中选择）：\n");
                 template_info.push_str(&format!("[{}]\n", whitelist.join(", ")));
-                template_info.push_str("名称到ID映射（若你想用某模板"名称"，必须写成对应ID）：\n");
+                template_info.push_str("名称到ID映射（若你想用某模板\"名称\"，必须写成对应ID）：\n");
                 template_info.push_str(&id_name_pairs.join("\n"));
                 template_info.push('\n');
                 system_sections.push(template_info);
