@@ -4,16 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: 'Target platform'
-        type: choice
+        description: 'Target platform: windows | macos-arm64 | macos-x64 | linux | android | all-desktop'
+        required: true
+        type: string
         default: 'windows'
-        options:
-          - windows
-          - macos-arm64
-          - macos-x64
-          - linux
-          - android
-          - all-desktop
       source_ref:
         description: 'Branch / tag / commit SHA'
         type: string
