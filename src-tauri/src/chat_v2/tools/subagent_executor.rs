@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use serde_json::{json, Value};
 use tauri::Emitter;
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use super::workspace_executor::WORKSPACE_WORKER_READY_EVENT;
 use crate::chat_v2::events::event_types;
@@ -26,16 +26,16 @@ impl SubagentExecutor {
 
     /// 从当前会话的 metadata 中获取子代理嵌套深度。
     /// Fail-closed: 数据库不可用时返回错误，拒绝创建子代理。
-    fn get_subagent_depth(&self, ctx: &ExecutionContext) -> Result<u32, String> {
+    fn get_subagent_depth(&self, ctx: &ExecutionContext) -> ToolResult<u32> {
         let chat_v2_db = ctx
             .chat_v2_db
             .as_ref()
-            .ok_or("chat_v2_db not available for subagent depth check")?;
+            .ok_or(ToolError::Execution("chat_v2_db not available for subagent depth check".into()))?;
         let conn = chat_v2_db
             .get_conn_safe()
-            .map_err(|e| format!("DB connection failed during depth check: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("DB connection failed during depth check: {}", e)))?;
         let session = ChatV2Repo::get_session_with_conn(&conn, &ctx.session_id)
-            .map_err(|e| format!("Failed to query session for depth: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to query session for depth: {}", e)))?;
         Ok(session
             .and_then(|s| s.metadata)
             .and_then(|m| m.get("subagent_depth").cloned())
@@ -50,35 +50,35 @@ impl SubagentExecutor {
         &self,
         args: &Value,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
-            return Err("Subagent call cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 🔒 安全检查：防止子代理无限递归嵌套（fail-closed: DB错误时拒绝）
         let current_depth = self.get_subagent_depth(ctx)?;
         if current_depth >= Self::MAX_SUBAGENT_DEPTH {
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "Maximum subagent nesting depth ({}) exceeded. Current depth: {}. \
                  Recursive subagent creation is not allowed to prevent resource exhaustion.",
                 Self::MAX_SUBAGENT_DEPTH,
                 current_depth
-            ));
+            )));
         }
 
         let workspace_id = args
             .get("workspace_id")
             .and_then(|v| v.as_str())
-            .ok_or("workspace_id is required")?;
+            .ok_or(ToolError::InvalidArgs("workspace_id is required".into()))?;
         let skill_id = args
             .get("skill_id")
             .and_then(|v| v.as_str())
-            .ok_or("skill_id is required")?;
+            .ok_or(ToolError::InvalidArgs("skill_id is required".into()))?;
         let task = args
             .get("task")
             .and_then(|v| v.as_str())
-            .ok_or("task is required")?;
+            .ok_or(ToolError::InvalidArgs("task is required".into()))?;
         let context = args.get("context").cloned();
 
         let agent_session_id = format!("subagent_{}_{}", skill_id, ulid::Ulid::new());
@@ -88,17 +88,17 @@ impl SubagentExecutor {
         let chat_v2_db = ctx
             .chat_v2_db
             .as_ref()
-            .ok_or("chat_v2_db not available for creating subagent session")?;
+            .ok_or(ToolError::Execution("chat_v2_db not available for creating subagent session".into()))?;
 
         let conn = chat_v2_db
             .get_conn_safe()
-            .map_err(|e| format!("Failed to get db connection: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get db connection: {}", e)))?;
 
         // 获取工作区信息用于构建 system_prompt
         let workspace_info = self
             .coordinator
             .get_workspace(workspace_id)?
-            .ok_or_else(|| format!("Workspace not found: {}", workspace_id))?;
+            .ok_or_else(|| ToolError::NotFound(format!("Workspace not found: {}", workspace_id)))?;
         let workspace_name = workspace_info
             .name
             .as_deref()
@@ -144,7 +144,7 @@ impl SubagentExecutor {
         };
 
         ChatV2Repo::create_session_with_conn(&conn, &session)
-            .map_err(|e| format!("Failed to create subagent session: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to create subagent session: {}", e)))?;
 
         log::info!(
             "[SubagentExecutor] Created chat_v2 session for subagent: {}",
@@ -247,7 +247,7 @@ impl ToolExecutor for SubagentExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start = Instant::now();
 
         // 🔧 修复：发射工具调用开始事件，让前端立即显示工具调用 UI
@@ -288,11 +288,12 @@ impl ToolExecutor for SubagentExecutor {
                 Ok(result)
             }
             Err(error) => {
+                let error_msg = error.to_string();
                 // 🔧 修复：发射工具调用错误事件
                 ctx.emitter.emit_error_with_meta(
                     event_types::TOOL_CALL,
                     &ctx.block_id,
-                    &error,
+                    &error_msg,
                     ctx.variant_id.as_deref(),
                     ctx.skill_state_version,
                     ctx.round_id.as_deref(),
@@ -303,7 +304,7 @@ impl ToolExecutor for SubagentExecutor {
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    error,
+                    error_msg,
                     duration_ms,
                 );
 

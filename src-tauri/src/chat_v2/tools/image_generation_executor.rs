@@ -7,7 +7,7 @@ use reqwest::header::{HeaderMap, HeaderName, HeaderValue, AUTHORIZATION, CONTENT
 use serde_json::{json, Value};
 use std::time::Instant;
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity, ToolError, ToolResult};
 use super::types::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -58,13 +58,13 @@ impl ImageGenerationExecutor {
         Self
     }
 
-    fn parse_args(arguments: &Value) -> Result<ImageGenerationArgs, String> {
+    fn parse_args(arguments: &Value) -> ToolResult<ImageGenerationArgs> {
         let prompt = arguments
             .get("prompt")
             .and_then(Value::as_str)
             .map(str::trim)
             .filter(|s| !s.is_empty())
-            .ok_or_else(|| "图片生成需要 prompt 参数".to_string())?
+            .ok_or_else(|| ToolError::InvalidArgs("图片生成需要 prompt 参数".to_string()))?
             .to_string();
 
         let aspect_ratio = arguments
@@ -101,19 +101,19 @@ impl ImageGenerationExecutor {
         })
     }
 
-    async fn resolve_model(ctx: &ExecutionContext) -> Result<ImageGenerationModel, String> {
+    async fn resolve_model(ctx: &ExecutionContext) -> ToolResult<ImageGenerationModel> {
         let llm_manager = ctx
             .llm_manager
             .as_ref()
-            .ok_or_else(|| "LLM 管理器不可用，无法读取生图模型配置".to_string())?;
+            .ok_or_else(|| ToolError::Internal("LLM 管理器不可用,无法读取生图模型配置".to_string()))?;
         let assignments = llm_manager
             .get_model_assignments()
             .await
-            .map_err(|e| format!("读取模型分配失败: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("读取模型分配失败: {}", e)))?;
         let configs = llm_manager
             .get_api_configs()
             .await
-            .map_err(|e| format!("读取 API 配置失败: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("读取 API 配置失败: {}", e)))?;
 
         if let Some(config_id) = assignments
             .image_generation_model_config_id
@@ -124,7 +124,7 @@ impl ImageGenerationExecutor {
                 .iter()
                 .find(|cfg| cfg.id == config_id)
                 .cloned()
-                .ok_or_else(|| format!("已选择的生图模型不存在: {}", config_id))?;
+                .ok_or_else(|| ToolError::NotFound(format!("已选择的生图模型不存在: {}", config_id)))?;
             Self::validate_model_config(&cfg)?;
             return Ok(ImageGenerationModel {
                 provider: provider_label(&cfg),
@@ -136,7 +136,7 @@ impl ImageGenerationExecutor {
             .iter()
             .find(|cfg| cfg.enabled && is_image_generation_config(cfg))
             .cloned()
-            .ok_or_else(|| "未配置可用的生图模型，请先在设置中选择“生图模型”".to_string())?;
+            .ok_or_else(|| ToolError::NotFound("未配置可用的生图模型,请先在设置中选择「生图模型」".to_string()))?;
         Self::validate_model_config(&cfg)?;
         Ok(ImageGenerationModel {
             provider: provider_label(&cfg),
@@ -144,21 +144,21 @@ impl ImageGenerationExecutor {
         })
     }
 
-    fn validate_model_config(config: &ApiConfig) -> Result<(), String> {
+    fn validate_model_config(config: &ApiConfig) -> ToolResult<()> {
         if config.base_url.trim().is_empty() {
-            return Err("生图模型缺少 Base URL".to_string());
+            return Err(ToolError::InvalidArgs("生图模型缺少 Base URL".to_string()));
         }
         if config.model.trim().is_empty() {
-            return Err("生图模型缺少 model 名称".to_string());
+            return Err(ToolError::InvalidArgs("生图模型缺少 model 名称".to_string()));
         }
         if config.api_key.trim().is_empty()
             || config.api_key.trim() == "***"
             || config.api_key.trim().chars().all(|c| c == '*')
         {
-            return Err("生图模型缺少 API key".to_string());
+            return Err(ToolError::InvalidArgs("生图模型缺少 API key".to_string()));
         }
         if !config.enabled {
-            return Err("生图模型未启用，或 API key 不可用".to_string());
+            return Err(ToolError::InvalidArgs("生图模型未启用,或 API key 不可用".to_string()));
         }
         Ok(())
     }
@@ -166,13 +166,13 @@ impl ImageGenerationExecutor {
     async fn request_image(
         args: &ImageGenerationArgs,
         model: &ImageGenerationModel,
-    ) -> Result<GeneratedImageBytes, String> {
+    ) -> ToolResult<GeneratedImageBytes> {
         let (_, _, size) = image_size_for_config(Some(&model.config), &args.aspect_ratio);
         let endpoint = build_image_generation_url(&model.config.base_url)?;
         let client = reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(TOOL_TIMEOUT_SECS))
             .build()
-            .map_err(|e| format!("创建生图 HTTP 客户端失败: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("创建生图 HTTP 客户端失败: {}", e)))?;
 
         let payload = json!({
             "model": model.config.model,
@@ -186,7 +186,7 @@ impl ImageGenerationExecutor {
         headers.insert(
             AUTHORIZATION,
             HeaderValue::from_str(&format!("Bearer {}", model.config.api_key.trim()))
-                .map_err(|e| format!("API key 头部格式无效: {}", e))?,
+                .map_err(|e| ToolError::Execution(format!("API key 头部格式无效: {}", e)))?,
         );
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
         if let Some(extra_headers) = &model.config.headers {
@@ -220,18 +220,18 @@ impl ImageGenerationExecutor {
             .json(&payload)
             .send()
             .await
-            .map_err(|e| format!("生图请求失败: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("生图请求失败: {}", e)))?;
         let status = response.status();
         let body = response
             .text()
             .await
-            .map_err(|e| format!("读取生图响应失败: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("读取生图响应失败: {}", e)))?;
         let value: Value = serde_json::from_str(&body)
-            .map_err(|e| format!("生图响应不是有效 JSON: {}，body={}", e, shorten(&body, 280)))?;
+            .map_err(|e| ToolError::Execution(format!("生图响应不是有效 JSON: {},body={}", e, shorten(&body, 280))))?;
 
         if !status.is_success() {
-            return Err(extract_image_api_error(&value)
-                .unwrap_or_else(|| format!("生图接口返回 HTTP {}", status)));
+            return Err(ToolError::Execution(extract_image_api_error(&value)
+                .unwrap_or_else(|| format!("生图接口返回 HTTP {}", status))));
         }
 
         let parsed = parse_image_generation_response(&value)?;
@@ -249,7 +249,7 @@ impl ImageGenerationExecutor {
 
         let url = parsed
             .url
-            .ok_or_else(|| "生图响应没有 b64_json 或 url".to_string())?;
+            .ok_or_else(|| ToolError::Execution("生图响应没有 b64_json 或 url".to_string()))?;
         let downloaded = download_image_url(&client, &url, parsed.revised_prompt).await?;
         Ok(downloaded)
     }
@@ -311,11 +311,11 @@ impl ImageGenerationExecutor {
         generated: &GeneratedImageBytes,
         width: u32,
         height: u32,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let vfs_db = ctx
             .vfs_db
             .as_ref()
-            .ok_or_else(|| "VFS 数据库不可用，无法保存生成图片".to_string())?;
+            .ok_or_else(|| ToolError::Internal("VFS 数据库不可用,无法保存生成图片".to_string()))?;
         let folder_id = ensure_image_generation_folder(vfs_db)?;
         let file_name = build_image_file_name(&generated.mime_type);
 
@@ -329,7 +329,7 @@ impl ImageGenerationExecutor {
             },
             Some(&folder_id),
         )
-        .map_err(|e| format!("保存生成图片到 VFS 失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("保存生成图片到 VFS 失败: {}", e)))?;
 
         let created_at = Utc::now().to_rfc3339();
         let ref_data = json!({
@@ -369,12 +369,12 @@ impl ImageGenerationExecutor {
             vfs_db,
             VfsResourceType::Image,
             &serde_json::to_string(&ref_data)
-                .map_err(|e| format!("序列化图片上下文引用失败: {}", e))?,
+                .map_err(|e| ToolError::Execution(format!("序列化图片上下文引用失败: {}", e)))?,
             Some(&upload_result.source_id),
             None,
             Some(&metadata),
         )
-        .map_err(|e| format!("创建生成图片上下文引用失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("创建生成图片上下文引用失败: {}", e)))?;
 
         Ok(json!({
             "imageUrl": format!("data:{};base64,{}", generated.mime_type, generated.b64),
@@ -416,18 +416,18 @@ impl ToolExecutor for ImageGenerationExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let args = match Self::parse_args(&call.arguments) {
             Ok(args) => args,
             Err(error) => {
-                Self::emit_error(ctx, &error);
+                Self::emit_error(ctx, &error.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    error,
+                    error.to_string(),
                     start_time.elapsed().as_millis() as u64,
                 );
                 let _ = ctx.save_tool_block(&result);
@@ -439,13 +439,13 @@ impl ToolExecutor for ImageGenerationExecutor {
             Ok(model) => model,
             Err(error) => {
                 Self::emit_start(ctx, &args, "", None);
-                Self::emit_error(ctx, &error);
+                Self::emit_error(ctx, &error.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    error,
+                    error.to_string(),
                     start_time.elapsed().as_millis() as u64,
                 );
                 let _ = ctx.save_tool_block(&result);
@@ -474,26 +474,26 @@ impl ToolExecutor for ImageGenerationExecutor {
                         )
                     }
                     Err(error) => {
-                        Self::emit_error(ctx, &error);
+                        Self::emit_error(ctx, &error.to_string());
                         ToolResultInfo::failure(
                             Some(call.id.clone()),
                             Some(ctx.block_id.clone()),
                             call.name.clone(),
                             call.arguments.clone(),
-                            error,
+                            error.to_string(),
                             start_time.elapsed().as_millis() as u64,
                         )
                     }
                 }
             }
             Err(error) => {
-                Self::emit_error(ctx, &error);
+                Self::emit_error(ctx, &error.to_string());
                 ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    error,
+                    error.to_string(),
                     start_time.elapsed().as_millis() as u64,
                 )
             }
@@ -541,12 +541,12 @@ fn image_size_for_config(config: Option<&ApiConfig>, aspect_ratio: &str) -> (u32
     image_size_for_aspect_ratio(aspect_ratio)
 }
 
-fn build_image_generation_url(base_url: &str) -> Result<String, String> {
+fn build_image_generation_url(base_url: &str) -> ToolResult<String> {
     let trimmed = base_url.trim().trim_end_matches('/');
     if trimmed.is_empty() {
-        return Err("Base URL 为空".to_string());
+        return Err(ToolError::InvalidArgs("Base URL 为空".to_string()));
     }
-    reqwest::Url::parse(trimmed).map_err(|e| format!("Base URL 无效: {}", e))?;
+    reqwest::Url::parse(trimmed).map_err(|e| ToolError::InvalidArgs(format!("Base URL 无效: {}", e)))?;
     if trimmed.ends_with("/images/generations") {
         Ok(trimmed.to_string())
     } else {
@@ -554,16 +554,16 @@ fn build_image_generation_url(base_url: &str) -> Result<String, String> {
     }
 }
 
-fn parse_image_generation_response(value: &Value) -> Result<ParsedImageGenerationResponse, String> {
+fn parse_image_generation_response(value: &Value) -> ToolResult<ParsedImageGenerationResponse> {
     if let Some(message) = extract_image_api_error(value) {
-        return Err(message);
+        return Err(ToolError::Execution(message));
     }
 
     let first = value
         .get("data")
         .and_then(Value::as_array)
         .and_then(|items| items.first())
-        .ok_or_else(|| "生图响应缺少 data[0]".to_string())?;
+        .ok_or_else(|| ToolError::Execution("生图响应缺少 data[0]".to_string()))?;
 
     let parsed = ParsedImageGenerationResponse {
         b64_json: first
@@ -585,7 +585,7 @@ fn parse_image_generation_response(value: &Value) -> Result<ParsedImageGeneratio
     };
 
     if parsed.b64_json.is_none() && parsed.url.is_none() {
-        return Err("生图响应缺少 b64_json 或 url".to_string());
+        return Err(ToolError::Execution("生图响应缺少 b64_json 或 url".to_string()));
     }
 
     Ok(parsed)
@@ -612,20 +612,20 @@ async fn download_image_url(
     client: &reqwest::Client,
     url: &str,
     revised_prompt: Option<String>,
-) -> Result<GeneratedImageBytes, String> {
-    let parsed = reqwest::Url::parse(url).map_err(|e| format!("生图 URL 无效: {}", e))?;
+) -> ToolResult<GeneratedImageBytes> {
+    let parsed = reqwest::Url::parse(url).map_err(|e| ToolError::InvalidArgs(format!("生图 URL 无效: {}", e)))?;
     if parsed.scheme() != "http" && parsed.scheme() != "https" {
-        return Err("生图 URL 只支持 http/https".to_string());
+        return Err(ToolError::InvalidArgs("生图 URL 只支持 http/https".to_string()));
     }
 
     let response = client
         .get(parsed)
         .send()
         .await
-        .map_err(|e| format!("下载生成图片失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("下载生成图片失败: {}", e)))?;
     let status = response.status();
     if !status.is_success() {
-        return Err(format!("下载生成图片返回 HTTP {}", status));
+        return Err(ToolError::Execution(format!("下载生成图片返回 HTTP {}", status)));
     }
     let content_type = response
         .headers()
@@ -637,7 +637,7 @@ async fn download_image_url(
     let bytes = response
         .bytes()
         .await
-        .map_err(|e| format!("读取生成图片 bytes 失败: {}", e))?
+        .map_err(|e| ToolError::Execution(format!("读取生成图片 bytes 失败: {}", e)))?
         .to_vec();
     let mime_type = content_type
         .or_else(|| infer_image_mime_type(&bytes))
@@ -652,7 +652,7 @@ async fn download_image_url(
     })
 }
 
-fn decode_base64_image_payload(payload: &str) -> Result<Vec<u8>, String> {
+fn decode_base64_image_payload(payload: &str) -> ToolResult<Vec<u8>> {
     let data = payload
         .split_once(',')
         .filter(|(prefix, _)| prefix.starts_with("data:"))
@@ -661,7 +661,7 @@ fn decode_base64_image_payload(payload: &str) -> Result<Vec<u8>, String> {
         .trim();
     STANDARD
         .decode(data)
-        .map_err(|e| format!("解析生图 base64 失败: {}", e))
+        .map_err(|e| ToolError::Execution(format!("解析生图 base64 失败: {}", e)))
 }
 
 fn infer_image_mime_type(bytes: &[u8]) -> Option<String> {
@@ -685,10 +685,10 @@ fn image_dimensions(bytes: &[u8]) -> Option<(u32, u32)> {
 
 fn ensure_image_generation_folder(
     vfs_db: &crate::vfs::database::VfsDatabase,
-) -> Result<String, String> {
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+) -> ToolResult<String> {
+    let conn = vfs_db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
     if let Some(folder) = VfsFolderRepo::list_folders_by_parent_with_conn(&conn, None)
-        .map_err(|e| e.to_string())?
+        .map_err(|e| ToolError::Execution(e.to_string()))?
         .into_iter()
         .find(|folder| folder.title == DEFAULT_FOLDER_TITLE)
     {
@@ -701,7 +701,7 @@ fn ensure_image_generation_folder(
         Some("image".to_string()),
         Some("blue".to_string()),
     );
-    VfsFolderRepo::create_folder_with_conn(&conn, &folder).map_err(|e| e.to_string())?;
+    VfsFolderRepo::create_folder_with_conn(&conn, &folder).map_err(|e| ToolError::Execution(e.to_string()))?;
     Ok(folder.id)
 }
 

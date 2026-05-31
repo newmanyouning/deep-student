@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
+import { settingsApi } from '@/api/settingsApi';
 
 // 系统设置接口
 export interface SystemSettings {
@@ -106,7 +107,7 @@ export const useSystemSettings = () => {
     setSaving(true);
     try {
       if (invoke) {
-        await invoke('save_setting', { key: key as string, value: String(value) });
+        await settingsApi.save(key as string, String(value) );
         if (key === 'theme') {
           try {
             localStorage.setItem('dstu-theme-mode', String(value));

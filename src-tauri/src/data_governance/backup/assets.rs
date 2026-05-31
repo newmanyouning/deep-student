@@ -851,7 +851,7 @@ pub fn restore_assets(
             fs::create_dir_all(parent)?;
         }
 
-        // 复制文件（失败即终止，避免“恢复成功但资源缺失”）
+        // 复制文件（失败即终止，避免"恢复成功但资源缺失"）
         copy_file_with_retry(&src_path, &dest_path)?;
         restored_count += 1;
         debug!("恢复文件: {:?} -> {:?}", src_path, dest_path);

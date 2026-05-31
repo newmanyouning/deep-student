@@ -46,7 +46,7 @@ const SCHEMA_FINGERPRINT_TABLE: &str = "__governance_schema_fingerprints";
 const CORE_BACKUP_ROOT_DIR_NAME: &str = "migration_core_backups";
 const CORE_BACKUP_RETENTION_COUNT: usize = 5;
 
-// 同一进程（一次应用启动）中，针对同一数据目录只做一次“迁移前核心库备份”
+// 同一进程（一次应用启动）中，针对同一数据目录只做一次"迁移前核心库备份"
 static STARTUP_CORE_BACKUP_GUARD: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
 
 /// 迁移协调器
@@ -860,7 +860,7 @@ impl MigrationCoordinator {
                 // 获取初始迁移的信息
                 let migration_set = self.get_migration_set(id);
                 if let Some(first_migration) = migration_set.migrations.first() {
-                    // baseline 仅在首迁移契约满足时写入，避免“先记账后修复”的漂移
+                    // baseline 仅在首迁移契约满足时写入，避免"先记账后修复"的漂移
                     match MigrationVerifier::verify(conn, first_migration) {
                         Ok(()) => {
                             let now = chrono::Utc::now().to_rfc3339();
@@ -2457,7 +2457,7 @@ impl MigrationCoordinator {
         conn: &rusqlite::Connection,
     ) -> Result<(), MigrationError> {
         // 旧库可能只保留了部分列；init.sql 在后半段会创建索引/触发器。
-        // 先补齐“被索引/触发器引用”的关键列，避免回放 init 时因缺列失败。
+        // 先补齐"被索引/触发器引用"的关键列，避免回放 init 时因缺列失败。
         let index_and_trigger_columns: &[(&str, &str, &str)] = &[
             ("mistakes", "irec_card_id", "TEXT"),
             ("mistakes", "updated_at", "TEXT"),
@@ -2864,7 +2864,7 @@ impl MigrationCoordinator {
 
     /// 验证并记录 schema fingerprint。
     ///
-    /// 同版本下 fingerprint 不一致说明发生了“记录-事实”漂移，直接 fail-close。
+    /// 同版本下 fingerprint 不一致说明发生了"记录-事实"漂移，直接 fail-close。
     fn verify_schema_fingerprint(
         &self,
         conn: &rusqlite::Connection,

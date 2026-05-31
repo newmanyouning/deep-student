@@ -3,12 +3,15 @@ pub mod auto_extractor;
 pub mod category_manager;
 pub mod compressor;
 pub mod config;
+pub mod error;
 pub mod evolution;
 pub mod handlers;
 pub mod llm_decision;
 pub mod query_rewriter;
 pub mod reranker;
 pub mod service;
+
+pub use error::{MemoryError, MemoryResult};
 
 pub use audit_log::{MemoryAuditLogItem, MemoryAuditLogger, MemoryOpSource, MemoryOpType, OpTimer};
 pub use auto_extractor::MemoryAutoExtractor;

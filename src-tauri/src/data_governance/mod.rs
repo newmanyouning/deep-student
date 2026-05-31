@@ -123,12 +123,102 @@ pub enum DataGovernanceError {
     NotImplemented(String),
 }
 
+impl serde::Serialize for DataGovernanceError {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeStruct;
+        let mut s = serializer.serialize_struct("DataGovernanceError", 2)?;
+        let code = match self {
+            DataGovernanceError::Migration(_) => "MIGRATION_ERROR",
+            DataGovernanceError::SchemaRegistry(_) => "SCHEMA_REGISTRY_ERROR",
+            DataGovernanceError::Backup(_) => "BACKUP_ERROR",
+            DataGovernanceError::Sync(_) => "SYNC_ERROR",
+            DataGovernanceError::NotImplemented(_) => "NOT_IMPLEMENTED",
+        };
+        s.serialize_field("code", code)?;
+        s.serialize_field("message", &self.to_string())?;
+        s.end()
+    }
+}
+
 /// 数据治理系统结果类型
 pub type DataGovernanceResult<T> = Result<T, DataGovernanceError>;
 
+impl From<String> for DataGovernanceError {
+    fn from(s: String) -> Self {
+        DataGovernanceError::Backup(s)
+    }
+}
+
+impl From<anyhow::Error> for DataGovernanceError {
+    fn from(e: anyhow::Error) -> Self {
+        DataGovernanceError::Backup(format!("{:#}", e))
+    }
+}
+
+impl From<rusqlite::Error> for DataGovernanceError {
+    fn from(e: rusqlite::Error) -> Self {
+        DataGovernanceError::Backup(format!("{:#}", e))
+    }
+}
+
+impl From<std::io::Error> for DataGovernanceError {
+    fn from(e: std::io::Error) -> Self {
+        DataGovernanceError::Backup(e.to_string())
+    }
+}
+
+impl From<serde_json::Error> for DataGovernanceError {
+    fn from(e: serde_json::Error) -> Self {
+        DataGovernanceError::Backup(e.to_string())
+    }
+}
+
+impl From<crate::vfs::error::VfsError> for DataGovernanceError {
+    fn from(e: crate::vfs::error::VfsError) -> Self {
+        DataGovernanceError::Backup(e.to_string())
+    }
+}
+
+impl From<tokio::sync::AcquireError> for DataGovernanceError {
+    fn from(e: tokio::sync::AcquireError) -> Self {
+        DataGovernanceError::Backup(format!("Global limiter acquire failed: {}", e))
+    }
+}
+
+impl From<backup::BackupError> for DataGovernanceError {
+    fn from(e: backup::BackupError) -> Self {
+        DataGovernanceError::Backup(e.to_string())
+    }
+}
+
+impl From<sync::SyncError> for DataGovernanceError {
+    fn from(e: sync::SyncError) -> Self {
+        DataGovernanceError::Sync(e.to_string())
+    }
+}
+
+impl From<&DataGovernanceError> for String {
+    fn from(e: &DataGovernanceError) -> Self {
+        e.to_string()
+    }
+}
+
+impl From<DataGovernanceError> for String {
+    fn from(e: DataGovernanceError) -> Self {
+        let code = match &e {
+            DataGovernanceError::Migration(_) => "MIGRATION_ERROR",
+            DataGovernanceError::SchemaRegistry(_) => "SCHEMA_REGISTRY_ERROR",
+            DataGovernanceError::Backup(_) => "BACKUP_ERROR",
+            DataGovernanceError::Sync(_) => "SYNC_ERROR",
+            DataGovernanceError::NotImplemented(_) => "NOT_IMPLEMENTED",
+        };
+        serde_json::json!({ "code": code, "message": e.to_string() }).to_string()
+    }
+}
+
 /// 启动期数据治理初始化失败时，判断是否应强制进入维护模式。
 ///
-/// Schema fingerprint drift 说明“当前物理 schema 与已记录基线不一致”，
+/// Schema fingerprint drift 说明"当前物理 schema 与已记录基线不一致"，
 /// 但在已完成迁移且运行时可降级的情况下，不应阻断整站启动。
 pub fn should_force_maintenance_mode_on_init_failure(err: &DataGovernanceError) -> bool {
     match err {

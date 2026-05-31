@@ -126,6 +126,7 @@ import { DataGovernanceDashboard } from './DataGovernanceDashboard';
 import { invoke as tauriInvoke } from '@tauri-apps/api/core';
 import { listen as tauriListen } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { settingsApi } from '@/api/settingsApi';
 // ★ 2025-01-03: userPreferenceProfile 已删除，由新的 User Memory 系统替代
 // ★ 2026-01-15: 导师模式已迁移到 Skills 系统，不再需要自定义 prompt
 
@@ -529,7 +530,7 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
       payloadValue = String(timeoutMs);
     }
     try {
-      await invoke('save_setting', { key: 'chat.stream.timeout_ms', value: payloadValue });
+      await settingsApi.save('chat.stream.timeout_ms', payloadValue );
       showGlobalNotification('success', t('common:settings.chat_stream.save_success_timeout'));
       const savedValue = raw ? String(Math.round(Number(raw))) : '';
       setExtra(prev => ({
@@ -556,7 +557,7 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
       return;
     }
     try {
-      await invoke('save_setting', { key: 'chat.stream.auto_cancel_on_timeout', value: checked ? '1' : '0' });
+      await settingsApi.save('chat.stream.auto_cancel_on_timeout', checked ? '1' : '0' );
       showGlobalNotification('success', t('common:settings.chat_stream.save_success_auto_cancel'));
       emitChatStreamSettingsUpdate({ autoCancel: checked });
     } catch (error) {
@@ -574,12 +575,12 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
       try {
         // 并行加载所有参数调整相关设置
         const [ftsVal, rrfk, wfts, wvec, rawTimeout, rawAutoCancel] = await Promise.all([
-          invoke<string | null>('get_setting', { key: 'search.chat.semantic.fts_prefilter.enabled' }).catch(() => null),
-          invoke<string | null>('get_setting', { key: 'search.chat.rrf.k' }).catch(() => null),
-          invoke<string | null>('get_setting', { key: 'search.chat.rrf.w_fts' }).catch(() => null),
-          invoke<string | null>('get_setting', { key: 'search.chat.rrf.w_vec' }).catch(() => null),
-          invoke<string | null>('get_setting', { key: 'chat.stream.timeout_ms' }).catch(() => null),
-          invoke<string | null>('get_setting', { key: 'chat.stream.auto_cancel_on_timeout' }).catch(() => null),
+          settingsApi.get('search.chat.semantic.fts_prefilter.enabled' ).catch(() => null),
+          settingsApi.get('search.chat.rrf.k' ).catch(() => null),
+          settingsApi.get('search.chat.rrf.w_fts' ).catch(() => null),
+          settingsApi.get('search.chat.rrf.w_vec' ).catch(() => null),
+          settingsApi.get('chat.stream.timeout_ms' ).catch(() => null),
+          settingsApi.get('chat.stream.auto_cancel_on_timeout' ).catch(() => null),
         ]);
 
         const ftsEnabled = ftsVal ? (ftsVal === '1' || ftsVal.toLowerCase() === 'true') : true;
@@ -1385,13 +1386,13 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
                     try {
                       if (invoke) {
                         await Promise.all([
-                          invoke('save_setting', { key: 'mcp.tools.advertise_all_tools', value: mcpPolicyModal.advertiseAll.toString() }),
-                          invoke('save_setting', { key: 'mcp.tools.whitelist', value: mcpPolicyModal.whitelist }),
-                          invoke('save_setting', { key: 'mcp.tools.blacklist', value: mcpPolicyModal.blacklist }),
-                          invoke('save_setting', { key: 'mcp.performance.timeout_ms', value: String(mcpPolicyModal.timeoutMs) }),
-                          invoke('save_setting', { key: 'mcp.performance.rate_limit_per_second', value: String(mcpPolicyModal.rateLimit) }),
-                          invoke('save_setting', { key: 'mcp.performance.cache_max_size', value: String(mcpPolicyModal.cacheMax) }),
-                          invoke('save_setting', { key: 'mcp.performance.cache_ttl_ms', value: String(mcpPolicyModal.cacheTtlMs) }),
+                          settingsApi.save('mcp.tools.advertise_all_tools', mcpPolicyModal.advertiseAll.toString() ),
+                          settingsApi.save('mcp.tools.whitelist', mcpPolicyModal.whitelist ),
+                          settingsApi.save('mcp.tools.blacklist', mcpPolicyModal.blacklist ),
+                          settingsApi.save('mcp.performance.timeout_ms', String(mcpPolicyModal.timeoutMs) ),
+                          settingsApi.save('mcp.performance.rate_limit_per_second', String(mcpPolicyModal.rateLimit) ),
+                          settingsApi.save('mcp.performance.cache_max_size', String(mcpPolicyModal.cacheMax) ),
+                          settingsApi.save('mcp.performance.cache_ttl_ms', String(mcpPolicyModal.cacheTtlMs) ),
                         ]);
                       }
                     } catch (err) {

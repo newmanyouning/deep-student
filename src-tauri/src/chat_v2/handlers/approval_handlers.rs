@@ -11,6 +11,7 @@ use tauri::{State, Window};
 
 use crate::chat_v2::approval_manager::{ApprovalManager, ApprovalResponse};
 use crate::chat_v2::approval_scope;
+use crate::chat_v2::error::{ChatV2Error, ChatV2Result};
 use crate::chat_v2::events::{event_types, ChatV2EventEmitter};
 // 🔧 P1-51: 引入数据库用于持久化审批选择
 use crate::database::Database;
@@ -47,7 +48,7 @@ pub async fn chat_v2_tool_approval_respond(
     reason: Option<String>,
     remember: bool,
     arguments: Option<Value>,
-) -> Result<(), String> {
+) -> ChatV2Result<()> {
     log::info!(
         "[ChatV2::approval] Received approval response: session={}, tool_call_id={}, tool_name={}, approved={}, remember={}",
         session_id,
@@ -82,7 +83,7 @@ pub async fn chat_v2_tool_approval_respond(
             "approval_expired",
             None,
         );
-        return Err("approval_expired".to_string());
+        return Err(ChatV2Error::Other("approval_expired".to_string()));
     }
 
     // 🔧 P1-51: 如果用户选择"记住选择"，持久化到数据库
@@ -121,7 +122,7 @@ pub async fn chat_v2_tool_approval_respond(
 pub async fn chat_v2_tool_approval_cancel(
     approval_manager: State<'_, Arc<ApprovalManager>>,
     tool_call_id: String,
-) -> Result<(), String> {
+) -> ChatV2Result<()> {
     log::info!(
         "[ChatV2::approval] Cancelling approval request: tool_call_id={}",
         tool_call_id
@@ -146,7 +147,7 @@ pub async fn chat_v2_tool_approval_cancel(
 pub async fn chat_v2_clear_approval_history(
     approval_manager: State<'_, Arc<ApprovalManager>>,
     db: State<'_, Arc<Database>>,
-) -> Result<usize, String> {
+) -> ChatV2Result<usize> {
     // 1. 清内存
     approval_manager.clear_all_remembered();
 
@@ -159,7 +160,7 @@ pub async fn chat_v2_clear_approval_history(
                 "[ChatV2::approval] clear_approval_history: delete DB entries failed: {}",
                 e
             );
-            format!("{}", e)
+            ChatV2Error::Other(format!("{}", e))
         })?;
 
     log::info!(

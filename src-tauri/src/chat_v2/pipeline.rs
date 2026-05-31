@@ -86,18 +86,14 @@ pub mod token_resources;
 pub mod tool_loop;
 pub mod variant_adapter;
 
-pub use compaction::*;
+pub use compaction::{
+    apply_compaction_view, estimate_json_tokens, should_compact, should_compact_after_tool,
+    usable_tokens, COMPACTION_BUFFER, DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_OUTPUT, HEAD_USER_TURNS,
+    MAX_TAIL_TOKENS, MIN_TAIL_TOKENS, TAIL_PRESERVE_RATIO, TRIGGER_RATIO,
+};
 pub use constants::*;
 pub use helpers::*;
-pub use history::*;
-pub use llm_adapter::*;
-pub use multi_variant::*;
-pub use persistence::*;
-pub use prompt::*;
-pub use retrieval::*;
-pub use summary::*;
-pub use token_resources::*;
-pub use tool_loop::*;
+pub use llm_adapter::{parse_api_usage, ChatV2LLMAdapter};
 pub use variant_adapter::*;
 
 // ============================================================

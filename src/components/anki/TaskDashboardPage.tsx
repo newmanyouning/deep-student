@@ -345,7 +345,7 @@ const SessionRow: React.FC<{
     try {
       // 并行加载卡片和模板，一次性设置状态避免两阶段渲染闪烁
       const [loadedCards, allTemplates] = await Promise.all([
-        invoke<AnkiCard[]>('get_document_cards', { documentId: session.documentId }),
+        invoke<AnkiCard[]>('enhanced_anki_get_document_cards', { documentId: session.documentId }),
         invoke<CustomAnkiTemplate[]>('get_all_custom_templates').catch(err => {
           debugLog.error('[TaskDashboard] loadTemplates failed:', err);
           return [] as CustomAnkiTemplate[];
@@ -399,15 +399,15 @@ const SessionRow: React.FC<{
     setBusy(action);
     try {
       if (action === 'pause') {
-        await invoke('pause_document_processing', { documentId: session.documentId });
+        await invoke('enhanced_anki_pause_document_processing', { documentId: session.documentId });
         showGlobalNotification('success', t('taskDashboard.paused'));
       } else if (action === 'resume') {
-        await invoke('resume_document_processing', { documentId: session.documentId });
+        await invoke('enhanced_anki_resume_document_processing', { documentId: session.documentId });
         showGlobalNotification('success', t('taskDashboard.resumed'));
       } else if (action === 'retryFailed') {
         // [S2] 真正重试失败任务：获取文档所有 task → 筛选失败的 → 并行 trigger
         const tasks = await invoke<{ id: string; status: string }[]>(
-          'get_document_tasks',
+          'enhanced_anki_get_document_tasks',
           { documentId: session.documentId },
         );
         const failedTasks = tasks.filter(
@@ -418,7 +418,7 @@ const SessionRow: React.FC<{
         } else {
           // [M1] 使用 allSettled 避免部分失败中断其余任务
           const results = await Promise.allSettled(
-            failedTasks.map(ft => invoke('trigger_task_processing', { task_id: ft.id })),
+            failedTasks.map(ft => invoke('enhanced_anki_trigger_task_processing', { task_id: ft.id })),
           );
           const succeeded = results.filter(r => r.status === 'fulfilled').length;
           const failed = results.length - succeeded;
@@ -429,7 +429,7 @@ const SessionRow: React.FC<{
           }
         }
       } else if (action === 'delete') {
-        await invoke('delete_document_session', { documentId: session.documentId });
+        await invoke('enhanced_anki_delete_document_session', { documentId: session.documentId });
         showGlobalNotification('success', t('taskDashboard.deleted'));
       }
       onRefresh();
@@ -467,7 +467,7 @@ const SessionRow: React.FC<{
           { documentId: session.documentId },
         ).catch(() => []),
         invoke<AnkiCard[]>(
-          'get_document_cards',
+          'enhanced_anki_get_document_cards',
           { documentId: session.documentId },
         ),
       ]);
@@ -849,8 +849,8 @@ export const TaskDashboardPage: React.FC<TaskDashboardPageProps> = ({
   const load = useCallback(async () => {
     try {
       const [s, st] = await Promise.all([
-        invoke<DocumentSession[]>('list_document_sessions', { limit: DASHBOARD_SESSION_LIMIT }),
-        invoke<AnkiStats>('get_anki_stats'),
+        invoke<DocumentSession[]>('enhanced_anki_list_document_sessions', { limit: DASHBOARD_SESSION_LIMIT }),
+        invoke<AnkiStats>('enhanced_anki_get_stats'),
       ]);
       setSessions(s);
       setStats(st);
@@ -902,7 +902,7 @@ export const TaskDashboardPage: React.FC<TaskDashboardPageProps> = ({
   const handleRecover = useCallback(async () => {
     setRecovering(true);
     try {
-      const count = await invoke<number>('recover_stuck_document_tasks');
+      const count = await invoke<number>('enhanced_anki_recover_stuck_tasks');
       if (count > 0) {
         showGlobalNotification('success', t('taskDashboard.recoveredCount', { count }));
         load();

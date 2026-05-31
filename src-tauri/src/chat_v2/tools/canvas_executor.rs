@@ -31,7 +31,7 @@ use tauri::Emitter;
 use tokio::sync::oneshot;
 
 use super::canvas_tool_names;
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::{is_canvas_tool, strip_canvas_builtin_prefix};
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -194,11 +194,11 @@ impl CanvasToolExecutor {
         ctx: &ExecutionContext,
         note_id: &str,
         args: &serde_json::Map<String, serde_json::Value>,
-    ) -> Result<serde_json::Value, String> {
+    ) -> ToolResult<serde_json::Value> {
         let notes_manager = ctx
             .notes_manager
             .as_ref()
-            .ok_or_else(|| "Canvas 工具不可用：NotesManager 未初始化".to_string())?
+            .ok_or_else(|| ToolError::Execution("Canvas 工具不可用：NotesManager 未初始化".to_string()))?
             .clone();
 
         let note_id_owned = note_id.to_string();
@@ -215,11 +215,11 @@ impl CanvasToolExecutor {
                     "wordCount": content.chars().count(),
                     "isSection": section.is_some(),
                 })),
-                Err(e) => Err(e.to_string()),
+                Err(e) => Err(ToolError::Execution(e.to_string())),
             }
         })
         .await
-        .map_err(|e| format!("读取笔记失败: {}", e))?
+        .map_err(|e| ToolError::Execution(format!("读取笔记失败: {}", e)))?
     }
 
     async fn execute_list(
@@ -227,11 +227,11 @@ impl CanvasToolExecutor {
         _call: &ToolCall,
         ctx: &ExecutionContext,
         args: &serde_json::Map<String, serde_json::Value>,
-    ) -> Result<serde_json::Value, String> {
+    ) -> ToolResult<serde_json::Value> {
         let notes_manager = ctx
             .notes_manager
             .as_ref()
-            .ok_or_else(|| "Canvas 工具不可用：NotesManager 未初始化".to_string())?
+            .ok_or_else(|| ToolError::Execution("Canvas 工具不可用：NotesManager 未初始化".to_string()))?
             .clone();
 
         let limit = args
@@ -268,7 +268,7 @@ impl CanvasToolExecutor {
                         Some(fid.as_str())
                     };
                     let notes = VfsNoteRepo::list_notes_by_folder(db, folder_arg, limit as u32, 0)
-                        .map_err(|e| format!("列出笔记失败: {}", e))?;
+                        .map_err(|e| ToolError::Execution(format!("列出笔记失败: {}", e)))?;
                     notes
                         .into_iter()
                         .filter(|n| {
@@ -296,7 +296,7 @@ impl CanvasToolExecutor {
                 } else {
                     let notes = notes_manager
                         .list_notes_meta()
-                        .map_err(|e| format!("列出笔记失败: {}", e))?;
+                        .map_err(|e| ToolError::Execution(format!("列出笔记失败: {}", e)))?;
                     notes
                         .into_iter()
                         .filter(|n| {
@@ -330,7 +330,7 @@ impl CanvasToolExecutor {
             }))
         })
         .await
-        .map_err(|e| format!("列出笔记失败: {}", e))?
+        .map_err(|e| ToolError::Execution(format!("列出笔记失败: {}", e)))?
     }
 
     async fn execute_search(
@@ -338,21 +338,21 @@ impl CanvasToolExecutor {
         _call: &ToolCall,
         ctx: &ExecutionContext,
         args: &serde_json::Map<String, serde_json::Value>,
-    ) -> Result<serde_json::Value, String> {
+    ) -> ToolResult<serde_json::Value> {
         let notes_manager = ctx
             .notes_manager
             .as_ref()
-            .ok_or_else(|| "Canvas 工具不可用：NotesManager 未初始化".to_string())?
+            .ok_or_else(|| ToolError::Execution("Canvas 工具不可用：NotesManager 未初始化".to_string()))?
             .clone();
 
         let query = args
             .get("query")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| "缺少必需参数: query".to_string())?
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: query".to_string()))?
             .to_string();
 
         if query.trim().is_empty() {
-            return Err("搜索关键词不能为空".to_string());
+            return Err(ToolError::InvalidArgs("搜索关键词不能为空".to_string()));
         }
 
         let limit = args
@@ -365,7 +365,7 @@ impl CanvasToolExecutor {
             #[cfg(feature = "lance")]
             let results = notes_manager
                 .search_notes_lance(&query, limit)
-                .map_err(|e| format!("搜索笔记失败: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("搜索笔记失败: {}", e)))?;
 
             #[cfg(not(feature = "lance"))]
             return Ok(json!({
@@ -392,7 +392,7 @@ impl CanvasToolExecutor {
             }))
         })
         .await
-        .map_err(|e| format!("搜索笔记失败: {}", e))?
+        .map_err(|e| ToolError::Execution(format!("搜索笔记失败: {}", e)))?
     }
 
     /// 执行创建笔记操作（后端直接执行，不依赖前端）
@@ -401,23 +401,23 @@ impl CanvasToolExecutor {
         _call: &ToolCall,
         ctx: &ExecutionContext,
         args: &serde_json::Map<String, serde_json::Value>,
-    ) -> Result<serde_json::Value, String> {
+    ) -> ToolResult<serde_json::Value> {
         // 获取 VFS 数据库
         let vfs_db = ctx
             .vfs_db
             .as_ref()
-            .ok_or_else(|| "Canvas 工具不可用：VFS 数据库未初始化".to_string())?
+            .ok_or_else(|| ToolError::Execution("Canvas 工具不可用：VFS 数据库未初始化".to_string()))?
             .clone();
 
         // 解析参数
         let title = args
             .get("title")
             .and_then(|v| v.as_str())
-            .ok_or_else(|| "缺少必需参数: title".to_string())?
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: title".to_string()))?
             .to_string();
 
         if title.trim().is_empty() {
-            return Err("笔记标题不能为空".to_string());
+            return Err(ToolError::InvalidArgs("笔记标题不能为空".to_string()));
         }
 
         let content = args
@@ -456,11 +456,11 @@ impl CanvasToolExecutor {
                         "success": true,
                     }))
                 }
-                Err(e) => Err(format!("创建笔记失败: {}", e)),
+                Err(e) => Err(ToolError::Execution(format!("创建笔记失败: {}", e))),
             }
         })
         .await
-        .map_err(|e| format!("创建笔记任务失败: {}", e))?
+        .map_err(|e| ToolError::Execution(format!("创建笔记任务失败: {}", e)))?
     }
 
     /// 执行写入操作（后端直接执行，不依赖前端编辑器）
@@ -474,11 +474,11 @@ impl CanvasToolExecutor {
         ctx: &ExecutionContext,
         note_id: &str,
         args: &serde_json::Map<String, serde_json::Value>,
-    ) -> Result<serde_json::Value, String> {
+    ) -> ToolResult<serde_json::Value> {
         let notes_manager = ctx
             .notes_manager
             .as_ref()
-            .ok_or_else(|| "Canvas 工具不可用：NotesManager 未初始化".to_string())?
+            .ok_or_else(|| ToolError::Execution("Canvas 工具不可用：NotesManager 未初始化".to_string()))?
             .clone();
 
         let note_id_owned = note_id.to_string();
@@ -492,7 +492,7 @@ impl CanvasToolExecutor {
                     let content = args_clone
                         .get("content")
                         .and_then(|v| v.as_str())
-                        .ok_or_else(|| "缺少必需参数: content".to_string())?;
+                        .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: content".to_string()))?;
                     let section = args_clone.get("section").and_then(|v| v.as_str());
 
                     // 读取操作前内容
@@ -503,7 +503,7 @@ impl CanvasToolExecutor {
                     // 执行追加
                     notes_manager
                         .canvas_append_content(&note_id_owned, content, section)
-                        .map_err(|e| format!("追加内容失败: {}", e))?;
+                        .map_err(|e| ToolError::Execution(format!("追加内容失败: {}", e)))?;
 
                     // 读取操作后内容
                     let after_content = notes_manager
@@ -527,7 +527,7 @@ impl CanvasToolExecutor {
                     let content = args_clone
                         .get("content")
                         .and_then(|v| v.as_str())
-                        .ok_or_else(|| "缺少必需参数: content".to_string())?;
+                        .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: content".to_string()))?;
 
                     // 读取操作前内容
                     let before_content = notes_manager
@@ -537,7 +537,7 @@ impl CanvasToolExecutor {
                     // 执行设置
                     notes_manager
                         .canvas_set_content(&note_id_owned, content)
-                        .map_err(|e| format!("设置内容失败: {}", e))?;
+                        .map_err(|e| ToolError::Execution(format!("设置内容失败: {}", e)))?;
 
                     // 🔧 修复：添加 afterPreview 用于前端 diff 显示
                     let after_content = content.to_string();
@@ -555,14 +555,14 @@ impl CanvasToolExecutor {
                     let search = args_clone
                         .get("search")
                         .and_then(|v| v.as_str())
-                        .ok_or_else(|| "缺少必需参数: search".to_string())?;
+                        .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: search".to_string()))?;
                     if search.is_empty() {
-                        return Err("搜索模式不能为空".to_string());
+                        return Err(ToolError::InvalidArgs("搜索模式不能为空".to_string()));
                     }
                     let replace = args_clone
                         .get("replace")
                         .and_then(|v| v.as_str())
-                        .ok_or_else(|| "缺少必需参数: replace".to_string())?;
+                        .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: replace".to_string()))?;
                     let is_regex = args_clone
                         .get("isRegex")
                         .or(args_clone.get("is_regex"))
@@ -572,17 +572,18 @@ impl CanvasToolExecutor {
                     // 读取当前内容（用于 beforePreview）
                     let current_content = notes_manager
                         .canvas_read_content(&note_id_owned, None)
-                        .map_err(|e| format!("读取内容失败: {}", e))?;
+                        .map_err(|e| ToolError::Execution(format!("读取内容失败: {}", e)))?;
 
                     // 执行替换
                     use super::canvas_tools::replace_content;
                     let (new_content, replace_count) =
-                        replace_content(&current_content, search, replace, is_regex)?;
+                        replace_content(&current_content, search, replace, is_regex)
+                            .map_err(|e| ToolError::Execution(e.to_string()))?;
 
                     // 写入新内容
                     notes_manager
                         .canvas_set_content(&note_id_owned, &new_content)
-                        .map_err(|e| format!("写入内容失败: {}", e))?;
+                        .map_err(|e| ToolError::Execution(format!("写入内容失败: {}", e)))?;
 
                     // 🔧 修复：添加 beforePreview 和 afterPreview 用于前端 diff 显示
                     Ok(json!({
@@ -597,11 +598,11 @@ impl CanvasToolExecutor {
                         "afterPreview": safe_truncate(&new_content, 200),
                     }))
                 }
-                _ => Err(format!("未知的写入操作: {}", tool_name)),
+                _ => Err(ToolError::NotFound(format!("未知的写入操作: {}", tool_name))),
             }
         })
         .await
-        .map_err(|e| format!("写入操作任务失败: {}", e))?
+        .map_err(|e| ToolError::Execution(format!("写入操作任务失败: {}", e)))?
     }
 
     /// 执行写入操作（发送到前端执行）
@@ -611,7 +612,7 @@ impl CanvasToolExecutor {
         ctx: &ExecutionContext,
         note_id: &str,
         args: &serde_json::Map<String, serde_json::Value>,
-    ) -> Result<serde_json::Value, String> {
+    ) -> ToolResult<serde_json::Value> {
         // 1. 生成请求 ID
         let request_id = format!("canvas-edit-{}-{}", call.id, uuid::Uuid::new_v4());
 
@@ -666,23 +667,23 @@ impl CanvasToolExecutor {
                 is_regex: None,
                 section: None,
             },
-            _ => return Err(format!("未知的 Canvas 写入工具: {}", call.name)),
+            _ => return Err(ToolError::NotFound(format!("未知的 Canvas 写入工具: {}", call.name))),
         };
 
         // 2.1 验证必需参数
         match request.operation {
             CanvasEditOperation::Append | CanvasEditOperation::Set => {
                 if request.content.as_ref().map_or(true, |c| c.is_empty()) {
-                    return Err("缺少必需参数: content（内容不能为空）".to_string());
+                    return Err(ToolError::InvalidArgs("缺少必需参数: content（内容不能为空）".to_string()));
                 }
             }
             CanvasEditOperation::Replace => {
                 if request.search.as_ref().map_or(true, |s| s.is_empty()) {
-                    return Err("缺少必需参数: search（搜索模式不能为空）".to_string());
+                    return Err(ToolError::InvalidArgs("缺少必需参数: search（搜索模式不能为空）".to_string()));
                 }
                 // replace 可以为空字符串（删除匹配内容）
                 if request.replace.is_none() {
-                    return Err("缺少必需参数: replace".to_string());
+                    return Err(ToolError::InvalidArgs("缺少必需参数: replace".to_string()));
                 }
             }
         }
@@ -700,7 +701,7 @@ impl CanvasToolExecutor {
 
         ctx.window
             .emit("canvas:ai-edit-request", &request)
-            .map_err(|e| format!("发送编辑请求失败: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("发送编辑请求失败: {}", e)))?;
 
         // 5. 等待前端响应（带超时）
         let timeout = tokio::time::timeout(
@@ -733,7 +734,7 @@ impl CanvasToolExecutor {
                         request_id,
                         error_msg
                     );
-                    Err(error_msg)
+                    Err(ToolError::Execution(error_msg))
                 }
             }
             Ok(Err(_)) => {
@@ -742,7 +743,7 @@ impl CanvasToolExecutor {
                     "[CanvasToolExecutor] Edit callback channel closed: request_id={}",
                     request_id
                 );
-                Err("编辑请求被取消".to_string())
+                Err(ToolError::Cancelled)
             }
             Err(_) => {
                 // 超时
@@ -761,10 +762,10 @@ impl CanvasToolExecutor {
                         });
                     callbacks.remove(&request_id);
                 }
-                Err(format!(
+                Err(ToolError::Timeout(format!(
                     "编辑超时（{}秒），请确保笔记已打开",
                     FRONTEND_EDIT_TIMEOUT_MS / 1000
-                ))
+                )))
             }
         }
     }
@@ -786,7 +787,7 @@ impl ToolExecutor for CanvasToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
 
         log::debug!(
@@ -843,7 +844,7 @@ impl ToolExecutor for CanvasToolExecutor {
         }
 
         // 4. 根据工具类型选择执行路径
-        let result: Result<serde_json::Value, String> = match stripped_name {
+        let result: ToolResult<serde_json::Value> = match stripped_name {
             canvas_tool_names::NOTE_READ => self.execute_read(call, ctx, &note_id, &args).await,
             canvas_tool_names::NOTE_LIST => self.execute_list(call, ctx, &args).await,
             canvas_tool_names::NOTE_SEARCH => self.execute_search(call, ctx, &args).await,
@@ -891,7 +892,7 @@ impl ToolExecutor for CanvasToolExecutor {
                 Ok(result)
             }
             Err(error_msg) => {
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
 
                 log::warn!(
                     "[CanvasToolExecutor] Tool {} failed: {} ({}ms)",
@@ -905,7 +906,7 @@ impl ToolExecutor for CanvasToolExecutor {
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    error_msg,
+                    error_msg.to_string(),
                     duration_ms,
                 );
 

@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use std::sync::LazyLock;
 use tokio::sync::Mutex;
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -92,7 +92,7 @@ impl QBankExecutor {
         service: &QuestionBankService,
         session_id: &str,
         filters: &QuestionFilters,
-    ) -> Result<Vec<Question>, String> {
+    ) -> ToolResult<Vec<Question>> {
         let mut page = 1;
         let page_size = 200;
         let mut all = Vec::new();
@@ -100,7 +100,7 @@ impl QBankExecutor {
         loop {
             let result = service
                 .list_questions(session_id, filters, page, page_size)
-                .map_err(|e| format!("Failed to list questions: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("Failed to list questions: {}", e)))?;
             all.extend(result.questions);
             if !result.has_more {
                 break;
@@ -119,7 +119,7 @@ impl QBankExecutor {
     }
 
     /// 列出所有题目集（不需要 session_id）
-    async fn execute_list(&self, call: &ToolCall, ctx: &ExecutionContext) -> Result<Value, String> {
+    async fn execute_list(&self, call: &ToolCall, ctx: &ExecutionContext) -> ToolResult<Value> {
         let limit = Self::read_bounded_u32(&call.arguments, "limit", 20, 1, 500);
         let offset = Self::read_non_negative_u32(&call.arguments, "offset", 0);
         let search = call.arguments.get("search").and_then(|v| v.as_str());
@@ -129,11 +129,11 @@ impl QBankExecutor {
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
 
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let total = VfsExamRepo::count_exam_sheets(vfs_db, search)
-            .map_err(|e| format!("Failed to count exam sheets: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to count exam sheets: {}", e)))?;
         let exams = VfsExamRepo::list_exam_sheets(vfs_db, search, limit, offset)
-            .map_err(|e| format!("Failed to list exam sheets: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to list exam sheets: {}", e)))?;
 
         let question_banks: Vec<Value> = exams
             .iter()
@@ -242,12 +242,12 @@ impl QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let session_id = call
             .arguments
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'session_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'session_id' parameter".to_string()))?;
 
         let status_filter = call.arguments.get("status").and_then(|v| v.as_str());
         let difficulty_filter = call.arguments.get("difficulty").and_then(|v| v.as_str());
@@ -322,13 +322,13 @@ impl QBankExecutor {
         }
 
         // 回退：解析 preview_json
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let exam = VfsExamRepo::get_exam_sheet(vfs_db, session_id)
-            .map_err(|e| format!("Failed to get exam sheet: {}", e))?
-            .ok_or("Exam sheet not found")?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get exam sheet: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound("Exam sheet not found".to_string()))?;
 
         let preview: ExamSheetPreviewResult = serde_json::from_value(exam.preview_json)
-            .map_err(|e| format!("Failed to parse preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to parse preview: {}", e)))?;
 
         let mut all_cards: Vec<&ExamCardPreview> =
             preview.pages.iter().flat_map(|p| p.cards.iter()).collect();
@@ -396,17 +396,17 @@ impl QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let session_id = call
             .arguments
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'session_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'session_id' parameter".to_string()))?;
         let card_id = call
             .arguments
             .get("card_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'card_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'card_id' parameter".to_string()))?;
 
         // 🆕 优先使用 QuestionBankService
         if let Some(service) = &ctx.question_bank_service {
@@ -449,20 +449,20 @@ impl QBankExecutor {
         }
 
         // 回退：解析 preview_json
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let exam = VfsExamRepo::get_exam_sheet(vfs_db, session_id)
-            .map_err(|e| format!("Failed to get exam sheet: {}", e))?
-            .ok_or("Exam sheet not found")?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get exam sheet: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound("Exam sheet not found".to_string()))?;
 
         let preview: ExamSheetPreviewResult = serde_json::from_value(exam.preview_json)
-            .map_err(|e| format!("Failed to parse preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to parse preview: {}", e)))?;
 
         let card = preview
             .pages
             .iter()
             .flat_map(|p| p.cards.iter())
             .find(|c| c.card_id == card_id)
-            .ok_or("Question not found")?;
+            .ok_or_else(|| ToolError::NotFound("Question not found".to_string()))?;
 
         Ok(json!({
             "card_id": card.card_id,
@@ -489,27 +489,27 @@ impl QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let _write_guard = QBANK_WRITE_LOCK.lock().await;
 
         let session_id = call
             .arguments
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'session_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'session_id' parameter".to_string()))?;
         let card_id = call
             .arguments
             .get("card_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'card_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'card_id' parameter".to_string()))?;
         let user_answer = call
             .arguments
             .get("user_answer")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'user_answer' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'user_answer' parameter".to_string()))?;
         // M-065: user_answer 长度校验
         if user_answer.len() > 50000 {
-            return Err("答案内容过长（上限 50000 字符）".to_string());
+            return Err(ToolError::InvalidArgs("答案内容过长（上限 50000 字符）".to_string()));
         }
         let is_correct_override = call.arguments.get("is_correct").and_then(|v| v.as_bool());
 
@@ -539,13 +539,13 @@ impl QBankExecutor {
         }
 
         // 回退：使用 preview_json
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let exam = VfsExamRepo::get_exam_sheet(vfs_db, session_id)
-            .map_err(|e| format!("Failed to get exam sheet: {}", e))?
-            .ok_or("Exam sheet not found")?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get exam sheet: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound("Exam sheet not found".to_string()))?;
 
         let mut preview: ExamSheetPreviewResult = serde_json::from_value(exam.preview_json)
-            .map_err(|e| format!("Failed to parse preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to parse preview: {}", e)))?;
 
         let mut found = false;
         let mut is_correct: Option<bool> = Some(false);
@@ -610,14 +610,14 @@ impl QBankExecutor {
         }
 
         if !found {
-            return Err("Question not found".to_string());
+            return Err(ToolError::NotFound("Question not found".to_string()));
         }
 
         let preview_json = serde_json::to_value(&preview)
-            .map_err(|e| format!("Failed to serialize preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to serialize preview: {}", e)))?;
 
         VfsExamRepo::update_preview_json(vfs_db, session_id, preview_json)
-            .map_err(|e| format!("Failed to update exam sheet: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to update exam sheet: {}", e)))?;
 
         Ok(json!({
             "is_correct": is_correct,
@@ -639,19 +639,19 @@ impl QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let _write_guard = QBANK_WRITE_LOCK.lock().await;
 
         let session_id = call
             .arguments
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'session_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'session_id' parameter".to_string()))?;
         let card_id = call
             .arguments
             .get("card_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'card_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'card_id' parameter".to_string()))?;
 
         // 优先使用 QuestionBankService
         if let Some(service) = &ctx.question_bank_service {
@@ -725,13 +725,13 @@ impl QBankExecutor {
             }
         }
 
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let exam = VfsExamRepo::get_exam_sheet(vfs_db, session_id)
-            .map_err(|e| format!("Failed to get exam sheet: {}", e))?
-            .ok_or("Exam sheet not found")?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get exam sheet: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound("Exam sheet not found".to_string()))?;
 
         let mut preview: ExamSheetPreviewResult = serde_json::from_value(exam.preview_json)
-            .map_err(|e| format!("Failed to parse preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to parse preview: {}", e)))?;
 
         let mut found = false;
         for page in &mut preview.pages {
@@ -784,14 +784,14 @@ impl QBankExecutor {
         }
 
         if !found {
-            return Err("Question not found".to_string());
+            return Err(ToolError::NotFound("Question not found".to_string()));
         }
 
         let preview_json = serde_json::to_value(&preview)
-            .map_err(|e| format!("Failed to serialize preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to serialize preview: {}", e)))?;
 
         VfsExamRepo::update_preview_json(vfs_db, session_id, preview_json)
-            .map_err(|e| format!("Failed to update exam sheet: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to update exam sheet: {}", e)))?;
 
         Ok(
             json!({ "success": true, "message": "题目已更新", "source": "preview_json", "degraded": true }),
@@ -802,12 +802,12 @@ impl QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let session_id = call
             .arguments
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'session_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'session_id' parameter".to_string()))?;
 
         // 优先使用 QuestionBankService
         if let Some(service) = &ctx.question_bank_service {
@@ -839,13 +839,13 @@ impl QBankExecutor {
             }
         }
 
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let exam = VfsExamRepo::get_exam_sheet(vfs_db, session_id)
-            .map_err(|e| format!("Failed to get exam sheet: {}", e))?
-            .ok_or("Exam sheet not found")?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get exam sheet: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound("Exam sheet not found".to_string()))?;
 
         let preview: ExamSheetPreviewResult = serde_json::from_value(exam.preview_json)
-            .map_err(|e| format!("Failed to parse preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to parse preview: {}", e)))?;
 
         let mut stats = QuestionBankStats::default();
         let mut total_attempts = 0;
@@ -887,12 +887,12 @@ impl QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let session_id = call
             .arguments
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'session_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'session_id' parameter".to_string()))?;
         let mode = call
             .arguments
             .get("mode")
@@ -972,13 +972,13 @@ impl QBankExecutor {
             };
         }
 
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let exam = VfsExamRepo::get_exam_sheet(vfs_db, session_id)
-            .map_err(|e| format!("Failed to get exam sheet: {}", e))?
-            .ok_or("Exam sheet not found")?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get exam sheet: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound("Exam sheet not found".to_string()))?;
 
         let preview: ExamSheetPreviewResult = serde_json::from_value(exam.preview_json)
-            .map_err(|e| format!("Failed to parse preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to parse preview: {}", e)))?;
 
         let all_cards: Vec<&ExamCardPreview> =
             preview.pages.iter().flat_map(|p| p.cards.iter()).collect();
@@ -1053,14 +1053,14 @@ impl QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let _write_guard = QBANK_WRITE_LOCK.lock().await;
 
         let session_id = call
             .arguments
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'session_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'session_id' parameter".to_string()))?;
         let card_ids: Option<Vec<&str>> = call
             .arguments
             .get("card_ids")
@@ -1078,7 +1078,7 @@ impl QBankExecutor {
                 }
                 let result = service
                     .reset_questions_progress(&question_ids)
-                    .map_err(|e| format!("Failed to reset progress: {}", e))?;
+                    .map_err(|e| ToolError::Execution(format!("Failed to reset progress: {}", e)))?;
                 return Ok(json!({
                     "success": true,
                     "reset_count": result.success_count,
@@ -1088,7 +1088,7 @@ impl QBankExecutor {
             } else {
                 let stats = service
                     .reset_progress(session_id)
-                    .map_err(|e| format!("Failed to reset progress: {}", e))?;
+                    .map_err(|e| ToolError::Execution(format!("Failed to reset progress: {}", e)))?;
                 return Ok(json!({
                     "success": true,
                     "reset_count": stats.total_count,
@@ -1098,13 +1098,13 @@ impl QBankExecutor {
             }
         }
 
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let exam = VfsExamRepo::get_exam_sheet(vfs_db, session_id)
-            .map_err(|e| format!("Failed to get exam sheet: {}", e))?
-            .ok_or("Exam sheet not found")?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get exam sheet: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound("Exam sheet not found".to_string()))?;
 
         let mut preview: ExamSheetPreviewResult = serde_json::from_value(exam.preview_json)
-            .map_err(|e| format!("Failed to parse preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to parse preview: {}", e)))?;
 
         let mut reset_count = 0;
         for page in &mut preview.pages {
@@ -1127,10 +1127,10 @@ impl QBankExecutor {
         }
 
         let preview_json = serde_json::to_value(&preview)
-            .map_err(|e| format!("Failed to serialize preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to serialize preview: {}", e)))?;
 
         VfsExamRepo::update_preview_json(vfs_db, session_id, preview_json)
-            .map_err(|e| format!("Failed to update exam sheet: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to update exam sheet: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -1145,12 +1145,12 @@ impl QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let session_id = call
             .arguments
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'session_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'session_id' parameter".to_string()))?;
         let format = call
             .arguments
             .get("format")
@@ -1269,7 +1269,7 @@ impl QBankExecutor {
                 });
 
                 let docx_bytes = DocumentParser::generate_docx_from_spec(&spec)
-                    .map_err(|e| format!("DOCX 生成失败: {}", e))?;
+                    .map_err(|e| ToolError::Execution(format!("DOCX 生成失败: {}", e)))?;
 
                 use base64::Engine;
                 let base64_content = base64::engine::general_purpose::STANDARD.encode(&docx_bytes);
@@ -1300,13 +1300,13 @@ impl QBankExecutor {
             return Ok(result);
         }
 
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let exam = VfsExamRepo::get_exam_sheet(vfs_db, session_id)
-            .map_err(|e| format!("Failed to get exam sheet: {}", e))?
-            .ok_or("Exam sheet not found")?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get exam sheet: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound("Exam sheet not found".to_string()))?;
 
         let preview: ExamSheetPreviewResult = serde_json::from_value(exam.preview_json.clone())
-            .map_err(|e| format!("Failed to parse preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to parse preview: {}", e)))?;
 
         let mut questions: Vec<Value> = Vec::new();
         for page in &preview.pages {
@@ -1386,17 +1386,17 @@ impl QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let session_id = call
             .arguments
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'session_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'session_id' parameter".to_string()))?;
         let card_id = call
             .arguments
             .get("card_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'card_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'card_id' parameter".to_string()))?;
         let variant_type = call
             .arguments
             .get("variant_type")
@@ -1441,20 +1441,20 @@ impl QBankExecutor {
             }
         }
 
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let exam = VfsExamRepo::get_exam_sheet(vfs_db, session_id)
-            .map_err(|e| format!("Failed to get exam sheet: {}", e))?
-            .ok_or("Exam sheet not found")?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get exam sheet: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound("Exam sheet not found".to_string()))?;
 
         let preview: ExamSheetPreviewResult = serde_json::from_value(exam.preview_json)
-            .map_err(|e| format!("Failed to parse preview: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to parse preview: {}", e)))?;
 
         let card = preview
             .pages
             .iter()
             .flat_map(|p| p.cards.iter())
             .find(|c| c.card_id == card_id)
-            .ok_or("Question not found")?;
+            .ok_or_else(|| ToolError::NotFound("Question not found".to_string()))?;
 
         let variant_prompt = match variant_type {
             "harder" => "请基于以下原题生成一道**更难**的变式题。保持相同的知识点和题型，但增加难度（如增加步骤、引入更复杂的条件）。",
@@ -1497,7 +1497,7 @@ impl QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         use crate::question_import_service::{ImportRequest, QuestionImportService};
 
         let _write_guard = QBANK_WRITE_LOCK.lock().await;
@@ -1506,7 +1506,7 @@ impl QBankExecutor {
             .arguments
             .get("content")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'content' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'content' parameter".to_string()))?;
         let format = call
             .arguments
             .get("format")
@@ -1519,8 +1519,8 @@ impl QBankExecutor {
         let llm_manager = ctx
             .llm_manager
             .as_ref()
-            .ok_or("LLM Manager not available")?;
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+            .ok_or_else(|| ToolError::Execution("LLM Manager not available".to_string()))?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
 
         // 使用统一的 QuestionImportService
         let import_service = QuestionImportService::new_without_file_manager(llm_manager.clone());
@@ -1538,7 +1538,7 @@ impl QBankExecutor {
         let result = import_service
             .import_document(vfs_db, import_request)
             .await
-            .map_err(|e| format!("导入失败: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("导入失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -1555,7 +1555,7 @@ impl QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         use crate::vfs::types::VfsCreateExamSheetParams;
 
         let _write_guard = QBANK_WRITE_LOCK.lock().await;
@@ -1579,23 +1579,23 @@ impl QBankExecutor {
             parsed_questions = serde_json::from_str(s).ok();
             parsed_questions
                 .as_ref()
-                .ok_or("'questions' parameter is a string but not valid JSON array")?
+                .ok_or_else(|| ToolError::InvalidArgs("'questions' parameter is a string but not valid JSON array".to_string()))?
         } else {
-            return Err("Missing 'questions' parameter".to_string());
+            return Err(ToolError::InvalidArgs("Missing 'questions' parameter".to_string()));
         };
         let top_parent_card_id = call
             .arguments
             .get("parent_card_id")
             .and_then(|v| v.as_str());
 
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let mut is_new_session = false;
         let (mut session_id, exam_name, mut preview) = if let Some(sid) = session_id {
             let exam = VfsExamRepo::get_exam_sheet(vfs_db, &sid)
-                .map_err(|e| format!("Failed to get exam sheet: {}", e))?
-                .ok_or("Exam sheet not found")?;
+                .map_err(|e| ToolError::Execution(format!("Failed to get exam sheet: {}", e)))?
+                .ok_or_else(|| ToolError::NotFound("Exam sheet not found".to_string()))?;
             let preview: ExamSheetPreviewResult = serde_json::from_value(exam.preview_json)
-                .map_err(|e| format!("Failed to parse preview: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("Failed to parse preview: {}", e)))?;
             (
                 sid,
                 exam.exam_name.unwrap_or_else(|| "未命名题目集".to_string()),
@@ -1757,7 +1757,7 @@ impl QBankExecutor {
         }
 
         if imported_count == 0 {
-            return Err("未能导入题目：内容为空或格式不完整".to_string());
+            return Err(ToolError::InvalidArgs("未能导入题目：内容为空或格式不完整".to_string()));
         }
 
         if imported_count > 0 {
@@ -1776,20 +1776,20 @@ impl QBankExecutor {
             }
 
             let preview_json = serde_json::to_value(&preview)
-                .map_err(|e| format!("Failed to serialize preview: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("Failed to serialize preview: {}", e)))?;
 
             // S-009: 获取单一连接 + SAVEPOINT 事务保护，确保 preview_json 与 questions 原子写入
             let conn = vfs_db
                 .get_conn_safe()
-                .map_err(|e| format!("Failed to get db connection: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("Failed to get db connection: {}", e)))?;
 
             conn.execute("SAVEPOINT batch_import", [])
-                .map_err(|e| format!("Failed to create savepoint: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("Failed to create savepoint: {}", e)))?;
 
             // S-009-fix: 使用 actual_exam_id 追踪真实的 exam_sheets.id
             let mut actual_exam_id = session_id.clone();
 
-            let sp_result = (|| -> Result<(), String> {
+            let sp_result = (|| -> ToolResult<()> {
                 if is_new_session {
                     let params = VfsCreateExamSheetParams {
                         exam_name: Some(exam_name.clone()),
@@ -1800,13 +1800,13 @@ impl QBankExecutor {
                         folder_id: None,
                     };
                     let created_exam = VfsExamRepo::create_exam_sheet_with_conn(&conn, params)
-                        .map_err(|e| format!("Failed to create exam sheet: {}", e))?;
+                        .map_err(|e| ToolError::Execution(format!("Failed to create exam sheet: {}", e)))?;
                     // ★ 关键修复：使用 VfsExamSheet::generate_id() 生成的真实 ID
                     // 而非 uuid::Uuid 格式的 temp_id，否则 questions.exam_id FK 会违反约束
                     actual_exam_id = created_exam.id.clone();
                 } else {
                     VfsExamRepo::update_preview_json_with_conn(&conn, &session_id, preview_json)
-                        .map_err(|e| format!("Failed to update exam sheet: {}", e))?;
+                        .map_err(|e| ToolError::Execution(format!("Failed to update exam sheet: {}", e)))?;
                 }
 
                 // 逐条写入 questions 表（不使用 batch 版本，因其内部有独立事务）
@@ -1814,7 +1814,7 @@ impl QBankExecutor {
                     // ★ 将每条题目的 exam_id 修正为真实的 exam_sheets.id
                     params.exam_id = actual_exam_id.clone();
                     VfsQuestionRepo::create_question_with_conn(&conn, params)
-                        .map_err(|e| format!("Failed to write question: {}", e))?;
+                        .map_err(|e| ToolError::Execution(format!("Failed to write question: {}", e)))?;
                 }
 
                 Ok(())
@@ -1823,7 +1823,7 @@ impl QBankExecutor {
             match sp_result {
                 Ok(()) => {
                     conn.execute("RELEASE batch_import", [])
-                        .map_err(|e| format!("Failed to release savepoint: {}", e))?;
+                        .map_err(|e| ToolError::Execution(format!("Failed to release savepoint: {}", e)))?;
                 }
                 Err(e) => {
                     let _ = conn.execute("ROLLBACK TO batch_import", []);
@@ -1891,7 +1891,7 @@ impl ToolExecutor for QBankExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let tool_name = strip_tool_namespace(&call.name);
 
@@ -1920,7 +1920,7 @@ impl ToolExecutor for QBankExecutor {
                     "hint": "在对话中，你可以使用 qbank_submit_answer 提交答案，主观题会自动触发 AI 评判。"
                 }))
             }
-            _ => Err(format!("Unknown qbank tool: {}", tool_name)),
+            _ => Err(ToolError::InvalidArgs(format!("Unknown qbank tool: {}", tool_name))),
         };
 
         let elapsed_ms = start_time.elapsed().as_millis() as u64;
@@ -1958,14 +1958,14 @@ impl ToolExecutor for QBankExecutor {
                 log::error!("[QBankExecutor] Tool {} failed: {}", tool_name, e);
 
                 // 🔧 修复：发射工具调用错误事件
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
 
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    e,
+                    e.to_string(),
                     elapsed_ms,
                 );
 

@@ -6,7 +6,7 @@ use std::sync::{Mutex, MutexGuard};
 /// 聊天流事件级别的计时注册表
 ///
 /// Key 使用 stream_event（例如 `chat_stream_{id}` / `summary_stream_{id}`），
-/// Value 为“发送消息”时间（统一从服务端视角的用户消息时间戳推导）。
+/// Value 为"发送消息"时间（统一从服务端视角的用户消息时间戳推导）。
 static STREAM_TIMINGS: LazyLock<Mutex<HashMap<String, DateTime<Utc>>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
@@ -23,7 +23,7 @@ fn lock_registry(label: &str) -> MutexGuard<'static, HashMap<String, DateTime<Ut
     }
 }
 
-/// 在开始分析时注册某个事件通道的“起点时间”（应尽量贴近用户发送消息时间）。
+/// 在开始分析时注册某个事件通道的"起点时间"（应尽量贴近用户发送消息时间）。
 pub fn set_stream_start(stream_event: &str, sent_at: DateTime<Utc>) {
     let mut registry = lock_registry("set_stream_start");
     registry.insert(stream_event.to_string(), sent_at);

@@ -35,7 +35,7 @@ use serde_json::{json, Value};
 use tauri::Emitter;
 
 use super::arg_utils::{get_json_array_arg, get_string_array_arg};
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::database::ChatV2Database;
 use crate::chat_v2::events::event_types;
@@ -107,15 +107,15 @@ impl SessionToolExecutor {
     }
 
     /// 从 ExecutionContext 获取 ChatV2Database
-    fn get_db<'a>(ctx: &'a ExecutionContext) -> Result<&'a ChatV2Database, String> {
+    fn get_db<'a>(ctx: &'a ExecutionContext) -> ToolResult<&'a ChatV2Database> {
         ctx.chat_v2_db
             .as_ref()
             .map(|arc| arc.as_ref())
             .ok_or_else(|| {
-                format!(
+                ToolError::Execution(format!(
                     "{} chat_v2_db not available in ExecutionContext",
                     LOG_PREFIX
-                )
+                ))
             })
     }
 
@@ -123,9 +123,9 @@ impl SessionToolExecutor {
         session_id: &str,
         ctx: &ExecutionContext,
         action_label: &str,
-    ) -> Result<(), String> {
+    ) -> ToolResult<()> {
         if session_id == ctx.session_id {
-            return Err(format!("不能对当前正在使用的会话执行{}", action_label));
+            return Err(ToolError::InvalidArgs(format!("不能对当前正在使用的会话执行{}", action_label)));
         }
         Ok(())
     }
@@ -146,9 +146,9 @@ impl SessionToolExecutor {
     // 读操作
     // ========================================================================
 
-    fn execute_session_list(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_list(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let status = args.get("status").and_then(|v| v.as_str());
         let group_id = args.get("group_id").and_then(|v| v.as_str());
@@ -164,9 +164,9 @@ impl SessionToolExecutor {
         let offset = args.get("offset").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
 
         let sessions = ChatV2Repo::list_sessions_with_conn(&conn, status, group_id, limit, offset)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?;
         let total = ChatV2Repo::count_sessions_with_conn(&conn, status, group_id)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let tags_map = if include_tags {
             let ids: Vec<String> = sessions.iter().map(|s| s.id.clone()).collect();
@@ -198,21 +198,21 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_session_search(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_search(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let query = args
             .get("query")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: query")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: query".to_string()))?;
         let limit = args
             .get("limit")
             .and_then(|v| v.as_u64())
             .unwrap_or(20)
             .min(50) as u32;
 
-        let results = ChatV2Repo::search_content(&conn, query, limit).map_err(|e| e.to_string())?;
+        let results = ChatV2Repo::search_content(&conn, query, limit).map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let items: Vec<Value> = results
             .iter()
@@ -235,20 +235,20 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_session_get(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_get(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let session_id = args
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: session_id")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: session_id".to_string()))?;
 
         let session = ChatV2Repo::get_session_with_conn(&conn, session_id)
-            .map_err(|e| e.to_string())?
-            .ok_or_else(|| format!("会话不存在: {}", session_id))?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?
+            .ok_or_else(|| ToolError::NotFound(format!("会话不存在: {}", session_id)))?;
 
-        let tags = ChatV2Repo::get_session_tags(&conn, session_id).map_err(|e| e.to_string())?;
+        let tags = ChatV2Repo::get_session_tags(&conn, session_id).map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let group_name = if let Some(ref gid) = session.group_id {
             ChatV2Repo::get_group_with_conn(&conn, gid)
@@ -274,12 +274,12 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_group_list(ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_group_list(ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let groups = ChatV2Repo::list_groups_with_conn(&conn, Some("active"), None)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let items: Vec<Value> = groups
             .iter()
@@ -306,11 +306,11 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_tag_list_all(ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_tag_list_all(ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
-        let tags = ChatV2Repo::list_all_tags(&conn).map_err(|e| e.to_string())?;
+        let tags = ChatV2Repo::list_all_tags(&conn).map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let items: Vec<Value> = tags
             .iter()
@@ -323,19 +323,19 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_session_stats(ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_stats(ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let active = ChatV2Repo::count_sessions_with_conn(&conn, Some("active"), None)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?;
         let archived = ChatV2Repo::count_sessions_with_conn(&conn, Some("archived"), None)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?;
         let deleted = ChatV2Repo::count_sessions_with_conn(&conn, Some("deleted"), None)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let groups = ChatV2Repo::list_groups_with_conn(&conn, Some("active"), None)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let ungrouped =
             ChatV2Repo::count_sessions_with_conn(&conn, Some("active"), Some("")).unwrap_or(0);
@@ -351,7 +351,7 @@ impl SessionToolExecutor {
             }));
         }
 
-        let tags = ChatV2Repo::list_all_tags(&conn).map_err(|e| e.to_string())?;
+        let tags = ChatV2Repo::list_all_tags(&conn).map_err(|e| ToolError::Execution(e.to_string()))?;
 
         Ok(json!({
             "total": active + archived + deleted,
@@ -374,27 +374,27 @@ impl SessionToolExecutor {
     // 写操作
     // ========================================================================
 
-    fn execute_session_tag_add(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_tag_add(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let session_id = args
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: session_id")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: session_id".to_string()))?;
         let tag = args
             .get("tag")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: tag")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: tag".to_string()))?;
 
         Self::ensure_not_current_session(session_id, ctx, "标签添加")?;
 
         // 验证会话存在
         ChatV2Repo::get_session_with_conn(&conn, session_id)
-            .map_err(|e| e.to_string())?
-            .ok_or_else(|| format!("会话不存在: {}", session_id))?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?
+            .ok_or_else(|| ToolError::NotFound(format!("会话不存在: {}", session_id)))?;
 
-        ChatV2Repo::add_manual_tag(&conn, session_id, tag).map_err(|e| e.to_string())?;
+        ChatV2Repo::add_manual_tag(&conn, session_id, tag).map_err(|e| ToolError::Execution(e.to_string()))?;
 
         Ok(json!({
             "success": true,
@@ -404,22 +404,22 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_session_tag_remove(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_tag_remove(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let session_id = args
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: session_id")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: session_id".to_string()))?;
         let tag = args
             .get("tag")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: tag")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: tag".to_string()))?;
 
         Self::ensure_not_current_session(session_id, ctx, "标签移除")?;
 
-        ChatV2Repo::remove_tag(&conn, session_id, tag).map_err(|e| e.to_string())?;
+        ChatV2Repo::remove_tag(&conn, session_id, tag).map_err(|e| ToolError::Execution(e.to_string()))?;
 
         Ok(json!({
             "success": true,
@@ -429,14 +429,14 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_session_move(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_move(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let session_id = args
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: session_id")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: session_id".to_string()))?;
         let group_id = args.get("group_id").and_then(|v| v.as_str());
 
         Self::ensure_not_current_session(session_id, ctx, "分组移动")?;
@@ -444,15 +444,15 @@ impl SessionToolExecutor {
         // 验证目标分组存在
         if let Some(gid) = group_id {
             let group = ChatV2Repo::get_group_with_conn(&conn, gid)
-                .map_err(|e| e.to_string())?
-                .ok_or_else(|| format!("分组不存在: {}", gid))?;
+                .map_err(|e| ToolError::Execution(e.to_string()))?
+                .ok_or_else(|| ToolError::NotFound(format!("分组不存在: {}", gid)))?;
             if group.persist_status != PersistStatus::Active {
-                return Err(format!("分组已被删除: {}", gid));
+                return Err(ToolError::InvalidArgs(format!("分组已被删除: {}", gid)));
             }
         }
 
         ChatV2Repo::update_session_group_with_conn(&conn, session_id, group_id)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let msg = match group_id {
             Some(gid) => {
@@ -474,23 +474,23 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_session_rename(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_rename(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
 
         let session_id = args
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: session_id")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: session_id".to_string()))?;
         let title = args
             .get("title")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: title")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: title".to_string()))?;
 
         Self::ensure_not_current_session(session_id, ctx, "重命名")?;
 
         let existing = ChatV2Repo::get_session_v2(db, session_id)
-            .map_err(|e| e.to_string())?
-            .ok_or_else(|| format!("会话不存在: {}", session_id))?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?
+            .ok_or_else(|| ToolError::NotFound(format!("会话不存在: {}", session_id)))?;
 
         let updated = ChatSession {
             title: Some(title.to_string()),
@@ -498,7 +498,7 @@ impl SessionToolExecutor {
             ..existing
         };
 
-        ChatV2Repo::update_session_v2(db, &updated).map_err(|e| e.to_string())?;
+        ChatV2Repo::update_session_v2(db, &updated).map_err(|e| ToolError::Execution(e.to_string()))?;
 
         Ok(json!({
             "success": true,
@@ -508,20 +508,20 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_group_create(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_group_create(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let name = args
             .get("name")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: name")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: name".to_string()))?;
         let description = args.get("description").and_then(|v| v.as_str());
         let icon = args.get("icon").and_then(|v| v.as_str());
         let color = args.get("color").and_then(|v| v.as_str());
 
         let existing = ChatV2Repo::list_groups_with_conn(&conn, Some("active"), None)
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?;
         let next_sort = existing.iter().map(|g| g.sort_order).max().unwrap_or(0) + 1;
 
         let now = chrono::Utc::now();
@@ -541,7 +541,7 @@ impl SessionToolExecutor {
             updated_at: now,
         };
 
-        ChatV2Repo::create_group_with_conn(&conn, &group).map_err(|e| e.to_string())?;
+        ChatV2Repo::create_group_with_conn(&conn, &group).map_err(|e| ToolError::Execution(e.to_string()))?;
 
         Ok(json!({
             "success": true,
@@ -551,18 +551,18 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_group_update(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_group_update(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let group_id = args
             .get("group_id")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: group_id")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: group_id".to_string()))?;
 
         let existing = ChatV2Repo::get_group_with_conn(&conn, group_id)
-            .map_err(|e| e.to_string())?
-            .ok_or_else(|| format!("分组不存在: {}", group_id))?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?
+            .ok_or_else(|| ToolError::NotFound(format!("分组不存在: {}", group_id)))?;
 
         // 与 group_handlers.rs 一致：None→保留, Some("")→清除, Some(val)→更新
         fn merge_opt(request_val: Option<&str>, existing_val: Option<String>) -> Option<String> {
@@ -589,7 +589,7 @@ impl SessionToolExecutor {
             ..existing
         };
 
-        ChatV2Repo::update_group_with_conn(&conn, &updated).map_err(|e| e.to_string())?;
+        ChatV2Repo::update_group_with_conn(&conn, &updated).map_err(|e| ToolError::Execution(e.to_string()))?;
 
         Ok(json!({
             "success": true,
@@ -602,25 +602,25 @@ impl SessionToolExecutor {
     // 危险操作
     // ========================================================================
 
-    fn execute_session_archive(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_archive(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
 
         let session_id = args
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: session_id")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: session_id".to_string()))?;
 
         Self::ensure_not_current_session(session_id, ctx, "归档")?;
 
         let existing = ChatV2Repo::get_session_v2(db, session_id)
-            .map_err(|e| e.to_string())?
-            .ok_or_else(|| format!("会话不存在: {}", session_id))?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?
+            .ok_or_else(|| ToolError::NotFound(format!("会话不存在: {}", session_id)))?;
 
         if existing.persist_status != PersistStatus::Active {
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "只能归档活跃会话，当前状态: {:?}",
                 existing.persist_status
-            ));
+            )));
         }
 
         let archived = ChatSession {
@@ -629,7 +629,7 @@ impl SessionToolExecutor {
             ..existing
         };
 
-        ChatV2Repo::update_session_v2(db, &archived).map_err(|e| e.to_string())?;
+        ChatV2Repo::update_session_v2(db, &archived).map_err(|e| ToolError::Execution(e.to_string()))?;
 
         Ok(json!({
             "success": true,
@@ -638,22 +638,22 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_session_restore(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_restore(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
 
         let session_id = args
             .get("session_id")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: session_id")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: session_id".to_string()))?;
 
         Self::ensure_not_current_session(session_id, ctx, "恢复")?;
 
         let existing = ChatV2Repo::get_session_v2(db, session_id)
-            .map_err(|e| e.to_string())?
-            .ok_or_else(|| format!("会话不存在: {}", session_id))?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?
+            .ok_or_else(|| ToolError::NotFound(format!("会话不存在: {}", session_id)))?;
 
         if existing.persist_status == PersistStatus::Active {
-            return Err("会话已是活跃状态，无需恢复".to_string());
+            return Err(ToolError::InvalidArgs("会话已是活跃状态，无需恢复".to_string()));
         }
 
         let restored = ChatSession {
@@ -662,7 +662,7 @@ impl SessionToolExecutor {
             ..existing
         };
 
-        ChatV2Repo::update_session_v2(db, &restored).map_err(|e| e.to_string())?;
+        ChatV2Repo::update_session_v2(db, &restored).map_err(|e| ToolError::Execution(e.to_string()))?;
 
         Ok(json!({
             "success": true,
@@ -671,12 +671,12 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_session_batch_move(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_batch_move(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let session_ids: Vec<String> =
-            get_string_array_arg(args, "session_ids").ok_or("缺少必需参数: session_ids")?;
+            get_string_array_arg(args, "session_ids").ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: session_ids".to_string()))?;
 
         let group_id = args.get("group_id").and_then(|v| v.as_str());
         let confirmed = args
@@ -685,25 +685,25 @@ impl SessionToolExecutor {
             .unwrap_or(false);
 
         if session_ids.is_empty() {
-            return Err("session_ids 不能为空".to_string());
+            return Err(ToolError::InvalidArgs("session_ids 不能为空".to_string()));
         }
         if session_ids.len() > 50 {
-            return Err("单次批量操作不能超过 50 个会话".to_string());
+            return Err(ToolError::InvalidArgs("单次批量操作不能超过 50 个会话".to_string()));
         }
         if Self::batch_move_confirmation_required(session_ids.len()) && !confirmed {
-            return Err("批量移动超过 3 个会话时，需要用户确认并传入 confirmed=true".to_string());
+            return Err(ToolError::Execution("批量移动超过 3 个会话时，需要用户确认并传入 confirmed=true".to_string()));
         }
         if session_ids.iter().any(|sid| sid == &ctx.session_id) {
-            return Err("批量移动不能包含当前正在使用的会话".to_string());
+            return Err(ToolError::InvalidArgs("批量移动不能包含当前正在使用的会话".to_string()));
         }
 
         // 验证目标分组
         if let Some(gid) = group_id {
             let group = ChatV2Repo::get_group_with_conn(&conn, gid)
-                .map_err(|e| e.to_string())?
-                .ok_or_else(|| format!("分组不存在: {}", gid))?;
+                .map_err(|e| ToolError::Execution(e.to_string()))?
+                .ok_or_else(|| ToolError::NotFound(format!("分组不存在: {}", gid)))?;
             if group.persist_status != PersistStatus::Active {
-                return Err(format!("分组已被删除: {}", gid));
+                return Err(ToolError::InvalidArgs(format!("分组已被删除: {}", gid)));
             }
         }
 
@@ -727,33 +727,33 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_session_batch_tag(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_batch_tag(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let session_ids: Vec<String> =
-            get_string_array_arg(args, "session_ids").ok_or("缺少必需参数: session_ids")?;
+            get_string_array_arg(args, "session_ids").ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: session_ids".to_string()))?;
 
         let tag = args
             .get("tag")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: tag")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: tag".to_string()))?;
         let confirmed = args
             .get("confirmed")
             .and_then(|v| v.as_bool())
             .unwrap_or(false);
 
         if session_ids.is_empty() {
-            return Err("session_ids 不能为空".to_string());
+            return Err(ToolError::InvalidArgs("session_ids 不能为空".to_string()));
         }
         if session_ids.len() > 50 {
-            return Err("单次批量操作不能超过 50 个会话".to_string());
+            return Err(ToolError::InvalidArgs("单次批量操作不能超过 50 个会话".to_string()));
         }
         if Self::batch_tag_confirmation_required(session_ids.len()) && !confirmed {
-            return Err("批量打标超过 5 个会话时，需要用户确认并传入 confirmed=true".to_string());
+            return Err(ToolError::Execution("批量打标超过 5 个会话时，需要用户确认并传入 confirmed=true".to_string()));
         }
         if session_ids.iter().any(|sid| sid == &ctx.session_id) {
-            return Err("批量打标不能包含当前正在使用的会话".to_string());
+            return Err(ToolError::InvalidArgs("批量打标不能包含当前正在使用的会话".to_string()));
         }
 
         let mut tagged = 0;
@@ -775,19 +775,19 @@ impl SessionToolExecutor {
         }))
     }
 
-    fn execute_session_batch_ops(args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
+    fn execute_session_batch_ops(args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
         let db = Self::get_db(ctx)?;
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
-        let raw_ops = get_json_array_arg(args, "operations").ok_or("缺少必需参数: operations")?;
+        let raw_ops = get_json_array_arg(args, "operations").ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: operations".to_string()))?;
         if raw_ops.is_empty() {
-            return Err("operations 不能为空".to_string());
+            return Err(ToolError::InvalidArgs("operations 不能为空".to_string()));
         }
         if raw_ops.len() > MAX_BATCH_OPS_PER_CALL {
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "operations 过多：单次最多 {} 条",
                 MAX_BATCH_OPS_PER_CALL
-            ));
+            )));
         }
 
         #[derive(Clone)]
@@ -805,21 +805,21 @@ impl SessionToolExecutor {
         for (index, raw) in raw_ops.iter().enumerate() {
             let obj = raw
                 .as_object()
-                .ok_or_else(|| format!("operations[{}] 必须是对象", index))?;
+                .ok_or_else(|| ToolError::InvalidArgs(format!("operations[{}] 必须是对象", index)))?;
 
             let session_id = obj
                 .get("session_id")
                 .and_then(|v| v.as_str())
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
-                .ok_or_else(|| format!("operations[{}] 缺少必需参数: session_id", index))?;
+                .ok_or_else(|| ToolError::InvalidArgs(format!("operations[{}] 缺少必需参数: session_id", index)))?;
 
             let action = obj
                 .get("action")
                 .and_then(|v| v.as_str())
                 .map(|s| s.trim().to_string())
                 .filter(|s| !s.is_empty())
-                .ok_or_else(|| format!("operations[{}] 缺少必需参数: action", index))?;
+                .ok_or_else(|| ToolError::InvalidArgs(format!("operations[{}] 缺少必需参数: action", index)))?;
 
             unique_session_ids.insert(session_id.clone());
             operations.push(BatchOp {
@@ -841,7 +841,7 @@ impl SessionToolExecutor {
         }
 
         if unique_session_ids.len() > 50 {
-            return Err("单次 unified 批量操作最多涉及 50 个不同会话".to_string());
+            return Err(ToolError::InvalidArgs("单次 unified 批量操作最多涉及 50 个不同会话".to_string()));
         }
         let has_archive = operations.iter().any(|op| op.action == "archive");
         let confirmed = args
@@ -851,10 +851,10 @@ impl SessionToolExecutor {
         if Self::batch_ops_confirmation_required(unique_session_ids.len(), has_archive)
             && !confirmed
         {
-            return Err(
+            return Err(ToolError::Execution(
                 "批量操作需要显式确认：请先征得用户同意，然后以 confirmed=true 重新调用"
                     .to_string(),
-            );
+            ));
         }
 
         // 全量预校验：避免执行到中途才因参数问题失败（导致前半段已生效）。
@@ -862,51 +862,51 @@ impl SessionToolExecutor {
             match op.action.as_str() {
                 "move" => {
                     Self::ensure_not_current_session(&op.session_id, ctx, "分组移动")
-                        .map_err(|e| format!("operations[{}]: {}", index, e))?;
+                        .map_err(|e| ToolError::InvalidArgs(format!("operations[{}]: {}", index, e)))?;
                 }
                 "tag_add" | "tag_remove" => {
                     Self::ensure_not_current_session(&op.session_id, ctx, "标签操作")
-                        .map_err(|e| format!("operations[{}]: {}", index, e))?;
+                        .map_err(|e| ToolError::InvalidArgs(format!("operations[{}]: {}", index, e)))?;
                     let has_tag = op
                         .tag
                         .as_deref()
                         .map(|s| !s.trim().is_empty())
                         .unwrap_or(false);
                     if !has_tag {
-                        return Err(format!(
+                        return Err(ToolError::InvalidArgs(format!(
                             "operations[{}] action={} 缺少必需参数: tag",
                             index, op.action
-                        ));
+                        )));
                     }
                 }
                 "rename" => {
                     Self::ensure_not_current_session(&op.session_id, ctx, "重命名")
-                        .map_err(|e| format!("operations[{}]: {}", index, e))?;
+                        .map_err(|e| ToolError::InvalidArgs(format!("operations[{}]: {}", index, e)))?;
                     let has_title = op
                         .title
                         .as_deref()
                         .map(|s| !s.trim().is_empty())
                         .unwrap_or(false);
                     if !has_title {
-                        return Err(format!(
+                        return Err(ToolError::InvalidArgs(format!(
                             "operations[{}] action=rename 缺少必需参数: title",
                             index
-                        ));
+                        )));
                     }
                 }
                 "archive" => {
                     Self::ensure_not_current_session(&op.session_id, ctx, "归档")
-                        .map_err(|e| format!("operations[{}]: {}", index, e))?;
+                        .map_err(|e| ToolError::InvalidArgs(format!("operations[{}]: {}", index, e)))?;
                 }
                 "restore" => {
                     Self::ensure_not_current_session(&op.session_id, ctx, "恢复")
-                        .map_err(|e| format!("operations[{}]: {}", index, e))?;
+                        .map_err(|e| ToolError::InvalidArgs(format!("operations[{}]: {}", index, e)))?;
                 }
                 _ => {
-                    return Err(format!(
+                    return Err(ToolError::InvalidArgs(format!(
                         "operations[{}] 不支持的 action: {}",
                         index, op.action
-                    ));
+                    )));
                 }
             }
         }
@@ -927,10 +927,10 @@ impl SessionToolExecutor {
                     continue;
                 }
                 let group = ChatV2Repo::get_group_with_conn(&conn, gid)
-                    .map_err(|e| e.to_string())?
-                    .ok_or_else(|| format!("分组不存在: {}", gid))?;
+                    .map_err(|e| ToolError::Execution(e.to_string()))?
+                    .ok_or_else(|| ToolError::NotFound(format!("分组不存在: {}", gid)))?;
                 if group.persist_status != PersistStatus::Active {
-                    return Err(format!("分组已被删除: {}", gid));
+                    return Err(ToolError::InvalidArgs(format!("分组已被删除: {}", gid)));
                 }
                 checked_groups.insert(gid.to_string());
             }
@@ -946,7 +946,7 @@ impl SessionToolExecutor {
         for (index, op) in operations.iter().enumerate() {
             *attempted_by_action.entry(op.action.clone()).or_insert(0) += 1;
 
-            let result: Result<String, String> = match op.action.as_str() {
+            let result: ToolResult<String> = match op.action.as_str() {
                 "move" => {
                     let group_id = op
                         .group_id
@@ -954,7 +954,7 @@ impl SessionToolExecutor {
                         .map(|s| s.trim())
                         .filter(|s| !s.is_empty());
                     ChatV2Repo::update_session_group_with_conn(&conn, &op.session_id, group_id)
-                        .map_err(|e| e.to_string())?;
+                        .map_err(|e| ToolError::Execution(e.to_string()))?;
                     Ok(match group_id {
                         Some(gid) => format!("已移动到分组 {}", gid),
                         None => "已移出分组".to_string(),
@@ -964,75 +964,75 @@ impl SessionToolExecutor {
                     let tag = op
                         .tag
                         .as_deref()
-                        .ok_or("action=tag_add 时缺少必需参数: tag")?;
+                        .ok_or_else(|| ToolError::InvalidArgs("action=tag_add 时缺少必需参数: tag".to_string()))?;
                     ChatV2Repo::get_session_with_conn(&conn, &op.session_id)
-                        .map_err(|e| e.to_string())?
-                        .ok_or_else(|| format!("会话不存在: {}", op.session_id))?;
+                        .map_err(|e| ToolError::Execution(e.to_string()))?
+                        .ok_or_else(|| ToolError::NotFound(format!("会话不存在: {}", op.session_id)))?;
                     ChatV2Repo::add_manual_tag(&conn, &op.session_id, tag)
-                        .map_err(|e| e.to_string())?;
+                        .map_err(|e| ToolError::Execution(e.to_string()))?;
                     Ok(format!("已添加标签 {}", tag))
                 }
                 "tag_remove" => {
                     let tag = op
                         .tag
                         .as_deref()
-                        .ok_or("action=tag_remove 时缺少必需参数: tag")?;
+                        .ok_or_else(|| ToolError::InvalidArgs("action=tag_remove 时缺少必需参数: tag".to_string()))?;
                     ChatV2Repo::remove_tag(&conn, &op.session_id, tag)
-                        .map_err(|e| e.to_string())?;
+                        .map_err(|e| ToolError::Execution(e.to_string()))?;
                     Ok(format!("已移除标签 {}", tag))
                 }
                 "rename" => {
                     let title = op
                         .title
                         .as_deref()
-                        .ok_or("action=rename 时缺少必需参数: title")?;
+                        .ok_or_else(|| ToolError::InvalidArgs("action=rename 时缺少必需参数: title".to_string()))?;
                     let existing = ChatV2Repo::get_session_v2(db, &op.session_id)
-                        .map_err(|e| e.to_string())?
-                        .ok_or_else(|| format!("会话不存在: {}", op.session_id))?;
+                        .map_err(|e| ToolError::Execution(e.to_string()))?
+                        .ok_or_else(|| ToolError::NotFound(format!("会话不存在: {}", op.session_id)))?;
                     let updated = ChatSession {
                         title: Some(title.to_string()),
                         updated_at: chrono::Utc::now(),
                         ..existing
                     };
-                    ChatV2Repo::update_session_v2(db, &updated).map_err(|e| e.to_string())?;
+                    ChatV2Repo::update_session_v2(db, &updated).map_err(|e| ToolError::Execution(e.to_string()))?;
                     Ok(format!("已重命名为 {}", title))
                 }
                 "archive" => {
                     let existing = ChatV2Repo::get_session_v2(db, &op.session_id)
-                        .map_err(|e| e.to_string())?
-                        .ok_or_else(|| format!("会话不存在: {}", op.session_id))?;
+                        .map_err(|e| ToolError::Execution(e.to_string()))?
+                        .ok_or_else(|| ToolError::NotFound(format!("会话不存在: {}", op.session_id)))?;
                     if existing.persist_status != PersistStatus::Active {
-                        Err(format!(
+                        Err(ToolError::InvalidArgs(format!(
                             "只能归档活跃会话，当前状态: {:?}",
                             existing.persist_status
-                        ))
+                        )))
                     } else {
                         let archived = ChatSession {
                             persist_status: PersistStatus::Archived,
                             updated_at: chrono::Utc::now(),
                             ..existing
                         };
-                        ChatV2Repo::update_session_v2(db, &archived).map_err(|e| e.to_string())?;
+                        ChatV2Repo::update_session_v2(db, &archived).map_err(|e| ToolError::Execution(e.to_string()))?;
                         Ok("已归档".to_string())
                     }
                 }
                 "restore" => {
                     let existing = ChatV2Repo::get_session_v2(db, &op.session_id)
-                        .map_err(|e| e.to_string())?
-                        .ok_or_else(|| format!("会话不存在: {}", op.session_id))?;
+                        .map_err(|e| ToolError::Execution(e.to_string()))?
+                        .ok_or_else(|| ToolError::NotFound(format!("会话不存在: {}", op.session_id)))?;
                     if existing.persist_status == PersistStatus::Active {
-                        Err("会话已是活跃状态，无需恢复".to_string())
+                        Err(ToolError::InvalidArgs("会话已是活跃状态，无需恢复".to_string()))
                     } else {
                         let restored = ChatSession {
                             persist_status: PersistStatus::Active,
                             updated_at: chrono::Utc::now(),
                             ..existing
                         };
-                        ChatV2Repo::update_session_v2(db, &restored).map_err(|e| e.to_string())?;
+                        ChatV2Repo::update_session_v2(db, &restored).map_err(|e| ToolError::Execution(e.to_string()))?;
                         Ok("已恢复为活跃状态".to_string())
                     }
                 }
-                _ => Err(format!("不支持的 action: {}", op.action)),
+                _ => Err(ToolError::InvalidArgs(format!("不支持的 action: {}", op.action))),
             };
 
             match result {
@@ -1110,7 +1110,7 @@ impl ToolExecutor for SessionToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start = Instant::now();
 
         ctx.emit_tool_call_start(&call.name, call.arguments.clone(), Some(&call.id));
@@ -1135,7 +1135,7 @@ impl ToolExecutor for SessionToolExecutor {
             "session_batch_move" => Self::execute_session_batch_move(&call.arguments, ctx),
             "session_batch_tag" => Self::execute_session_batch_tag(&call.arguments, ctx),
             "session_batch_ops" => Self::execute_session_batch_ops(&call.arguments, ctx),
-            _ => Err(format!("未知的会话管理工具: {}", call.name)),
+            _ => Err(ToolError::Execution(format!("未知的会话管理工具: {}", call.name))),
         };
 
         let duration_ms = start.elapsed().as_millis() as u64;
@@ -1184,7 +1184,7 @@ impl ToolExecutor for SessionToolExecutor {
                 Ok(tool_result)
             }
             Err(error) => {
-                ctx.emit_tool_call_error(&error);
+                ctx.emit_tool_call_error(&error.to_string());
 
                 log::warn!("{} Tool {} failed: {}", LOG_PREFIX, call.name, error);
 

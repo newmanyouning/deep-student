@@ -957,6 +957,22 @@ pub enum AppErrorType {
     Unknown,
 }
 
+impl std::fmt::Display for AppErrorType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AppErrorType::Validation => write!(f, "Validation"),
+            AppErrorType::Database => write!(f, "Database"),
+            AppErrorType::LLM => write!(f, "LLM"),
+            AppErrorType::FileSystem => write!(f, "FileSystem"),
+            AppErrorType::NotFound => write!(f, "NotFound"),
+            AppErrorType::Configuration => write!(f, "Configuration"),
+            AppErrorType::Network => write!(f, "Network"),
+            AppErrorType::Conflict => write!(f, "Conflict"),
+            AppErrorType::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppError {
     pub error_type: AppErrorType,

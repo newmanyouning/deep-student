@@ -113,7 +113,7 @@ export async function createWorkspace(
   sessionId: string,
   request: CreateWorkspaceRequest
 ): Promise<CreateWorkspaceResponse> {
-  const response = await invoke<CreateWorkspaceResponse>('workspace_create', {
+  const response = await invoke<CreateWorkspaceResponse>('chat_v2_workspace_create', {
     sessionId,
     request,
   });
@@ -142,7 +142,7 @@ export async function getWorkspace(
   sessionId: string,
   workspaceId: string
 ): Promise<WorkspaceInfo | null> {
-  return invoke<WorkspaceInfo | null>('workspace_get', {
+  return invoke<WorkspaceInfo | null>('chat_v2_workspace_get', {
     sessionId,
     workspaceId,
   });
@@ -152,7 +152,7 @@ export async function getWorkspace(
  * 关闭工作区
  */
 export async function closeWorkspace(sessionId: string, workspaceId: string): Promise<void> {
-  return invoke<void>('workspace_close', {
+  return invoke<void>('chat_v2_workspace_close', {
     sessionId,
     workspaceId,
   });
@@ -162,7 +162,7 @@ export async function closeWorkspace(sessionId: string, workspaceId: string): Pr
  * 删除工作区
  */
 export async function deleteWorkspace(sessionId: string, workspaceId: string): Promise<void> {
-  return invoke<void>('workspace_delete', {
+  return invoke<void>('chat_v2_workspace_delete', {
     sessionId,
     workspaceId,
   });
@@ -174,7 +174,7 @@ export async function deleteWorkspace(sessionId: string, workspaceId: string): P
 export async function createAgent(
   request: CreateAgentRequest
 ): Promise<CreateAgentResponse> {
-  return invoke<CreateAgentResponse>('workspace_create_agent', {
+  return invoke<CreateAgentResponse>('chat_v2_workspace_create_agent', {
     request,
   });
 }
@@ -183,7 +183,7 @@ export async function createAgent(
  * 列出工作区中的 Agent
  */
 export async function listAgents(sessionId: string, workspaceId: string): Promise<AgentInfo[]> {
-  return invoke<AgentInfo[]>('workspace_list_agents', {
+  return invoke<AgentInfo[]>('chat_v2_workspace_list_agents', {
     sessionId,
     workspaceId,
   });
@@ -196,7 +196,7 @@ export async function sendMessage(
   sessionId: string,
   request: SendMessageRequest
 ): Promise<SendMessageResponse> {
-  return invoke<SendMessageResponse>('workspace_send_message', {
+  return invoke<SendMessageResponse>('chat_v2_workspace_send_message', {
     sessionId,
     request,
   });
@@ -210,7 +210,7 @@ export async function listMessages(
   workspaceId: string,
   limit?: number
 ): Promise<MessageInfo[]> {
-  return invoke<MessageInfo[]>('workspace_list_messages', {
+  return invoke<MessageInfo[]>('chat_v2_workspace_list_messages', {
     sessionId,
     workspaceId,
     limit,
@@ -226,7 +226,7 @@ export async function setContext(
   key: string,
   value: unknown
 ): Promise<void> {
-  return invoke<void>('workspace_set_context', {
+  return invoke<void>('chat_v2_workspace_set_context', {
     sessionId,
     workspaceId,
     key,
@@ -242,7 +242,7 @@ export async function getContext(
   workspaceId: string,
   key: string
 ): Promise<unknown | null> {
-  return invoke<unknown | null>('workspace_get_context', {
+  return invoke<unknown | null>('chat_v2_workspace_get_context', {
     sessionId,
     workspaceId,
     key,
@@ -256,7 +256,7 @@ export async function listDocuments(
   sessionId: string,
   workspaceId: string
 ): Promise<DocumentInfo[]> {
-  return invoke<DocumentInfo[]>('workspace_list_documents', {
+  return invoke<DocumentInfo[]>('chat_v2_workspace_list_documents', {
     sessionId,
     workspaceId,
   });
@@ -270,7 +270,7 @@ export async function getDocument(
   workspaceId: string,
   documentId: string
 ): Promise<string | null> {
-  return invoke<string | null>('workspace_get_document', {
+  return invoke<string | null>('chat_v2_workspace_get_document', {
     sessionId,
     workspaceId,
     documentId,
@@ -281,7 +281,7 @@ export async function getDocument(
  * 列出所有活跃工作区
  */
 export async function listAllWorkspaces(sessionId: string): Promise<WorkspaceInfo[]> {
-  return invoke<WorkspaceInfo[]>('workspace_list_all', {
+  return invoke<WorkspaceInfo[]>('chat_v2_workspace_list_all', {
     sessionId,
   });
 }
@@ -431,7 +431,7 @@ export async function runAgent(
     agent_session_id: string;
     message_id: string;
     status: string;
-  }>('workspace_run_agent', {
+  }>('chat_v2_workspace_run_agent', {
     request: {
       workspace_id: workspaceId,
       agent_session_id: agentSessionId,
@@ -460,7 +460,7 @@ export async function cancelAgent(
     requesterSessionId
   );
 
-  return invoke<boolean>('workspace_cancel_agent', {
+  return invoke<boolean>('chat_v2_workspace_cancel_agent', {
     sessionId: resolvedRequesterSessionId,
     workspaceId,
     agentSessionId,
@@ -551,7 +551,7 @@ export async function restoreExecutions(
     requesterSessionId
   );
 
-  return invoke<RestoreExecutionsResponse>('workspace_restore_executions', {
+  return invoke<RestoreExecutionsResponse>('chat_v2_workspace_restore_executions', {
     sessionId: resolvedRequesterSessionId,
     workspaceId,
   });
@@ -587,7 +587,7 @@ export async function manualWake(
     requesterSessionId
   );
 
-  return invoke<ManualWakeResponse>('workspace_manual_wake', {
+  return invoke<ManualWakeResponse>('chat_v2_workspace_manual_wake', {
     request: {
       workspace_id: workspaceId,
       requester_session_id: resolvedRequesterSessionId,
@@ -610,7 +610,7 @@ export async function cancelSleep(
     requesterSessionId
   );
 
-  return invoke<boolean>('workspace_cancel_sleep', {
+  return invoke<boolean>('chat_v2_workspace_cancel_sleep', {
     sessionId: resolvedRequesterSessionId,
     workspaceId,
     sleepId,

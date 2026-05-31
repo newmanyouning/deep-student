@@ -4,10 +4,10 @@
 //! 工具前缀：`user_todo_`
 //!
 //! ## 工具列表
-//! - `user_todo_list_lists`: 列出所有待办列表
-//! - `user_todo_create_item`: 创建待办项
+//! - `user_vfs_todo_list_lists`: 列出所有待办列表
+//! - `user_vfs_todo_create_item`: 创建待办项
 //! - `user_todo_complete_item`: 完成待办项
-//! - `user_todo_list_items`: 列出待办项
+//! - `user_vfs_todo_list_items`: 列出待办项
 //! - `user_todo_get_summary`: 获取待办摘要
 
 use std::time::Instant;
@@ -15,7 +15,7 @@ use std::time::Instant;
 use async_trait::async_trait;
 use serde_json::{json, Value};
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
 use crate::vfs::repos::VfsTodoRepo;
@@ -25,12 +25,12 @@ use crate::vfs::types::{VfsCreateTodoItemParams, VfsUpdateTodoItemParams};
 // 常量
 // ============================================================================
 
-pub const USER_TODO_LIST_LISTS: &str = "user_todo_list_lists";
-pub const USER_TODO_CREATE_ITEM: &str = "user_todo_create_item";
+pub const USER_TODO_LIST_LISTS: &str = "user_vfs_todo_list_lists";
+pub const USER_TODO_CREATE_ITEM: &str = "user_vfs_todo_create_item";
 pub const USER_TODO_COMPLETE_ITEM: &str = "user_todo_complete_item";
-pub const USER_TODO_LIST_ITEMS: &str = "user_todo_list_items";
+pub const USER_TODO_LIST_ITEMS: &str = "user_vfs_todo_list_items";
 pub const USER_TODO_GET_SUMMARY: &str = "user_todo_get_summary";
-pub const USER_TODO_UPDATE_ITEM: &str = "user_todo_update_item";
+pub const USER_TODO_UPDATE_ITEM: &str = "user_vfs_todo_update_item";
 
 // ============================================================================
 // Schema
@@ -205,9 +205,9 @@ impl UserTodoExecutor {
         Self
     }
 
-    fn execute_list_lists(&self, ctx: &ExecutionContext) -> Result<Value, String> {
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
-        let lists = VfsTodoRepo::list_todo_lists(vfs_db).map_err(|e| e.to_string())?;
+    fn execute_list_lists(&self, ctx: &ExecutionContext) -> ToolResult<Value> {
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Execution("VFS database not available".into()))?;
+        let lists = VfsTodoRepo::list_todo_lists(vfs_db)?;
 
         let items: Vec<Value> = lists
             .iter()
@@ -229,20 +229,20 @@ impl UserTodoExecutor {
         }))
     }
 
-    fn execute_create_item(&self, args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+    fn execute_create_item(&self, args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Execution("VFS database not available".into()))?;
 
         let title = args
             .get("title")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: title")?
+            .ok_or(ToolError::InvalidArgs("缺少必需参数: title".into()))?
             .to_string();
 
         let list_id = if let Some(id) = args.get("list_id").and_then(|v| v.as_str()) {
             id.to_string()
         } else {
             // 确保默认收件箱存在
-            let inbox = VfsTodoRepo::ensure_default_inbox(vfs_db).map_err(|e| e.to_string())?;
+            let inbox = VfsTodoRepo::ensure_default_inbox(vfs_db)?;
             inbox.id
         };
 
@@ -275,7 +275,7 @@ impl UserTodoExecutor {
             attachments: None,
         };
 
-        let item = VfsTodoRepo::create_todo_item(vfs_db, params).map_err(|e| e.to_string())?;
+        let item = VfsTodoRepo::create_todo_item(vfs_db, params)?;
 
         Ok(json!({
             "success": true,
@@ -291,18 +291,17 @@ impl UserTodoExecutor {
         }))
     }
 
-    fn execute_complete_item(&self, args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+    fn execute_complete_item(&self, args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Execution("VFS database not available".into()))?;
 
         let item_id = args
             .get("item_id")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: item_id")?;
+            .ok_or(ToolError::InvalidArgs("缺少必需参数: item_id".into()))?;
 
         // 幂等语义：已完成则直接返回成功，不会 toggle 回 pending
-        let existing = VfsTodoRepo::get_todo_item(vfs_db, item_id)
-            .map_err(|e| e.to_string())?
-            .ok_or_else(|| format!("待办项 {} 不存在", item_id))?;
+        let existing = VfsTodoRepo::get_todo_item(vfs_db, item_id)?
+            .ok_or_else(|| ToolError::NotFound(format!("待办项 {} 不存在", item_id)))?;
 
         if existing.status == "completed" {
             return Ok(json!({
@@ -316,7 +315,7 @@ impl UserTodoExecutor {
             }));
         }
 
-        let item = VfsTodoRepo::toggle_todo_item(vfs_db, item_id).map_err(|e| e.to_string())?;
+        let item = VfsTodoRepo::toggle_todo_item(vfs_db, item_id)?;
 
         Ok(json!({
             "success": true,
@@ -329,8 +328,8 @@ impl UserTodoExecutor {
         }))
     }
 
-    fn execute_list_items(&self, args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+    fn execute_list_items(&self, args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Execution("VFS database not available".into()))?;
 
         let view = args.get("view").and_then(|v| v.as_str()).unwrap_or("all");
         let include_completed = args
@@ -340,26 +339,26 @@ impl UserTodoExecutor {
 
         let items = match view {
             "today" => VfsTodoRepo::list_today_items(vfs_db, include_completed)
-                .map_err(|e| e.to_string())?,
+                ?,
             "overdue" => VfsTodoRepo::list_overdue_items(vfs_db, include_completed)
-                .map_err(|e| e.to_string())?,
+                ?,
             "upcoming" => VfsTodoRepo::list_upcoming_items(vfs_db, 7, include_completed)
-                .map_err(|e| e.to_string())?,
+                ?,
             "completed" => VfsTodoRepo::list_completed_items(
                 vfs_db,
                 args.get("list_id").and_then(|v| v.as_str()),
             )
-            .map_err(|e| e.to_string())?,
+            ?,
             _ => {
                 if let Some(list_id) = args.get("list_id").and_then(|v| v.as_str()) {
                     VfsTodoRepo::list_items_by_list(vfs_db, list_id, include_completed)
-                        .map_err(|e| e.to_string())?
+                        ?
                 } else {
                     // Default: list today + overdue
                     let mut all = VfsTodoRepo::list_today_items(vfs_db, include_completed)
-                        .map_err(|e| e.to_string())?;
+                        ?;
                     let overdue = VfsTodoRepo::list_overdue_items(vfs_db, include_completed)
-                        .map_err(|e| e.to_string())?;
+                        ?;
                     all.extend(overdue);
                     all
                 }
@@ -389,10 +388,10 @@ impl UserTodoExecutor {
         }))
     }
 
-    fn execute_get_summary(&self, ctx: &ExecutionContext) -> Result<Value, String> {
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+    fn execute_get_summary(&self, ctx: &ExecutionContext) -> ToolResult<Value> {
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Execution("VFS database not available".into()))?;
 
-        let summary = VfsTodoRepo::get_active_todo_summary(vfs_db).map_err(|e| e.to_string())?;
+        let summary = VfsTodoRepo::get_active_todo_summary(vfs_db)?;
 
         match summary {
             Some(s) => {
@@ -418,13 +417,13 @@ impl UserTodoExecutor {
         }
     }
 
-    fn execute_update_item(&self, args: &Value, ctx: &ExecutionContext) -> Result<Value, String> {
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+    fn execute_update_item(&self, args: &Value, ctx: &ExecutionContext) -> ToolResult<Value> {
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Execution("VFS database not available".into()))?;
 
         let item_id = args
             .get("item_id")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: item_id")?;
+            .ok_or(ToolError::InvalidArgs("缺少必需参数: item_id".into()))?;
 
         let params = VfsUpdateTodoItemParams {
             title: args
@@ -462,7 +461,7 @@ impl UserTodoExecutor {
         };
 
         let item =
-            VfsTodoRepo::update_todo_item(vfs_db, item_id, params).map_err(|e| e.to_string())?;
+            VfsTodoRepo::update_todo_item(vfs_db, item_id, params)?;
 
         Ok(json!({
             "success": true,
@@ -490,12 +489,12 @@ impl ToolExecutor for UserTodoExecutor {
         let stripped = strip_tool_namespace(tool_name);
         matches!(
             stripped,
-            "user_todo_list_lists"
-                | "user_todo_create_item"
+            "user_vfs_todo_list_lists"
+                | "user_vfs_todo_create_item"
                 | "user_todo_complete_item"
-                | "user_todo_list_items"
+                | "user_vfs_todo_list_items"
                 | "user_todo_get_summary"
-                | "user_todo_update_item"
+                | "user_vfs_todo_update_item"
         )
     }
 
@@ -503,19 +502,19 @@ impl ToolExecutor for UserTodoExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start = Instant::now();
         ctx.emit_tool_call_start(&call.name, call.arguments.clone(), Some(&call.id));
 
         let tool_name = strip_tool_namespace(&call.name);
         let result = match tool_name {
-            "user_todo_list_lists" => self.execute_list_lists(ctx),
-            "user_todo_create_item" => self.execute_create_item(&call.arguments, ctx),
+            "user_vfs_todo_list_lists" => self.execute_list_lists(ctx),
+            "user_vfs_todo_create_item" => self.execute_create_item(&call.arguments, ctx),
             "user_todo_complete_item" => self.execute_complete_item(&call.arguments, ctx),
-            "user_todo_list_items" => self.execute_list_items(&call.arguments, ctx),
+            "user_vfs_todo_list_items" => self.execute_list_items(&call.arguments, ctx),
             "user_todo_get_summary" => self.execute_get_summary(ctx),
-            "user_todo_update_item" => self.execute_update_item(&call.arguments, ctx),
-            _ => Err(format!("未知的用户待办工具: {}", call.name)),
+            "user_vfs_todo_update_item" => self.execute_update_item(&call.arguments, ctx),
+            _ => Err(ToolError::InvalidArgs(format!("未知的用户待办工具: {}", call.name))),
         };
 
         let duration_ms = start.elapsed().as_millis() as u64;
@@ -543,14 +542,15 @@ impl ToolExecutor for UserTodoExecutor {
                 Ok(tool_result)
             }
             Err(error) => {
-                ctx.emit_tool_call_error(&error);
+                let error_msg = error.to_string();
+                ctx.emit_tool_call_error(&error_msg);
 
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    error,
+                    error_msg,
                     duration_ms,
                 );
 

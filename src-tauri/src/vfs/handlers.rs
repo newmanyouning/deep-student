@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager as _, State};
 
 use crate::utils::unicode::sanitize_unicode;
 use crate::vfs::attachment_config::AttachmentConfig;
@@ -140,7 +140,7 @@ pub struct SearchAllInput {
 /// ★ 2026-01 优化：ID 格式验证辅助函数，减少重复代码
 /// ★ BE-06 安全修复：添加 Unicode 规范化，防止绕过攻击
 #[inline]
-fn validate_id_format(id: &str, prefix: &str, param_name: &str) -> Result<(), String> {
+fn validate_id_format(id: &str, prefix: &str, param_name: &str) -> VfsResult<()> {
     // 先进行 Unicode 规范化
     let sanitized = sanitize_unicode(id);
 
@@ -164,7 +164,7 @@ fn validate_id_format(id: &str, prefix: &str, param_name: &str) -> Result<(), St
 }
 
 #[inline]
-fn validate_id_format_any(id: &str, prefixes: &[&str], param_name: &str) -> Result<(), String> {
+fn validate_id_format_any(id: &str, prefixes: &[&str], param_name: &str) -> VfsResult<()> {
     // 先进行 Unicode 规范化
     let sanitized = sanitize_unicode(id);
 
@@ -299,7 +299,7 @@ fn compute_hash(data: &str) -> String {
 pub async fn vfs_create_or_reuse(
     params: CreateResourceInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<VfsCreateResourceResult, String> {
+) -> VfsResult<VfsCreateResourceResult> {
     log::info!(
         "[VFS::handlers] vfs_create_or_reuse: type={}, data_len={}, source_id={:?}",
         params.resource_type,
@@ -317,7 +317,7 @@ pub async fn vfs_create_or_reuse(
     })?;
 
     // 验证大文件限制
-    validate_file_size(&resource_type, &params.data).map_err(|e| e.to_string())?;
+    validate_file_size(&resource_type, &params.data)?;
 
     // 调用 VfsResourceRepo::create_or_reuse
     let result = VfsResourceRepo::create_or_reuse(
@@ -327,8 +327,7 @@ pub async fn vfs_create_or_reuse(
         params.source_id.as_deref(),
         None, // source_table
         params.metadata.as_ref(),
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
 
     log::info!(
         "[VFS::handlers] Resource {}: id={}, hash={}, is_new={}",
@@ -354,14 +353,14 @@ pub async fn vfs_create_or_reuse(
 pub async fn vfs_get_resource(
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<VfsResource>, String> {
+) -> VfsResult<Option<VfsResource>> {
     log::debug!("[VFS::handlers] vfs_get_resource: id={}", resource_id);
 
     // 验证资源 ID 格式
     validate_id_format(&resource_id, "res_", "resource_id")?;
 
     // 调用 VfsResourceRepo::get_resource
-    VfsResourceRepo::get_resource(&vfs_db, &resource_id).map_err(|e| e.to_string())
+    Ok(VfsResourceRepo::get_resource(&vfs_db, &resource_id)?)
 }
 
 /// 检查资源是否存在
@@ -377,7 +376,7 @@ pub async fn vfs_get_resource(
 pub async fn vfs_resource_exists(
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<bool, String> {
+) -> VfsResult<bool> {
     log::debug!("[VFS::handlers] vfs_resource_exists: id={}", resource_id);
 
     // 验证资源 ID 格式
@@ -386,7 +385,7 @@ pub async fn vfs_resource_exists(
     }
 
     // 调用 VfsResourceRepo::exists
-    VfsResourceRepo::exists(&vfs_db, &resource_id).map_err(|e| e.to_string())
+    Ok(VfsResourceRepo::exists(&vfs_db, &resource_id)?)
 }
 
 /// 增加资源引用计数
@@ -403,7 +402,7 @@ pub async fn vfs_resource_exists(
 pub async fn vfs_increment_ref(
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     log::info!("[VFS::handlers] vfs_increment_ref: id={}", resource_id);
 
     // 验证资源 ID 格式
@@ -412,7 +411,6 @@ pub async fn vfs_increment_ref(
     // 调用 VfsResourceRepo::increment_ref
     VfsResourceRepo::increment_ref(&vfs_db, &resource_id)
         .map(|_| ())
-        .map_err(|e| e.to_string())
 }
 
 /// 减少资源引用计数
@@ -429,7 +427,7 @@ pub async fn vfs_increment_ref(
 pub async fn vfs_decrement_ref(
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     log::info!("[VFS::handlers] vfs_decrement_ref: id={}", resource_id);
 
     // 验证资源 ID 格式
@@ -438,7 +436,6 @@ pub async fn vfs_decrement_ref(
     // 调用 VfsResourceRepo::decrement_ref
     VfsResourceRepo::decrement_ref(&vfs_db, &resource_id)
         .map(|_| ())
-        .map_err(|e| e.to_string())
 }
 
 // ============================================================================
@@ -459,7 +456,7 @@ pub async fn vfs_decrement_ref(
 pub async fn vfs_create_note(
     params: CreateNoteInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<VfsNote, String> {
+) -> VfsResult<VfsNote> {
     log::info!("[VFS::handlers] vfs_create_note: title={}", params.title);
 
     // M-010: 校验内容长度，防止超大内容造成 DB 膨胀
@@ -491,7 +488,7 @@ pub async fn vfs_create_note(
         content: params.content,
         tags: params.tags,
     };
-    let note = VfsNoteRepo::create_note(&vfs_db, create_params).map_err(|e| e.to_string())?;
+    let note = VfsNoteRepo::create_note(&vfs_db, create_params)?;
 
     log::info!("[VFS::handlers] Note created: id={}", note.id);
     Ok(note)
@@ -516,7 +513,7 @@ pub async fn vfs_update_note(
     id: String,
     params: UpdateNoteInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<VfsNote, String> {
+) -> VfsResult<VfsNote> {
     log::info!(
         "[VFS::handlers] vfs_update_note: id={}, content_len={}",
         id,
@@ -547,7 +544,7 @@ pub async fn vfs_update_note(
         tags: params.tags,
         expected_updated_at: params.expected_updated_at,
     };
-    let note = VfsNoteRepo::update_note(&vfs_db, &id, update_params).map_err(|e| e.to_string())?;
+    let note = VfsNoteRepo::update_note(&vfs_db, &id, update_params)?;
 
     log::info!("[VFS::handlers] Note updated: id={}", note.id);
     Ok(note)
@@ -566,14 +563,14 @@ pub async fn vfs_update_note(
 pub async fn vfs_get_note(
     id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<VfsNote>, String> {
+) -> VfsResult<Option<VfsNote>> {
     log::debug!("[VFS::handlers] vfs_get_note: id={}", id);
 
     // 验证笔记 ID 格式
     validate_id_format(&id, "note_", "id")?;
 
     // 调用 VfsNoteRepo::get_note
-    VfsNoteRepo::get_note(&vfs_db, &id).map_err(|e| e.to_string())
+    Ok(VfsNoteRepo::get_note(&vfs_db, &id)?)
 }
 
 /// 获取笔记内容
@@ -591,14 +588,14 @@ pub async fn vfs_get_note(
 pub async fn vfs_get_note_content(
     id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<String>, String> {
+) -> VfsResult<Option<String>> {
     log::debug!("[VFS::handlers] vfs_get_note_content: id={}", id);
 
     // 验证笔记 ID 格式
     validate_id_format(&id, "note_", "id")?;
 
     // 调用 VfsNoteRepo::get_note_content
-    VfsNoteRepo::get_note_content(&vfs_db, &id).map_err(|e| e.to_string())
+    Ok(VfsNoteRepo::get_note_content(&vfs_db, &id)?)
 }
 
 /// 列出笔记
@@ -613,7 +610,7 @@ pub async fn vfs_get_note_content(
 pub async fn vfs_list_notes(
     params: Option<ListInput>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<VfsNote>, String> {
+) -> VfsResult<Vec<VfsNote>> {
     let params = params.unwrap_or_default();
     log::debug!(
         "[VFS::handlers] vfs_list_notes: search={:?}, limit={}, offset={}",
@@ -628,7 +625,6 @@ pub async fn vfs_list_notes(
         params.limit,
         params.offset,
     )
-    .map_err(|e| e.to_string())
 }
 
 /// 删除笔记
@@ -645,14 +641,14 @@ pub async fn vfs_list_notes(
 pub async fn vfs_delete_note(
     id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     log::info!("[VFS::handlers] vfs_delete_note: id={}", id);
 
     // 验证笔记 ID 格式
     validate_id_format(&id, "note_", "id")?;
 
     // 保持 notes 与 folder_items 软删除一致
-    VfsNoteRepo::delete_note_with_folder_item(&vfs_db, &id).map_err(|e| e.to_string())
+    Ok(VfsNoteRepo::delete_note_with_folder_item(&vfs_db, &id)?)
 }
 
 // ============================================================================
@@ -671,7 +667,7 @@ pub async fn vfs_delete_note(
 pub async fn vfs_list_textbooks(
     params: Option<ListInput>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<VfsTextbook>, String> {
+) -> VfsResult<Vec<VfsTextbook>> {
     let params = params.unwrap_or_default();
     log::debug!(
         "[VFS::handlers] vfs_list_textbooks: search={:?}, limit={}, offset={}",
@@ -687,10 +683,8 @@ pub async fn vfs_list_textbooks(
         .filter(|s| !s.is_empty())
     {
         VfsTextbookRepo::search_textbooks(&vfs_db, search, params.limit, params.offset)
-            .map_err(|e| e.to_string())
     } else {
         VfsTextbookRepo::list_textbooks(&vfs_db, params.limit, params.offset)
-            .map_err(|e| e.to_string())
     }
 }
 
@@ -706,7 +700,7 @@ pub async fn vfs_list_textbooks(
 pub async fn vfs_list_exam_sheets(
     params: Option<ListInput>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<VfsExamSheet>, String> {
+) -> VfsResult<Vec<VfsExamSheet>> {
     let params = params.unwrap_or_default();
     log::debug!(
         "[VFS::handlers] vfs_list_exam_sheets: search={:?}, limit={}, offset={}",
@@ -721,7 +715,6 @@ pub async fn vfs_list_exam_sheets(
         params.limit,
         params.offset,
     )
-    .map_err(|e| e.to_string())
 }
 
 /// 列出翻译
@@ -736,7 +729,7 @@ pub async fn vfs_list_exam_sheets(
 pub async fn vfs_list_translations(
     params: Option<ListInput>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<VfsTranslation>, String> {
+) -> VfsResult<Vec<VfsTranslation>> {
     let params = params.unwrap_or_default();
     log::debug!(
         "[VFS::handlers] vfs_list_translations: search={:?}, limit={}, offset={}",
@@ -753,7 +746,6 @@ pub async fn vfs_list_translations(
         params.limit,
         params.offset,
     )
-    .map_err(|e| e.to_string())
 }
 
 /// 列出作文
@@ -768,7 +760,7 @@ pub async fn vfs_list_translations(
 pub async fn vfs_list_essays(
     params: Option<ListInput>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<VfsEssay>, String> {
+) -> VfsResult<Vec<VfsEssay>> {
     let params = params.unwrap_or_default();
     log::debug!(
         "[VFS::handlers] vfs_list_essays: search={:?}, limit={}, offset={}",
@@ -783,7 +775,6 @@ pub async fn vfs_list_essays(
         params.limit,
         params.offset,
     )
-    .map_err(|e| e.to_string())
 }
 
 /// 搜索所有资源
@@ -800,7 +791,7 @@ pub async fn vfs_list_essays(
 pub async fn vfs_search_all(
     params: SearchAllInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<VfsListItem>, String> {
+) -> VfsResult<Vec<VfsListItem>> {
     log::debug!(
         "[VFS::handlers] vfs_search_all: query={}, types={:?}, limit={}, offset={}",
         params.query,
@@ -1031,14 +1022,14 @@ use crate::vfs::repos::VfsFolderRepo;
 pub async fn vfs_get_resource_path(
     source_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<String, String> {
+) -> VfsResult<String> {
     log::info!(
         "[VFS::handlers] vfs_get_resource_path: source_id={}",
         source_id
     );
 
     // 获取数据库连接
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     // 1. 先查 cached_path
     let cached_path: Option<String> = conn
@@ -1131,7 +1122,7 @@ pub async fn vfs_get_resource_path(
 pub async fn vfs_update_path_cache(
     folder_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<u32, String> {
+) -> VfsResult<u32> {
     log::info!(
         "[VFS::handlers] vfs_update_path_cache: folder_id={}",
         folder_id
@@ -1147,17 +1138,16 @@ pub async fn vfs_update_path_cache(
     }
 
     // 获取数据库连接
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     // 使用事务
-    conn.execute("BEGIN TRANSACTION", [])
-        .map_err(|e| e.to_string())?;
+    conn.execute("BEGIN TRANSACTION", [])?;
 
     let result = update_path_cache_internal(&conn, &folder_id);
 
     match result {
         Ok(count) => {
-            conn.execute("COMMIT", []).map_err(|e| e.to_string())?;
+            conn.execute("COMMIT", [])?;
             log::info!(
                 "[VFS::handlers] Updated {} path caches for folder {}",
                 count,
@@ -1174,18 +1164,16 @@ pub async fn vfs_update_path_cache(
 }
 
 /// 内部函数：批量更新路径缓存
-fn update_path_cache_internal(conn: &rusqlite::Connection, folder_id: &str) -> Result<u32, String> {
+fn update_path_cache_internal(conn: &rusqlite::Connection, folder_id: &str) -> VfsResult<u32> {
     // 1. 获取文件夹及其所有子文件夹的 ID
-    let folder_ids = VfsFolderRepo::get_folder_ids_recursive_with_conn(conn, folder_id)
-        .map_err(|e| e.to_string())?;
+    let folder_ids = VfsFolderRepo::get_folder_ids_recursive_with_conn(conn, folder_id)?;
 
     if folder_ids.is_empty() {
         return Ok(0);
     }
 
     // 2. 获取这些文件夹下的所有 folder_items
-    let items = VfsFolderRepo::get_items_by_folders_with_conn(conn, &folder_ids)
-        .map_err(|e| e.to_string())?;
+    let items = VfsFolderRepo::get_items_by_folders_with_conn(conn, &folder_ids)?;
 
     let mut updated = 0u32;
 
@@ -1219,7 +1207,7 @@ fn compute_path_with_conn(
     conn: &rusqlite::Connection,
     folder_id: Option<&str>,
     source_id: &str,
-) -> Result<String, String> {
+) -> VfsResult<String> {
     // 获取资源标题
     let title = get_resource_title_with_conn(conn, source_id)?;
 
@@ -1230,7 +1218,7 @@ fn compute_path_with_conn(
 
     // 获取文件夹路径（使用 CTE 递归查询）
     let folder_path =
-        VfsFolderRepo::build_folder_path_with_conn(conn, fid).map_err(|e| e.to_string())?;
+        VfsFolderRepo::build_folder_path_with_conn(conn, fid)?;
 
     Ok(format!("/{}/{}", folder_path, title))
 }
@@ -1239,7 +1227,7 @@ fn compute_path_with_conn(
 fn get_resource_title_with_conn(
     conn: &rusqlite::Connection,
     source_id: &str,
-) -> Result<String, String> {
+) -> VfsResult<String> {
     // 根据 source_id 前缀判断类型并查询标题
     let prefix = source_id.split('_').next().unwrap_or("");
 
@@ -1311,7 +1299,7 @@ pub async fn vfs_upload_attachment(
     params: VfsUploadAttachmentParamsExt,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     pdf_processing_service: State<'_, Arc<PdfProcessingService>>,
-) -> Result<VfsUploadAttachmentResult, String> {
+) -> VfsResult<VfsUploadAttachmentResult> {
     log::info!(
         "[VFS::handlers] vfs_upload_attachment: name={}, mime_type={}, folder_id={:?}",
         params.name,
@@ -1330,7 +1318,7 @@ pub async fn vfs_upload_attachment(
             Some(
                 config
                     .get_or_create_root_folder()
-                    .map_err(|e| e.to_string())?,
+                    ?,
             )
         }
     };
@@ -1343,8 +1331,7 @@ pub async fn vfs_upload_attachment(
     };
 
     let result =
-        VfsAttachmentRepo::upload_with_folder(&vfs_db, upload_params, target_folder_id.as_deref())
-            .map_err(|e| e.to_string())?;
+        VfsAttachmentRepo::upload_with_folder(&vfs_db, upload_params, target_folder_id.as_deref())?;
 
     log::info!(
         "[VFS::handlers] Attachment {}: source_id={}, hash={}, folder={:?}",
@@ -1530,10 +1517,10 @@ pub struct AttachmentConfigOutput {
 #[tauri::command]
 pub async fn vfs_get_attachment_config(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<AttachmentConfigOutput, String> {
+) -> VfsResult<AttachmentConfigOutput> {
     let config = AttachmentConfig::new(vfs_db.inner().clone());
-    let root_id = config.get_root_folder_id().map_err(|e| e.to_string())?;
-    let root_title = config.get_root_folder_title().map_err(|e| e.to_string())?;
+    let root_id = config.get_root_folder_id()?;
+    let root_title = config.get_root_folder_title()?;
 
     Ok(AttachmentConfigOutput {
         attachment_root_folder_id: root_id,
@@ -1545,36 +1532,34 @@ pub async fn vfs_get_attachment_config(
 pub async fn vfs_set_attachment_root_folder(
     folder_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     use crate::vfs::repos::VfsFolderRepo;
 
-    if !VfsFolderRepo::folder_exists(&vfs_db, &folder_id).map_err(|e| e.to_string())? {
-        return Err(format!("Folder not found: {}", folder_id));
+    if !VfsFolderRepo::folder_exists(&vfs_db, &folder_id)? {
+        return Err(VfsError::Other(format!("Folder not found: {}", folder_id)));
     }
 
     let config = AttachmentConfig::new(vfs_db.inner().clone());
     config
         .set_root_folder_id(&folder_id)
-        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn vfs_create_attachment_root_folder(
     title: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<String, String> {
+) -> VfsResult<String> {
     let config = AttachmentConfig::new(vfs_db.inner().clone());
-    config.create_root_folder(&title).map_err(|e| e.to_string())
+    Ok(config.create_root_folder(&title)?)
 }
 
 #[tauri::command]
 pub async fn vfs_get_or_create_attachment_root_folder(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<String, String> {
+) -> VfsResult<String> {
     let config = AttachmentConfig::new(vfs_db.inner().clone());
     config
         .get_or_create_root_folder()
-        .map_err(|e| e.to_string())
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -1603,7 +1588,7 @@ pub struct VfsAttachmentContentResult {
 pub async fn vfs_get_attachment_content(
     attachment_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<VfsAttachmentContentResult, String> {
+) -> VfsResult<VfsAttachmentContentResult> {
     log::info!(
         "[VFS::handlers] vfs_get_attachment_content: START id={}",
         attachment_id
@@ -1619,22 +1604,20 @@ pub async fn vfs_get_attachment_content(
             "[VFS::handlers] Invalid attachment ID format: {}",
             attachment_id
         );
-        return Err(format!("Invalid attachment ID format: {}", attachment_id));
+        return Err(VfsError::Other(format!("Invalid attachment ID format: {}", attachment_id)));
     }
 
     // ★ img_ 前缀：DOCX VLM 直提路径产生的图片 ID，blob hash 存在 questions.images_json 中
     if attachment_id.starts_with("img_") {
-        let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = vfs_db.get_conn_safe()?;
         // 在 questions.images_json 中搜索此 img_ ID，提取 blob hash
         let rows: Vec<String> = {
             let mut stmt = conn
-                .prepare("SELECT images_json FROM questions WHERE images_json LIKE ?1 AND deleted_at IS NULL LIMIT 5")
-                .map_err(|e| e.to_string())?;
+                .prepare("SELECT images_json FROM questions WHERE images_json LIKE ?1 AND deleted_at IS NULL LIMIT 5")?;
             let iter = stmt
                 .query_map(rusqlite::params![format!("%{}%", attachment_id)], |row| {
                     row.get::<_, String>(0)
-                })
-                .map_err(|e| e.to_string())?;
+                })?;
             iter.filter_map(|r| r.ok()).collect()
         };
 
@@ -1710,15 +1693,14 @@ pub async fn vfs_get_attachment_content(
 
     // ★ 详细日志：查询文件元数据
     {
-        let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = vfs_db.get_conn_safe()?;
         let meta: Option<(Option<String>, Option<String>, Option<String>)> = conn
             .query_row(
                 "SELECT resource_id, blob_hash, original_path FROM files WHERE id = ?1",
                 rusqlite::params![&attachment_id],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
             )
-            .optional()
-            .map_err(|e| e.to_string())?;
+            .optional()?;
 
         log::info!(
             "[VFS::handlers] vfs_get_attachment_content: file meta for {}: resource_id={:?}, blob_hash={:?}, original_path={:?}",
@@ -1782,14 +1764,14 @@ pub async fn vfs_get_attachment_content(
 pub async fn vfs_get_attachment(
     attachment_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<VfsAttachment>, String> {
+) -> VfsResult<Option<VfsAttachment>> {
     log::debug!("[VFS::handlers] vfs_get_attachment: id={}", attachment_id);
 
     if !attachment_id.starts_with("att_") && !attachment_id.starts_with("file_") {
-        return Err(format!("Invalid attachment ID format: {}", attachment_id));
+        return Err(VfsError::Other(format!("Invalid attachment ID format: {}", attachment_id)));
     }
 
-    VfsAttachmentRepo::get_by_id(&vfs_db, &attachment_id).map_err(|e| e.to_string())
+    Ok(VfsAttachmentRepo::get_by_id(&vfs_db, &attachment_id)?)
 }
 
 /// 软删除附件
@@ -1800,17 +1782,17 @@ pub async fn vfs_get_attachment(
 pub async fn vfs_delete_attachment(
     attachment_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     log::info!(
         "[VFS::handlers] vfs_delete_attachment: id={}",
         attachment_id
     );
 
     if !attachment_id.starts_with("att_") {
-        return Err(format!("Invalid attachment ID format: {}", attachment_id));
+        return Err(VfsError::Other(format!("Invalid attachment ID format: {}", attachment_id)));
     }
 
-    VfsAttachmentRepo::delete_attachment(&vfs_db, &attachment_id).map_err(|e| e.to_string())
+    Ok(VfsAttachmentRepo::delete_attachment(&vfs_db, &attachment_id)?)
 }
 
 // ============================================================================
@@ -1946,7 +1928,7 @@ pub async fn vfs_upload_file(
     llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>,
     database: State<'_, crate::database::Database>,
     pdf_processing_service: State<'_, Arc<PdfProcessingService>>,
-) -> Result<VfsUploadFileResult, String> {
+) -> VfsResult<VfsUploadFileResult> {
     use crate::document_parser::DocumentParser;
     use crate::vfs::repos::pdf_preview::{render_pdf_preview, PdfPreviewConfig};
     use crate::vfs::repos::VfsFileRepo;
@@ -2003,12 +1985,12 @@ pub async fn vfs_upload_file(
 
     let size = content.len() as i64;
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
     let blobs_dir = vfs_db.blobs_dir();
     let is_image = params.mime_type.starts_with("image/");
 
     let existing =
-        VfsFileRepo::get_by_sha256_with_conn(&conn, &sha256).map_err(|e| e.to_string())?;
+        VfsFileRepo::get_by_sha256_with_conn(&conn, &sha256)?;
 
     if let Some(file) = existing {
         if file.status == "active" {
@@ -2078,8 +2060,7 @@ pub async fn vfs_upload_file(
             &content,
             Some(&params.mime_type),
             None,
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
         Some(blob.hash)
     } else {
         None
@@ -2101,14 +2082,13 @@ pub async fn vfs_upload_file(
                 let blobs_dir_clone = blobs_dir.to_path_buf();
                 let content_clone = content.clone();
                 match tokio::task::spawn_blocking(move || {
-                    let conn = vfs_db_clone.get_conn_safe().map_err(|e| e.to_string())?;
+                    let conn = vfs_db_clone.get_conn_safe()?;
                     render_pdf_preview(
                         &conn,
                         &blobs_dir_clone,
                         &content_clone,
                         &PdfPreviewConfig::default(),
                     )
-                    .map_err(|e| e.to_string())
                 })
                 .await
                 {
@@ -2191,7 +2171,7 @@ pub async fn vfs_upload_file(
             Some(
                 config
                     .get_or_create_root_folder()
-                    .map_err(|e| e.to_string())?,
+                    ?,
             )
         }
     };
@@ -2226,7 +2206,7 @@ pub async fn vfs_upload_file(
                     );
                 }
             }
-            return Err(e.to_string());
+            return Err(VfsError::Other(e.to_string()));
         }
     };
 
@@ -2406,14 +2386,14 @@ pub async fn vfs_upload_file(
 pub async fn vfs_get_file(
     file_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<VfsFile>, String> {
+) -> VfsResult<Option<VfsFile>> {
     use crate::vfs::repos::VfsFileRepo;
 
     if !file_id.starts_with("file_") && !file_id.starts_with("tb_") {
-        return Err(format!("Invalid file ID format: {}", file_id));
+        return Err(VfsError::Other(format!("Invalid file ID format: {}", file_id)));
     }
 
-    VfsFileRepo::get_file(&vfs_db, &file_id).map_err(|e| e.to_string())
+    Ok(VfsFileRepo::get_file(&vfs_db, &file_id)?)
 }
 
 #[tauri::command]
@@ -2422,7 +2402,7 @@ pub async fn vfs_list_files(
     limit: Option<u32>,
     offset: Option<u32>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<VfsFile>, String> {
+) -> VfsResult<Vec<VfsFile>> {
     use crate::vfs::repos::VfsFileRepo;
 
     let limit = limit.unwrap_or(100);
@@ -2432,7 +2412,6 @@ pub async fn vfs_list_files(
         Some(ft) => VfsFileRepo::list_files_by_type(&vfs_db, &ft, limit, offset),
         None => VfsFileRepo::list_files(&vfs_db, limit, offset),
     }
-    .map_err(|e| e.to_string())
 }
 
 /// ★ M-12 修复：软删除文件时同步清理向量索引
@@ -2443,12 +2422,12 @@ pub async fn vfs_delete_file(
     file_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     use crate::vfs::index_service::VfsIndexService;
     use crate::vfs::repos::VfsFileRepo;
 
     if !file_id.starts_with("file_") {
-        return Err(format!("Invalid file ID format: {}", file_id));
+        return Err(VfsError::Other(format!("Invalid file ID format: {}", file_id)));
     }
 
     let index_service = VfsIndexService::new(Arc::clone(&vfs_db));
@@ -2460,7 +2439,6 @@ pub async fn vfs_delete_file(
         lance_store.as_ref(),
     )
     .await
-    .map_err(|e| e.to_string())
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -2474,18 +2452,18 @@ pub struct VfsFileContentResult {
 pub async fn vfs_get_file_content(
     file_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<VfsFileContentResult, String> {
+) -> VfsResult<VfsFileContentResult> {
     use crate::vfs::repos::VfsFileRepo;
     use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 
     // 支持 file_ 与 tb_（教材）
     if !file_id.starts_with("file_") && !file_id.starts_with("tb_") {
-        return Err(format!("Invalid file ID format: {}", file_id));
+        return Err(VfsError::Other(format!("Invalid file ID format: {}", file_id)));
     }
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
-    let file = match VfsFileRepo::get_file_with_conn(&conn, &file_id).map_err(|e| e.to_string())? {
+    let file = match VfsFileRepo::get_file_with_conn(&conn, &file_id)? {
         Some(f) => f,
         None => {
             return Ok(VfsFileContentResult {
@@ -2497,10 +2475,9 @@ pub async fn vfs_get_file_content(
 
     if let Some(ref blob_hash) = file.blob_hash {
         let blobs_dir = vfs_db.blobs_dir();
-        if let Some(path) = VfsBlobRepo::get_blob_path_with_conn(&conn, &blobs_dir, blob_hash)
-            .map_err(|e| e.to_string())?
+        if let Some(path) = VfsBlobRepo::get_blob_path_with_conn(&conn, &blobs_dir, blob_hash)?
         {
-            let data = std::fs::read(&path).map_err(|e| e.to_string())?;
+            let data = std::fs::read(&path)?;
             let base64 = BASE64.encode(&data);
             return Ok(VfsFileContentResult {
                 content: Some(base64),
@@ -2510,8 +2487,7 @@ pub async fn vfs_get_file_content(
     }
 
     if let Some(ref resource_id) = file.resource_id {
-        if let Some(resource) = VfsResourceRepo::get_resource_with_conn(&conn, resource_id)
-            .map_err(|e| e.to_string())?
+        if let Some(resource) = VfsResourceRepo::get_resource_with_conn(&conn, resource_id)?
         {
             if let Some(data) = resource.data {
                 return Ok(VfsFileContentResult {
@@ -2550,7 +2526,7 @@ pub async fn vfs_get_file_content(
 pub async fn vfs_get_blob_base64(
     blob_hash: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<VfsBlobBase64Result, String> {
+) -> VfsResult<VfsBlobBase64Result> {
     use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 
     log::debug!("[VFS::handlers] vfs_get_blob_base64: hash={}", blob_hash);
@@ -2627,7 +2603,7 @@ pub async fn vfs_get_pdf_page_image(
     resource_id: String,
     page_index: usize,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<VfsBlobBase64Result, String> {
+) -> VfsResult<VfsBlobBase64Result> {
     use crate::vfs::types::PdfPreviewJson;
     use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 
@@ -2785,7 +2761,7 @@ use crate::vfs::repos::VfsIndexingConfigRepo;
 pub async fn vfs_search(
     params: VfsSearchParams,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<VfsSearchResult>, String> {
+) -> VfsResult<Vec<VfsSearchResult>> {
     log::info!(
         "[VFS::handlers] vfs_search: query={}, top_k={}",
         params.query,
@@ -2793,13 +2769,12 @@ pub async fn vfs_search(
     );
 
     if params.query.trim().is_empty() {
-        return Err("Query cannot be empty".to_string());
+        return Err(VfsError::Other("Query cannot be empty".to_string()));
     }
 
     let search_service = VfsSearchService::new(Arc::clone(&vfs_db));
     search_service
         .search_fts(&params.query, params.top_k)
-        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -2810,16 +2785,16 @@ pub async fn vfs_reindex_resource(
     llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<usize, String> {
+) -> VfsResult<usize> {
     log::info!("[VFS::handlers] vfs_reindex_resource: id={}", resource_id);
 
     if !resource_id.starts_with("res_") {
-        return Err(format!("Invalid resource ID format: {}", resource_id));
+        return Err(VfsError::Other(format!("Invalid resource ID format: {}", resource_id)));
     }
 
     // ★ 2026-02 修复：并发防护 - 检查资源是否正在索引中，避免重复执行
     {
-        let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = vfs_db.get_conn_safe()?;
         let current_state: Option<String> = conn
             .query_row(
                 "SELECT index_state FROM resources WHERE id = ?1",
@@ -2832,7 +2807,7 @@ pub async fn vfs_reindex_resource(
                 "[VFS::handlers] vfs_reindex_resource: resource {} is already indexing, skipping",
                 resource_id
             );
-            return Err("资源正在索引中，请等待完成后再试".to_string());
+            return Err(VfsError::Other("资源正在索引中，请等待完成后再试".to_string()));
         }
     }
 
@@ -2856,8 +2831,7 @@ pub async fn vfs_reindex_resource(
         Arc::clone(&vfs_db),
         Arc::clone(&llm_manager),
         Arc::clone(lance_store.inner()),
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
     // ★ 2026-02-19：传递 AppHandle，使 try_auto_ocr 能发送细粒度进度事件
     indexing_service.set_app_handle(app_handle.clone());
 
@@ -2921,9 +2895,9 @@ pub async fn vfs_reindex_resource(
 pub async fn vfs_get_index_status(
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<crate::vfs::repos::IndexState>, String> {
+) -> VfsResult<Option<crate::vfs::repos::IndexState>> {
     log::debug!("[VFS::handlers] vfs_get_index_status: id={}", resource_id);
-    VfsIndexStateRepo::get_index_state(&vfs_db, &resource_id).map_err(|e| e.to_string())
+    Ok(VfsIndexStateRepo::get_index_state(&vfs_db, &resource_id)?)
 }
 
 /// 切换资源的索引禁用状态
@@ -2934,7 +2908,7 @@ pub async fn vfs_get_index_status(
 pub async fn vfs_toggle_index_disabled(
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<String, String> {
+) -> VfsResult<String> {
     log::info!(
         "[VFS::handlers] vfs_toggle_index_disabled: id={}",
         resource_id
@@ -2942,7 +2916,7 @@ pub async fn vfs_toggle_index_disabled(
 
     // 获取当前状态
     let current_state =
-        VfsIndexStateRepo::get_index_state(&vfs_db, &resource_id).map_err(|e| e.to_string())?;
+        VfsIndexStateRepo::get_index_state(&vfs_db, &resource_id)?;
 
     let current = current_state
         .map(|s| s.state)
@@ -2950,11 +2924,11 @@ pub async fn vfs_toggle_index_disabled(
 
     let new_state = if current == INDEX_STATE_DISABLED {
         // 恢复为 pending
-        VfsIndexStateRepo::mark_pending(&vfs_db, &resource_id).map_err(|e| e.to_string())?;
+        VfsIndexStateRepo::mark_pending(&vfs_db, &resource_id)?;
         INDEX_STATE_PENDING
     } else {
         // 禁用索引
-        VfsIndexStateRepo::mark_disabled(&vfs_db, &resource_id).map_err(|e| e.to_string())?;
+        VfsIndexStateRepo::mark_disabled(&vfs_db, &resource_id)?;
         INDEX_STATE_DISABLED
     };
 
@@ -2969,23 +2943,22 @@ pub async fn vfs_toggle_index_disabled(
 #[tauri::command]
 pub async fn vfs_get_embedding_stats(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<VfsEmbeddingStats, String> {
+) -> VfsResult<VfsEmbeddingStats> {
     log::debug!("[VFS::handlers] vfs_get_embedding_stats");
     let search_service = VfsSearchService::new(Arc::clone(&vfs_db));
     search_service
         .get_embedding_stats()
-        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub async fn vfs_list_dimensions(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<crate::vfs::repos::VfsEmbeddingDimension>, String> {
+) -> VfsResult<Vec<crate::vfs::repos::VfsEmbeddingDimension>> {
     log::debug!("[VFS::handlers] vfs_list_dimensions");
     // ★ 审计修复：统一使用 embedding_dim_repo（替代已废弃的 VfsDimensionRepo）
     // 返回类型仍为 VfsEmbeddingDimension 以保持 API 兼容
-    let conn = vfs_db.get_conn().map_err(|e| e.to_string())?;
-    let dims = crate::vfs::repos::embedding_dim_repo::list_all(&conn).map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn()?;
+    let dims = crate::vfs::repos::embedding_dim_repo::list_all(&conn)?;
     Ok(dims
         .into_iter()
         .map(|d| crate::vfs::repos::VfsEmbeddingDimension {
@@ -3004,12 +2977,11 @@ pub async fn vfs_list_dimensions(
 #[tauri::command]
 pub async fn vfs_get_pending_resources(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<String>, String> {
+) -> VfsResult<Vec<String>> {
     log::debug!("[VFS::handlers] vfs_get_pending_resources");
     let indexing_service = VfsIndexingService::new(Arc::clone(&vfs_db));
     indexing_service
         .get_pending_resources()
-        .map_err(|e| e.to_string())
 }
 
 /// 为维度分配模型（用于跨维度检索）
@@ -3026,7 +2998,7 @@ pub async fn vfs_assign_dimension_model(
     model_name: String,
     database: State<'_, Arc<crate::database::Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<bool, String> {
+) -> VfsResult<bool> {
     log::info!(
         "[VFS::handlers] vfs_assign_dimension_model: dim={}, modality={}, model={}",
         dimension,
@@ -3035,11 +3007,10 @@ pub async fn vfs_assign_dimension_model(
     );
 
     // ★ 审计修复：统一使用 embedding_dim_repo（替代已废弃的 VfsDimensionRepo）
-    let conn = vfs_db.get_conn().map_err(|e| e.to_string())?;
-    let existing = crate::vfs::repos::embedding_dim_repo::get_by_key(&conn, dimension, &modality)
-        .map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn()?;
+    let existing = crate::vfs::repos::embedding_dim_repo::get_by_key(&conn, dimension, &modality)?;
     if existing.is_none() {
-        return Err(format!("维度 {}:{} 不存在", dimension, modality));
+        return Err(VfsError::Other(format!("维度 {}:{} 不存在", dimension, modality)));
     }
     crate::vfs::repos::embedding_dim_repo::register_with_model(
         &conn,
@@ -3047,8 +3018,7 @@ pub async fn vfs_assign_dimension_model(
         &modality,
         Some(&model_config_id),
         Some(&model_name),
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
     drop(conn);
 
     // 检查该维度是否是当前的默认嵌入维度，如果是则同步更新 settings 中的模型配置ID
@@ -3070,8 +3040,7 @@ pub async fn vfs_assign_dimension_model(
             if default_dim == dimension {
                 // 该维度是默认维度，同步更新 settings 中的模型配置ID
                 database
-                    .save_setting(model_key, &model_config_id)
-                    .map_err(|e| e.to_string())?;
+                    .save_setting(model_key, &model_config_id)?;
                 log::info!(
                     "[VFS::handlers] 已同步更新默认 {} 嵌入模型: {}",
                     modality,
@@ -3091,7 +3060,7 @@ pub async fn vfs_create_dimension(
     model_config_id: Option<String>,
     model_name: Option<String>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<crate::vfs::repos::embedding_dim_repo::VfsEmbeddingDim, String> {
+) -> VfsResult<crate::vfs::repos::embedding_dim_repo::VfsEmbeddingDim> {
     log::info!(
         "[VFS::handlers] vfs_create_dimension: dim={}, modality={}, model={:?}",
         dimension,
@@ -3099,7 +3068,7 @@ pub async fn vfs_create_dimension(
         model_config_id
     );
 
-    let conn = vfs_db.get_conn().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn()?;
     crate::vfs::repos::embedding_dim_repo::create_dimension(
         &conn,
         dimension,
@@ -3107,7 +3076,6 @@ pub async fn vfs_create_dimension(
         model_config_id.as_deref(),
         model_name.as_deref(),
     )
-    .map_err(|e| e.to_string())
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -3125,7 +3093,7 @@ pub async fn vfs_delete_dimension(
     database: State<'_, Arc<crate::database::Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<DeleteDimensionResult, String> {
+) -> VfsResult<DeleteDimensionResult> {
     log::info!(
         "[VFS::handlers] vfs_delete_dimension: dim={}, modality={}",
         dimension,
@@ -3133,11 +3101,10 @@ pub async fn vfs_delete_dimension(
     );
 
     // S8 fix: 检查是否有正在索引的 units 使用了该维度
-    let conn = vfs_db.get_conn().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn()?;
     let has_indexing = crate::vfs::repos::embedding_dim_repo::has_indexing_units_for_dimension(
         &conn, dimension, &modality,
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
     if has_indexing {
         return Err(format!(
             "维度 {}:{} 有正在进行的索引任务，请等待索引完成后再删除",
@@ -3176,8 +3143,7 @@ pub async fn vfs_delete_dimension(
 
     // S2 fix: 优先使用数据库中记录的 LanceDB 表名，避免遗留命名不一致
     let lance_table_name =
-        crate::vfs::repos::embedding_dim_repo::get_by_key(&conn, dimension, &modality)
-            .map_err(|e| e.to_string())?
+        crate::vfs::repos::embedding_dim_repo::get_by_key(&conn, dimension, &modality)?
             .map(|d| d.lance_table_name)
             .unwrap_or_else(|| {
                 crate::vfs::repos::embedding_dim_repo::generate_lance_table_name(
@@ -3187,8 +3153,7 @@ pub async fn vfs_delete_dimension(
 
     let deleted_segments = crate::vfs::repos::embedding_dim_repo::delete_dimension_cascade(
         &conn, dimension, &modality,
-    )
-    .map_err(|e| e.to_string())?;
+    )?;
     drop(conn);
 
     // S2 fix: 删除对应的 LanceDB 表，清理磁盘向量数据
@@ -3208,12 +3173,12 @@ pub async fn vfs_delete_dimension(
 }
 
 #[tauri::command]
-pub async fn vfs_get_preset_dimensions() -> Result<Vec<i32>, String> {
+pub async fn vfs_get_preset_dimensions() -> VfsResult<Vec<i32>> {
     Ok(crate::vfs::repos::embedding_dim_repo::PRESET_DIMENSIONS.to_vec())
 }
 
 #[tauri::command]
-pub async fn vfs_get_dimension_range() -> Result<(i32, i32), String> {
+pub async fn vfs_get_dimension_range() -> VfsResult<(i32, i32)> {
     Ok((
         crate::vfs::repos::embedding_dim_repo::MIN_DIMENSION,
         crate::vfs::repos::embedding_dim_repo::MAX_DIMENSION,
@@ -3236,7 +3201,7 @@ pub async fn vfs_set_default_embedding_dimension(
     modality: String,
     database: State<'_, Arc<crate::database::Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<bool, String> {
+) -> VfsResult<bool> {
     log::info!(
         "[VFS::handlers] vfs_set_default_embedding_dimension: dim={}, modality={}",
         dimension,
@@ -3244,9 +3209,8 @@ pub async fn vfs_set_default_embedding_dimension(
     );
 
     // 验证维度存在并获取绑定的模型
-    let conn = vfs_db.get_conn().map_err(|e| e.to_string())?;
-    let dim_info = crate::vfs::repos::embedding_dim_repo::get_by_key(&conn, dimension, &modality)
-        .map_err(|e| e.to_string())?
+    let conn = vfs_db.get_conn()?;
+    let dim_info = crate::vfs::repos::embedding_dim_repo::get_by_key(&conn, dimension, &modality)?
         .ok_or_else(|| format!("维度 {}:{} 不存在", dimension, modality))?;
 
     // ★ 审计修复：后端也校验模型绑定，与前端保持一致
@@ -3271,14 +3235,12 @@ pub async fn vfs_set_default_embedding_dimension(
     };
 
     database
-        .save_setting(dim_key, &dimension.to_string())
-        .map_err(|e| e.to_string())?;
+        .save_setting(dim_key, &dimension.to_string())?;
 
     // 如果维度有绑定模型，同时保存模型配置ID
     if let Some(model_config_id) = &dim_info.model_config_id {
         database
-            .save_setting(model_key, model_config_id)
-            .map_err(|e| e.to_string())?;
+            .save_setting(model_key, model_config_id)?;
         log::info!(
             "[VFS::handlers] 已设置默认 {} 嵌入模型: {}",
             modality,
@@ -3305,7 +3267,7 @@ pub async fn vfs_get_default_embedding_dimension(
     modality: String,
     database: State<'_, Arc<crate::database::Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<crate::vfs::repos::embedding_dim_repo::VfsEmbeddingDim>, String> {
+) -> VfsResult<Option<crate::vfs::repos::embedding_dim_repo::VfsEmbeddingDim>> {
     log::debug!(
         "[VFS::handlers] vfs_get_default_embedding_dimension: modality={}",
         modality
@@ -3329,9 +3291,8 @@ pub async fn vfs_get_default_embedding_dimension(
         .map_err(|_| format!("无效的维度值: {}", dim_str))?;
 
     // M3 fix: 从 vfs_embedding_dims 获取完整信息，如果维度已不存在则自动清除设置
-    let conn = vfs_db.get_conn().map_err(|e| e.to_string())?;
-    let dim_info = crate::vfs::repos::embedding_dim_repo::get_by_key(&conn, dimension, &modality)
-        .map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn()?;
+    let dim_info = crate::vfs::repos::embedding_dim_repo::get_by_key(&conn, dimension, &modality)?;
 
     if dim_info.is_none() {
         // 维度记录不存在（可能被删除或数据库恢复导致），自动清除 settings
@@ -3358,7 +3319,7 @@ pub async fn vfs_get_default_embedding_dimension(
 pub async fn vfs_clear_default_embedding_dimension(
     modality: String,
     database: State<'_, Arc<crate::database::Database>>,
-) -> Result<bool, String> {
+) -> VfsResult<bool> {
     log::info!(
         "[VFS::handlers] vfs_clear_default_embedding_dimension: modality={}",
         modality
@@ -3403,7 +3364,7 @@ pub async fn vfs_batch_index_pending(
     llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<BatchIndexResult, String> {
+) -> VfsResult<BatchIndexResult> {
     let batch_size = batch_size.unwrap_or(10);
     log::info!(
         "[VFS::handlers] vfs_batch_index_pending: batch_size={}",
@@ -3413,14 +3374,12 @@ pub async fn vfs_batch_index_pending(
     let indexing_service = VfsIndexingService::new(Arc::clone(&vfs_db));
     log::info!("[VFS::handlers] vfs_batch_index_pending: 获取索引配置...");
     let config = indexing_service
-        .get_indexing_config()
-        .map_err(|e| e.to_string())?;
+        .get_indexing_config()?;
     // ★ 2026-02 修复：使用 claim_pending_resources 原子抢占，避免并发重复索引
     // 之前使用 get_pending_resources 仅查询不锁定，快速双击或多窗口操作会导致同批资源被重复处理
     log::info!("[VFS::handlers] vfs_batch_index_pending: 原子抢占待处理资源...");
     let pending =
-        VfsIndexStateRepo::claim_pending_resources(&vfs_db, batch_size, config.max_retries)
-            .map_err(|e| e.to_string())?;
+        VfsIndexStateRepo::claim_pending_resources(&vfs_db, batch_size, config.max_retries)?;
     log::info!(
         "[VFS::handlers] vfs_batch_index_pending: 原子抢占 {} 个待处理资源",
         pending.len()
@@ -3469,7 +3428,7 @@ pub async fn vfs_batch_index_pending(
             for resource_id in &pending {
                 let _ = VfsIndexStateRepo::mark_pending(&vfs_db, resource_id);
             }
-            return Err(e.to_string());
+            return Err(VfsError::Other(e.to_string()));
         }
     };
 
@@ -3582,18 +3541,18 @@ pub async fn vfs_set_indexing_config(
     key: String,
     value: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     log::info!("[VFS::handlers] vfs_set_indexing_config: {}={}", key, value);
-    VfsIndexingConfigRepo::set_config(&vfs_db, &key, &value).map_err(|e| e.to_string())
+    Ok(VfsIndexingConfigRepo::set_config(&vfs_db, &key, &value)?)
 }
 
 #[tauri::command]
 pub async fn vfs_get_indexing_config(
     key: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<String>, String> {
+) -> VfsResult<Option<String>> {
     log::debug!("[VFS::handlers] vfs_get_indexing_config: {}", key);
-    VfsIndexingConfigRepo::get_config(&vfs_db, &key).map_err(|e| e.to_string())
+    Ok(VfsIndexingConfigRepo::get_config(&vfs_db, &key)?)
 }
 
 // ============================================================================
@@ -3726,7 +3685,7 @@ pub async fn vfs_get_all_index_status(
     limit: Option<u32>,
     offset: Option<u32>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<IndexStatusSummary, String> {
+) -> VfsResult<IndexStatusSummary> {
     log::info!(
         "[VFS::handlers] vfs_get_all_index_status: folder={:?}, type={:?}, state={:?}",
         folder_id,
@@ -3734,7 +3693,7 @@ pub async fn vfs_get_all_index_status(
         state_filter
     );
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     // 检查必要的列和表是否存在
     let has_index_state = has_index_state_column(&conn);
@@ -4143,7 +4102,7 @@ pub async fn vfs_get_all_index_status(
                 "[VFS::handlers] vfs_get_all_index_status: query error: {}",
                 e
             );
-            return Err(e.to_string());
+            return Err(VfsError::Other(e.to_string()));
         }
     };
 
@@ -4280,8 +4239,7 @@ pub async fn vfs_get_all_index_status(
                     row.get(12)?,
                 ))
             },
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
     log::info!(
         "[VFS::handlers] vfs_get_all_index_status: 返回结果 total={}, indexed={}, pending={}, resources_len={}, state_filter={:?}",
@@ -4389,7 +4347,7 @@ pub async fn vfs_rag_search(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<VfsRagSearchOutput, String> {
+) -> VfsResult<VfsRagSearchOutput> {
     use crate::vfs::indexing::{VfsFullSearchService, VfsSearchParams};
     use crate::vfs::repos::MODALITY_TEXT;
 
@@ -4405,7 +4363,7 @@ pub async fn vfs_rag_search(
 
     // 验证查询
     if input.query.trim().is_empty() {
-        return Err("查询文本不能为空".to_string());
+        return Err(VfsError::Other("查询文本不能为空".to_string()));
     }
 
     let lance_store = Arc::clone(lance_store.inner());
@@ -4420,7 +4378,7 @@ pub async fn vfs_rag_search(
         "" | "text" => MODALITY_TEXT.to_string(),
         "multimodal" | "mm" => crate::vfs::repos::MODALITY_MULTIMODAL.to_string(),
         _ => {
-            return Err("modality 仅支持 'text' 或 'multimodal'".to_string());
+            return Err(VfsError::Other("modality 仅支持 'text' 或 'multimodal'".to_string()));
         }
     };
 
@@ -4443,14 +4401,12 @@ pub async fn vfs_rag_search(
                 &params,
                 input.enable_reranking,
             )
-            .await
-            .map_err(|e| e.to_string())?
+            .await?
     } else {
         // 普通搜索：只使用当前模型的维度
         search_service
             .search_with_resource_info(&input.query, &params, input.enable_reranking)
-            .await
-            .map_err(|e| e.to_string())?
+            .await?
     };
 
     let elapsed = start.elapsed();
@@ -4473,9 +4429,9 @@ pub async fn vfs_rag_search(
 #[tauri::command]
 pub async fn vfs_get_lance_stats(
     modality: Option<String>,
-    vfs_db: State<'_, Arc<VfsDatabase>>,
+    _vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<Vec<(String, usize)>, String> {
+) -> VfsResult<Vec<(String, usize)>> {
     use crate::vfs::repos::MODALITY_TEXT;
 
     log::debug!("[VFS::handlers] vfs_get_lance_stats");
@@ -4485,16 +4441,15 @@ pub async fn vfs_get_lance_stats(
     lance_store
         .get_table_stats(modality_str)
         .await
-        .map_err(|e| e.to_string())
 }
 
 /// VFS 优化 Lance 表命令
 #[tauri::command]
 pub async fn vfs_optimize_lance(
     modality: Option<String>,
-    vfs_db: State<'_, Arc<VfsDatabase>>,
+    _vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<usize, String> {
+) -> VfsResult<usize> {
     use crate::vfs::repos::MODALITY_TEXT;
 
     log::info!("[VFS::handlers] vfs_optimize_lance");
@@ -4504,7 +4459,6 @@ pub async fn vfs_optimize_lance(
     lance_store
         .optimize_all(modality_str)
         .await
-        .map_err(|e| e.to_string())
 }
 
 // ============================================================================
@@ -4585,7 +4539,7 @@ pub struct UpdateMindMapInput {
 pub async fn vfs_create_mindmap(
     params: CreateMindMapInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<VfsMindMap, String> {
+) -> VfsResult<VfsMindMap> {
     log::info!(
         "[VFS::handlers] vfs_create_mindmap: title={}, folder_id={:?}",
         params.title,
@@ -4602,10 +4556,8 @@ pub async fn vfs_create_mindmap(
 
     if let Some(folder_id) = params.folder_id {
         VfsMindMapRepo::create_mindmap_in_folder(&vfs_db, create_params, Some(&folder_id))
-            .map_err(|e| e.to_string())
     } else {
         VfsMindMapRepo::create_mindmap_in_folder(&vfs_db, create_params, None)
-            .map_err(|e| e.to_string())
     }
 }
 
@@ -4614,7 +4566,7 @@ pub async fn vfs_create_mindmap(
 pub async fn vfs_get_mindmap(
     mindmap_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<VfsMindMap>, String> {
+) -> VfsResult<Option<VfsMindMap>> {
     log::debug!("[VFS::handlers] vfs_get_mindmap: id={}", mindmap_id);
 
     if !mindmap_id.starts_with("mm_") {
@@ -4625,7 +4577,7 @@ pub async fn vfs_get_mindmap(
         .to_string());
     }
 
-    VfsMindMapRepo::get_mindmap(&vfs_db, &mindmap_id).map_err(|e| e.to_string())
+    Ok(VfsMindMapRepo::get_mindmap(&vfs_db, &mindmap_id)?)
 }
 
 /// 获取知识导图内容
@@ -4633,7 +4585,7 @@ pub async fn vfs_get_mindmap(
 pub async fn vfs_get_mindmap_content(
     mindmap_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<String>, String> {
+) -> VfsResult<Option<String>> {
     log::debug!("[VFS::handlers] vfs_get_mindmap_content: id={}", mindmap_id);
 
     if !mindmap_id.starts_with("mm_") {
@@ -4644,7 +4596,7 @@ pub async fn vfs_get_mindmap_content(
         .to_string());
     }
 
-    VfsMindMapRepo::get_mindmap_content(&vfs_db, &mindmap_id).map_err(|e| e.to_string())
+    Ok(VfsMindMapRepo::get_mindmap_content(&vfs_db, &mindmap_id)?)
 }
 
 /// 获取思维导图的版本历史
@@ -4652,7 +4604,7 @@ pub async fn vfs_get_mindmap_content(
 pub async fn vfs_get_mindmap_versions(
     mindmap_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<VfsMindMapVersion>, String> {
+) -> VfsResult<Vec<VfsMindMapVersion>> {
     log::debug!(
         "[VFS::handlers] vfs_get_mindmap_versions: id={}",
         mindmap_id
@@ -4666,7 +4618,7 @@ pub async fn vfs_get_mindmap_versions(
         .to_string());
     }
 
-    VfsMindMapRepo::get_versions(&vfs_db, &mindmap_id).map_err(|e| e.to_string())
+    Ok(VfsMindMapRepo::get_versions(&vfs_db, &mindmap_id)?)
 }
 
 /// 获取指定版本的思维导图内容
@@ -4674,7 +4626,7 @@ pub async fn vfs_get_mindmap_versions(
 pub async fn vfs_get_mindmap_version_content(
     version_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<String>, String> {
+) -> VfsResult<Option<String>> {
     log::debug!(
         "[VFS::handlers] vfs_get_mindmap_version_content: id={}",
         version_id
@@ -4688,7 +4640,7 @@ pub async fn vfs_get_mindmap_version_content(
         .to_string());
     }
 
-    VfsMindMapRepo::get_version_content(&vfs_db, &version_id).map_err(|e| e.to_string())
+    Ok(VfsMindMapRepo::get_version_content(&vfs_db, &version_id)?)
 }
 
 /// 获取指定版本的思维导图元数据
@@ -4696,7 +4648,7 @@ pub async fn vfs_get_mindmap_version_content(
 pub async fn vfs_get_mindmap_version(
     version_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Option<VfsMindMapVersion>, String> {
+) -> VfsResult<Option<VfsMindMapVersion>> {
     log::debug!("[VFS::handlers] vfs_get_mindmap_version: id={}", version_id);
 
     if !version_id.starts_with("mv_") {
@@ -4707,7 +4659,7 @@ pub async fn vfs_get_mindmap_version(
         .to_string());
     }
 
-    VfsMindMapRepo::get_version(&vfs_db, &version_id).map_err(|e| e.to_string())
+    Ok(VfsMindMapRepo::get_version(&vfs_db, &version_id)?)
 }
 
 /// 更新知识导图
@@ -4716,7 +4668,7 @@ pub async fn vfs_update_mindmap(
     mindmap_id: String,
     params: UpdateMindMapInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<VfsMindMap, String> {
+) -> VfsResult<VfsMindMap> {
     log::info!("[VFS::handlers] vfs_update_mindmap: id={}", mindmap_id);
 
     if !mindmap_id.starts_with("mm_") {
@@ -4738,7 +4690,7 @@ pub async fn vfs_update_mindmap(
         version_source: Some("manual".to_string()),
     };
 
-    VfsMindMapRepo::update_mindmap(&vfs_db, &mindmap_id, update_params).map_err(|e| e.to_string())
+    Ok(VfsMindMapRepo::update_mindmap(&vfs_db, &mindmap_id, update_params)?)
 }
 
 /// 删除知识导图（软删除）
@@ -4746,7 +4698,7 @@ pub async fn vfs_update_mindmap(
 pub async fn vfs_delete_mindmap(
     mindmap_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     log::info!("[VFS::handlers] vfs_delete_mindmap: id={}", mindmap_id);
 
     if !mindmap_id.starts_with("mm_") {
@@ -4757,17 +4709,17 @@ pub async fn vfs_delete_mindmap(
         .to_string());
     }
 
-    VfsMindMapRepo::delete_mindmap(&vfs_db, &mindmap_id).map_err(|e| e.to_string())
+    Ok(VfsMindMapRepo::delete_mindmap(&vfs_db, &mindmap_id)?)
 }
 
 /// 列出知识导图
 #[tauri::command]
 pub async fn vfs_list_mindmaps(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<VfsMindMap>, String> {
+) -> VfsResult<Vec<VfsMindMap>> {
     log::debug!("[VFS::handlers] vfs_list_mindmaps");
 
-    VfsMindMapRepo::list_mindmaps(&vfs_db).map_err(|e| e.to_string())
+    Ok(VfsMindMapRepo::list_mindmaps(&vfs_db)?)
 }
 
 /// 设置知识导图收藏状态
@@ -4776,7 +4728,7 @@ pub async fn vfs_set_mindmap_favorite(
     mindmap_id: String,
     is_favorite: bool,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     log::info!(
         "[VFS::handlers] vfs_set_mindmap_favorite: id={}, is_favorite={}",
         mindmap_id,
@@ -4791,7 +4743,7 @@ pub async fn vfs_set_mindmap_favorite(
         .to_string());
     }
 
-    VfsMindMapRepo::set_favorite(&vfs_db, &mindmap_id, is_favorite).map_err(|e| e.to_string())
+    Ok(VfsMindMapRepo::set_favorite(&vfs_db, &mindmap_id, is_favorite)?)
 }
 
 // ============================================================================
@@ -4916,13 +4868,13 @@ pub struct ConsistencyCheck {
 pub async fn vfs_debug_index_status(
     resource_id: Option<String>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<IndexDiagnosticInfo, String> {
+) -> VfsResult<IndexDiagnosticInfo> {
     log::info!(
         "[VFS::handlers] vfs_debug_index_status: resource_id={:?}",
         resource_id
     );
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
     let timestamp = chrono::Utc::now()
         .format("%Y-%m-%d %H:%M:%S%.3f UTC")
         .to_string();
@@ -4951,12 +4903,10 @@ pub async fn vfs_debug_index_status(
                     null_state: row.get(5)?,
                 })
             },
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
     let total_resources: i32 = conn
-        .query_row("SELECT COUNT(*) FROM resources", [], |row| row.get(0))
-        .map_err(|e| e.to_string())?;
+        .query_row("SELECT COUNT(*) FROM resources", [], |row| row.get(0))?;
 
     // 2. 获取所有资源详情（使用统一索引架构）
     // 注意：resources 表没有 name 列，使用 source_id 作为名称显示
@@ -4976,8 +4926,7 @@ pub async fn vfs_debug_index_status(
     "#;
 
     let mut all_stmt = conn
-        .prepare(all_resources_query)
-        .map_err(|e| e.to_string())?;
+        .prepare(all_resources_query)?;
     let all_resources: Vec<ResourceDiagnostic> = all_stmt
         .query_map([], |row| {
             Ok(ResourceDiagnostic {
@@ -4997,8 +4946,7 @@ pub async fn vfs_debug_index_status(
                 text_chunk_count: row.get(13)?,
                 updated_at: row.get(14)?,
             })
-        })
-        .map_err(|e| e.to_string())?
+        })?
         .filter_map(|r| match r {
             Ok(val) => Some(val),
             Err(e) => {
@@ -5048,8 +4996,7 @@ pub async fn vfs_debug_index_status(
                     mm_disabled: row.get(11)?,
                 })
             },
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
     // 4. vfs_index_segments 表统计
     let segments_stats: SegmentsStats = conn
@@ -5075,8 +5022,7 @@ pub async fn vfs_debug_index_status(
                     avg_segments_per_unit: row.get(4)?,
                 })
             },
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
     // 5. vfs_embedding_dims 表统计
     let mut dim_stmt = conn.prepare(
@@ -5085,7 +5031,7 @@ pub async fn vfs_debug_index_status(
                (SELECT COUNT(*) FROM vfs_index_segments WHERE embedding_dim = d.dimension AND modality = d.modality) as actual
         FROM vfs_embedding_dims d
         "#
-    ).map_err(|e| e.to_string())?;
+    )?;
 
     let dimensions_stats: Vec<DimensionStats> = dim_stmt
         .query_map([], |row| {
@@ -5095,8 +5041,7 @@ pub async fn vfs_debug_index_status(
                 record_count: row.get(2)?,
                 actual_count: row.get(3)?,
             })
-        })
-        .map_err(|e| e.to_string())?
+        })?
         .filter_map(|r| match r {
             Ok(val) => Some(val),
             Err(e) => {
@@ -5302,15 +5247,15 @@ pub async fn vfs_debug_index_status(
 #[tauri::command]
 pub async fn vfs_reset_disabled_to_pending(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<i32, String> {
+) -> VfsResult<i32> {
     log::info!("[VFS::handlers] vfs_reset_disabled_to_pending");
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     let updated = conn.execute(
         "UPDATE resources SET index_state = 'pending', index_error = NULL WHERE index_state = 'disabled'",
         [],
-    ).map_err(|e| e.to_string())?;
+    )?;
 
     log::info!(
         "[VFS::handlers] Reset {} disabled resources to pending",
@@ -5324,10 +5269,10 @@ pub async fn vfs_reset_disabled_to_pending(
 #[tauri::command]
 pub async fn vfs_reset_indexed_without_embeddings(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<i32, String> {
+) -> VfsResult<i32> {
     log::info!("[VFS::handlers] vfs_reset_indexed_without_segments");
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     // 使用统一索引架构的新表
     let updated = conn
@@ -5343,8 +5288,7 @@ pub async fn vfs_reset_indexed_without_embeddings(
           )
         "#,
             [],
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
     log::info!(
         "[VFS::handlers] Reset {} indexed-without-segments resources to pending",
@@ -5361,7 +5305,7 @@ pub async fn vfs_reset_indexed_without_embeddings(
 pub async fn vfs_reset_all_index_state(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<i32, String> {
+) -> VfsResult<i32> {
     use crate::vfs::repos::{MODALITY_MULTIMODAL, MODALITY_TEXT};
 
     log::info!("[VFS::handlers] vfs_reset_all_index_state - 重置所有索引状态");
@@ -5369,34 +5313,29 @@ pub async fn vfs_reset_all_index_state(
     // 清除文本向量
     let text_cleared = lance_store
         .clear_all(MODALITY_TEXT)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
     log::info!("[VFS::handlers] 清除 {} 个文本向量表", text_cleared);
 
     // 清除多模态向量
     let mm_cleared = lance_store
         .clear_all(MODALITY_MULTIMODAL)
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
     log::info!("[VFS::handlers] 清除 {} 个多模态向量表", mm_cleared);
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     // 1. 删除所有 segments
     let deleted_segments = conn
-        .execute("DELETE FROM vfs_index_segments", [])
-        .map_err(|e| e.to_string())?;
+        .execute("DELETE FROM vfs_index_segments", [])?;
     log::info!("[VFS::handlers] 删除 {} 个 segments", deleted_segments);
 
     // 2. 删除所有 units
     let deleted_units = conn
-        .execute("DELETE FROM vfs_index_units", [])
-        .map_err(|e| e.to_string())?;
+        .execute("DELETE FROM vfs_index_units", [])?;
     log::info!("[VFS::handlers] 删除 {} 个 units", deleted_units);
 
     // 3. 重置维度统计
-    conn.execute("UPDATE vfs_embedding_dims SET record_count = 0", [])
-        .map_err(|e| e.to_string())?;
+    conn.execute("UPDATE vfs_embedding_dims SET record_count = 0", [])?;
 
     // 4. 将所有资源状态重置为 pending（含多模态状态）
     let updated = conn
@@ -5415,8 +5354,7 @@ pub async fn vfs_reset_all_index_state(
             mm_indexed_at = NULL
         "#,
             [],
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
     // 5. 同步重置业务表中的多模态索引状态
     let files_reset = conn
@@ -5429,8 +5367,7 @@ pub async fn vfs_reset_all_index_state(
             updated_at = datetime('now')
         "#,
             [],
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
     let exams_reset = conn
         .execute(
@@ -5444,8 +5381,7 @@ pub async fn vfs_reset_all_index_state(
             updated_at = datetime('now')
         "#,
             [],
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
     log::info!(
         "[VFS::handlers] 重置 {} 个资源为 pending 状态（files={}, exam_sheets={})",
@@ -5520,7 +5456,7 @@ pub async fn vfs_multimodal_index(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<VfsMultimodalIndexOutput, String> {
+) -> VfsResult<VfsMultimodalIndexOutput> {
     use crate::multimodal::types::IndexProgressEvent;
     use crate::vfs::multimodal_service::{VfsMultimodalPage, VfsMultimodalService};
     use tokio::sync::mpsc;
@@ -5563,8 +5499,7 @@ pub async fn vfs_multimodal_index(
             pages,
             Some(progress_tx),
         )
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     Ok(VfsMultimodalIndexOutput {
         indexed_pages: result.indexed_pages,
@@ -5628,7 +5563,7 @@ pub async fn vfs_multimodal_search(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<Vec<VfsMultimodalSearchOutput>, String> {
+) -> VfsResult<Vec<VfsMultimodalSearchOutput>> {
     use crate::vfs::multimodal_service::VfsMultimodalService;
 
     let lance_store = Arc::clone(lance_store.inner());
@@ -5645,8 +5580,7 @@ pub async fn vfs_multimodal_search(
             params.folder_ids.as_deref(),
             params.resource_types.as_deref(),
         )
-        .await
-        .map_err(|e| e.to_string())?;
+        .await?;
 
     Ok(results
         .into_iter()
@@ -5668,7 +5602,7 @@ pub async fn vfs_multimodal_stats(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<serde_json::Value, String> {
+) -> VfsResult<serde_json::Value> {
     use crate::vfs::multimodal_service::VfsMultimodalService;
 
     let lance_store = Arc::clone(lance_store.inner());
@@ -5677,7 +5611,7 @@ pub async fn vfs_multimodal_stats(
     let service =
         VfsMultimodalService::new(Arc::clone(&vfs_db), Arc::clone(&llm_manager), lance_store);
 
-    let stats = service.get_stats().await.map_err(|e| e.to_string())?;
+    let stats = service.get_stats().await?;
 
     Ok(serde_json::json!({
         "totalRecords": stats.total_records,
@@ -5692,7 +5626,7 @@ pub async fn vfs_multimodal_delete(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     use crate::vfs::multimodal_service::VfsMultimodalService;
 
     let lance_store = Arc::clone(lance_store.inner());
@@ -5703,7 +5637,6 @@ pub async fn vfs_multimodal_delete(
     service
         .delete_resource_index(&resource_id)
         .await
-        .map_err(|e| e.to_string())
 }
 
 /// VFS 多模态索引资源（兼容旧 API）
@@ -5721,7 +5654,7 @@ pub async fn vfs_multimodal_index_resource(
     vfs_db: State<'_, Arc<VfsDatabase>>,
     llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<serde_json::Value, String> {
+) -> VfsResult<serde_json::Value> {
     use crate::multimodal::types::IndexProgressEvent;
     use crate::vfs::multimodal_service::VfsMultimodalService;
     use tokio::sync::mpsc;
@@ -5752,7 +5685,7 @@ pub async fn vfs_multimodal_index_resource(
         )
         .await;
 
-    let result = result.map_err(|e| e.to_string())?;
+    let result = result?;
 
     Ok(serde_json::json!({
         "indexedPages": result.indexed_pages,
@@ -5764,9 +5697,9 @@ pub async fn vfs_multimodal_index_resource(
 #[tauri::command]
 pub async fn vfs_diagnose_lance_schema(
     modality: Option<String>,
-    vfs_db: State<'_, Arc<VfsDatabase>>,
+    _vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
-) -> Result<Vec<crate::vfs::lance_store::LanceTableDiagnostic>, String> {
+) -> VfsResult<Vec<crate::vfs::lance_store::LanceTableDiagnostic>> {
     use crate::vfs::repos::MODALITY_TEXT;
 
     log::info!(
@@ -5779,7 +5712,6 @@ pub async fn vfs_diagnose_lance_schema(
     lance_store
         .diagnose_table_schema(modality_str)
         .await
-        .map_err(|e| e.to_string())
 }
 
 // ============================================================================
@@ -5800,7 +5732,7 @@ pub async fn vfs_get_pdf_processing_status(
         '_,
         Arc<crate::vfs::pdf_processing_service::PdfProcessingService>,
     >,
-) -> Result<Option<crate::vfs::pdf_processing_service::ProcessingStatus>, String> {
+) -> VfsResult<Option<crate::vfs::pdf_processing_service::ProcessingStatus>> {
     log::info!(
         "[VFS::handlers] vfs_get_pdf_processing_status: file_id={}",
         file_id
@@ -5812,7 +5744,6 @@ pub async fn vfs_get_pdf_processing_status(
     // 使用 Tauri State 中的服务实例
     pdf_processing_service
         .get_status(&file_id)
-        .map_err(|e| e.to_string())
 }
 
 /// 取消 PDF 处理
@@ -5829,7 +5760,7 @@ pub async fn vfs_cancel_pdf_processing(
         '_,
         Arc<crate::vfs::pdf_processing_service::PdfProcessingService>,
     >,
-) -> Result<bool, String> {
+) -> VfsResult<bool> {
     log::info!(
         "[VFS::handlers] vfs_cancel_pdf_processing: file_id={}",
         file_id
@@ -5840,7 +5771,6 @@ pub async fn vfs_cancel_pdf_processing(
 
     pdf_processing_service
         .cancel(&file_id)
-        .map_err(|e| e.to_string())
 }
 
 /// 重试 PDF 处理
@@ -5854,7 +5784,7 @@ pub async fn vfs_retry_pdf_processing(
         '_,
         Arc<crate::vfs::pdf_processing_service::PdfProcessingService>,
     >,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     log::info!(
         "[VFS::handlers] vfs_retry_pdf_processing: file_id={}",
         file_id
@@ -5866,7 +5796,6 @@ pub async fn vfs_retry_pdf_processing(
     pdf_processing_service
         .retry(&file_id)
         .await
-        .map_err(|e| e.to_string())
 }
 
 /// 启动 PDF 预处理流水线
@@ -5889,7 +5818,7 @@ pub async fn vfs_start_pdf_processing(
         '_,
         Arc<crate::vfs::pdf_processing_service::PdfProcessingService>,
     >,
-) -> Result<(), String> {
+) -> VfsResult<()> {
     use crate::vfs::pdf_processing_service::ProcessingStage;
 
     log::info!(
@@ -5907,7 +5836,6 @@ pub async fn vfs_start_pdf_processing(
     pdf_processing_service
         .start_pipeline(&file_id, stage)
         .await
-        .map_err(|e| e.to_string())
 }
 
 /// 批量获取 PDF 处理状态
@@ -5924,9 +5852,8 @@ pub async fn vfs_get_batch_pdf_processing_status(
         '_,
         Arc<crate::vfs::pdf_processing_service::PdfProcessingService>,
     >,
-) -> Result<
+) -> VfsResult<
     std::collections::HashMap<String, crate::vfs::pdf_processing_service::ProcessingStatus>,
-    String,
 > {
     use std::collections::HashMap;
 
@@ -5978,7 +5905,7 @@ pub async fn vfs_get_batch_pdf_processing_status(
 pub async fn vfs_list_pending_pdf_processing(
     limit: Option<u32>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<VfsFile>, String> {
+) -> VfsResult<Vec<VfsFile>> {
     use rusqlite::params;
 
     log::info!(
@@ -5986,7 +5913,7 @@ pub async fn vfs_list_pending_pdf_processing(
         limit
     );
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
     let limit = limit.unwrap_or(50);
 
     let mut stmt = conn
@@ -6105,18 +6032,17 @@ pub struct MediaCacheStats {
 #[tauri::command]
 pub async fn vfs_get_media_cache_stats(
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<MediaCacheStats, String> {
+) -> VfsResult<MediaCacheStats> {
     log::info!("[VFS::handlers] vfs_get_media_cache_stats: Starting...");
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
     let blobs_dir = vfs_db.blobs_dir();
 
     // 1. 统计 PDF 预览图片（preview_json 中引用的 blobs）
     let (pdf_preview_count, pdf_preview_size) = {
         // 获取所有 preview_json 中的 blob_hash
         let mut stmt = conn
-            .prepare("SELECT preview_json FROM files WHERE preview_json IS NOT NULL")
-            .map_err(|e| e.to_string())?;
+            .prepare("SELECT preview_json FROM files WHERE preview_json IS NOT NULL")?;
 
         let mut count = 0u64;
         let mut size = 0u64;
@@ -6125,8 +6051,7 @@ pub async fn vfs_get_media_cache_stats(
             .query_map([], |row| {
                 let json_str: String = row.get(0)?;
                 Ok(json_str)
-            })
-            .map_err(|e| e.to_string())?;
+            })?;
 
         for row in rows.flatten() {
             if let Ok(json) = serde_json::from_str::<serde_json::Value>(&row) {
@@ -6268,7 +6193,7 @@ pub struct ClearMediaCacheResult {
 pub async fn vfs_clear_media_cache(
     params: ClearMediaCacheParams,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<ClearMediaCacheResult, String> {
+) -> VfsResult<ClearMediaCacheResult> {
     log::info!(
         "[VFS::handlers] vfs_clear_media_cache: pdf={}, compressed={}, ocr={}, vector={}",
         params.clear_pdf_preview,
@@ -6277,7 +6202,7 @@ pub async fn vfs_clear_media_cache(
         params.clear_vector_index
     );
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
     let blobs_dir = vfs_db.blobs_dir();
 
     let mut result = ClearMediaCacheResult {
@@ -6293,12 +6218,10 @@ pub async fn vfs_clear_media_cache(
     if params.clear_pdf_preview {
         // 获取所有 preview_json 中的 blob_hash
         let mut stmt = conn
-            .prepare("SELECT id, preview_json FROM files WHERE preview_json IS NOT NULL")
-            .map_err(|e| e.to_string())?;
+            .prepare("SELECT id, preview_json FROM files WHERE preview_json IS NOT NULL")?;
 
         let rows: Vec<(String, String)> = stmt
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
-            .map_err(|e| e.to_string())?
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
             .filter_map(|r| match r {
                 Ok(val) => Some(val),
                 Err(e) => {
@@ -6371,11 +6294,10 @@ pub async fn vfs_clear_media_cache(
     if params.clear_compressed_images {
         let mut stmt = conn.prepare(
             "SELECT id, compressed_blob_hash, blob_hash FROM files WHERE compressed_blob_hash IS NOT NULL"
-        ).map_err(|e| e.to_string())?;
+        )?;
 
         let rows: Vec<(String, String, Option<String>)> = stmt
-            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
-            .map_err(|e| e.to_string())?
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))?
             .filter_map(|r| match r {
                 Ok(val) => Some(val),
                 Err(e) => {
@@ -6435,15 +6357,13 @@ pub async fn vfs_clear_media_cache(
         conn.execute(
             "UPDATE files SET ocr_pages_json = NULL WHERE ocr_pages_json IS NOT NULL",
             [],
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
         // 同时清理 resources 表的 ocr_text
         conn.execute(
             "UPDATE resources SET ocr_text = NULL WHERE ocr_text IS NOT NULL",
             [],
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
         result.ocr_text_cleared = cleared as u64;
         result.files_reset += cleared as u64;
@@ -6470,14 +6390,11 @@ pub async fn vfs_clear_media_cache(
         }
 
         // ★ P1 修复：清理 vfs_index_units 和 vfs_index_segments 表
-        conn.execute("DELETE FROM vfs_index_segments", [])
-            .map_err(|e| e.to_string())?;
-        conn.execute("DELETE FROM vfs_index_units", [])
-            .map_err(|e| e.to_string())?;
+        conn.execute("DELETE FROM vfs_index_segments", [])?;
+        conn.execute("DELETE FROM vfs_index_units", [])?;
 
         // 重置维度统计
-        conn.execute("UPDATE vfs_embedding_dims SET record_count = 0", [])
-            .map_err(|e| e.to_string())?;
+        conn.execute("UPDATE vfs_embedding_dims SET record_count = 0", [])?;
 
         // 重置 resources.vector_indexed_at
         let reset_count: i64 = conn
@@ -6491,8 +6408,7 @@ pub async fn vfs_clear_media_cache(
         conn.execute(
             "UPDATE resources SET vector_indexed_at = NULL WHERE vector_indexed_at IS NOT NULL",
             [],
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
 
         result.files_reset += reset_count as u64;
     }
@@ -6506,14 +6422,12 @@ pub async fn vfs_clear_media_cache(
                 "SELECT id, processing_progress FROM files
              WHERE processing_progress IS NOT NULL
              AND (mime_type LIKE 'application/pdf' OR mime_type LIKE 'image/%')",
-            )
-            .map_err(|e| e.to_string())?;
+            )?;
 
         let files_to_update: Vec<(String, String)> = stmt
             .query_map([], |row| {
                 Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })
-            .map_err(|e| e.to_string())?
+            })?
             .filter_map(|r| match r {
                 Ok(val) => Some(val),
                 Err(e) => {
@@ -6555,8 +6469,7 @@ pub async fn vfs_clear_media_cache(
                         processing_completed_at = NULL
                     WHERE id = ?2",
                     rusqlite::params![updated_json, file_id],
-                )
-                .map_err(|e| e.to_string())?;
+                )?;
             }
         }
 
@@ -6570,8 +6483,7 @@ pub async fn vfs_clear_media_cache(
             WHERE processing_progress IS NULL
             AND (mime_type LIKE 'application/pdf' OR mime_type LIKE 'image/%')",
             [],
-        )
-        .map_err(|e| e.to_string())?;
+        )?;
     }
 
     log::info!(
@@ -6634,7 +6546,7 @@ pub async fn vfs_download_paper(
     params: VfsDownloadPaperParams,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     pdf_processing_service: State<'_, Arc<PdfProcessingService>>,
-) -> Result<VfsDownloadPaperResult, String> {
+) -> VfsResult<VfsDownloadPaperResult> {
     use crate::vfs::repos::pdf_preview::{render_pdf_preview, PdfPreviewConfig};
     use crate::vfs::repos::VfsFileRepo;
     use sha2::{Digest, Sha256};
@@ -6647,7 +6559,7 @@ pub async fn vfs_download_paper(
 
     // 安全检查
     if !params.url.starts_with("https://") {
-        return Err("Only HTTPS URLs are allowed".to_string());
+        return Err(VfsError::Other("Only HTTPS URLs are allowed".to_string()));
     }
 
     // 下载 PDF
@@ -6664,7 +6576,7 @@ pub async fn vfs_download_paper(
         .map_err(|e| format!("Download failed: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!("HTTP {}", response.status().as_u16()));
+        return Err(VfsError::Other(format!("HTTP {}", response.status().as_u16())));
     }
 
     let pdf_bytes = response
@@ -6675,7 +6587,7 @@ pub async fn vfs_download_paper(
 
     // PDF 签名验证
     if pdf_bytes.len() < 4 || &pdf_bytes[..4] != b"%PDF" {
-        return Err("Downloaded file is not a valid PDF".to_string());
+        return Err(VfsError::Other("Downloaded file is not a valid PDF".to_string()));
     }
 
     // SHA256 去重
@@ -6683,7 +6595,7 @@ pub async fn vfs_download_paper(
     hasher.update(&pdf_bytes);
     let sha256 = format!("{:x}", hasher.finalize());
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     if let Ok(Some(existing)) = VfsFileRepo::get_by_sha256_with_conn(&conn, &sha256) {
         if existing.status == "active" {
@@ -6717,14 +6629,13 @@ pub async fn vfs_download_paper(
         let blobs_dir_clone = blobs_dir.to_path_buf();
         let pdf_bytes_clone = pdf_bytes.clone();
         match tokio::task::spawn_blocking(move || {
-            let conn = vfs_db_clone.get_conn_safe().map_err(|e| e.to_string())?;
+            let conn = vfs_db_clone.get_conn_safe()?;
             render_pdf_preview(
                 &conn,
                 &blobs_dir_clone,
                 &pdf_bytes_clone,
                 &PdfPreviewConfig::default(),
             )
-            .map_err(|e| e.to_string())
         })
         .await
         {
@@ -6855,13 +6766,13 @@ pub struct OcrPageInfo {
 pub async fn vfs_get_resource_ocr_info(
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<ResourceOcrInfo, String> {
+) -> VfsResult<ResourceOcrInfo> {
     log::info!(
         "[VFS::handlers] vfs_get_resource_ocr_info: resource_id={}",
         resource_id
     );
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     let resource_type: String = conn
         .query_row(
@@ -7017,13 +6928,13 @@ fn parse_ocr_pages_for_display(ocr_pages_json: &Option<String>) -> Option<Vec<Oc
 pub async fn vfs_clear_resource_ocr(
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<bool, String> {
+) -> VfsResult<bool> {
     log::info!(
         "[VFS::handlers] vfs_clear_resource_ocr: resource_id={}",
         resource_id
     );
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     conn.execute(
         "UPDATE resources SET ocr_text = NULL, updated_at = ?1 WHERE id = ?2",
@@ -7094,13 +7005,13 @@ pub struct TextChunkInfo {
 pub async fn vfs_get_resource_text_chunks(
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<TextChunkInfo>, String> {
+) -> VfsResult<Vec<TextChunkInfo>> {
     log::info!(
         "[VFS::handlers] vfs_get_resource_text_chunks: resource_id={}",
         resource_id
     );
 
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe()?;
 
     let mut stmt = conn
         .prepare(

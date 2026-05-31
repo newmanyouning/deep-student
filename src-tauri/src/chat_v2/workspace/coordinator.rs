@@ -234,8 +234,8 @@ impl WorkspaceCoordinator {
         // 更新 workspace_index 中的状态
         self.update_index_status(workspace_id, &WorkspaceStatus::Completed)?;
 
-        // 发射 workspace_closed 事件
-        self.emitter.emit_workspace_closed(workspace_id);
+        // 发射 chat_v2_workspace_closed 事件
+        self.emitter.emit_chat_v2_workspace_closed(workspace_id);
 
         Ok(())
     }
@@ -850,7 +850,7 @@ impl WorkspaceCoordinator {
                         tasks.len(),
                         workspace_id
                     );
-                    // 任务恢复将在前端加载时触发（通过前端调用 workspace_run_agent）
+                    // 任务恢复将在前端加载时触发（通过前端调用 chat_v2_workspace_run_agent）
                     // 这里只记录日志，实际恢复逻辑由前端驱动
                 }
             }

@@ -14,7 +14,7 @@ pub mod workspace_events {
     pub const AGENT_LEFT: &str = "workspace_agent_left";
     pub const AGENT_STATUS_CHANGED: &str = "workspace_agent_status_changed";
     pub const DOCUMENT_UPDATED: &str = "workspace_document_updated";
-    pub const WORKSPACE_CLOSED: &str = "workspace_closed";
+    pub const WORKSPACE_CLOSED: &str = "chat_v2_workspace_closed";
     /// 🆕 主代理被唤醒事件（睡眠块被唤醒后发射，触发管线恢复）
     pub const COORDINATOR_AWAKENED: &str = "workspace_coordinator_awakened";
     /// 🆕 工作区警告事件（容量溢出、重试耗尽等）
@@ -238,13 +238,13 @@ impl WorkspaceEventEmitter {
     }
 
     /// 发射工作区关闭事件
-    pub fn emit_workspace_closed(&self, workspace_id: &str) {
+    pub fn emit_chat_v2_workspace_closed(&self, workspace_id: &str) {
         if let Some(ref handle) = self.app_handle {
             let event = WorkspaceClosedEvent {
                 workspace_id: workspace_id.to_string(),
             };
             if let Err(e) = handle.emit(workspace_events::WORKSPACE_CLOSED, &event) {
-                log::warn!("[WorkspaceEmitter] Failed to emit workspace_closed: {}", e);
+                log::warn!("[WorkspaceEmitter] Failed to emit chat_v2_workspace_closed: {}", e);
             }
         }
     }

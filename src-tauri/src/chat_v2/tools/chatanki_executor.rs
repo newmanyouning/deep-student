@@ -3,7 +3,7 @@
 //! 支持「纯文本/文件」两种输入，生成可复习的 Anki 卡片，并创建一个 `anki_cards` 预览块。
 //!
 //! 工具：
-//! - `builtin-chatanki_run`：一键执行“文本/文件 → 卡片”全流程（推荐）。
+//! - `builtin-chatanki_run`：一键执行"文本/文件 → 卡片"全流程（推荐）。
 //! - `builtin-chatanki_start`：从已准备好的 content 直接开始制卡（跳过文件解析）。
 //! - `builtin-chatanki_status`：查询 documentId 的制卡进度（segments/cards/错误等）。
 //! - `builtin-chatanki_wait`：等待 anki_cards 块完成（完成/错误/超时）。
@@ -24,7 +24,7 @@ use serde::{Deserialize, Deserializer};
 use serde_json::{json, Value};
 use tokio::time::{sleep, Duration};
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::repo::ChatV2Repo;
@@ -290,17 +290,17 @@ fn verify_document_ownership(
     db: &crate::database::Database,
     document_id: &str,
     session_id: &str,
-) -> Result<(), String> {
+) -> ToolResult<()> {
     match db.get_document_session_source(document_id) {
         Ok(Some(owner_session_id)) if owner_session_id == session_id => Ok(()),
-        Ok(Some(_)) | Ok(None) => Err("blocks.ankiCards.errors.statusNotFound".to_string()),
+        Ok(Some(_)) | Ok(None) => Err(ToolError::NotFound("blocks.ankiCards.errors.statusNotFound".to_string())),
         Err(e) => {
             log::warn!(
                 "[ChatAnkiToolExecutor] verify_document_ownership failed for document {}: {}",
                 document_id,
                 e
             );
-            Err("blocks.ankiCards.errors.statusNotFound".to_string())
+            Err(ToolError::NotFound("blocks.ankiCards.errors.statusNotFound".to_string()))
         }
     }
 }
@@ -309,7 +309,7 @@ fn verify_block_ownership(
     chat_db: &crate::chat_v2::database::ChatV2Database,
     block: &MessageBlock,
     session_id: &str,
-) -> Result<(), String> {
+) -> ToolResult<()> {
     let message = match ChatV2Repo::get_message_v2(chat_db, &block.message_id) {
         Ok(v) => v,
         Err(e) => {
@@ -318,13 +318,13 @@ fn verify_block_ownership(
                 block.id,
                 e
             );
-            return Err("blocks.ankiCards.errors.statusNotFound".to_string());
+            return Err(ToolError::NotFound("blocks.ankiCards.errors.statusNotFound".to_string()));
         }
     };
     if message.as_ref().map(|m| m.session_id.as_str()) == Some(session_id) {
         Ok(())
     } else {
-        Err("blocks.ankiCards.errors.statusNotFound".to_string())
+        Err(ToolError::NotFound("blocks.ankiCards.errors.statusNotFound".to_string()))
     }
 }
 
@@ -338,7 +338,7 @@ impl ToolExecutor for ChatAnkiToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         log::info!(
             "[ChatAnkiToolExecutor] execute: tool_name={}, tool_call_id={}, session_id={}, message_id={}",
@@ -366,7 +366,7 @@ impl ToolExecutor for ChatAnkiToolExecutor {
             "chatanki_analyze" => self.execute_analyze(call, ctx, start_time).await,
             "chatanki_start" => self.execute_start(call, ctx, start_time).await,
             "chatanki_run" => self.execute_run(call, ctx, start_time).await,
-            _ => Err(format!("Unsupported chatanki tool: {}", stripped_name)),
+            _ => Err(ToolError::InvalidArgs(format!("Unsupported chatanki tool: {}", stripped_name))),
         }
     }
 
@@ -396,11 +396,11 @@ impl ChatAnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let (available, error) =
             match crate::anki_connect_service::check_anki_connect_availability().await {
                 Ok(v) => (v, None),
-                Err(e) => (false, Some(e)),
+                Err(e) => (false, Some(e.to_string())),
             };
 
         let output = json!({
@@ -429,12 +429,12 @@ impl ChatAnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args = match serde_json::from_value::<ChatAnkiStatusArgs>(call.arguments.clone()) {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Invalid chatanki_status arguments: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -451,7 +451,7 @@ impl ChatAnkiToolExecutor {
         let document_id = args.document_id.trim().to_string();
         if document_id.is_empty() {
             let error_msg = "documentId is required".to_string();
-            ctx.emit_tool_call_error(&error_msg);
+            ctx.emit_tool_call_error(&error_msg.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -468,7 +468,7 @@ impl ChatAnkiToolExecutor {
             Some(db) => db,
             None => {
                 let error_msg = "Anki database not available".to_string();
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -483,7 +483,7 @@ impl ChatAnkiToolExecutor {
         };
 
         if let Err(error_key) = verify_document_ownership(db, &document_id, &ctx.session_id) {
-            ctx.emit_tool_call_error(&error_key);
+            ctx.emit_tool_call_error(&error_key.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -556,12 +556,12 @@ impl ChatAnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args = match serde_json::from_value::<ChatAnkiWaitArgs>(call.arguments.clone()) {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Invalid chatanki_wait arguments: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1030,12 +1030,12 @@ impl ChatAnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args = match serde_json::from_value::<ChatAnkiAnalyzeArgs>(call.arguments.clone()) {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Invalid chatanki_analyze arguments: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1052,7 +1052,7 @@ impl ChatAnkiToolExecutor {
         let content = args.content;
         if content.trim().is_empty() {
             let error_msg = "content is required".to_string();
-            ctx.emit_tool_call_error(&error_msg);
+            ctx.emit_tool_call_error(&error_msg.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -1134,13 +1134,13 @@ impl ChatAnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args = match serde_json::from_value::<ChatAnkiListTemplatesArgs>(call.arguments.clone())
         {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Invalid chatanki_list_templates arguments: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1158,7 +1158,7 @@ impl ChatAnkiToolExecutor {
             Some(db) => db,
             None => {
                 let error_msg = "Database not available".to_string();
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1179,7 +1179,7 @@ impl ChatAnkiToolExecutor {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Failed to list templates: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1271,12 +1271,12 @@ impl ChatAnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args = match serde_json::from_value::<ChatAnkiExportArgs>(call.arguments.clone()) {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Invalid chatanki_export arguments: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1294,7 +1294,7 @@ impl ChatAnkiToolExecutor {
             Some(db) => db.clone(),
             None => {
                 let error_msg = "Anki database not available".to_string();
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1309,7 +1309,7 @@ impl ChatAnkiToolExecutor {
         };
 
         if let Err(error_key) = verify_document_ownership(&db, &args.document_id, &ctx.session_id) {
-            ctx.emit_tool_call_error(&error_key);
+            ctx.emit_tool_call_error(&error_key.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -1326,7 +1326,7 @@ impl ChatAnkiToolExecutor {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Failed to load cards for document: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1344,7 +1344,7 @@ impl ChatAnkiToolExecutor {
             cards.into_iter().filter(|c| !c.is_error_card).collect();
         if cards.is_empty() {
             let error_msg = "No cards to export (all cards are empty or error cards)".to_string();
-            ctx.emit_tool_call_error(&error_msg);
+            ctx.emit_tool_call_error(&error_msg.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -1376,7 +1376,7 @@ impl ChatAnkiToolExecutor {
             let json_content = serde_json::to_string_pretty(&cards)
                 .map_err(|e| format!("Serialize json failed: {}", e))?;
 
-            let path = crate::cmd::anki_connect::save_json_file(json_content, suggested)
+            let path = crate::cmd::anki_connect::anki_connect_save_json_file(json_content, suggested)
                 .await
                 .map_err(|e| e.to_string())?;
             ("json".to_string(), path, note_type)
@@ -1450,7 +1450,7 @@ impl ChatAnkiToolExecutor {
                     }
                 } else {
                     let error_msg = "blocks.ankiCards.errors.templateNotFound".to_string();
-                    ctx.emit_tool_call_error(&error_msg);
+                    ctx.emit_tool_call_error(&error_msg.to_string());
                     let result = ToolResultInfo::failure(
                         Some(call.id.clone()),
                         Some(ctx.block_id.clone()),
@@ -1494,7 +1494,7 @@ impl ChatAnkiToolExecutor {
             // 多模板 APKG 导出：每种 template_id 创建独立的 Anki model，
             // 每张卡片的 notes.mid 指向自己模板对应的 model。
             // Anki 格式支持一个 APKG 内多个 note type（model），字段和 card template 各自独立。
-            crate::apkg_exporter_service::export_multi_template_apkg(
+            crate::apkg_exporter_service::anki_connect_export_multi_apkg(
                 cards,
                 deck_name.clone(),
                 output_path.clone(),
@@ -1510,7 +1510,7 @@ impl ChatAnkiToolExecutor {
             )
         } else {
             let error_msg = format!("Unsupported export format: {}", args.format);
-            ctx.emit_tool_call_error(&error_msg);
+            ctx.emit_tool_call_error(&error_msg.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -1553,12 +1553,12 @@ impl ChatAnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args = match serde_json::from_value::<ChatAnkiSyncArgs>(call.arguments.clone()) {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Invalid chatanki_sync arguments: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1576,7 +1576,7 @@ impl ChatAnkiToolExecutor {
             Some(db) => db.clone(),
             None => {
                 let error_msg = "Anki database not available".to_string();
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1591,7 +1591,7 @@ impl ChatAnkiToolExecutor {
         };
 
         if let Err(error_key) = verify_document_ownership(&db, &args.document_id, &ctx.session_id) {
-            ctx.emit_tool_call_error(&error_key);
+            ctx.emit_tool_call_error(&error_key.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -1608,7 +1608,7 @@ impl ChatAnkiToolExecutor {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Failed to load cards for document: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1625,7 +1625,7 @@ impl ChatAnkiToolExecutor {
             cards.into_iter().filter(|c| !c.is_error_card).collect();
         if cards.is_empty() {
             let error_msg = "No cards to sync (all cards are empty or error cards)".to_string();
-            ctx.emit_tool_call_error(&error_msg);
+            ctx.emit_tool_call_error(&error_msg.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -1642,7 +1642,7 @@ impl ChatAnkiToolExecutor {
         if let Err(e) = crate::anki_connect_service::check_anki_connect_availability().await {
             let error_key = "blocks.ankiCards.errors.ankiConnectUnavailable".to_string();
             log::warn!("[ChatAnkiToolExecutor] AnkiConnect unavailable: {}", e);
-            ctx.emit_tool_call_error(&error_key);
+            ctx.emit_tool_call_error(&error_key.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -1675,7 +1675,7 @@ impl ChatAnkiToolExecutor {
                 .map_err(|e| e.to_string())?;
             if !model_names.iter().any(|name| name == "Cloze") {
                 let error_key = "blocks.ankiCards.errors.missingClozeNoteType".to_string();
-                ctx.emit_tool_call_error(&error_key);
+                ctx.emit_tool_call_error(&error_key.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1756,7 +1756,7 @@ impl ChatAnkiToolExecutor {
             Ok(ids) => ids,
             Err(e) => {
                 let error_msg = e;
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1850,12 +1850,12 @@ impl ChatAnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args = match serde_json::from_value::<ChatAnkiControlArgs>(call.arguments.clone()) {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Invalid chatanki_control arguments: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1872,7 +1872,7 @@ impl ChatAnkiToolExecutor {
         let document_id = args.document_id.trim().to_string();
         if document_id.is_empty() {
             let error_msg = "documentId is required".to_string();
-            ctx.emit_tool_call_error(&error_msg);
+            ctx.emit_tool_call_error(&error_msg.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -1889,7 +1889,7 @@ impl ChatAnkiToolExecutor {
             Some(db) => db.clone(),
             None => {
                 let error_msg = "Anki database not available".to_string();
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1907,7 +1907,7 @@ impl ChatAnkiToolExecutor {
             Some(m) => m.clone(),
             None => {
                 let error_msg = "LLM manager not available".to_string();
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -1925,7 +1925,7 @@ impl ChatAnkiToolExecutor {
         let enhanced = EnhancedAnkiService::new(db.clone(), llm_manager.clone());
 
         if let Err(error_key) = verify_document_ownership(&db, &document_id, &ctx.session_id) {
-            ctx.emit_tool_call_error(&error_key);
+            ctx.emit_tool_call_error(&error_key.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -1941,11 +1941,11 @@ impl ChatAnkiToolExecutor {
         match action.as_str() {
             "pause" => {
                 if let Err(e) = enhanced
-                    .pause_document_processing(document_id.clone(), ctx.window.clone())
+                    .enhanced_anki_pause_document_processing(document_id.clone(), ctx.window.clone())
                     .await
                 {
                     let error_msg = format!("Pause failed: {}", e);
-                    ctx.emit_tool_call_error(&error_msg);
+                    ctx.emit_tool_call_error(&error_msg.to_string());
                     let result = ToolResultInfo::failure(
                         Some(call.id.clone()),
                         Some(ctx.block_id.clone()),
@@ -1960,11 +1960,11 @@ impl ChatAnkiToolExecutor {
             }
             "resume" => {
                 if let Err(e) = enhanced
-                    .resume_document_processing(document_id.clone(), ctx.window.clone())
+                    .enhanced_anki_resume_document_processing(document_id.clone(), ctx.window.clone())
                     .await
                 {
                     let error_msg = format!("Resume failed: {}", e);
-                    ctx.emit_tool_call_error(&error_msg);
+                    ctx.emit_tool_call_error(&error_msg.to_string());
                     let result = ToolResultInfo::failure(
                         Some(call.id.clone()),
                         Some(ctx.block_id.clone()),
@@ -2021,7 +2021,7 @@ impl ChatAnkiToolExecutor {
                         .map_err(|e| e.to_string())?;
                 }
                 enhanced
-                    .resume_document_processing(document_id.clone(), ctx.window.clone())
+                    .enhanced_anki_resume_document_processing(document_id.clone(), ctx.window.clone())
                     .await
                     .map_err(|e| e.to_string())?;
             }
@@ -2029,7 +2029,7 @@ impl ChatAnkiToolExecutor {
                 let proc =
                     crate::document_processing_service::DocumentProcessingService::new(db.clone());
                 let tasks = proc
-                    .get_document_tasks(&document_id)
+                    .enhanced_anki_get_document_tasks(&document_id)
                     .map_err(|e| e.to_string())?;
 
                 // Best-effort cancel streaming tasks.
@@ -2065,7 +2065,7 @@ impl ChatAnkiToolExecutor {
             }
             _ => {
                 let error_msg = format!("Unsupported action: {}", args.action);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -2111,12 +2111,12 @@ impl ChatAnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args = match serde_json::from_value::<ChatAnkiStartArgs>(call.arguments.clone()) {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Invalid chatanki_start arguments: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -2154,12 +2154,12 @@ impl ChatAnkiToolExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
         start_time: Instant,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let args = match serde_json::from_value::<ChatAnkiRunArgs>(call.arguments.clone()) {
             Ok(v) => v,
             Err(e) => {
                 let error_msg = format!("Invalid chatanki_run arguments: {}", e);
-                ctx.emit_tool_call_error(&error_msg);
+                ctx.emit_tool_call_error(&error_msg.to_string());
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
@@ -2233,11 +2233,11 @@ impl ChatAnkiToolExecutor {
         forced_route: Option<ChatAnkiRoute>,
         preferred_resource_ids: Option<Vec<String>>,
         max_cards: Option<i32>,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         // Minimal validation (fail fast).
         if goal.trim().is_empty() {
             let error_msg = "goal is required".to_string();
-            ctx.emit_tool_call_error(&error_msg);
+            ctx.emit_tool_call_error(&error_msg.to_string());
             let result = ToolResultInfo::failure(
                 Some(call.id.clone()),
                 Some(ctx.block_id.clone()),
@@ -2282,7 +2282,7 @@ impl ChatAnkiToolExecutor {
             {
                 Ok(selection) => selection,
                 Err(error_msg) => {
-                    ctx.emit_tool_call_error(&error_msg);
+                    ctx.emit_tool_call_error(&error_msg.to_string());
                     let result = ToolResultInfo::failure(
                         Some(call.id.clone()),
                         Some(ctx.block_id.clone()),
@@ -2441,7 +2441,7 @@ impl ChatAnkiToolExecutor {
             {
                 log::error!("[ChatAnkiToolExecutor] background pipeline error: {}", e);
                 // Best-effort: notify UI and persist terminal error so `chatanki_wait` can stop.
-                emit_anki_cards_error(&emitter, &anki_block_id_for_persist, &e);
+                emit_anki_cards_error(&emitter, &anki_block_id_for_persist, &e.to_string());
                 let _ = ensure_failed_document_session(
                     &anki_db_for_persist,
                     &pre_doc_id_for_spawn,
@@ -2521,7 +2521,7 @@ fn ensure_failed_document_session(
     session_id: &str,
     document_name: &str,
     error_message: &str,
-) -> Result<(), String> {
+) -> ToolResult<()> {
     match db.get_tasks_for_document(document_id) {
         Ok(existing) if !existing.is_empty() => {
             // Existing task rows take precedence; avoid injecting placeholder failures.
@@ -2529,10 +2529,10 @@ fn ensure_failed_document_session(
         }
         Ok(_) => {}
         Err(e) => {
-            return Err(format!(
+            return Err(ToolError::Execution(format!(
                 "failed to check existing tasks for document {}: {}",
                 document_id, e
-            ));
+            )));
         }
     }
 
@@ -2562,7 +2562,7 @@ fn ensure_failed_document_session(
     Ok(())
 }
 
-async fn run_chatanki_pipeline_background(params: BackgroundParams) -> Result<(), String> {
+async fn run_chatanki_pipeline_background(params: BackgroundParams) -> ToolResult<()> {
     let document_name_for_errors = derive_document_name_from_goal(&params.goal);
     // 1) Check AnkiConnect early (best-effort).
     let (anki_available, anki_error) =
@@ -2654,9 +2654,9 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> Result<()
                             None,
                         );
                     }
-                    return Err(
+                    return Err(ToolError::Execution(
                         "VFS database not available (no file input + no content)".to_string()
-                    );
+                    ));
                 }
             };
 
@@ -2667,7 +2667,7 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> Result<()
             ) {
                 Ok(refs) => refs,
                 Err(err_msg) => {
-                    // 处理“显式传了 resourceId/resourceIds 但当前会话快照缺失”的场景：
+                    // 处理"显式传了 resourceId/resourceIds 但当前会话快照缺失"的场景：
                     // 允许从 VFS 直接解析 source_id，保证资源库搜索 -> chatanki_run 可用。
                     if let (Some(preferred_ids), Some(vfs_db)) = (
                         params.preferred_resource_ids.as_ref(),
@@ -2677,16 +2677,16 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> Result<()
                         for preferred in preferred_ids {
                             match resolve_context_ref_from_any_id(vfs_db, preferred) {
                                 Ok(Some(context_ref)) => resolved.push(context_ref),
-                                Ok(None) => return Err(err_msg.clone()),
-                                Err(resolve_err) => return Err(resolve_err),
+                                Ok(None) => return Err(ToolError::NotFound(err_msg.to_string())),
+                                Err(resolve_err) => return Err(ToolError::Execution(resolve_err.to_string())),
                             }
                         }
                         if resolved.is_empty() {
-                            return Err(err_msg);
+                            return Err(ToolError::NotFound(err_msg));
                         }
                         resolved
                     } else {
-                        return Err(err_msg);
+                        return Err(ToolError::NotFound(err_msg));
                     }
                 }
             };
@@ -2713,14 +2713,14 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> Result<()
                         match resolve_context_ref_from_any_id(vfs_db, &id) {
                             Ok(Some(context_ref)) => context_refs.push(context_ref),
                             Ok(None) => unresolved.push(id),
-                            Err(resolve_err) => return Err(resolve_err),
+                            Err(resolve_err) => return Err(ToolError::Execution(resolve_err.to_string())),
                         }
                     }
                     if !unresolved.is_empty() {
-                        return Err(format!(
+                        return Err(ToolError::NotFound(format!(
                             "Preferred resource not found in current session context or VFS: {}",
                             unresolved.join(",")
-                        ));
+                        )));
                     }
                 }
             }
@@ -3185,7 +3185,7 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> Result<()
         params.max_cards,
     );
 
-    // 多模板模式：使用启动阶段已校验过的 template_ids，避免隐式“全模板”导致体验偏差。
+    // 多模板模式：使用启动阶段已校验过的 template_ids，避免隐式"全模板"导致体验偏差。
     if template.is_none() {
         if let Some(template_ids) = params.template_ids.as_ref() {
             if !template_ids.is_empty() {
@@ -3369,7 +3369,7 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> Result<()
             let proc = crate::document_processing_service::DocumentProcessingService::new(
                 params.anki_db.clone(),
             );
-            match proc.get_document_tasks(&document_id) {
+            match proc.enhanced_anki_get_document_tasks(&document_id) {
                 Ok(tasks) => {
                     let streaming = crate::streaming_anki_service::StreamingAnkiService::new(
                         params.anki_db.clone(),
@@ -3582,7 +3582,7 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> Result<()
             // Done: emit end with full cards list.
             if cards.len() > visible_card_count {
                 for c in cards.iter().skip(visible_card_count) {
-                    let _ = params.anki_db.delete_anki_card(&c.id);
+                    let _ = params.anki_db.enhanced_anki_delete_card(&c.id);
                 }
             }
             let final_cards: Vec<Value> = cards
@@ -3838,7 +3838,7 @@ fn card_has_cloze_markup(card: &crate::models::AnkiCard) -> bool {
 fn extract_latest_user_content(
     chat_db: &crate::chat_v2::database::ChatV2Database,
     session_id: &str,
-) -> Result<Option<String>, String> {
+) -> ToolResult<Option<String>> {
     let conn = chat_db.get_conn_safe().map_err(|e| e.to_string())?;
     let messages =
         ChatV2Repo::get_session_messages_with_conn(&conn, session_id).map_err(|e| e.to_string())?;
@@ -3995,7 +3995,7 @@ fn collect_image_payloads(
     max_images: usize,
 ) -> ImagePayloadBatch {
     use crate::chat_v2::vfs_resolver::resolve_vfs_ref_to_blocks;
-    use crate::chat_v2::vfs_resolver::ContentBlock;
+    use crate::chat_v2::resource_types::ContentBlock;
 
     let mut out: Vec<ImagePayload> = Vec::new();
     let mut total_images = 0usize;
@@ -4042,7 +4042,7 @@ fn extract_text_from_refs(
     ref_data: &VfsContextRefData,
 ) -> ExtractTextResult {
     use crate::chat_v2::vfs_resolver::resolve_vfs_ref_to_blocks;
-    use crate::chat_v2::vfs_resolver::ContentBlock;
+    use crate::chat_v2::resource_types::ContentBlock;
 
     let mut out = String::new();
     let mut remaining = MAX_REF_TEXT_BYTES;
@@ -4133,7 +4133,7 @@ fn resolve_target_context_refs(
     chat_db: &crate::chat_v2::database::ChatV2Database,
     session_id: &str,
     preferred_resource_ids: Option<&[String]>,
-) -> Result<Vec<ContextRef>, String> {
+) -> ToolResult<Vec<ContextRef>> {
     let conn = chat_db.get_conn_safe().map_err(|e| e.to_string())?;
     let messages =
         ChatV2Repo::get_session_messages_with_conn(&conn, session_id).map_err(|e| e.to_string())?;
@@ -4174,10 +4174,10 @@ fn resolve_target_context_refs(
         }
 
         if found.is_empty() {
-            return Err(format!(
+            return Err(ToolError::NotFound(format!(
                 "Preferred resource not found in current session context: {}",
                 preferred_ids.join(",")
-            ));
+            )));
         }
 
         let refs: Vec<ContextRef> = preferred_ids
@@ -4275,7 +4275,7 @@ fn unsupported_chatanki_resource_message(raw_id: &str) -> Option<String> {
 fn resolve_file_like_source_id_by_resource_id(
     vfs_db: &VfsDatabase,
     resource_id: &str,
-) -> Result<Option<String>, String> {
+) -> ToolResult<Option<String>> {
     let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
     conn.query_row(
         "SELECT id FROM files WHERE resource_id = ?1 AND deleted_at IS NULL LIMIT 1",
@@ -4289,14 +4289,14 @@ fn resolve_file_like_source_id_by_resource_id(
 fn resolve_context_ref_from_any_id(
     vfs_db: &VfsDatabase,
     raw_id: &str,
-) -> Result<Option<ContextRef>, String> {
+) -> ToolResult<Option<ContextRef>> {
     let trimmed = raw_id.trim();
     if trimmed.is_empty() {
         return Ok(None);
     }
 
     if let Some(message) = unsupported_chatanki_resource_message(trimmed) {
-        return Err(message);
+        return Err(ToolError::InvalidArgs(message));
     }
 
     if let Some(context_ref) = resolve_context_ref_from_vfs_source(vfs_db, trimmed)? {
@@ -4313,7 +4313,7 @@ fn resolve_context_ref_from_any_id(
 
     if let Some(source_id) = resource.source_id.as_deref() {
         if let Some(message) = unsupported_chatanki_resource_message(source_id) {
-            return Err(message);
+            return Err(ToolError::InvalidArgs(message));
         }
         if let Some(context_ref) = resolve_context_ref_from_vfs_source(vfs_db, source_id)? {
             return Ok(Some(context_ref));
@@ -4325,31 +4325,31 @@ fn resolve_context_ref_from_any_id(
             resolve_file_like_source_id_by_resource_id(vfs_db, &resource.id)?
         }
         VfsResourceType::MindMap => {
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "Resource '{}' is a mindmap resource and cannot be used directly by chatanki_run. Please choose the underlying file/image resource instead.",
                 trimmed
-            ));
+            )));
         }
         VfsResourceType::Note => {
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "Resource '{}' is a note resource and cannot be used directly by chatanki_run. Please export or attach the source file/text first.",
                 trimmed
-            ));
+            )));
         }
         VfsResourceType::Exam | VfsResourceType::Essay | VfsResourceType::Translation => {
-            return Err(format!(
+            return Err(ToolError::InvalidArgs(format!(
                 "Resource '{}' has unsupported type '{}' for chatanki_run direct input.",
                 trimmed, resource.resource_type
-            ));
+            )));
         }
         VfsResourceType::Retrieval => None,
     };
 
     let Some(source_id) = source_id else {
-        return Err(format!(
+        return Err(ToolError::NotFound(format!(
             "Resource '{}' exists, but chatanki_run cannot map it to a readable file/image source ID.",
             trimmed
-        ));
+        )));
     };
 
     resolve_context_ref_from_vfs_source(vfs_db, &source_id)
@@ -4358,7 +4358,7 @@ fn resolve_context_ref_from_any_id(
 fn resolve_context_ref_from_vfs_source(
     vfs_db: &VfsDatabase,
     source_id: &str,
-) -> Result<Option<ContextRef>, String> {
+) -> ToolResult<Option<ContextRef>> {
     let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
 
     let (table_name, title_column) = if source_id.starts_with("file_")
@@ -4393,7 +4393,7 @@ fn resolve_context_ref_from_vfs_source(
     let (hash_opt, title_opt, file_type, mime_type) = match row_result {
         Ok(v) => v,
         Err(rusqlite::Error::QueryReturnedNoRows) => return Ok(None),
-        Err(e) => return Err(e.to_string()),
+        Err(e) => return Err(ToolError::Execution(e.to_string())),
     };
 
     let hash = hash_opt.unwrap_or_default();
@@ -4474,7 +4474,7 @@ fn resolve_template_selection(
     template_mode: &ChatAnkiTemplateMode,
     template_id: Option<String>,
     template_ids: Option<Vec<String>>,
-) -> Result<TemplateSelection, String> {
+) -> ToolResult<TemplateSelection> {
     let db = ctx
         .main_db
         .as_ref()
@@ -4487,14 +4487,14 @@ fn resolve_template_selection(
                 .map(|v| v.trim().to_string())
                 .filter(|v| !v.is_empty())
                 .ok_or_else(|| {
-                    "templateMode=single 时必须提供 templateId（指定单个模板）".to_string()
+                    ToolError::InvalidArgs("templateMode=single 时必须提供 templateId（指定单个模板）".to_string())
                 })?;
             let exists = db
                 .get_custom_template_by_id(&tid)
-                .map_err(|e| format!("加载模板失败: {}", e))?
+                .map_err(|e| ToolError::Execution(format!("加载模板失败: {}", e)))?
                 .is_some();
             if !exists {
-                return Err(format!("指定模板不存在: {}", tid));
+                return Err(ToolError::NotFound(format!("指定模板不存在: {}", tid)));
             }
             Ok(TemplateSelection {
                 template_id: Some(tid),
@@ -4504,17 +4504,17 @@ fn resolve_template_selection(
         ChatAnkiTemplateMode::Multiple => {
             let ids = collect_requested_template_ids(template_id, template_ids);
             if ids.is_empty() {
-                return Err(
+                return Err(ToolError::InvalidArgs(
                     "templateMode=multiple 时必须提供非空 templateIds（或 templateId）".to_string(),
-                );
+                ));
             }
             for id in &ids {
                 let exists = db
                     .get_custom_template_by_id(id)
-                    .map_err(|e| format!("加载模板失败: {}", e))?
+                    .map_err(|e| ToolError::Execution(format!("加载模板失败: {}", e)))?
                     .is_some();
                 if !exists {
-                    return Err(format!("指定模板不存在: {}", id));
+                    return Err(ToolError::NotFound(format!("指定模板不存在: {}", id)));
                 }
             }
             Ok(TemplateSelection {
@@ -4528,9 +4528,9 @@ fn resolve_template_selection(
                 .map_err(|e| format!("加载模板列表失败: {}", e))?;
             let active_templates: Vec<_> = templates.into_iter().filter(|t| t.is_active).collect();
             if active_templates.is_empty() {
-                return Err("templateMode=all 但当前没有启用中的模板".to_string());
+                return Err(ToolError::NotFound("templateMode=all 但当前没有启用中的模板".to_string()));
             }
-            // 体验保护：用户目标明确是“选择题”时，避免 all 模式混入非选择题模板导致预览/导出风格混乱。
+            // 体验保护：用户目标明确是"选择题"时，避免 all 模式混入非选择题模板导致预览/导出风格混乱。
             if goal_prefers_choice_template(goal) {
                 if let Some(choice_template_id) =
                     infer_template_id_from_goal(goal, &active_templates)
@@ -4681,7 +4681,7 @@ fn build_generation_options(
                 }
             }
         }),
-        // ChatAnki 的 maxCards 语义是“整次制卡总上限”，不是“每段上限”。
+        // ChatAnki 的 maxCards 语义是"整次制卡总上限"，不是"每段上限"。
         // 分段后会在 DocumentProcessingService 内按段分配，避免 10 -> 20 的放大。
         max_cards_total: max_cards_override,
         max_tokens: None,
@@ -4709,8 +4709,8 @@ fn build_chatanki_requirements(goal: &str) -> String {
     format!(
         "学习目标：{goal}\n\
 规则：\n\
-- 每张卡只测试一个知识点（最小信息原则），避免“一卡多问”。\n\
-- 若内容是“术语/名词解释/概念清单”形式：默认 **每条条目生成 1 张卡**（front=术语/问题，back=解释），不要遗漏，也不要把一条条目拆成多张（除非该条非常长且确有必要）。\n\
+- 每张卡只测试一个知识点（最小信息原则），避免"一卡多问"。\n\
+- 若内容是「术语/名词解释/概念清单」形式：默认 **每条条目生成 1 张卡**（front=术语/问题，back=解释），不要遗漏，也不要把一条条目拆成多张（除非该条非常长且确有必要）。\n\
 - 优先覆盖内容中的所有条目/小点（尤其是名词解释/术语列表），不要遗漏。\n\
 - 正面问题要清晰可回忆；背面答案要简洁但不丢关键限定条件。\n\
 - tags 给 0~3 个关键词（可为空数组）。"
@@ -4861,7 +4861,7 @@ fn default_field_extraction_rules() -> HashMap<String, FieldExtractionRule> {
 
 pub(crate) fn import_builtin_templates_if_empty(
     db: &crate::database::Database,
-) -> Result<usize, String> {
+) -> ToolResult<usize> {
     const BUILTIN_TEMPLATES_JSON: &str = include_str!("../../data/builtin-templates.json");
     let templates: Vec<Value> = serde_json::from_str(BUILTIN_TEMPLATES_JSON)
         .map_err(|e| format!("Parse builtin templates failed: {}", e))?;
@@ -5313,7 +5313,7 @@ fn persist_anki_cards_terminal_block(
 fn upsert_block_allow_orphan(
     db: &crate::chat_v2::database::ChatV2Database,
     block: &MessageBlock,
-) -> Result<(), String> {
+) -> ToolResult<()> {
     let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
 
     // FK 约束要求 message 先于 block 存在。
@@ -5416,7 +5416,7 @@ fn append_block_id_to_message(
     conn: &Connection,
     message_id: &str,
     block_id: &str,
-) -> Result<(), String> {
+) -> ToolResult<()> {
     let existing_block_ids: Result<Option<String>, _> = conn.query_row(
         "SELECT block_ids_json FROM chat_v2_messages WHERE id = ?1",
         rusqlite::params![message_id],
@@ -5442,7 +5442,7 @@ fn append_block_id_to_message(
         Err(rusqlite::Error::QueryReturnedNoRows) => {
             // Streaming: message may not exist yet.
         }
-        Err(e) => return Err(e.to_string()),
+        Err(e) => return Err(ToolError::Execution(e.to_string())),
     }
 
     Ok(())

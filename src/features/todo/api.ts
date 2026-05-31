@@ -18,31 +18,31 @@ import type {
 // ============================================================================
 
 export async function createTodoList(input: CreateTodoListInput): Promise<TodoList> {
-  return invoke('todo_create_list', { input });
+  return invoke('vfs_todo_create_list', { input });
 }
 
 export async function getTodoList(listId: string): Promise<TodoList | null> {
-  return invoke('todo_get_list', { listId });
+  return invoke('vfs_todo_get_list', { listId });
 }
 
 export async function listTodoLists(): Promise<TodoList[]> {
-  return invoke('todo_list_lists');
+  return invoke('vfs_todo_list_lists');
 }
 
 export async function updateTodoList(input: UpdateTodoListInput): Promise<TodoList> {
-  return invoke('todo_update_list', { input });
+  return invoke('vfs_todo_update_list', { input });
 }
 
 export async function deleteTodoList(listId: string): Promise<void> {
-  return invoke('todo_delete_list', { listId });
+  return invoke('vfs_todo_delete_list', { listId });
 }
 
 export async function toggleTodoListFavorite(listId: string): Promise<TodoList> {
-  return invoke('todo_toggle_list_favorite', { listId });
+  return invoke('vfs_todo_toggle_list_favorite', { listId });
 }
 
 export async function ensureInbox(): Promise<TodoList> {
-  return invoke('todo_ensure_inbox');
+  return invoke('vfs_todo_ensure_inbox');
 }
 
 // ============================================================================
@@ -50,31 +50,31 @@ export async function ensureInbox(): Promise<TodoList> {
 // ============================================================================
 
 export async function createTodoItem(input: CreateTodoItemInput): Promise<TodoItem> {
-  return invoke('todo_create_item', { input });
+  return invoke('vfs_todo_create_item', { input });
 }
 
 export async function getTodoItem(itemId: string): Promise<TodoItem | null> {
-  return invoke('todo_get_item', { itemId });
+  return invoke('vfs_todo_get_item', { itemId });
 }
 
 export async function listTodoItems(listId: string, includeCompleted: boolean): Promise<TodoItem[]> {
-  return invoke('todo_list_items', { listId, includeCompleted });
+  return invoke('vfs_todo_list_items', { listId, includeCompleted });
 }
 
 export async function updateTodoItem(input: UpdateTodoItemInput): Promise<TodoItem> {
-  return invoke('todo_update_item', { input });
+  return invoke('vfs_todo_update_item', { input });
 }
 
 export async function toggleTodoItem(itemId: string): Promise<TodoItem> {
-  return invoke('todo_toggle_item', { itemId });
+  return invoke('vfs_todo_toggle_item', { itemId });
 }
 
 export async function deleteTodoItem(itemId: string): Promise<void> {
-  return invoke('todo_delete_item', { itemId });
+  return invoke('vfs_todo_delete_item', { itemId });
 }
 
 export async function reorderTodoItems(listId: string, itemIds: string[]): Promise<void> {
-  return invoke('todo_reorder_items', { input: { listId, itemIds } });
+  return invoke('vfs_todo_reorder_items', { input: { listId, itemIds } });
 }
 
 // ============================================================================
@@ -82,25 +82,25 @@ export async function reorderTodoItems(listId: string, itemIds: string[]): Promi
 // ============================================================================
 
 export async function listTodayItems(includeCompleted = false): Promise<TodoItem[]> {
-  return invoke('todo_list_today', { includeCompleted });
+  return invoke('vfs_todo_list_today', { includeCompleted });
 }
 
 export async function listOverdueItems(includeCompleted = false): Promise<TodoItem[]> {
-  return invoke('todo_list_overdue', { includeCompleted });
+  return invoke('vfs_todo_list_overdue', { includeCompleted });
 }
 
 export async function listUpcomingItems(days: number, includeCompleted = false): Promise<TodoItem[]> {
-  return invoke('todo_list_upcoming', { days, includeCompleted });
+  return invoke('vfs_todo_list_upcoming', { days, includeCompleted });
 }
 
 export async function listCompletedItems(listId?: string): Promise<TodoItem[]> {
-  return invoke('todo_list_completed', { listId });
+  return invoke('vfs_todo_list_completed', { listId });
 }
 
 export async function searchTodoItems(query: string): Promise<TodoItem[]> {
-  return invoke('todo_search', { query });
+  return invoke('vfs_todo_search', { query });
 }
 
 export async function getActiveTodoSummary(): Promise<TodoActiveSummary | null> {
-  return invoke('todo_get_active_summary');
+  return invoke('vfs_todo_get_active_summary');
 }

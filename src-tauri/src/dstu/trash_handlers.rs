@@ -14,7 +14,7 @@ use crate::vfs::repos::{
     VfsTextbookRepo, VfsTranslationRepo,
 };
 
-use super::error::DstuError;
+use super::error::{DstuError, DstuResult};
 use super::handler_utils::{emit_watch_event, parse_timestamp};
 use super::types::{DstuNode, DstuNodeType, DstuWatchEvent};
 
@@ -116,7 +116,7 @@ pub async fn dstu_soft_delete(
     window: Window,
     db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
-) -> Result<(), DstuError> {
+) -> DstuResult<()> {
     info!(
         "[DSTU::trash] dstu_soft_delete: id={}, type={}",
         id, item_type
@@ -181,7 +181,7 @@ pub async fn dstu_trash_restore(
     item_type: String,
     window: Window,
     db: State<'_, Arc<VfsDatabase>>,
-) -> Result<(), DstuError> {
+) -> DstuResult<()> {
     info!("[DSTU::trash] dstu_restore: id={}, type={}", id, item_type);
 
     let result = match item_type.as_str() {
@@ -235,7 +235,7 @@ pub async fn dstu_list_trash(
     limit: Option<u32>,
     offset: Option<u32>,
     db: State<'_, Arc<VfsDatabase>>,
-) -> Result<Vec<DstuNode>, DstuError> {
+) -> DstuResult<Vec<DstuNode>> {
     let limit = limit.unwrap_or(100);
     let offset = offset.unwrap_or(0);
 
@@ -385,7 +385,7 @@ pub async fn dstu_list_trash(
         }
     }
 
-    // 6. 获取已删除的作文会话（Learning Hub 使用 essay_session_* 作为“作文资源”）
+    // 6. 获取已删除的作文会话（Learning Hub 使用 essay_session_* 作为"作文资源"）
     let deleted_sessions = match VfsEssayRepo::list_deleted_sessions(&db, limit + offset, 0) {
         Ok(sessions) => sessions,
         Err(e) => {
@@ -503,7 +503,7 @@ pub async fn dstu_empty_trash(
     window: Window,
     db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
-) -> Result<usize, DstuError> {
+) -> DstuResult<usize> {
     info!("[DSTU::trash] dstu_empty_trash");
 
     // ★ P1 修复：在 purge 之前收集所有待清理的 resource_ids
@@ -689,7 +689,7 @@ pub async fn dstu_permanently_delete(
     window: Window,
     db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
-) -> Result<(), DstuError> {
+) -> DstuResult<()> {
     info!(
         "[DSTU::trash] dstu_permanently_delete: id={}, type={}",
         id, item_type

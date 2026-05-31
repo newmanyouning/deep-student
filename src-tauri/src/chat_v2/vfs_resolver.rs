@@ -23,6 +23,7 @@
 use rusqlite::Connection;
 use serde_json::Value;
 use std::path::Path;
+use crate::chat_v2::ContentBlock;
 
 use crate::document_parser::DocumentParser;
 use crate::vfs::ocr_utils::parse_ocr_pages_json;
@@ -31,9 +32,6 @@ use crate::vfs::types::{
     resolve_image_inject_modes, resolve_pdf_inject_modes, PdfPreviewJson, VfsContextRefData,
     VfsResourceRef, VfsResourceType,
 };
-
-// ★ 使用已有的 ContentBlock 类型，避免重复定义
-pub use super::resource_types::ContentBlock;
 
 /// 解析后的资源内容
 ///

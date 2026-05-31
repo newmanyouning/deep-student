@@ -1484,8 +1484,8 @@ ${resolvedPath}`);
       updateProgress('清理环境', 95);
       addLog('');
       addLog('📦 Phase 8: 清理测试环境');
-      await invoke('clear_test_slot', { slotName: 'slotC' });
-      await invoke('clear_test_slot', { slotName: 'slotD' });
+      await invoke('clear_test_slots', { slotName: 'slotC' });
+      await invoke('clear_test_slots', { slotName: 'slotD' });
       addLog('  ✅ 测试环境清理完成');
 
       // ============================================================

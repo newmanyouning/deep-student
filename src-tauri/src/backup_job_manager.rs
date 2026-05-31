@@ -15,6 +15,7 @@ use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::backup_common::ImportProgress;
+use crate::data_governance::{DataGovernanceError, DataGovernanceResult};
 
 // ============================================================================
 // 安全锁访问辅助函数（处理锁中毒问题）
@@ -535,9 +536,9 @@ impl BackupJobContext {
     /// let result = manager.backup_full();
     /// job_ctx.check_continue()?;
     /// ```
-    pub fn check_continue(&self) -> Result<(), String> {
+    pub fn check_continue(&self) -> DataGovernanceResult<()> {
         if self.is_cancelled() {
-            Err("任务已被取消".to_string())
+            Err(DataGovernanceError::from("任务已被取消".to_string()))
         } else {
             Ok(())
         }
@@ -951,20 +952,20 @@ impl BackupJobManager {
     }
 
     /// 确保持久化目录存在
-    fn ensure_persist_dir(&self) -> Result<PathBuf, String> {
+    fn ensure_persist_dir(&self) -> DataGovernanceResult<PathBuf> {
         let dir = self
             .get_persist_dir()
-            .ok_or_else(|| "无法获取持久化目录路径".to_string())?;
+            .ok_or_else(|| DataGovernanceError::from("无法获取持久化目录路径".to_string()))?;
 
         if !dir.exists() {
-            fs::create_dir_all(&dir).map_err(|e| format!("创建持久化目录失败: {}", e))?;
+            fs::create_dir_all(&dir)?;
         }
 
         Ok(dir)
     }
 
     /// 保存任务状态到文件
-    pub fn persist_job(&self, job_id: &str) -> Result<(), String> {
+    pub fn persist_job(&self, job_id: &str) -> DataGovernanceResult<()> {
         let persist_dir = self.ensure_persist_dir()?;
         let file_path = persist_dir.join(format!("{}.json", job_id));
 
@@ -990,15 +991,14 @@ impl BackupJobManager {
             }
         });
 
-        let persisted = persisted.ok_or_else(|| format!("任务不存在: {}", job_id))?;
+        let persisted = persisted.ok_or_else(|| DataGovernanceError::from(format!("任务不存在: {}", job_id)))?;
 
-        let json = serde_json::to_string_pretty(&persisted)
-            .map_err(|e| format!("序列化任务状态失败: {}", e))?;
+        let json = serde_json::to_string_pretty(&persisted)?;
 
         // 使用临时文件 + 原子重命名
         let temp_path = file_path.with_extension("json.tmp");
-        fs::write(&temp_path, &json).map_err(|e| format!("写入临时文件失败: {}", e))?;
-        fs::rename(&temp_path, &file_path).map_err(|e| format!("重命名文件失败: {}", e))?;
+        fs::write(&temp_path, &json)?;
+        fs::rename(&temp_path, &file_path)?;
 
         debug!("[BackupJob] 任务已持久化: {} -> {:?}", job_id, file_path);
 
@@ -1006,7 +1006,7 @@ impl BackupJobManager {
     }
 
     /// 加载所有持久化的任务
-    pub fn load_persisted_jobs(&self) -> Result<Vec<PersistedJob>, String> {
+    pub fn load_persisted_jobs(&self) -> DataGovernanceResult<Vec<PersistedJob>> {
         let persist_dir = match self.get_persist_dir() {
             Some(dir) if dir.exists() => dir,
             _ => return Ok(Vec::new()),
@@ -1014,8 +1014,7 @@ impl BackupJobManager {
 
         let mut jobs = Vec::new();
 
-        let entries =
-            fs::read_dir(&persist_dir).map_err(|e| format!("读取持久化目录失败: {}", e))?;
+        let entries = fs::read_dir(&persist_dir)?;
 
         for entry in entries {
             let entry = match entry {
@@ -1060,7 +1059,7 @@ impl BackupJobManager {
     }
 
     /// 删除持久化文件
-    pub fn delete_persisted_job(&self, job_id: &str) -> Result<(), String> {
+    pub fn delete_persisted_job(&self, job_id: &str) -> DataGovernanceResult<()> {
         let persist_dir = match self.get_persist_dir() {
             Some(dir) if dir.exists() => dir,
             _ => return Ok(()), // 目录不存在，无需删除
@@ -1069,7 +1068,7 @@ impl BackupJobManager {
         let file_path = persist_dir.join(format!("{}.json", job_id));
 
         if file_path.exists() {
-            fs::remove_file(&file_path).map_err(|e| format!("删除持久化文件失败: {}", e))?;
+            fs::remove_file(&file_path)?;
             debug!("[BackupJob] 已删除持久化文件: {:?}", file_path);
         }
 
@@ -1095,7 +1094,7 @@ impl BackupJobManager {
     }
 
     /// 获取可恢复的任务列表
-    pub fn list_resumable_jobs(&self) -> Result<Vec<PersistedJob>, String> {
+    pub fn list_resumable_jobs(&self) -> DataGovernanceResult<Vec<PersistedJob>> {
         let jobs = self.load_persisted_jobs()?;
         Ok(jobs
             .into_iter()
@@ -1107,7 +1106,7 @@ impl BackupJobManager {
     }
 
     /// 清理所有已完成或已取消的持久化任务
-    pub fn cleanup_finished_persisted_jobs(&self) -> Result<usize, String> {
+    pub fn cleanup_finished_persisted_jobs(&self) -> DataGovernanceResult<usize> {
         let jobs = self.load_persisted_jobs()?;
         let mut cleaned = 0;
 

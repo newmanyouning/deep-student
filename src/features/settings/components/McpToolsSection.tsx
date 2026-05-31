@@ -47,11 +47,12 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { ApiKeyField } from './ApiKeyField';
 import { showGlobalNotification } from '@/components/UnifiedNotification';
 import { CustomScrollArea } from '@/components/custom-scroll-area';
-import { 
-  PRESET_MCP_SERVERS, 
-  presetToMcpConfig, 
+import { settingsApi } from '@/api/settingsApi';
+import {
+  PRESET_MCP_SERVERS,
+  presetToMcpConfig,
   CATEGORY_LABELS,
-  type PresetMcpServer 
+  type PresetMcpServer
 } from '@/mcp/presetMcpServers';
 
 // Types
@@ -1697,10 +1698,8 @@ function ToolPermissionsSection({ toolsByServer }: {
   const handleToggleGlobalBypass = useCallback(async (checked: boolean) => {
     const newVal = checked;
     try {
-      await invoke('save_setting', {
-        key: 'tool_approval.global_bypass',
-        value: newVal ? 'true' : 'false',
-      });
+      await settingsApi.save('tool_approval.global_bypass', newVal ? 'true' : 'false',
+      );
       setGlobalBypass(newVal);
       showGlobalNotification(
         'success',

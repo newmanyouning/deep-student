@@ -14,7 +14,7 @@ pub mod notes;
 pub mod ocr;
 pub mod textbooks;
 pub mod translation;
-pub mod web_search; // OCR 引擎配置命令
+pub mod web_search; // 外部搜索相关命令
 
 // Re-export AppState from the main commands module
 pub use crate::commands::AppState;

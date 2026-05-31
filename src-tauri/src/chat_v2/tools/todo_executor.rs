@@ -21,7 +21,7 @@ use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::database::ChatV2Database;
 use crate::chat_v2::events::event_types;
@@ -221,8 +221,8 @@ pub fn persist_todo_list(
     message_id: &str,
     variant_id: Option<&str>,
     list: &TodoList,
-) -> Result<(), String> {
-    let conn = db.get_conn().map_err(|e| e.to_string())?;
+) -> ToolResult<()> {
+    let conn = db.get_conn().map_err(|e| ToolError::Execution(e.to_string()))?;
     persist_todo_list_with_conn(&conn, session_id, message_id, variant_id, list)
 }
 
@@ -233,9 +233,9 @@ pub fn persist_todo_list_with_conn(
     message_id: &str,
     variant_id: Option<&str>,
     list: &TodoList,
-) -> Result<(), String> {
+) -> ToolResult<()> {
     let steps_json = serde_json::to_string(&list.steps)
-        .map_err(|e| format!("Failed to serialize steps: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("Failed to serialize steps: {}", e)))?;
 
     conn.execute(
         r#"
@@ -254,7 +254,7 @@ pub fn persist_todo_list_with_conn(
             list.created_at,
             list.updated_at,
         ],
-    ).map_err(|e| format!("Failed to persist TodoList: {}", e))?;
+    ).map_err(|e| ToolError::Execution(format!("Failed to persist TodoList: {}", e)))?;
 
     log::debug!(
         "[TodoListExecutor] Persisted TodoList {} for session {} (message: {})",
@@ -270,8 +270,8 @@ pub fn persist_todo_list_with_conn(
 pub fn load_persisted_todo_list(
     db: &ChatV2Database,
     session_id: &str,
-) -> Result<Option<(TodoList, String, Option<String>)>, String> {
-    let conn = db.get_conn().map_err(|e| e.to_string())?;
+) -> ToolResult<Option<(TodoList, String, Option<String>)>> {
+    let conn = db.get_conn().map_err(|e| ToolError::Execution(e.to_string()))?;
     load_persisted_todo_list_with_conn(&conn, session_id)
 }
 
@@ -281,7 +281,7 @@ pub fn load_persisted_todo_list(
 pub fn load_persisted_todo_list_with_conn(
     conn: &Connection,
     session_id: &str,
-) -> Result<Option<(TodoList, String, Option<String>)>, String> {
+) -> ToolResult<Option<(TodoList, String, Option<String>)>> {
     let result = conn.query_row(
         r#"
         SELECT todo_list_id, title, steps_json, created_at, updated_at, message_id, variant_id
@@ -305,7 +305,7 @@ pub fn load_persisted_todo_list_with_conn(
     match result {
         Ok((todo_list_id, title, steps_json, created_at, updated_at, message_id, variant_id)) => {
             let steps: Vec<TodoStep> = serde_json::from_str(&steps_json)
-                .map_err(|e| format!("Failed to deserialize steps: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("Failed to deserialize steps: {}", e)))?;
 
             let list = TodoList {
                 id: todo_list_id,
@@ -325,18 +325,18 @@ pub fn load_persisted_todo_list_with_conn(
             Ok(Some((list, message_id, variant_id)))
         }
         Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(format!("Failed to load TodoList: {}", e)),
+        Err(e) => Err(ToolError::Execution(format!("Failed to load TodoList: {}", e))),
     }
 }
 
 /// 删除已完成的 TodoList 持久化记录
-pub fn delete_persisted_todo_list(db: &ChatV2Database, session_id: &str) -> Result<(), String> {
-    let conn = db.get_conn().map_err(|e| e.to_string())?;
+pub fn delete_persisted_todo_list(db: &ChatV2Database, session_id: &str) -> ToolResult<()> {
+    let conn = db.get_conn().map_err(|e| ToolError::Execution(e.to_string()))?;
     conn.execute(
         "DELETE FROM chat_v2_todo_lists WHERE session_id = ?1",
         params![session_id],
     )
-    .map_err(|e| format!("Failed to delete TodoList: {}", e))?;
+    .map_err(|e| ToolError::Execution(format!("Failed to delete TodoList: {}", e)))?;
     Ok(())
 }
 
@@ -344,7 +344,7 @@ pub fn delete_persisted_todo_list(db: &ChatV2Database, session_id: &str) -> Resu
 pub fn restore_todo_list_from_db(
     db: &ChatV2Database,
     session_id: &str,
-) -> Result<Option<TodoList>, String> {
+) -> ToolResult<Option<TodoList>> {
     if let Some((list, _message_id, _variant_id)) = load_persisted_todo_list(db, session_id)? {
         set_todo_list(session_id, list.clone());
         Ok(Some(list))
@@ -486,17 +486,17 @@ impl TodoListExecutor {
     }
 
     /// 执行 todo_init
-    fn execute_init(&self, args: &Value, session_id: &str) -> Result<(Value, bool), String> {
+    fn execute_init(&self, args: &Value, session_id: &str) -> ToolResult<(Value, bool)> {
         let title = args
             .get("title")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: title")?
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: title".to_string()))?
             .to_string();
 
         let steps_array = args
             .get("steps")
             .and_then(|v| v.as_array())
-            .ok_or("缺少必需参数: steps")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: steps".to_string()))?;
 
         let steps: Vec<TodoStep> = steps_array
             .iter()
@@ -512,7 +512,7 @@ impl TodoListExecutor {
             .collect();
 
         if steps.is_empty() {
-            return Err("步骤列表不能为空".to_string());
+            return Err(ToolError::InvalidArgs("步骤列表不能为空".to_string()));
         }
 
         let todo_list = TodoList::new(title.clone(), steps);
@@ -539,16 +539,16 @@ impl TodoListExecutor {
     }
 
     /// 执行 todo_update
-    fn execute_update(&self, args: &Value, session_id: &str) -> Result<(Value, bool), String> {
+    fn execute_update(&self, args: &Value, session_id: &str) -> ToolResult<(Value, bool)> {
         let step_id = args
             .get("stepId")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: stepId")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: stepId".to_string()))?;
 
         let status_str = args
             .get("status")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: status")?;
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: status".to_string()))?;
 
         // 支持 LLM 可能使用的别名：in_progress -> running
         let status = match status_str {
@@ -556,7 +556,7 @@ impl TodoListExecutor {
             "completed" | "done" => TodoStatus::Completed,
             "failed" | "error" => TodoStatus::Failed,
             "skipped" | "skip" => TodoStatus::Skipped,
-            _ => return Err(format!("无效的状态: {}", status_str)),
+            _ => return Err(ToolError::InvalidArgs(format!("无效的状态: {}", status_str))),
         };
 
         let result = args
@@ -565,14 +565,14 @@ impl TodoListExecutor {
             .map(|s| s.to_string());
 
         let mut todo_list =
-            get_todo_list(session_id).ok_or("未找到任务列表，请先调用 todo_init")?;
+            get_todo_list(session_id).ok_or_else(|| ToolError::NotFound("未找到任务列表，请先调用 todo_init".to_string()))?;
 
         // 查找并更新步骤
         let step = todo_list
             .steps
             .iter_mut()
             .find(|s| s.id == step_id)
-            .ok_or(format!("未找到步骤: {}", step_id))?;
+            .ok_or_else(|| ToolError::NotFound(format!("未找到步骤: {}", step_id)))?;
 
         step.status = status;
         step.result = result;
@@ -613,17 +613,17 @@ impl TodoListExecutor {
     }
 
     /// 执行 todo_add
-    fn execute_add(&self, args: &Value, session_id: &str) -> Result<(Value, bool), String> {
+    fn execute_add(&self, args: &Value, session_id: &str) -> ToolResult<(Value, bool)> {
         let description = args
             .get("description")
             .and_then(|v| v.as_str())
-            .ok_or("缺少必需参数: description")?
+            .ok_or_else(|| ToolError::InvalidArgs("缺少必需参数: description".to_string()))?
             .to_string();
 
         let after_step_id = args.get("afterStepId").and_then(|v| v.as_str());
 
         let mut todo_list =
-            get_todo_list(session_id).ok_or("未找到任务列表，请先调用 todo_init")?;
+            get_todo_list(session_id).ok_or_else(|| ToolError::NotFound("未找到任务列表，请先调用 todo_init".to_string()))?;
 
         // 生成新步骤 ID
         let new_step_id = format!("step_{}", todo_list.steps.len() + 1);
@@ -668,8 +668,8 @@ impl TodoListExecutor {
     }
 
     /// 执行 todo_get
-    fn execute_get(&self, session_id: &str) -> Result<(Value, bool), String> {
-        let todo_list = get_todo_list(session_id).ok_or("未找到任务列表，请先调用 todo_init")?;
+    fn execute_get(&self, session_id: &str) -> ToolResult<(Value, bool)> {
+        let todo_list = get_todo_list(session_id).ok_or_else(|| ToolError::NotFound("未找到任务列表，请先调用 todo_init".to_string()))?;
 
         let completed = todo_list.completed_count();
         let total = todo_list.total_count();
@@ -713,7 +713,7 @@ impl ToolExecutor for TodoListExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start = Instant::now();
 
         // 发射开始事件
@@ -733,7 +733,7 @@ impl ToolExecutor for TodoListExecutor {
             "todo_update" => self.execute_update(&call.arguments, session_key),
             "todo_add" => self.execute_add(&call.arguments, session_key),
             "todo_get" => self.execute_get(session_key),
-            _ => Err(format!("未知的 TODO 工具: {}", call.name)),
+            _ => Err(ToolError::InvalidArgs(format!("未知的 TODO 工具: {}", call.name))),
         };
 
         let duration_ms = start.elapsed().as_millis() as u64;
@@ -775,14 +775,14 @@ impl ToolExecutor for TodoListExecutor {
                 Ok(tool_result)
             }
             Err(error) => {
-                ctx.emit_tool_call_error(&error);
+                ctx.emit_tool_call_error(&error.to_string());
 
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    error,
+                    error.to_string(),
                     duration_ms,
                 );
 

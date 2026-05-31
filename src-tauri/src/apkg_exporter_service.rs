@@ -9,8 +9,11 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::sync::LazyLock;
 use tempfile::NamedTempFile;
+use crate::anki_connect_service::AnkiConnectError;
 use tracing::warn; // 新增结构化日志
 use zip::{write::FileOptions, ZipWriter};
+
+type AnkiConnectResult<T> = Result<T, AnkiConnectError>;
 
 // 使用 LazyLock 初始化别名映射
 // SOTA 修复：将 ALIAS_MAP 移至全局静态区，并用 LazyLock 初始化
@@ -531,7 +534,7 @@ fn convert_cards_to_anki_records(
     _deck_id: i64,
     _model_id: i64,
     model_name: &str,
-) -> Result<Vec<(String, String, String, String, i64, String)>, String> {
+) -> AnkiConnectResult<Vec<(String, String, String, String, i64, String)>> {
     // 🎯 SOTA 修复：废弃旧的Cloze特殊处理，统一使用字段驱动
     convert_cards_to_anki_records_with_fields(cards, _deck_id, _model_id, model_name, None, None)
 }
@@ -543,7 +546,7 @@ fn convert_cards_to_anki_records_with_fields(
     _model_name: &str,
     template_fields: Option<&[String]>,
     _template: Option<&CustomAnkiTemplate>, // 新增参数：完整的模板对象
-) -> Result<Vec<(String, String, String, String, i64, String)>, String> {
+) -> AnkiConnectResult<Vec<(String, String, String, String, i64, String)>> {
     let mut records = Vec::new();
     let now = Utc::now().timestamp();
 
@@ -705,7 +708,7 @@ pub async fn export_cards_to_apkg(
     deck_name: String,
     note_type: String,
     output_path: PathBuf,
-) -> Result<(), String> {
+) -> AnkiConnectResult<()> {
     export_cards_to_apkg_with_template(cards, deck_name, note_type, output_path, None).await
 }
 
@@ -716,7 +719,7 @@ pub async fn export_cards_to_apkg_with_template(
     note_type: String,
     output_path: PathBuf,
     template_config: Option<(String, Vec<String>, String, String, String)>, // (name, fields, front, back, css)
-) -> Result<(), String> {
+) -> AnkiConnectResult<()> {
     // 内部调用带有完整模板的版本
     export_cards_to_apkg_with_full_template(
         cards,
@@ -737,9 +740,9 @@ pub async fn export_cards_to_apkg_with_full_template(
     output_path: PathBuf,
     template_config: Option<(String, Vec<String>, String, String, String)>, // (name, fields, front, back, css)
     full_template: Option<CustomAnkiTemplate>,                              // 完整的模板对象
-) -> Result<(), String> {
+) -> AnkiConnectResult<()> {
     if cards.is_empty() {
-        return Err("没有卡片可以导出".to_string());
+        return Err(AnkiConnectError::from("没有卡片可以导出".to_string()));
     }
 
     // 创建临时目录
@@ -951,7 +954,7 @@ pub async fn export_cards_to_apkg_with_full_template(
         println!("🔍 临时APKG文件创建完成: {} 字节", temp_size);
 
         if temp_size == 0 {
-            return Err(format!("❌ 临时APKG文件为空 (0字节)，路径: {:?}", output_path));
+            return Err(AnkiConnectError::from(format!("❌ 临时APKG文件为空 (0字节)，路径: {:?}", output_path)));
         }
 
         println!("✅ 临时APKG文件验证通过: {:?} ({} 字节)", output_path, temp_size);
@@ -980,14 +983,14 @@ pub async fn export_cards_to_apkg_with_full_template(
 /// - deck_name: 牌组名称
 /// - output_path: 输出文件路径
 /// - template_map: template_id → CustomAnkiTemplate 的映射
-pub async fn export_multi_template_apkg(
+pub async fn anki_connect_export_multi_apkg(
     cards: Vec<AnkiCard>,
     deck_name: String,
     output_path: PathBuf,
     template_map: HashMap<String, CustomAnkiTemplate>,
-) -> Result<(), String> {
+) -> AnkiConnectResult<()> {
     if cards.is_empty() {
-        return Err("没有卡片可以导出".to_string());
+        return Err(AnkiConnectError::from("没有卡片可以导出".to_string()));
     }
 
     let temp_dir = std::env::temp_dir().join(format!("anki_export_{}", Utc::now().timestamp()));
@@ -1151,7 +1154,7 @@ pub async fn export_multi_template_apkg(
 
         // 插入 notes 和 cards
         let mut note_idx = 0i64;
-        let insert_note = |conn: &Connection, card: &AnkiCard, mid: i64, field_names: &[String], note_idx: &mut i64| -> Result<(), String> {
+        let insert_note = |conn: &Connection, card: &AnkiCard, mid: i64, field_names: &[String], note_idx: &mut i64| -> AnkiConnectResult<()> {
             let note_id = now * 1000 + *note_idx;
             *note_idx += 1;
             let guid = uuid::Uuid::new_v4().to_string().replace("-", "");

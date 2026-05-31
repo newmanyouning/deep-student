@@ -97,7 +97,7 @@ export class TaskController {
       }
 
       // 调用后端暂停命令
-      await invoke<void>('pause_document_processing', {
+      await invoke<void>('enhanced_anki_pause_document_processing', {
         documentId: documentId.trim(),
       });
 
@@ -153,7 +153,7 @@ export class TaskController {
       }
 
       // 调用后端恢复命令
-      await invoke<void>('resume_document_processing', {
+      await invoke<void>('enhanced_anki_resume_document_processing', {
         documentId: documentId.trim(),
       });
 
@@ -217,7 +217,7 @@ export class TaskController {
       }
 
       // 调用后端重试命令
-      await invoke<void>('trigger_task_processing', {
+      await invoke<void>('enhanced_anki_trigger_task_processing', {
         task_id: taskId.trim(),
       });
 
@@ -275,7 +275,7 @@ export class TaskController {
       // 调用后端删除会话命令
       // 后端会清理 DOCUMENT_STATES 和 RUNNING_HANDLES
       // 注意：统一使用 snake_case 参数名与后端 Rust 命令保持一致
-      await invoke<void>('delete_document_session', {
+      await invoke<void>('enhanced_anki_delete_document_session', {
         documentId: documentId.trim(),
       });
 
@@ -325,7 +325,7 @@ export class TaskController {
       }
 
       // 调用后端查询命令
-      const backendTasks = await invoke<BackendTask[]>('get_document_tasks', {
+      const backendTasks = await invoke<BackendTask[]>('enhanced_anki_get_document_tasks', {
         documentId: documentId.trim(),
       });
 
@@ -424,7 +424,7 @@ export class TaskController {
 
       try {
         // 优先使用最新命令名
-        return await invoke<DocumentState>('get_document_processing_state', {
+        return await invoke<DocumentState>('enhanced_anki_get_document_processing_state', {
           documentId: trimmedId,
         });
       } catch (error: unknown) {

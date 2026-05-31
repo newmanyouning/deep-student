@@ -17,7 +17,7 @@ use async_trait::async_trait;
 use rusqlite::OptionalExtension;
 use serde_json::{json, Value};
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolExecutor, ToolError, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::repo::ChatV2Repo;
@@ -50,8 +50,8 @@ impl AttachmentToolExecutor {
     }
 
     /// 执行附件列表
-    async fn execute_list(&self, call: &ToolCall, ctx: &ExecutionContext) -> Result<Value, String> {
-        let main_db = ctx.main_db.as_ref().ok_or("Main database not available")?;
+    async fn execute_list(&self, call: &ToolCall, ctx: &ExecutionContext) -> ToolResult<Value> {
+        let main_db = ctx.main_db.as_ref().ok_or(ToolError::Internal("Main database not available".to_string()))?;
 
         // P0-01 安全修复：验证 session_id 参数，防止跨会话访问
         if let Some(param_session_id) = call.arguments.get("session_id").and_then(|v| v.as_str()) {
@@ -88,7 +88,7 @@ impl AttachmentToolExecutor {
 
         // 查询会话中的消息
         let messages = ChatV2Repo::get_session_messages(main_db, &session_id)
-            .map_err(|e| format!("Failed to get messages: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get messages: {}", e)))?;
 
         // 收集所有附件（兼容 legacy attachments + context_snapshot.user_refs）
         let mut attachments: Vec<Value> = Vec::new();
@@ -182,20 +182,20 @@ impl AttachmentToolExecutor {
     }
 
     /// 执行附件读取
-    async fn execute_read(&self, call: &ToolCall, ctx: &ExecutionContext) -> Result<Value, String> {
-        let main_db = ctx.main_db.as_ref().ok_or("Main database not available")?;
+    async fn execute_read(&self, call: &ToolCall, ctx: &ExecutionContext) -> ToolResult<Value> {
+        let main_db = ctx.main_db.as_ref().ok_or(ToolError::Internal("Main database not available".to_string()))?;
 
         // 解析参数
         let message_id = call
             .arguments
             .get("message_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'message_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'message_id' parameter".to_string()))?;
         let attachment_id = call
             .arguments
             .get("attachment_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'attachment_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'attachment_id' parameter".to_string()))?;
         let parse_content = call
             .arguments
             .get("parse_content")
@@ -211,12 +211,12 @@ impl AttachmentToolExecutor {
 
         // 获取消息
         let message = ChatV2Repo::get_message(main_db, message_id)
-            .map_err(|e| format!("Failed to get message: {}", e))?
-            .ok_or_else(|| format!("Message not found: {}", message_id))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to get message: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound(format!("Message not found: {}", message_id)))?;
 
         // P0-01 安全修复：验证消息所属会话，防止跨会话访问
         if message.session_id != ctx.session_id {
-            return Err("Unauthorized: Cannot access attachments from other sessions".to_string());
+            return Err(ToolError::InvalidArgs("Unauthorized: Cannot access attachments from other sessions".to_string()));
         }
 
         if let Some(attachment) = message
@@ -243,9 +243,9 @@ impl AttachmentToolExecutor {
                             use base64::Engine;
                             let decoded = base64::engine::general_purpose::STANDARD
                                 .decode(base64_content)
-                                .map_err(|e| format!("Failed to decode base64: {}", e))?;
+                                .map_err(|e| ToolError::Execution(format!("Failed to decode base64: {}", e)))?;
                             String::from_utf8(decoded)
-                                .map_err(|e| format!("Invalid UTF-8: {}", e))?
+                                .map_err(|e| ToolError::Execution(format!("Invalid UTF-8: {}", e)))?
                         } else if attachment.r#type == "image" {
                             // 图片类型：返回 base64（让多模态模型处理）
                             base64_content.to_string()
@@ -269,13 +269,13 @@ impl AttachmentToolExecutor {
                             base64_content.to_string()
                         }
                     } else {
-                        return Err("Invalid data URL format".to_string());
+                        return Err(ToolError::InvalidArgs("Invalid data URL format".to_string()));
                     }
                 } else {
-                    return Err("Attachment content not available (no data URL)".to_string());
+                    return Err(ToolError::NotFound("Attachment content not available (no data URL)".to_string()));
                 }
             } else {
-                return Err("Attachment has no preview_url".to_string());
+                return Err(ToolError::NotFound("Attachment has no preview_url".to_string()));
             };
 
             let duration = start_time.elapsed().as_millis() as u64;
@@ -311,12 +311,10 @@ impl AttachmentToolExecutor {
                     .iter()
                     .find(|r| r.resource_id == attachment_id)
             })
-            .ok_or_else(|| {
-                format!(
+            .ok_or_else(|| ToolError::NotFound(format!(
                     "Attachment not found: {} in message {}",
                     attachment_id, message_id
-                )
-            })?;
+                )))?;
 
         let (name, mime_type, content) = read_context_ref_content(ctx, context_ref, parse_content)?;
         let duration = start_time.elapsed().as_millis() as u64;
@@ -355,15 +353,15 @@ fn read_context_ref_content(
     ctx: &ExecutionContext,
     context_ref: &ContextRef,
     parse_content: bool,
-) -> Result<(String, String, String), String> {
+) -> ToolResult<(String, String, String)> {
     let vfs_db = ctx
         .vfs_db
         .as_ref()
-        .ok_or("VFS database not available for context ref read")?;
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+        .ok_or(ToolError::Internal("VFS database not available for context ref read".to_string()))?;
+    let conn = vfs_db.get_conn_safe().map_err(|e| ToolError::Internal(e.to_string()))?;
 
     if context_ref.resource_id.starts_with("fld_") {
-        return Err("Folder context reference is not readable via attachment_read".to_string());
+        return Err(ToolError::InvalidArgs("Folder context reference is not readable via attachment_read".to_string()));
     }
 
     let row = conn
@@ -386,10 +384,10 @@ fn read_context_ref_content(
             },
         )
         .optional()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ToolError::Internal(e.to_string()))?;
 
     let (name, mime_type, raw_content) =
-        row.ok_or_else(|| format!("Resource not found in VFS: {}", context_ref.resource_id))?;
+        row.ok_or_else(|| ToolError::NotFound(format!("Resource not found in VFS: {}", context_ref.resource_id)))?;
 
     let is_image_ref = context_ref.type_id == "image" || mime_type.starts_with("image/");
     if is_image_ref && !parse_content {
@@ -424,7 +422,7 @@ impl ToolExecutor for AttachmentToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let tool_name = strip_tool_namespace(&call.name);
 
@@ -440,7 +438,7 @@ impl ToolExecutor for AttachmentToolExecutor {
         let result = match tool_name {
             "attachment_list" => self.execute_list(call, ctx).await,
             "attachment_read" => self.execute_read(call, ctx).await,
-            _ => Err(format!("Unknown attachment tool: {}", tool_name)),
+            _ => Err(ToolError::InvalidArgs(format!("Unknown attachment tool: {}", tool_name))),
         };
 
         let duration = start_time.elapsed().as_millis() as u64;
@@ -471,7 +469,7 @@ impl ToolExecutor for AttachmentToolExecutor {
             }
             Err(e) => {
                 // 发射工具调用错误事件
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
 
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),

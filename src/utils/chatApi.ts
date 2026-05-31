@@ -132,7 +132,7 @@ export async function listAnkiLibraryCards(
     page: params?.page,
     page_size: params?.page_size,
   };
-  return invoke<AnkiLibraryListResponse>('list_anki_library_cards', { request });
+  return invoke<AnkiLibraryListResponse>('enhanced_anki_list_library_cards', { request });
 }
 
 export async function updateAnkiCard(request: {
@@ -165,11 +165,11 @@ export async function updateAnkiCard(request: {
       messageStableId: payload.messageStableId ?? null,
     },
   };
-  await invoke<void>('update_anki_card', { card: cardPayload });
+  await invoke<void>('enhanced_anki_update_card', { card: cardPayload });
 }
 
 export async function deleteAnkiCard(cardId: string): Promise<boolean> {
-  return invoke<boolean>('delete_anki_card', { card_id: cardId });
+  return invoke<boolean>('enhanced_anki_delete_card', { card_id: cardId });
 }
 
 export async function exportAnkiCards(options: {
@@ -186,7 +186,7 @@ export async function exportAnkiCards(options: {
     note_type: options.noteType,
     template_id: options.templateId ?? undefined,
   };
-  return invoke<ExportAnkiCardsResult>('export_anki_cards', { request });
+  return invoke<ExportAnkiCardsResult>('enhanced_anki_export_cards', { request });
 }
 
 // ==================== 教材库（兼容壳，建议迁移到 textbookDstuAdapter） ====================

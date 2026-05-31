@@ -27,9 +27,9 @@ pub mod load_session;
 pub mod manage_session;
 pub mod migration;
 pub mod ocr;
-pub mod resource_handlers; // ⚠️ DEPRECATED: 前端已迁移到 VFS (vfs_* 命令)，resource_* 命令零引用。参见 P1-#9。
 pub mod search_handlers;
 pub mod send_message;
+pub mod shared;
 pub mod variant_handlers;
 pub mod workspace_handlers;
 
@@ -73,9 +73,9 @@ pub use variant_handlers::{
     chat_v2_switch_variant,
 };
 pub use workspace_handlers::{
-    workspace_cancel_agent, workspace_cancel_sleep, workspace_close, workspace_create,
-    workspace_create_agent, workspace_delete, workspace_get, workspace_get_context,
-    workspace_get_document, workspace_list_agents, workspace_list_all, workspace_list_documents,
-    workspace_list_messages, workspace_manual_wake, workspace_restore_executions,
-    workspace_run_agent, workspace_send_message, workspace_set_context,
+    chat_v2_workspace_cancel_agent, chat_v2_workspace_cancel_sleep, chat_v2_workspace_close, chat_v2_workspace_create,
+    chat_v2_workspace_create_agent, chat_v2_workspace_delete, chat_v2_workspace_get, chat_v2_workspace_get_context,
+    chat_v2_workspace_get_document, chat_v2_workspace_list_agents, chat_v2_workspace_list_all, chat_v2_workspace_list_documents,
+    chat_v2_workspace_list_messages, chat_v2_workspace_manual_wake, chat_v2_workspace_restore_executions,
+    chat_v2_workspace_run_agent, chat_v2_workspace_send_message, chat_v2_workspace_set_context,
 };

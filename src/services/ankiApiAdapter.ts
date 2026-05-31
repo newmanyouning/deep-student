@@ -61,11 +61,11 @@ export const ankiApiAdapter = {
         tags: card.tags ?? [],
         images: card.images ?? []
       }));
-      return await invoke('batch_export_cards', { notes, format: params.format, options: params.options });
+      return await invoke('anki_connect_batch_export_cards', { notes, format: params.format, options: params.options });
     } catch (error: unknown) {
       // 降级：使用旧接口
       if (params.format === 'apkg') {
-        return await invoke('export_cards_as_apkg_with_template', {
+        return await invoke('anki_connect_export_apkg_with_template', {
           // 双写兼容：后端 snake_case，部分旧前端/桥接可能校验 camelCase
           selected_cards: cardsForExport,
           selectedCards: cardsForExport,
@@ -100,7 +100,7 @@ export const ankiApiAdapter = {
         template_id: card.template_id ?? params.templateId ?? null,
       }));
 
-      return await invoke<SaveAnkiCardsResponse>('save_anki_cards', {
+      return await invoke<SaveAnkiCardsResponse>('anki_connect_save_cards', {
         request: {
           document_id: params.documentId ?? null,
           business_session_id: params.businessSessionId ?? null,
@@ -137,7 +137,7 @@ export const ankiApiAdapter = {
     const errors: string[] = [];
     for (const id of params.cardIds) {
       try {
-        await invoke('delete_anki_card', { cardId: id });
+        await invoke('enhanced_anki_delete_card', { cardId: id });
       } catch (err) {
         errors.push(`${id}: ${err}`);
       }
@@ -233,7 +233,7 @@ export const ankiApiAdapter = {
         }, 12000);
 
         // 启动生成
-        documentIdRef = await invoke('start_enhanced_document_processing', {
+        documentIdRef = await invoke('enhanced_anki_start_document_processing', {
           // 双写兼容：后端为 snake_case
           document_content: params.content,
           documentContent: params.content,
@@ -259,7 +259,7 @@ export const ankiApiAdapter = {
         }
         if (documentIdRef) {
           try {
-            await invoke('delete_document_session', {
+            await invoke('enhanced_anki_delete_document_session', {
               documentId: documentIdRef,
               document_id: documentIdRef,
             });

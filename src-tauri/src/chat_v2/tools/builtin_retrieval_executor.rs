@@ -18,7 +18,7 @@ use std::time::Instant;
 use async_trait::async_trait;
 use serde_json::{json, Value};
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{SourceInfo, ToolCall, ToolResultInfo};
@@ -67,7 +67,7 @@ impl BuiltinRetrievalExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         use crate::vfs::indexing::{VfsFullSearchService, VfsSearchParams};
         use crate::vfs::lance_store::VfsLanceStore;
         use crate::vfs::repos::{VfsBlobRepo, VfsResourceRepo, MODALITY_TEXT};
@@ -75,7 +75,7 @@ impl BuiltinRetrievalExecutor {
 
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
-            return Err("VFS RAG search cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 解析参数
@@ -83,7 +83,7 @@ impl BuiltinRetrievalExecutor {
             .arguments
             .get("query")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'query' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'query' parameter".to_string()))?;
         let folder_ids: Option<Vec<String>> = call
             .arguments
             .get("folder_ids")
@@ -150,19 +150,19 @@ impl BuiltinRetrievalExecutor {
         let start_time = Instant::now();
 
         // 获取 VFS 数据库
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
 
         // 创建 Lance 存储
         let lance_store = std::sync::Arc::new(
             VfsLanceStore::new(std::sync::Arc::clone(vfs_db))
-                .map_err(|e| format!("Failed to create Lance store: {}", e))?,
+                .map_err(|e| ToolError::Execution(format!("Failed to create Lance store: {}", e)))?,
         );
 
         // 获取 LLM 管理器
         let llm_manager = ctx
             .llm_manager
             .as_ref()
-            .ok_or("LLM manager not available")?;
+            .ok_or_else(|| ToolError::Execution("LLM manager not available".to_string()))?;
 
         // 创建搜索服务
         let search_service = VfsFullSearchService::new(
@@ -183,7 +183,7 @@ impl BuiltinRetrievalExecutor {
 
         // 🆕 取消检查：在执行检索前检查
         if ctx.is_cancelled() {
-            return Err("VFS RAG search cancelled before search".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 执行检索（支持取消）
@@ -196,7 +196,7 @@ impl BuiltinRetrievalExecutor {
                 res = search_service.search_cross_dimension_with_resource_info(query, &params, enable_reranking) => res,
                 _ = cancel_token.cancelled() => {
                     log::info!("[BuiltinRetrievalExecutor] VFS RAG search cancelled");
-                    return Err("VFS RAG search cancelled during execution".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
@@ -358,7 +358,7 @@ impl BuiltinRetrievalExecutor {
                 let error_msg = e.to_string();
                 ctx.emitter
                     .emit_error(event_types::RAG, &ctx.block_id, &error_msg, None);
-                Err(error_msg)
+                Err(ToolError::Execution(error_msg))
             }
         }
     }
@@ -368,7 +368,7 @@ impl BuiltinRetrievalExecutor {
         &self,
         _call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         log::warn!("[BuiltinRetrievalExecutor] memory_search is deprecated, use builtin-memory_search instead");
 
         ctx.emitter.emit_end(
@@ -398,7 +398,7 @@ impl BuiltinRetrievalExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         use crate::vfs::lance_store::VfsLanceStore;
         use crate::vfs::multimodal_service::VfsMultimodalService;
         use crate::vfs::repos::VfsBlobRepo;
@@ -406,7 +406,7 @@ impl BuiltinRetrievalExecutor {
 
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
-            return Err("Multimodal search cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 解析参数
@@ -414,7 +414,7 @@ impl BuiltinRetrievalExecutor {
             .arguments
             .get("query")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'query' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'query' parameter".to_string()))?;
         let folder_ids: Option<Vec<String>> = call
             .arguments
             .get("folder_ids")
@@ -476,21 +476,21 @@ impl BuiltinRetrievalExecutor {
         let llm_manager = ctx
             .llm_manager
             .as_ref()
-            .ok_or("LLM manager not available")?;
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+            .ok_or_else(|| ToolError::Execution("LLM manager not available".to_string()))?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
 
         // 检查多模态 RAG 是否配置
         if !llm_manager.is_multimodal_rag_configured().await {
             let error_msg = "未配置多模态嵌入模型，请在设置中配置 VL Embedding 模型";
             ctx.emitter
                 .emit_error(event_types::MULTIMODAL_RAG, &ctx.block_id, error_msg, None);
-            return Err(error_msg.to_string());
+            return Err(ToolError::Execution(error_msg.to_string()));
         }
 
         // 创建 VFS Lance Store
         let lance_store = std::sync::Arc::new(
             VfsLanceStore::new(std::sync::Arc::clone(vfs_db))
-                .map_err(|e| format!("Failed to create VFS Lance store: {}", e))?,
+                .map_err(|e| ToolError::Execution(format!("Failed to create VFS Lance store: {}", e)))?,
         );
 
         // 创建 VFS 多模态服务
@@ -502,7 +502,7 @@ impl BuiltinRetrievalExecutor {
 
         // 🆕 取消检查：在执行检索前检查
         if ctx.is_cancelled() {
-            return Err("Multimodal search cancelled before search".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 执行检索（支持取消）
@@ -517,7 +517,7 @@ impl BuiltinRetrievalExecutor {
                 ) => res,
                 _ = cancel_token.cancelled() => {
                     log::info!("[BuiltinRetrievalExecutor] Multimodal search cancelled");
-                    return Err("Multimodal search cancelled during execution".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
@@ -670,7 +670,7 @@ impl BuiltinRetrievalExecutor {
                     &error_msg,
                     None,
                 );
-                Err(error_msg)
+                Err(ToolError::Execution(error_msg))
             }
         }
     }
@@ -684,7 +684,7 @@ impl BuiltinRetrievalExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         use crate::memory::service::MemoryService;
         use crate::vfs::indexing::{VfsFullSearchService, VfsSearchParams};
         use crate::vfs::lance_store::VfsLanceStore;
@@ -694,7 +694,7 @@ impl BuiltinRetrievalExecutor {
 
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
-            return Err("Unified search cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 解析参数
@@ -702,7 +702,7 @@ impl BuiltinRetrievalExecutor {
             .arguments
             .get("query")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'query' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'query' parameter".to_string()))?;
         let folder_ids: Option<Vec<String>> = call
             .arguments
             .get("folder_ids")
@@ -772,15 +772,15 @@ impl BuiltinRetrievalExecutor {
         let mut kb_mm_pool: Vec<SourceInfo> = Vec::new();
 
         // 获取必要的上下文
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
         let llm_manager = ctx
             .llm_manager
             .as_ref()
-            .ok_or("LLM manager not available")?;
+            .ok_or_else(|| ToolError::Execution("LLM manager not available".to_string()))?;
 
         // ========== 0. 预计算 query embedding（全局复用） ==========
         if ctx.is_cancelled() {
-            return Err("Unified search cancelled before text search".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         let lance_store = ctx
@@ -790,7 +790,7 @@ impl BuiltinRetrievalExecutor {
             .unwrap_or_else(|| {
                 VfsLanceStore::new(std::sync::Arc::clone(vfs_db)).map(std::sync::Arc::new)
             })
-            .map_err(|e| format!("Failed to create Lance store: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to create Lance store: {}", e)))?;
 
         let search_service = VfsFullSearchService::new(
             std::sync::Arc::clone(vfs_db),
@@ -801,7 +801,7 @@ impl BuiltinRetrievalExecutor {
         let shared_embedding = search_service
             .generate_query_embedding(query)
             .await
-            .map_err(|e| format!("Failed to generate query embedding: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("Failed to generate query embedding: {}", e)))?;
 
         // ========== 1. VFS 文本搜索（复用 shared_embedding） ==========
         let text_params = VfsSearchParams {
@@ -818,7 +818,7 @@ impl BuiltinRetrievalExecutor {
                 res = search_service.search_with_embedding(query, &shared_embedding, &text_params, false) => res.ok(),
                 _ = cancel_token.cancelled() => {
                     log::info!("[BuiltinRetrievalExecutor] Unified search cancelled during text search");
-                    return Err("Unified search cancelled during text search".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
@@ -900,7 +900,7 @@ impl BuiltinRetrievalExecutor {
         // ========== 2. VFS 多模态搜索（如果配置了） ==========
         // 🆕 取消检查：在多模态搜索前检查
         if ctx.is_cancelled() {
-            return Err("Unified search cancelled before multimodal search".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         if llm_manager.is_multimodal_rag_configured().await {
@@ -924,7 +924,7 @@ impl BuiltinRetrievalExecutor {
                     ) => res.ok(),
                     _ = cancel_token.cancelled() => {
                         log::info!("[BuiltinRetrievalExecutor] Unified search cancelled during multimodal search");
-                        return Err("Unified search cancelled during multimodal search".to_string());
+                        return Err(ToolError::Cancelled);
                     }
                 }
             } else {
@@ -1019,14 +1019,14 @@ impl BuiltinRetrievalExecutor {
             // VL-Reranker 跨模态精排（如果配置且未禁用）
             if _enable_reranking && !fused.is_empty() {
                 if ctx.is_cancelled() {
-                    return Err("Unified search cancelled before reranking".to_string());
+                    return Err(ToolError::Cancelled);
                 }
                 if let Some(cancel_token) = ctx.cancellation_token() {
                     tokio::select! {
                         reranked = vl_rerank_sources(query, fused, top_k, llm_manager, vfs_db) => reranked,
                         _ = cancel_token.cancelled() => {
                             log::info!("[hybrid-rag] Unified search cancelled during reranking");
-                            return Err("Unified search cancelled during reranking".to_string());
+                            return Err(ToolError::Cancelled);
                         }
                     }
                 } else {
@@ -1043,7 +1043,7 @@ impl BuiltinRetrievalExecutor {
         // ========== 2.5 用户记忆搜索 ==========
         // 🆕 取消检查：在记忆搜索前检查
         if ctx.is_cancelled() {
-            return Err("Unified search cancelled before memory search".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 记忆搜索（复用 shared_embedding，忽略错误，不影响主流程）
@@ -1332,10 +1332,10 @@ impl BuiltinRetrievalExecutor {
     }
 
     /// 执行网络搜索
-    async fn execute_web(&self, call: &ToolCall, ctx: &ExecutionContext) -> Result<Value, String> {
+    async fn execute_web(&self, call: &ToolCall, ctx: &ExecutionContext) -> ToolResult<Value> {
         // 🆕 取消检查：在执行前检查是否已取消
         if ctx.is_cancelled() {
-            return Err("Web search cancelled before start".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 解析参数
@@ -1343,7 +1343,7 @@ impl BuiltinRetrievalExecutor {
             .arguments
             .get("query")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'query' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'query' parameter".to_string()))?;
         let mut engine = call
             .arguments
             .get("engine")
@@ -1413,7 +1413,7 @@ impl BuiltinRetrievalExecutor {
 
         // 🆕 取消检查：在执行搜索前检查
         if ctx.is_cancelled() {
-            return Err("Web search cancelled before search".to_string());
+            return Err(ToolError::Cancelled);
         }
 
         // 执行搜索（支持取消）
@@ -1422,7 +1422,7 @@ impl BuiltinRetrievalExecutor {
                 res = do_search(&config, search_input) => res,
                 _ = cancel_token.cancelled() => {
                     log::info!("[BuiltinRetrievalExecutor] Web search cancelled");
-                    return Err("Web search cancelled during execution".to_string());
+                    return Err(ToolError::Cancelled);
                 }
             }
         } else {
@@ -1501,7 +1501,7 @@ impl BuiltinRetrievalExecutor {
                 .unwrap_or_else(|| "Web search failed".to_string());
             ctx.emitter
                 .emit_error(event_types::WEB_SEARCH, &ctx.block_id, &error_msg, None);
-            Err(error_msg)
+            Err(ToolError::Execution(error_msg))
         }
     }
 }
@@ -1526,7 +1526,7 @@ impl ToolExecutor for BuiltinRetrievalExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let tool_name = strip_tool_namespace(&call.name);
 
@@ -1549,7 +1549,7 @@ impl ToolExecutor for BuiltinRetrievalExecutor {
             match tool_name {
                 "memory_search" => self.execute_memory(call, ctx).await,
                 "web_search" => self.execute_web(call, ctx).await,
-                _ => Err(format!("Unknown builtin tool: {}", tool_name)),
+                _ => Err(ToolError::NotFound(format!("Unknown builtin tool: {}", tool_name))),
             }
         };
 
@@ -1580,7 +1580,7 @@ impl ToolExecutor for BuiltinRetrievalExecutor {
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    e,
+                    e.to_string(),
                     duration,
                 );
 

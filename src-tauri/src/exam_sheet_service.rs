@@ -9,7 +9,7 @@ use crate::models::{
     ExamSheetSessionSummary, ImportSource, QuestionBankStats, QuestionType, SourceType,
     UpdateExamSheetCardsRequest,
 };
-use image::GenericImageView;
+use image::GenericImageView as _;
 
 /// 带时间戳的日志宏
 macro_rules! log_with_time {

@@ -74,6 +74,8 @@ dist-ssr
 # Archive bucket (cleaned-up legacy/tests/logs)
 archive/
 .deep-agent/
+.deepseek/
+docs/.deepseek/
 # Development security directory (sensitive files and build artifacts)
 devsec/
 

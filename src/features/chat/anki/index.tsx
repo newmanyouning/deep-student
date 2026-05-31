@@ -165,7 +165,7 @@ export async function exportCardsAsApkg(
     // 直接调用后端多模板导出命令
     // 后端按每张卡片的 template_id 分组，创建独立 Anki model，
     // 每个 model 有各自的字段列表、HTML/CSS card template
-    const filePath: string = await invoke('export_multi_template_apkg', {
+    const filePath: string = await invoke('anki_connect_export_multi_apkg', {
       cards: cardsForExport,
       deckName,
       outputPath: selectedPath,
@@ -227,7 +227,7 @@ export async function importCardsViaAnkiConnect(
 
     // 后端签名：add_cards_to_anki_connect(selected_cards, deck_name, note_type)
     // Tauri v2 默认期望 camelCase JS 参数，自动映射到 snake_case Rust 参数
-    const results = await invoke<Array<number | null>>('add_cards_to_anki_connect', {
+    const results = await invoke<Array<number | null>>('anki_connect_add_cards', {
       selectedCards: validCards,
       deckName,
       noteType,

@@ -16,7 +16,7 @@ use std::time::Instant;
 use async_trait::async_trait;
 use serde_json::{json, Value};
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity, ToolError, ToolResult};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -39,20 +39,20 @@ impl XlsxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_file_bytes(ctx, resource_id)?;
 
         if bytes.len() > 50 * 1024 * 1024 {
-            return Err(format!(
+            return Err(ToolError::Execution(format!(
                 "XLSX 文件过大: {}MB (上限 50MB)",
                 bytes.len() / 1024 / 1024
-            ));
+            )));
         }
 
         // 使用 calamine 提取文本（已有实现）
@@ -62,8 +62,8 @@ impl XlsxToolExecutor {
             parser.extract_text_from_bytes("spreadsheet.xlsx", bytes)
         })
         .await
-        .map_err(|e| format!("XLSX 解析任务异常: {}", e))?
-        .map_err(|e| format!("XLSX 结构化提取失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("XLSX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("XLSX 结构化提取失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -79,12 +79,12 @@ impl XlsxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_file_bytes(ctx, resource_id)?;
 
@@ -94,8 +94,8 @@ impl XlsxToolExecutor {
             parser.extract_xlsx_tables(&bytes)
         })
         .await
-        .map_err(|e| format!("XLSX 解析任务异常: {}", e))?
-        .map_err(|e| format!("XLSX 表格提取失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("XLSX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("XLSX 表格提取失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -110,12 +110,12 @@ impl XlsxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_file_bytes(ctx, resource_id)?;
 
@@ -125,8 +125,8 @@ impl XlsxToolExecutor {
             parser.extract_xlsx_metadata(&bytes)
         })
         .await
-        .map_err(|e| format!("XLSX 解析任务异常: {}", e))?
-        .map_err(|e| format!("XLSX 元数据读取失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("XLSX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("XLSX 元数据读取失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -140,12 +140,12 @@ impl XlsxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_file_bytes(ctx, resource_id)?;
 
@@ -155,8 +155,8 @@ impl XlsxToolExecutor {
             parser.extract_xlsx_as_spec(&bytes)
         })
         .await
-        .map_err(|e| format!("XLSX 解析任务异常: {}", e))?
-        .map_err(|e| format!("XLSX → spec 转换失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("XLSX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("XLSX → spec 转换失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -171,17 +171,17 @@ impl XlsxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
         let edits_val = call
             .arguments
             .get("edits")
             .and_then(|v| v.as_array())
-            .ok_or("Missing 'edits' parameter (array of {sheet, cell, value})")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'edits' parameter (array of {sheet, cell, value})".into()))?;
         let file_name = call
             .arguments
             .get("file_name")
@@ -195,7 +195,7 @@ impl XlsxToolExecutor {
             let cell = e
                 .get("cell")
                 .and_then(|v| v.as_str())
-                .ok_or("Each edit must have a 'cell' field (e.g. 'A1')")?;
+                .ok_or(ToolError::InvalidArgs("Each edit must have a 'cell' field (e.g. 'A1')".into()))?;
             let value = e.get("value").and_then(|v| v.as_str()).unwrap_or("");
             edits.push((sheet.to_string(), cell.to_string(), value.to_string()));
         }
@@ -208,8 +208,8 @@ impl XlsxToolExecutor {
             parser.edit_xlsx_cells(&bytes, &edits)
         })
         .await
-        .map_err(|e| format!("XLSX 解析任务异常: {}", e))?
-        .map_err(|e| format!("XLSX 编辑失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("XLSX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("XLSX 编辑失败: {}", e)))?;
 
         if edit_count == 0 {
             return Ok(json!({
@@ -221,7 +221,7 @@ impl XlsxToolExecutor {
         }
 
         // 保存到 VFS
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Internal("VFS database not available".into()))?;
         use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
 
         let blob = VfsBlobRepo::store_blob(
@@ -230,7 +230,7 @@ impl XlsxToolExecutor {
             Some("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             Some("xlsx"),
         )
-        .map_err(|e| format!("VFS Blob 存储失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS Blob 存储失败: {}", e)))?;
 
         let vfs_file = VfsFileRepo::create_file_in_folder(
             vfs_db,
@@ -243,7 +243,7 @@ impl XlsxToolExecutor {
             None,
             None,
         )
-        .map_err(|e| format!("VFS 文件创建失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS 文件创建失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -261,17 +261,17 @@ impl XlsxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
         let replacements_val = call
             .arguments
             .get("replacements")
             .and_then(|v| v.as_array())
-            .ok_or("Missing 'replacements' parameter (array of {find, replace})")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'replacements' parameter (array of {find, replace})".into()))?;
         let file_name = call
             .arguments
             .get("file_name")
@@ -283,11 +283,11 @@ impl XlsxToolExecutor {
             let find = r
                 .get("find")
                 .and_then(|v| v.as_str())
-                .ok_or("Each replacement must have a 'find' field")?;
+                .ok_or(ToolError::InvalidArgs("Each replacement must have a 'find' field".into()))?;
             let replace = r
                 .get("replace")
                 .and_then(|v| v.as_str())
-                .ok_or("Each replacement must have a 'replace' field")?;
+                .ok_or(ToolError::InvalidArgs("Each replacement must have a 'replace' field".into()))?;
             replacements.push((find.to_string(), replace.to_string()));
         }
 
@@ -299,8 +299,8 @@ impl XlsxToolExecutor {
             parser.replace_text_in_xlsx(&bytes, &replacements)
         })
         .await
-        .map_err(|e| format!("XLSX 解析任务异常: {}", e))?
-        .map_err(|e| format!("XLSX 替换失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("XLSX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("XLSX 替换失败: {}", e)))?;
 
         if total_count == 0 {
             return Ok(json!({
@@ -312,7 +312,7 @@ impl XlsxToolExecutor {
         }
 
         // 保存到 VFS
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Internal("VFS database not available".into()))?;
         use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
 
         let blob = VfsBlobRepo::store_blob(
@@ -321,7 +321,7 @@ impl XlsxToolExecutor {
             Some("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             Some("xlsx"),
         )
-        .map_err(|e| format!("VFS Blob 存储失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS Blob 存储失败: {}", e)))?;
 
         let vfs_file = VfsFileRepo::create_file_in_folder(
             vfs_db,
@@ -334,7 +334,7 @@ impl XlsxToolExecutor {
             None,
             None,
         )
-        .map_err(|e| format!("VFS 文件创建失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS 文件创建失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -352,11 +352,11 @@ impl XlsxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let spec = call
             .arguments
             .get("spec")
-            .ok_or("Missing 'spec' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'spec' parameter".into()))?;
         let file_name = call
             .arguments
             .get("file_name")
@@ -369,12 +369,12 @@ impl XlsxToolExecutor {
         let xlsx_bytes =
             tokio::task::spawn_blocking(move || DocumentParser::generate_xlsx_from_spec(&spec))
                 .await
-                .map_err(|e| format!("XLSX 生成任务异常: {}", e))?
-                .map_err(|e| format!("XLSX 生成失败: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("XLSX 生成任务异常: {}", e)))?
+                .map_err(|e| ToolError::Execution(format!("XLSX 生成失败: {}", e)))?;
 
         let file_size = xlsx_bytes.len();
 
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Internal("VFS database not available".into()))?;
         use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
 
         let blob = VfsBlobRepo::store_blob(
@@ -383,7 +383,7 @@ impl XlsxToolExecutor {
             Some("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
             Some("xlsx"),
         )
-        .map_err(|e| format!("VFS Blob 存储失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS Blob 存储失败: {}", e)))?;
 
         let vfs_file = VfsFileRepo::create_file_in_folder(
             vfs_db,
@@ -396,7 +396,7 @@ impl XlsxToolExecutor {
             None,
             folder_id,
         )
-        .map_err(|e| format!("VFS 文件创建失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS 文件创建失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -413,14 +413,14 @@ impl XlsxToolExecutor {
         &self,
         ctx: &ExecutionContext,
         resource_id: &str,
-    ) -> Result<Vec<u8>, String> {
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+    ) -> ToolResult<Vec<u8>> {
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Internal("VFS database not available".into()))?;
 
         use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
 
         let file = VfsFileRepo::get_file(vfs_db, resource_id)
-            .map_err(|e| format!("VFS 查询失败: {}", e))?
-            .ok_or_else(|| format!("文件不存在: {}", resource_id))?;
+            .map_err(|e| ToolError::Execution(format!("VFS 查询失败: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound(format!("文件不存在: {}", resource_id)))?;
 
         if let Some(ref path) = file.original_path {
             if crate::unified_file_manager::is_virtual_uri(path) {
@@ -437,28 +437,28 @@ impl XlsxToolExecutor {
                         path
                     );
                 } else if p.exists() {
-                    return std::fs::read(p).map_err(|e| format!("文件读取失败: {}", e));
+                    return std::fs::read(p).map_err(|e| ToolError::Execution(format!("文件读取失败: {}", e)));
                 }
             }
         }
 
         if let Some(ref blob_hash) = file.blob_hash {
             if let Ok(Some(blob_path)) = VfsBlobRepo::get_blob_path(vfs_db, blob_hash) {
-                return std::fs::read(&blob_path).map_err(|e| format!("Blob 读取失败: {}", e));
+                return std::fs::read(&blob_path).map_err(|e| ToolError::Execution(format!("Blob 读取失败: {}", e)));
             }
         }
 
         if !file.sha256.is_empty() {
             if let Ok(Some(blob_path)) = VfsBlobRepo::get_blob_path(vfs_db, &file.sha256) {
                 return std::fs::read(&blob_path)
-                    .map_err(|e| format!("Blob 读取失败 (sha256): {}", e));
+                    .map_err(|e| ToolError::Execution(format!("Blob 读取失败 (sha256): {}", e)));
             }
         }
 
-        Err(format!(
+        Err(ToolError::NotFound(format!(
             "无法加载文件内容: {} (无可用 blob_hash 或 original_path)",
             resource_id
-        ))
+        )))
     }
 }
 
@@ -488,7 +488,7 @@ impl ToolExecutor for XlsxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let tool_name = strip_tool_namespace(&call.name);
 
@@ -508,7 +508,7 @@ impl ToolExecutor for XlsxToolExecutor {
             "xlsx_to_spec" => self.execute_to_spec(call, ctx).await,
             "xlsx_edit_cells" => self.execute_edit_cells(call, ctx).await,
             "xlsx_replace_text" => self.execute_replace_text(call, ctx).await,
-            _ => Err(format!("Unknown xlsx tool: {}", tool_name)),
+            _ => Err(ToolError::Execution(format!("Unknown xlsx tool: {}", tool_name))),
         };
 
         let duration = start_time.elapsed().as_millis() as u64;
@@ -536,14 +536,14 @@ impl ToolExecutor for XlsxToolExecutor {
                 Ok(result)
             }
             Err(e) => {
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
 
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    e,
+                    e.to_string(),
                     duration,
                 );
 

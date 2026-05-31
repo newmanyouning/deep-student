@@ -22,7 +22,7 @@ use tauri::Window;
 use tokio_util::sync::CancellationToken;
 
 use crate::chat_v2::database::ChatV2Database;
-use crate::chat_v2::event_types;
+use crate::chat_v2::events::event_types;
 use crate::chat_v2::events::ChatV2EventEmitter;
 use crate::chat_v2::types::{block_status, McpToolSchema, MessageBlock, ToolCall, ToolResultInfo};
 use crate::database::Database;
@@ -61,6 +61,68 @@ impl Default for ToolSensitivity {
 // ============================================================================
 // `ToolCall` 和 `ToolResultInfo` 从 `crate::chat_v2::types` 导入
 // 避免重复定义，保持类型一致性
+
+// ============================================================================
+// 工具错误类型
+// ============================================================================
+
+/// 工具执行统一错误类型
+///
+/// 替换原来 `Result<_, String>` 中的裸字符串错误。
+/// Display 实现生成面向 LLM 的中文错误消息，便于模型理解和恢复。
+#[derive(Debug, Clone, serde::Serialize)]
+pub enum ToolError {
+    /// 参数验证错误
+    InvalidArgs(String),
+    /// 工具执行失败
+    Execution(String),
+    /// 执行超时
+    Timeout(String),
+    /// 资源未找到
+    NotFound(String),
+    /// 用户取消
+    Cancelled,
+    /// 内部错误
+    Internal(String),
+}
+
+impl std::fmt::Display for ToolError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ToolError::InvalidArgs(msg) => write!(f, "参数错误: {}", msg),
+            ToolError::Execution(msg) => write!(f, "执行失败: {}", msg),
+            ToolError::Timeout(msg) => write!(f, "执行超时: {}", msg),
+            ToolError::NotFound(msg) => write!(f, "未找到: {}", msg),
+            ToolError::Cancelled => write!(f, "操作已取消"),
+            ToolError::Internal(msg) => write!(f, "内部错误: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for ToolError {}
+
+impl From<String> for ToolError {
+    fn from(s: String) -> Self { ToolError::Internal(s) }
+}
+
+impl From<&str> for ToolError {
+    fn from(s: &str) -> Self { ToolError::Internal(s.to_string()) }
+}
+
+impl From<crate::chat_v2::error::ChatV2Error> for ToolError {
+    fn from(e: crate::chat_v2::error::ChatV2Error) -> Self {
+        ToolError::Execution(e.to_string())
+    }
+}
+
+impl From<crate::vfs::error::VfsError> for ToolError {
+    fn from(e: crate::vfs::error::VfsError) -> Self {
+        ToolError::Execution(e.to_string())
+    }
+}
+
+/// 工具执行 Result 别名
+pub type ToolResult<T> = Result<T, ToolError>;
 
 // ============================================================================
 // 执行上下文
@@ -277,7 +339,7 @@ impl ExecutionContext {
     /// ## 返回
     /// - `Ok(())`: 保存成功
     /// - `Err`: 保存失败（不影响工具执行结果）
-    pub fn save_tool_block(&self, result: &ToolResultInfo) -> Result<(), String> {
+    pub fn save_tool_block(&self, result: &ToolResultInfo) -> ToolResult<()> {
         let db = match &self.chat_v2_db {
             Some(db) => db,
             None => {
@@ -327,20 +389,20 @@ impl ExecutionContext {
         };
 
         // 使用 UPSERT 保存（通过消息占位行满足 FK 约束）
-        let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
+        let conn = db.get_conn_safe().map_err(|e| ToolError::Execution(e.to_string()))?;
 
         let tool_input_json = block
             .tool_input
             .as_ref()
             .map(|v| serde_json::to_string(v))
             .transpose()
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?;
         let tool_output_json = block
             .tool_output
             .as_ref()
             .map(|v| serde_json::to_string(v))
             .transpose()
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| ToolError::Execution(e.to_string()))?;
 
         // 确保消息占位行存在（避免 FK 违反，无需关闭 FK 约束）
         conn.execute(
@@ -352,7 +414,7 @@ impl ExecutionContext {
                 chrono::Utc::now().timestamp_millis(),
             ],
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ToolError::Execution(e.to_string()))?;
 
         conn.execute(
             r#"
@@ -391,7 +453,7 @@ impl ExecutionContext {
                 block.first_chunk_at,
             ],
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| ToolError::Execution(e.to_string()))?;
 
         log::debug!(
             "[ExecutionContext] Tool block saved: block_id={}, tool={}",
@@ -539,7 +601,7 @@ pub trait ToolExecutor: Send + Sync {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String>;
+    ) -> ToolResult<ToolResultInfo>;
 
     /// 获取工具敏感等级
     ///

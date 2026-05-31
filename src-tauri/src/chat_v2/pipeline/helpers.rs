@@ -168,7 +168,7 @@ pub(crate) fn filter_retrieval_results(
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
-    // 全部被阈值过滤时，保留 top1 作为保底，避免“有召回但被全滤空”导致上下文断裂。
+    // 全部被阈值过滤时，保留 top1 作为保底，避免"有召回但被全滤空"导致上下文断裂。
     if filtered.is_empty() && !sorted_all.is_empty() {
         filtered.push(sorted_all[0].clone());
     }

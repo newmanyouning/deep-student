@@ -1550,7 +1550,7 @@ impl SyncManager {
         // 1. 下载云端清单
         let cloud_manifest = self.download_manifest(storage).await?;
 
-        // 云端无清单事务时，仍兜底扫描 changes/，避免“变更已上传但清单缺失”导致不可见
+        // 云端无清单事务时，仍兜底扫描 changes/，避免"变更已上传但清单缺失"导致不可见
         if cloud_manifest.sync_transaction_id.is_empty() {
             let per_db_since: HashMap<String, u64> = local_manifest
                 .databases
@@ -2549,9 +2549,9 @@ impl SyncManager {
         let (columns, placeholders, values) = Self::build_insert_parts(&obj)?;
         let columns_list: Vec<&str> = columns.split(", ").collect();
 
-        // 字段级合并准备：在 UPSERT 改写本地值之前，先读取字段级合并列的“原始本地值”。
+        // 字段级合并准备：在 UPSERT 改写本地值之前，先读取字段级合并列的"原始本地值"。
         // 否则 UPSERT 的 COALESCE 语义会把远端值直接写进本地，local_val 读取到的
-        // 就是“刚被改写后的值”（即 == remote_val），merge_field 永远检测不到冲突。
+        // 就是"刚被改写后的值"（即 == remote_val），merge_field 永远检测不到冲突。
         let local_before: std::collections::HashMap<String, serde_json::Value> = {
             let picklist = Self::field_merge_column_picklist(table_name);
             let picklist: Vec<&'static str> = picklist
@@ -2921,7 +2921,7 @@ impl SyncManager {
         Ok(format!("\"{}\"", ident.replace('"', "\"\"")))
     }
 
-    /// 防御性约束：仅允许对“业务表”应用下载变更
+    /// 防御性约束：仅允许对"业务表"应用下载变更
     ///
     /// - 拒绝 `sqlite_*` 系统表
     /// - 拒绝 `__*` 内部元数据表（如 __change_log）
@@ -3372,7 +3372,7 @@ impl SyncManager {
 
         let mut result = ApplyChangesResult::empty();
 
-        // 原子性保证：任何错误都应回滚，避免“半套数据”落地。
+        // 原子性保证：任何错误都应回滚，避免"半套数据"落地。
         //
         // 同时为了避免跨表写入顺序导致的外键约束问题，这里在事务内临时关闭外键检查，
         // 写入完成后使用 `PRAGMA foreign_key_check` 做一次强校验，失败则回滚。
@@ -4867,7 +4867,7 @@ pub struct ApplyChangesResult {
     /// 失败的详情
     pub failures: Vec<ApplyChangeFailure>,
     /// 实际成功落地的记录 key (table_name, record_id)
-    /// 用于上层精确计算“已被云端覆盖”的本地待上传项
+    /// 用于上层精确计算"已被云端覆盖"的本地待上传项
     pub applied_keys: std::collections::HashSet<(String, String)>,
 }
 

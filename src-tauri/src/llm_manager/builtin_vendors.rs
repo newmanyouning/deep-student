@@ -190,6 +190,16 @@ pub const BUILTIN_VENDORS: &[BuiltinVendor] = &[
         max_tokens_limit: None,
         website_url: "https://platform.xiaomimimo.com",
     },
+    // PaddleOCR
+    BuiltinVendor {
+        id: "builtin-paddleocr",
+        name: "PaddleOCR",
+        provider_type: "paddleocr",
+        base_url: "https://paddleocr.aistudio-app.com/api/v2",
+        notes: "百度 PaddleOCR AI Studio。一个 API Key 适用全部模型: PaddleOCR-VL-1.6(文档解析/Markdown)、PP-OCRv5(纯文字 OCR)、PP-StructureV3(结构化解析)。API Key 在 AI Studio 控制台获取。",
+        max_tokens_limit: Some(16_384),
+        website_url: "https://aistudio.baidu.com",
+    },
 ];
 
 /// 所有内置模型列表
@@ -797,6 +807,51 @@ pub const BUILTIN_MODELS: &[BuiltinModel] = &[
         supports_tools: true,
         max_output_tokens: 65536,
         temperature: 0.3,
+    },
+    // ===== PaddleOCR 模型 =====
+    BuiltinModel {
+        id: "builtin-paddleocr-vl-1.6",
+        vendor_id: "builtin-paddleocr",
+        label: "PaddleOCR-VL 1.6 (最新文档解析)",
+        model: "PaddleOCR-VL-1.6",
+        is_multimodal: true,
+        is_reasoning: false,
+        supports_tools: false,
+        max_output_tokens: 16384,
+        temperature: 0.0,
+    },
+    BuiltinModel {
+        id: "builtin-paddleocr-vl-1.5",
+        vendor_id: "builtin-paddleocr",
+        label: "PaddleOCR-VL 1.5 (文档解析)",
+        model: "PaddleOCR-VL-1.5",
+        is_multimodal: true,
+        is_reasoning: false,
+        supports_tools: false,
+        max_output_tokens: 16384,
+        temperature: 0.0,
+    },
+    BuiltinModel {
+        id: "builtin-pp-ocrv5",
+        vendor_id: "builtin-paddleocr",
+        label: "PP-OCRv5 (纯文字 OCR)",
+        model: "PP-OCRv5",
+        is_multimodal: true,
+        is_reasoning: false,
+        supports_tools: false,
+        max_output_tokens: 4096,
+        temperature: 0.0,
+    },
+    BuiltinModel {
+        id: "builtin-pp-structurev3",
+        vendor_id: "builtin-paddleocr",
+        label: "PP-StructureV3 (结构化解析)",
+        model: "PP-StructureV3",
+        is_multimodal: true,
+        is_reasoning: false,
+        supports_tools: false,
+        max_output_tokens: 16384,
+        temperature: 0.0,
     },
 ];
 

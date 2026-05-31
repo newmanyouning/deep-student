@@ -98,7 +98,7 @@ where
         {
             Ok(result) => (Some(result.0), result.1),
             Err(e) => {
-                // ★ P1-52 修复：渲染失败时不写入 preview_json，避免误判“有预渲染”
+                // ★ P1-52 修复：渲染失败时不写入 preview_json，避免误判"有预渲染"
                 warn!("[PDF-Preview] Pdfium render failed, text-only mode: {}", e);
                 (None, 0)
             }

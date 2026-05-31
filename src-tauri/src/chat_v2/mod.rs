@@ -9,11 +9,9 @@
 //! - `handlers`: Tauri 命令处理器
 //! - `state`: 全局状态管理
 //! - `types`: 核心类型定义
-//! - `adapters`: 外部服务适配器（待完善）
 //! - `repo`: 数据存取层
 //! - `pipeline`: 编排引擎（待实现）
 
-pub mod adapters;
 pub mod approval_manager; // 🆕 工具审批管理器（文档 29 P1-3）
 pub mod approval_scope; // 🆕 工具审批作用域键提取器（P2 / M-081 修复）
 pub(crate) mod context; // PipelineContext 拆分
@@ -25,7 +23,6 @@ pub mod migration; // 旧版数据迁移模块
 pub mod pipeline;
 pub mod prompt_builder;
 pub mod repo;
-pub mod resource_repo; // ⚠️ DEPRECATED: 资源存储已迁移到 VFS (vfs.db)，由 vfs/repos/resource_repo.rs 替代。参见 P1-#9。
 pub mod resource_types; // 统一上下文注入系统 - 资源类型定义（类型仍被 pipeline/context 使用，暂不废弃）
 pub mod skills; // 🆕 Skills 文件系统处理器
 pub mod state;
@@ -112,7 +109,7 @@ pub use workspace::{
 
 // 重导出资源库类型（统一上下文注入系统）
 // NOTE: 这些类型仍被 pipeline/context/user_message_builder 等模块使用，暂不废弃。
-// resource_repo 和 resource_handlers 已废弃，参见 P1-#9。
+// resource_repo、resource_handlers、adapters 已于 2026-05-30 删除（零引用，功能已迁移至 VFS/pipeline）。
 pub use resource_types::{
     // 资源相关
     ContentBlock,

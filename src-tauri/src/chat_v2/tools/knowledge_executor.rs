@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -32,22 +32,22 @@ impl KnowledgeExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         // 解析参数
         let conversation_id = call
             .arguments
             .get("conversation_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'conversation_id' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'conversation_id' parameter".to_string()))?;
 
         let chat_history = call
             .arguments
             .get("chat_history")
             .and_then(|v| v.as_array())
-            .ok_or("Missing 'chat_history' parameter")?;
+            .ok_or_else(|| ToolError::InvalidArgs("Missing 'chat_history' parameter".to_string()))?;
 
         if chat_history.is_empty() {
-            return Err("chat_history 不能为空".to_string());
+            return Err(ToolError::InvalidArgs("chat_history 不能为空".to_string()));
         }
 
         let focus_categories: Option<Vec<String>> = call
@@ -64,7 +64,7 @@ impl KnowledgeExecutor {
         let llm_manager = ctx
             .llm_manager
             .clone()
-            .ok_or("LLM Manager not available in context")?;
+            .ok_or_else(|| ToolError::Execution("LLM Manager not available in context".to_string()))?;
 
         // 构建提取提示词
         let prompt = build_extraction_prompt(chat_history, focus_categories.as_deref());
@@ -76,11 +76,11 @@ impl KnowledgeExecutor {
         let response = llm_manager
             .call_unified_model_2(&context, &[], "通用", false, None, Some(&prompt), None)
             .await
-            .map_err(|e| format!("AI 提取失败: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("AI 提取失败: {}", e)))?;
 
         // 解析响应
         let candidates = parse_extraction_response(&response.assistant_message)
-            .map_err(|e| format!("解析提取结果失败: {}", e))?;
+            .map_err(|e| ToolError::Execution(format!("解析提取结果失败: {}", e)))?;
 
         // 规范化 conversation_id
         let normalized_id = conversation_id
@@ -189,7 +189,7 @@ impl ToolExecutor for KnowledgeExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let tool_name = strip_tool_namespace(&call.name);
 
@@ -204,7 +204,7 @@ impl ToolExecutor for KnowledgeExecutor {
 
         let result = match tool_name {
             "knowledge_extract" => self.execute_extract(call, ctx).await,
-            _ => Err(format!("Unknown knowledge tool: {}", tool_name)),
+            _ => Err(ToolError::Execution(format!("Unknown knowledge tool: {}", tool_name))),
         };
 
         let duration = start_time.elapsed().as_millis() as u64;
@@ -243,7 +243,7 @@ impl ToolExecutor for KnowledgeExecutor {
                 log::error!("[KnowledgeExecutor] Tool {} failed: {}", tool_name, e);
 
                 // 🔧 修复：发射工具调用错误事件
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
 
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
@@ -334,7 +334,7 @@ fn build_extraction_prompt(chat_history: &[Value], focus_categories: Option<&[St
 }
 
 /// 解析提取响应
-fn parse_extraction_response(response: &str) -> Result<Vec<KnowledgeCandidate>, String> {
+fn parse_extraction_response(response: &str) -> ToolResult<Vec<KnowledgeCandidate>> {
     let trimmed = response.trim();
 
     // 尝试移除 markdown 代码块
@@ -346,10 +346,10 @@ fn parse_extraction_response(response: &str) -> Result<Vec<KnowledgeCandidate>, 
 
     // 解析 JSON
     let parsed: Value =
-        serde_json::from_str(cleaned).map_err(|e| format!("JSON 解析失败: {}", e))?;
+        serde_json::from_str(cleaned).map_err(|e| ToolError::Execution(format!("JSON 解析失败: {}", e)))?;
 
     // 确保是数组
-    let array = parsed.as_array().ok_or("响应不是 JSON 数组")?;
+    let array = parsed.as_array().ok_or_else(|| ToolError::Execution("响应不是 JSON 数组".to_string()))?;
 
     // 转换为 KnowledgeCandidate
     let candidates: Vec<KnowledgeCandidate> = array

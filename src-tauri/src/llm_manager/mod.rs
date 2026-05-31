@@ -3414,7 +3414,7 @@ impl LLMManager {
             normalize_vendor_protocol_config(&mut clone);
 
             let trimmed = cfg.api_key.trim();
-            // “保留旧值”占位符：*** 或全 *（但不包含空字符串）
+            // "保留旧值"占位符：*** 或全 *（但不包含空字符串）
             // 空字符串应视为用户明确清空（而不是保留）。
             let keep_placeholder =
                 trimmed == "***" || (!trimmed.is_empty() && trimmed.chars().all(|c| c == '*'));
@@ -3592,7 +3592,7 @@ impl LLMManager {
 
     pub async fn save_model_profiles(&self, profiles: &[ModelProfile]) -> Result<()> {
         // ★ 2026-01-19 修复：保存所有模型（包括 is_builtin=true），以支持用户对内置模型的收藏等自定义设置
-        // 加载时按“字段级用户优先”进行合并：用户改过的字段保持不变，未改字段可接收后续内置更新
+        // 加载时按"字段级用户优先"进行合并：用户改过的字段保持不变，未改字段可接收后续内置更新
         if let Ok((_, builtin_profiles)) = self.load_builtin_vendor_profiles() {
             let builtin_id_set: HashSet<String> = builtin_profiles
                 .iter()

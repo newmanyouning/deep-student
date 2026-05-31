@@ -155,7 +155,7 @@ pub fn budget_messages(
         if msg.role == "user" {
             msg_tokens = (msg_tokens as f64 * 1.2) as usize;
         }
-        // 含图片：给予负向“成本”，更容易被保留
+        // 含图片：给予负向"成本"，更容易被保留
         if let Some(imgs) = &msg.image_base64 {
             if !imgs.is_empty() {
                 msg_tokens = msg_tokens.saturating_sub(512);

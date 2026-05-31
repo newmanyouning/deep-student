@@ -17,7 +17,7 @@ use std::time::Instant;
 use async_trait::async_trait;
 use serde_json::{json, Value};
 
-use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolExecutor, ToolSensitivity, ToolError, ToolResult};
 use super::strip_tool_namespace;
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
@@ -40,21 +40,21 @@ impl DocxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_docx_bytes(ctx, resource_id)?;
 
         // 文件大小安全检查（50MB 上限）
         if bytes.len() > 50 * 1024 * 1024 {
-            return Err(format!(
+            return Err(ToolError::Execution(format!(
                 "DOCX 文件过大: {}MB (上限 50MB)",
                 bytes.len() / 1024 / 1024
-            ));
+            )));
         }
 
         // spawn_blocking 防止同步解析阻塞 tokio 线程（与 PPTX/XLSX 对齐）
@@ -63,8 +63,8 @@ impl DocxToolExecutor {
             parser.extract_docx_structured(&bytes)
         })
         .await
-        .map_err(|e| format!("DOCX 解析任务异常: {}", e))?
-        .map_err(|e| format!("DOCX 结构化提取失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("DOCX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("DOCX 结构化提取失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -80,12 +80,12 @@ impl DocxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_docx_bytes(ctx, resource_id)?;
 
@@ -95,8 +95,8 @@ impl DocxToolExecutor {
             parser.extract_docx_tables(&bytes)
         })
         .await
-        .map_err(|e| format!("DOCX 解析任务异常: {}", e))?
-        .map_err(|e| format!("DOCX 表格提取失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("DOCX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("DOCX 表格提取失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -111,12 +111,12 @@ impl DocxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_docx_bytes(ctx, resource_id)?;
 
@@ -126,8 +126,8 @@ impl DocxToolExecutor {
             parser.extract_docx_metadata(&bytes)
         })
         .await
-        .map_err(|e| format!("DOCX 解析任务异常: {}", e))?
-        .map_err(|e| format!("DOCX 元数据读取失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("DOCX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("DOCX 元数据读取失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -141,12 +141,12 @@ impl DocxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
 
         let bytes = self.load_docx_bytes(ctx, resource_id)?;
 
@@ -156,8 +156,8 @@ impl DocxToolExecutor {
             parser.extract_docx_as_spec(&bytes)
         })
         .await
-        .map_err(|e| format!("DOCX 解析任务异常: {}", e))?
-        .map_err(|e| format!("DOCX → spec 转换失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("DOCX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("DOCX → spec 转换失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -172,17 +172,17 @@ impl DocxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let resource_id = call
             .arguments
             .get("resource_id")
             .and_then(|v| v.as_str())
-            .ok_or("Missing 'resource_id' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'resource_id' parameter".into()))?;
         let replacements_val = call
             .arguments
             .get("replacements")
             .and_then(|v| v.as_array())
-            .ok_or("Missing 'replacements' parameter (array of {find, replace})")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'replacements' parameter (array of {find, replace})".into()))?;
         let file_name = call
             .arguments
             .get("file_name")
@@ -195,11 +195,11 @@ impl DocxToolExecutor {
             let find = r
                 .get("find")
                 .and_then(|v| v.as_str())
-                .ok_or("Each replacement must have a 'find' field")?;
+                .ok_or(ToolError::InvalidArgs("Each replacement must have a 'find' field".into()))?;
             let replace = r
                 .get("replace")
                 .and_then(|v| v.as_str())
-                .ok_or("Each replacement must have a 'replace' field")?;
+                .ok_or(ToolError::InvalidArgs("Each replacement must have a 'replace' field".into()))?;
             replacements.push((find.to_string(), replace.to_string()));
         }
 
@@ -211,8 +211,8 @@ impl DocxToolExecutor {
             parser.replace_text_in_docx(&bytes, &replacements)
         })
         .await
-        .map_err(|e| format!("DOCX 解析任务异常: {}", e))?
-        .map_err(|e| format!("DOCX 替换失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("DOCX 解析任务异常: {}", e)))?
+        .map_err(|e| ToolError::Execution(format!("DOCX 替换失败: {}", e)))?;
 
         if total_count == 0 {
             return Ok(json!({
@@ -224,7 +224,7 @@ impl DocxToolExecutor {
         }
 
         // 保存替换后的文件到 VFS
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Internal("VFS database not available".into()))?;
         use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
 
         let blob = VfsBlobRepo::store_blob(
@@ -233,7 +233,7 @@ impl DocxToolExecutor {
             Some("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
             Some("docx"),
         )
-        .map_err(|e| format!("VFS Blob 存储失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS Blob 存储失败: {}", e)))?;
 
         // ★ GAP4 修复：使用 create_file_in_folder 确保文件在学习资源中可见
         let vfs_file = VfsFileRepo::create_file_in_folder(
@@ -247,7 +247,7 @@ impl DocxToolExecutor {
             None, // original_path
             None, // folder_id = None → 根"全部文件"视图
         )
-        .map_err(|e| format!("VFS 文件创建失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS 文件创建失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -265,11 +265,11 @@ impl DocxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<Value, String> {
+    ) -> ToolResult<Value> {
         let spec = call
             .arguments
             .get("spec")
-            .ok_or("Missing 'spec' parameter")?;
+            .ok_or(ToolError::InvalidArgs("Missing 'spec' parameter".into()))?;
         let file_name = call
             .arguments
             .get("file_name")
@@ -282,13 +282,13 @@ impl DocxToolExecutor {
         let docx_bytes =
             tokio::task::spawn_blocking(move || DocumentParser::generate_docx_from_spec(&spec))
                 .await
-                .map_err(|e| format!("DOCX 生成任务异常: {}", e))?
-                .map_err(|e| format!("DOCX 生成失败: {}", e))?;
+                .map_err(|e| ToolError::Execution(format!("DOCX 生成任务异常: {}", e)))?
+                .map_err(|e| ToolError::Execution(format!("DOCX 生成失败: {}", e)))?;
 
         let file_size = docx_bytes.len();
 
         // 保存到 VFS：先存 blob，再创建 file 记录
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Internal("VFS database not available".into()))?;
 
         use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
 
@@ -299,7 +299,7 @@ impl DocxToolExecutor {
             Some("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
             Some("docx"),
         )
-        .map_err(|e| format!("VFS Blob 存储失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS Blob 存储失败: {}", e)))?;
 
         // 2. 创建文件记录（始终使用 create_file_in_folder 确保 folder_item 可见）
         // ★ GAP4 修复：不指定 folder_id 时传 None，文件出现在根"全部文件"视图
@@ -314,7 +314,7 @@ impl DocxToolExecutor {
             None, // original_path
             folder_id,
         )
-        .map_err(|e| format!("VFS 文件创建失败: {}", e))?;
+        .map_err(|e| ToolError::Execution(format!("VFS 文件创建失败: {}", e)))?;
 
         Ok(json!({
             "success": true,
@@ -331,14 +331,14 @@ impl DocxToolExecutor {
         &self,
         ctx: &ExecutionContext,
         resource_id: &str,
-    ) -> Result<Vec<u8>, String> {
-        let vfs_db = ctx.vfs_db.as_ref().ok_or("VFS database not available")?;
+    ) -> ToolResult<Vec<u8>> {
+        let vfs_db = ctx.vfs_db.as_ref().ok_or(ToolError::Internal("VFS database not available".into()))?;
 
         use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
 
         let file = VfsFileRepo::get_file(vfs_db, resource_id)
-            .map_err(|e| format!("VFS 查询失败: {}", e))?
-            .ok_or_else(|| format!("文件不存在: {}", resource_id))?;
+            .map_err(|e| ToolError::Execution(format!("VFS 查询失败: {}", e)))?
+            .ok_or_else(|| ToolError::NotFound(format!("文件不存在: {}", resource_id)))?;
 
         // 优先使用 original_path 读取文件（本地导入的文件）
         // 安全检查：验证路径不包含目录遍历，且文件确实存在
@@ -357,7 +357,7 @@ impl DocxToolExecutor {
                         path
                     );
                 } else if p.exists() {
-                    return std::fs::read(p).map_err(|e| format!("文件读取失败: {}", e));
+                    return std::fs::read(p).map_err(|e| ToolError::Execution(format!("文件读取失败: {}", e)));
                 }
             }
         }
@@ -365,7 +365,7 @@ impl DocxToolExecutor {
         // 从 blob_hash 读取 blob 文件
         if let Some(ref blob_hash) = file.blob_hash {
             if let Ok(Some(blob_path)) = VfsBlobRepo::get_blob_path(vfs_db, blob_hash) {
-                return std::fs::read(&blob_path).map_err(|e| format!("Blob 读取失败: {}", e));
+                return std::fs::read(&blob_path).map_err(|e| ToolError::Execution(format!("Blob 读取失败: {}", e)));
             }
         }
 
@@ -373,14 +373,14 @@ impl DocxToolExecutor {
         if !file.sha256.is_empty() {
             if let Ok(Some(blob_path)) = VfsBlobRepo::get_blob_path(vfs_db, &file.sha256) {
                 return std::fs::read(&blob_path)
-                    .map_err(|e| format!("Blob 读取失败 (sha256): {}", e));
+                    .map_err(|e| ToolError::Execution(format!("Blob 读取失败 (sha256): {}", e)));
             }
         }
 
-        Err(format!(
+        Err(ToolError::NotFound(format!(
             "无法加载文件内容: {} (无可用 blob_hash 或 original_path)",
             resource_id
-        ))
+        )))
     }
 }
 
@@ -409,7 +409,7 @@ impl ToolExecutor for DocxToolExecutor {
         &self,
         call: &ToolCall,
         ctx: &ExecutionContext,
-    ) -> Result<ToolResultInfo, String> {
+    ) -> ToolResult<ToolResultInfo> {
         let start_time = Instant::now();
         let tool_name = strip_tool_namespace(&call.name);
 
@@ -429,7 +429,7 @@ impl ToolExecutor for DocxToolExecutor {
             "docx_create" => self.execute_create(call, ctx).await,
             "docx_to_spec" => self.execute_to_spec(call, ctx).await,
             "docx_replace_text" => self.execute_replace_text(call, ctx).await,
-            _ => Err(format!("Unknown docx tool: {}", tool_name)),
+            _ => Err(ToolError::Execution(format!("Unknown docx tool: {}", tool_name))),
         };
 
         let duration = start_time.elapsed().as_millis() as u64;
@@ -457,14 +457,14 @@ impl ToolExecutor for DocxToolExecutor {
                 Ok(result)
             }
             Err(e) => {
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
 
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    e,
+                    e.to_string(),
                     duration,
                 );
 

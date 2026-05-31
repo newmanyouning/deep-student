@@ -21,7 +21,7 @@ use tracing::{debug, info, warn};
 use crate::chat_v2::database::ChatV2Database;
 use crate::chat_v2::error::{ChatV2Error, ChatV2Result};
 use crate::chat_v2::events::session_event_type;
-use crate::chat_v2::handlers::send_message::apply_original_skill_snapshot_overrides;
+use crate::chat_v2::handlers::shared::apply_original_skill_snapshot_overrides;
 use crate::chat_v2::pipeline::{ChatV2Pipeline, VariantRetrySpec};
 use crate::chat_v2::repo::ChatV2Repo;
 use crate::chat_v2::state::ChatV2State;

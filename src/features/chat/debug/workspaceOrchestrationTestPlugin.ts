@@ -590,13 +590,13 @@ function buildToolLogData(
           timeout_ms: payload.timeout_ms ?? payload.timeoutMs,
           awaiting_agents: payload.awaiting_agents ?? payload.awaitingAgents,
         };
-      case 'workspace_create':
+      case 'chat_v2_workspace_create':
         return {
           ...base,
           name: payload.name,
           description: payload.description,
         };
-      case 'workspace_create_agent':
+      case 'chat_v2_workspace_create_agent':
         return {
           ...base,
           role: payload.role,
@@ -645,13 +645,13 @@ function buildToolLogData(
               : undefined,
         };
       }
-      case 'workspace_create':
+      case 'chat_v2_workspace_create':
         return {
           ...base,
           workspace_id: payload.workspace_id ?? payload.workspaceId ?? payload.id,
           name: payload.name,
         };
-      case 'workspace_create_agent':
+      case 'chat_v2_workspace_create_agent':
         return {
           ...base,
           agent_session_id:
@@ -717,9 +717,9 @@ function evaluateChecks(
   const workerReadyCount = workerReadyEvents.length;
   const agentStatusChangedEvents = events.filter((e) => e.eventName === WORKSPACE_EVENTS.AGENT_STATUS_CHANGED);
   const agentStatusChangedCount = agentStatusChangedEvents.length;
-  const hasWorkspaceCreate = tools.some((t) => t.sessionId === mainSessionId && t.toolName === 'workspace_create' && t.phase === 'end');
+  const hasWorkspaceCreate = tools.some((t) => t.sessionId === mainSessionId && t.toolName === 'chat_v2_workspace_create' && t.phase === 'end');
   const hasSubagentCall = tools.some((t) => t.toolName === 'subagent_call' && t.phase === 'start');
-  const hasCreateAgentCall = tools.some((t) => t.sessionId === mainSessionId && t.toolName === 'workspace_create_agent' && t.phase === 'start');
+  const hasCreateAgentCall = tools.some((t) => t.sessionId === mainSessionId && t.toolName === 'chat_v2_workspace_create_agent' && t.phase === 'start');
   const hasWorkerReady = events.some((e) => e.eventName === WORKSPACE_EVENTS.WORKER_READY);
   const hasCoordinatorAwake = events.some((e) => e.eventName === WORKSPACE_EVENTS.COORDINATOR_AWAKENED);
   const warningCount = events.filter((e) => e.eventName === WORKSPACE_EVENTS.WORKSPACE_WARNING).length;
@@ -731,12 +731,12 @@ function evaluateChecks(
     return Math.max(max, count);
   }, 0);
   const maxSnapshotMessages = snapshotInWorkspace.reduce((max, s) => Math.max(max, s.messageCount), 0);
-  const workspaceCreateStarts = tools.filter((t) => t.sessionId === mainSessionId && t.toolName === 'workspace_create' && t.phase === 'start').length;
-  const workspaceCreateEnds = tools.filter((t) => t.sessionId === mainSessionId && t.toolName === 'workspace_create' && t.phase === 'end').length;
-  const createAgentStarts = tools.filter((t) => t.sessionId === mainSessionId && t.toolName === 'workspace_create_agent' && t.phase === 'start').length;
-  const createAgentEnds = tools.filter((t) => t.sessionId === mainSessionId && t.toolName === 'workspace_create_agent' && t.phase === 'end').length;
+  const workspaceCreateStarts = tools.filter((t) => t.sessionId === mainSessionId && t.toolName === 'chat_v2_workspace_create' && t.phase === 'start').length;
+  const workspaceCreateEnds = tools.filter((t) => t.sessionId === mainSessionId && t.toolName === 'chat_v2_workspace_create' && t.phase === 'end').length;
+  const createAgentStarts = tools.filter((t) => t.sessionId === mainSessionId && t.toolName === 'chat_v2_workspace_create_agent' && t.phase === 'start').length;
+  const createAgentEnds = tools.filter((t) => t.sessionId === mainSessionId && t.toolName === 'chat_v2_workspace_create_agent' && t.phase === 'end').length;
 
-  const toolLifecycleStats = ['workspace_create', 'workspace_create_agent', 'workspace_query', 'workspace_send'].map((toolName) => {
+  const toolLifecycleStats = ['chat_v2_workspace_create', 'chat_v2_workspace_create_agent', 'workspace_query', 'workspace_send'].map((toolName) => {
     const starts = tools.filter((t) => t.sessionId === mainSessionId && t.toolName === toolName && t.phase === 'start').length;
     const ends = tools.filter((t) => t.sessionId === mainSessionId && t.toolName === toolName && t.phase === 'end').length;
     const errors = tools.filter((t) => t.sessionId === mainSessionId && t.toolName === toolName && t.phase === 'error').length;
@@ -744,7 +744,7 @@ function evaluateChecks(
   });
 
   const strictLifecycleOk = toolLifecycleStats
-    .filter((x) => x.toolName === 'workspace_create' || x.toolName === 'workspace_create_agent')
+    .filter((x) => x.toolName === 'chat_v2_workspace_create' || x.toolName === 'chat_v2_workspace_create_agent')
     .every((x) => x.starts > 0 && x.ends === x.starts && x.errors === 0)
     && toolLifecycleStats
       .filter((x) => x.toolName === 'workspace_query' || x.toolName === 'workspace_send')
@@ -929,7 +929,7 @@ function evaluateChecks(
 
     if (scenario === 'orchestrate_handoff') {
       const handoffCreateAgentStarts = tools.filter(
-        (t) => t.sessionId === mainSessionId && t.toolName === 'workspace_create_agent' && t.phase === 'start'
+        (t) => t.sessionId === mainSessionId && t.toolName === 'chat_v2_workspace_create_agent' && t.phase === 'start'
       ).length;
       const hasHandoffToolChain =
         handoffCreateAgentStarts >= 2
@@ -1080,7 +1080,7 @@ async function runSingleScenario(
     if (def.minWorkers > 0) {
       const createAgentMilestone = await waitFor(() => {
         const starts = (toolCapture?.toolCalls ?? []).filter(
-          (t) => t.sessionId === currentSessionId && t.toolName === 'workspace_create_agent' && t.phase === 'start'
+          (t) => t.sessionId === currentSessionId && t.toolName === 'chat_v2_workspace_create_agent' && t.phase === 'start'
         ).length;
         return starts >= def.minWorkers;
       }, Math.min(config.timeoutMs, 90_000), config.pollMs);
@@ -1096,7 +1096,7 @@ async function runSingleScenario(
         const allTools = toolCapture?.toolCalls ?? [];
         const allEvents = workspaceCapture?.events ?? [];
         const starts = allTools.filter(
-          (t) => t.sessionId === currentSessionId && t.toolName === 'workspace_create_agent' && t.phase === 'start'
+          (t) => t.sessionId === currentSessionId && t.toolName === 'chat_v2_workspace_create_agent' && t.phase === 'start'
         ).length;
         const ws = useWorkspaceStore.getState();
         log('error', 'milestone_timeout', 'worker 创建里程碑超时', {
@@ -1107,7 +1107,7 @@ async function runSingleScenario(
           events_total: allEvents.length,
           coordinator_sleep_starts: allTools.filter((t) => t.toolName === 'coordinator_sleep' && t.phase === 'start').length,
           coordinator_sleep_ends:   allTools.filter((t) => t.toolName === 'coordinator_sleep' && t.phase === 'end').length,
-          workspace_create_ends: allTools.filter((t) => t.toolName === 'workspace_create' && t.phase === 'end').length,
+          workspace_create_ends: allTools.filter((t) => t.toolName === 'chat_v2_workspace_create' && t.phase === 'end').length,
           tool_errors: allTools.filter((t) => t.phase === 'error').map((t) => ({ tool: t.toolName, err: t.error })),
         });
         throw new Error(`worker 创建里程碑未达成: workspace_create_agent:start=${starts}/${def.minWorkers}`);
@@ -1197,7 +1197,7 @@ async function runSingleScenario(
         ),
         tool_calls_total: capturedTools.length,
         tool_calls_by_name: Object.fromEntries(
-          ['workspace_create', 'workspace_create_agent', 'workspace_send',
+          ['chat_v2_workspace_create', 'chat_v2_workspace_create_agent', 'workspace_send',
            'workspace_query', 'coordinator_sleep', 'subagent_call'].map((n) => [
             n,
             {

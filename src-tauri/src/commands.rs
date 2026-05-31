@@ -28,7 +28,6 @@ use crate::file_manager::FileManager;
 use crate::pdf_ocr_service::PdfOcrService;
 use crate::unified_file_manager;
 use serde::{Deserialize, Serialize};
-use sha2::Digest;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::env;

@@ -115,6 +115,12 @@ impl From<DstuError> for String {
     }
 }
 
+impl From<String> for DstuError {
+    fn from(s: String) -> Self {
+        DstuError::Internal(s)
+    }
+}
+
 // 实现从 std::io::Error 到 DstuError 的转换
 impl From<std::io::Error> for DstuError {
     fn from(err: std::io::Error) -> Self {
@@ -133,6 +139,13 @@ impl From<serde_json::Error> for DstuError {
 impl From<rusqlite::Error> for DstuError {
     fn from(err: rusqlite::Error) -> Self {
         DstuError::DatabaseError(err.to_string())
+    }
+}
+
+// 实现从 VfsError 到 DstuError 的转换
+impl From<crate::vfs::error::VfsError> for DstuError {
+    fn from(err: crate::vfs::error::VfsError) -> Self {
+        DstuError::VfsError(err.to_string())
     }
 }
 
