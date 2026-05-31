@@ -3109,7 +3109,8 @@ pub async fn vfs_delete_dimension(
         return Err(format!(
             "维度 {}:{} 有正在进行的索引任务，请等待索引完成后再删除",
             dimension, modality
-        ));
+        )
+        .into());
     }
 
     // 检查是否正在删除默认维度，如果是则清除默认设置
@@ -3231,7 +3232,7 @@ pub async fn vfs_set_default_embedding_dimension(
             "embedding.default_multimodal_dimension",
             "embedding.default_multimodal_model_config_id",
         ),
-        _ => return Err(format!("无效的模态类型: {}", modality)),
+        _ => return Err(format!("无效的模态类型: {}", modality).into()),
     };
 
     database
@@ -3276,7 +3277,7 @@ pub async fn vfs_get_default_embedding_dimension(
     let key = match modality.as_str() {
         "text" => "embedding.default_text_dimension",
         "multimodal" => "embedding.default_multimodal_dimension",
-        _ => return Err(format!("无效的模态类型: {}", modality)),
+        _ => return Err(format!("无效的模态类型: {}", modality).into()),
     };
 
     // 从 settings 获取默认维度值
@@ -3334,7 +3335,7 @@ pub async fn vfs_clear_default_embedding_dimension(
             "embedding.default_multimodal_dimension",
             "embedding.default_multimodal_model_config_id",
         ),
-        _ => return Err(format!("无效的模态类型: {}", modality)),
+        _ => return Err(format!("无效的模态类型: {}", modality).into()),
     };
 
     // 同时清除维度和模型配置

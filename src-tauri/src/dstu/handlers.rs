@@ -4088,7 +4088,8 @@ pub async fn dstu_restore(
         None => Err(format!(
             "Resource restored but failed to retrieve node info: {}",
             path
-        )),
+        )
+        .into()),
     }
 }
 
@@ -4790,7 +4791,8 @@ pub async fn dstu_list_deleted(
         _ => Err(format!(
             "Resource type '{}' does not support list_deleted operation",
             resource_type
-        )),
+        )
+        .into()),
     }
 }
 
