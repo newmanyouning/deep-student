@@ -199,7 +199,7 @@ impl ToolExecutor for AttemptCompletionExecutor {
                     input: call.arguments.clone(),
                     output: json!(null),
                     success: false,
-                    error: Some(e),
+                    error: Some(e.to_string()),
                     duration_ms: Some(start.elapsed().as_millis() as u64),
                     reasoning_content: None,
                     thought_signature: None,

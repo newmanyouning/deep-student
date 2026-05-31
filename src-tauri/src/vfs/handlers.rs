@@ -4739,8 +4739,7 @@ pub async fn vfs_set_mindmap_favorite(
         return Err(VfsError::InvalidArgument {
             param: "mindmap_id".to_string(),
             reason: format!("Invalid mindmap ID format: {}", mindmap_id),
-        }
-        .to_string());
+        });
     }
 
     Ok(VfsMindMapRepo::set_favorite(&vfs_db, &mindmap_id, is_favorite)?)

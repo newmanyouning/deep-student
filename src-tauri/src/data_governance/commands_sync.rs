@@ -1606,7 +1606,7 @@ pub async fn data_governance_import_sync_data(
         Ok(v) => v,
         Err(e) => {
             cleanup_temp_sync_file(cleanup_path.as_ref(), "sync_import");
-            return Err(e);
+            return Err(e.into());
         }
     };
 
@@ -2996,7 +2996,7 @@ pub async fn data_governance_resolve_record_conflict(
         match r {
             Ok(s) => Ok(Some(s)),
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(format!("读取冲突数据失败: {}", e)),
+            Err(e) => Err(format!("读取冲突数据失败: {}", e).into()),
         }
     };
 
