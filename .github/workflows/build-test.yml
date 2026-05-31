@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: 'Target platform: windows | macos-arm64 | macos-x64 | linux | android | all-desktop'
+        description: 'Target: windows / macos-arm64 / macos-x64 / linux / android / all-desktop'
         required: true
         type: string
         default: 'windows'
@@ -18,6 +18,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ── Windows ──
   build-windows:
     if: contains(fromJSON('["windows", "all-desktop"]'), github.event.inputs.platform)
     runs-on: windows-latest
@@ -28,12 +29,16 @@ jobs:
         with:
           ref: ${{ github.event.inputs.source_ref }}
       - uses: actions/setup-node@v4
-        with: { node-version: '22', cache: 'npm' }
+        with:
+          node-version: '22'
+          cache: 'npm'
       - uses: dtolnay/rust-toolchain@stable
       - uses: arduino/setup-protoc@v3
-        with: { repo-token: ${{ secrets.GITHUB_TOKEN }} }
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: swatinem/rust-cache@v2
-        with: { workspaces: './src-tauri -> target' }
+        with:
+          workspaces: './src-tauri -> target'
       - run: npm ci --legacy-peer-deps
       - run: npx tauri build --target x86_64-pc-windows-msvc
       - uses: actions/upload-artifact@v4
@@ -41,6 +46,7 @@ jobs:
           name: windows-installer
           path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
 
+  # ── macOS ARM64 ──
   build-macos-arm64:
     if: contains(fromJSON('["macos-arm64", "all-desktop"]'), github.event.inputs.platform)
     runs-on: macos-latest
@@ -51,13 +57,18 @@ jobs:
         with:
           ref: ${{ github.event.inputs.source_ref }}
       - uses: actions/setup-node@v4
-        with: { node-version: '22', cache: 'npm' }
+        with:
+          node-version: '22'
+          cache: 'npm'
       - uses: dtolnay/rust-toolchain@stable
-        with: { targets: aarch64-apple-darwin }
+        with:
+          targets: aarch64-apple-darwin
       - uses: arduino/setup-protoc@v3
-        with: { repo-token: ${{ secrets.GITHUB_TOKEN }} }
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: swatinem/rust-cache@v2
-        with: { workspaces: './src-tauri -> target' }
+        with:
+          workspaces: './src-tauri -> target'
       - run: npm ci --legacy-peer-deps
       - run: npx tauri build --target aarch64-apple-darwin
       - uses: actions/upload-artifact@v4
@@ -65,6 +76,7 @@ jobs:
           name: macos-arm64-dmg
           path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
 
+  # ── macOS x64 ──
   build-macos-x64:
     if: contains(fromJSON('["macos-x64", "all-desktop"]'), github.event.inputs.platform)
     runs-on: macos-latest
@@ -75,13 +87,18 @@ jobs:
         with:
           ref: ${{ github.event.inputs.source_ref }}
       - uses: actions/setup-node@v4
-        with: { node-version: '22', cache: 'npm' }
+        with:
+          node-version: '22'
+          cache: 'npm'
       - uses: dtolnay/rust-toolchain@stable
-        with: { targets: x86_64-apple-darwin }
+        with:
+          targets: x86_64-apple-darwin
       - uses: arduino/setup-protoc@v3
-        with: { repo-token: ${{ secrets.GITHUB_TOKEN }} }
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: swatinem/rust-cache@v2
-        with: { workspaces: './src-tauri -> target' }
+        with:
+          workspaces: './src-tauri -> target'
       - run: npm ci --legacy-peer-deps
       - run: npx tauri build --target x86_64-apple-darwin
       - uses: actions/upload-artifact@v4
@@ -89,6 +106,7 @@ jobs:
           name: macos-x64-dmg
           path: src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
 
+  # ── Linux ──
   build-linux:
     if: contains(fromJSON('["linux", "all-desktop"]'), github.event.inputs.platform)
     runs-on: ubuntu-24.04
@@ -99,17 +117,22 @@ jobs:
         with:
           ref: ${{ github.event.inputs.source_ref }}
       - uses: actions/setup-node@v4
-        with: { node-version: '22', cache: 'npm' }
+        with:
+          node-version: '22'
+          cache: 'npm'
       - run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
             libayatana-appindicator3-dev librsvg2-dev patchelf rpm
       - uses: dtolnay/rust-toolchain@stable
-        with: { targets: x86_64-unknown-linux-gnu }
+        with:
+          targets: x86_64-unknown-linux-gnu
       - uses: arduino/setup-protoc@v3
-        with: { repo-token: ${{ secrets.GITHUB_TOKEN }} }
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: swatinem/rust-cache@v2
-        with: { workspaces: './src-tauri -> target' }
+        with:
+          workspaces: './src-tauri -> target'
       - run: npm ci --legacy-peer-deps
       - run: npx tauri build --target x86_64-unknown-linux-gnu --bundles deb,appimage
       - uses: actions/upload-artifact@v4
@@ -119,6 +142,7 @@ jobs:
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
 
+  # ── Android ──
   build-android:
     if: contains(fromJSON('["android", "all-desktop"]'), github.event.inputs.platform)
     runs-on: ubuntu-latest
@@ -132,19 +156,26 @@ jobs:
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo docker image prune --all --force
       - uses: actions/setup-node@v4
-        with: { node-version: '22', cache: 'npm' }
+        with:
+          node-version: '22'
+          cache: 'npm'
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '17' }
+        with:
+          distribution: temurin
+          java-version: '17'
       - run: |
           yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager \
             "ndk;27.0.12077973" "build-tools;35.0.0" "platforms;android-35" | tail -3
           echo "NDK_HOME=${ANDROID_HOME}/ndk/27.0.12077973" >> $GITHUB_ENV
       - uses: dtolnay/rust-toolchain@stable
-        with: { targets: aarch64-linux-android }
+        with:
+          targets: aarch64-linux-android
       - uses: arduino/setup-protoc@v3
-        with: { repo-token: ${{ secrets.GITHUB_TOKEN }} }
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
       - uses: swatinem/rust-cache@v2
-        with: { workspaces: './src-tauri -> target' }
+        with:
+          workspaces: './src-tauri -> target'
       - run: npm ci --legacy-peer-deps
       - run: |
           npx tauri android init
