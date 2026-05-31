@@ -27,6 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ github.event.inputs.source_ref }}
       - uses: actions/setup-node@v4
         with:
@@ -40,6 +41,7 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
       - run: npm ci --legacy-peer-deps
+      - run: node scripts/generate-version.mjs
       - run: npx tauri build --target x86_64-pc-windows-msvc
       - uses: actions/upload-artifact@v4
         with:
@@ -55,6 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ github.event.inputs.source_ref }}
       - uses: actions/setup-node@v4
         with:
@@ -70,6 +73,15 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
       - run: npm ci --legacy-peer-deps
+      - run: node scripts/generate-version.mjs
+      - name: Prepare pdfium (macOS arm64)
+        run: |
+          if [ -x "scripts/prepare-pdfium-macos.sh" ]; then
+            bash scripts/prepare-pdfium-macos.sh "aarch64-apple-darwin"
+          elif [ -x "scripts/download-pdfium.sh" ]; then
+            rm -f src-tauri/resources/pdfium/libpdfium.dylib
+            bash scripts/download-pdfium.sh macos-arm64
+          fi
       - run: npx tauri build --target aarch64-apple-darwin
       - uses: actions/upload-artifact@v4
         with:
@@ -85,6 +97,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ github.event.inputs.source_ref }}
       - uses: actions/setup-node@v4
         with:
@@ -100,6 +113,15 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
       - run: npm ci --legacy-peer-deps
+      - run: node scripts/generate-version.mjs
+      - name: Prepare pdfium (macOS x64)
+        run: |
+          if [ -x "scripts/prepare-pdfium-macos.sh" ]; then
+            bash scripts/prepare-pdfium-macos.sh "x86_64-apple-darwin"
+          elif [ -x "scripts/download-pdfium.sh" ]; then
+            rm -f src-tauri/resources/pdfium/libpdfium.dylib
+            bash scripts/download-pdfium.sh macos-x64
+          fi
       - run: npx tauri build --target x86_64-apple-darwin
       - uses: actions/upload-artifact@v4
         with:
@@ -115,6 +137,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ github.event.inputs.source_ref }}
       - uses: actions/setup-node@v4
         with:
@@ -134,12 +157,14 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
       - run: npm ci --legacy-peer-deps
-      - run: npx tauri build --target x86_64-unknown-linux-gnu --bundles deb,appimage
+      - run: node scripts/generate-version.mjs
+      - run: npx tauri build --target x86_64-unknown-linux-gnu --bundles deb,rpm,appimage
       - uses: actions/upload-artifact@v4
         with:
           name: linux-packages
           path: |
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
 
   # ── Android ──
@@ -151,10 +176,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ github.event.inputs.source_ref }}
-      - run: |
+      - name: Free disk space
+        run: |
           sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
           sudo docker image prune --all --force
+      - name: Add swap space
+        run: |
+          if ! swapon --show --noheadings | grep -q .; then
+            sudo fallocate -l 8G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=8192 status=progress
+            sudo chmod 600 /swapfile
+            sudo mkswap /swapfile
+            sudo swapon /swapfile || true
+          fi
+          free -h
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -163,7 +199,8 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - run: |
+      - name: Setup Android SDK & NDK
+        run: |
           yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager \
             "ndk;27.0.12077973" "build-tools;35.0.0" "platforms;android-35" | tail -3
           echo "NDK_HOME=${ANDROID_HOME}/ndk/27.0.12077973" >> $GITHUB_ENV
@@ -177,9 +214,39 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
       - run: npm ci --legacy-peer-deps
-      - run: |
-          npx tauri android init
-          npx tauri android build --target aarch64
+      - run: node scripts/generate-version.mjs
+      - run: npx tauri android init
+      - name: Bundle pdfium for Android
+        run: |
+          JNILIBS_DIR="src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a"
+          mkdir -p "$JNILIBS_DIR"
+          if [ -f "src-tauri/resources/pdfium/libpdfium_android_arm64.so" ]; then
+            cp src-tauri/resources/pdfium/libpdfium_android_arm64.so "$JNILIBS_DIR/libpdfium.so"
+          else
+            bash scripts/download-pdfium.sh android-arm64
+            cp src-tauri/resources/pdfium/libpdfium_android_arm64.so "$JNILIBS_DIR/libpdfium.so"
+          fi
+      - name: Configure NDK toolchain
+        run: |
+          NDK_PREBUILT="${NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64"
+          sed -i '/\[target.aarch64-linux-android\]/,/^$/{ s|linker = .*|linker = "'"${NDK_PREBUILT}"'/bin/aarch64-linux-android21-clang"|; s|ar = .*|ar = "'"${NDK_PREBUILT}"'/bin/llvm-ar"| }' src-tauri/.cargo/config.toml
+          echo "CC_aarch64_linux_android=${NDK_PREBUILT}/bin/aarch64-linux-android21-clang" >> $GITHUB_ENV
+          echo "CXX_aarch64_linux_android=${NDK_PREBUILT}/bin/aarch64-linux-android21-clang++" >> $GITHUB_ENV
+          echo "AR_aarch64_linux_android=${NDK_PREBUILT}/bin/llvm-ar" >> $GITHUB_ENV
+          echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=${NDK_PREBUILT}/bin/aarch64-linux-android21-clang" >> $GITHUB_ENV
+      - name: Build Android APK
+        env:
+          GRADLE_OPTS: -Dorg.gradle.daemon=false
+        run: |
+          timeout --signal=TERM --kill-after=60s 120m npx tauri android build --target aarch64 || {
+            s=$?
+            if [ "$s" -eq 124 ]; then
+              echo "::error::Android build timed out after 120 minutes"
+            else
+              echo "::error::Android build failed with exit code ${s}"
+            fi
+            exit "$s"
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: android-apk
