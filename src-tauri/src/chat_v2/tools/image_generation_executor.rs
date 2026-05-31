@@ -882,7 +882,7 @@ mod tests {
         }))
         .unwrap_err();
 
-        assert!(err.contains("content policy violation"));
+        assert!(err.to_string().contains("content policy violation"));
     }
 
     #[test]

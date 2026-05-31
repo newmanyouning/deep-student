@@ -1330,7 +1330,7 @@ mod tests {
         });
 
         let err = refresh_schema_registry_from_dir(app_data_dir, &registry_state).unwrap_err();
-        assert!(err.contains("写入 SchemaRegistry 状态失败"));
+        assert!(err.to_string().contains("写入 SchemaRegistry 状态失败"));
     }
 
     // ========================================================================

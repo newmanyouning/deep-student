@@ -2148,12 +2148,12 @@ mod tests {
         );
         let err = result.unwrap_err();
         assert!(
-            err.contains("fields[0]"),
+            err.to_string().contains("fields[0]"),
             "Error should indicate which index: {}",
             err
         );
         assert!(
-            err.contains("字符串"),
+            err.to_string().contains("字符串"),
             "Error should mention string type: {}",
             err
         );
@@ -2173,7 +2173,7 @@ mod tests {
         );
         let err = result.unwrap_err();
         assert!(
-            err.contains("fields[1]"),
+            err.to_string().contains("fields[1]"),
             "Error should indicate index 1: {}",
             err
         );
@@ -2190,7 +2190,7 @@ mod tests {
         assert!(result.is_err(), "Should fail when fields is not an array");
         let err = result.unwrap_err();
         assert!(
-            err.contains("字符串数组"),
+            err.to_string().contains("字符串数组"),
             "Error should mention array: {}",
             err
         );
@@ -2211,12 +2211,12 @@ mod tests {
         assert!(result.is_err(), "Should fail when name is not a string");
         let err = result.unwrap_err();
         assert!(
-            err.contains("name"),
+            err.to_string().contains("name"),
             "Error should mention field name: {}",
             err
         );
         assert!(
-            err.contains("字符串"),
+            err.to_string().contains("字符串"),
             "Error should mention expected type: {}",
             err
         );
@@ -2236,12 +2236,12 @@ mod tests {
         );
         let err = result.unwrap_err();
         assert!(
-            err.contains("isActive"),
+            err.to_string().contains("isActive"),
             "Error should mention field: {}",
             err
         );
         assert!(
-            err.contains("布尔值"),
+            err.to_string().contains("布尔值"),
             "Error should mention boolean: {}",
             err
         );
@@ -2260,7 +2260,7 @@ mod tests {
         );
         let err = result.unwrap_err();
         assert!(
-            err.contains("expectedVersion"),
+            err.to_string().contains("expectedVersion"),
             "Error should mention field: {}",
             err
         );
@@ -2309,7 +2309,7 @@ mod tests {
         assert!(result.is_err(), "Should fail when noteType is not a string");
         let err = result.unwrap_err();
         assert!(
-            err.contains("noteType"),
+            err.to_string().contains("noteType"),
             "Error should mention field: {}",
             err
         );
@@ -2336,7 +2336,7 @@ mod tests {
         );
         let err = result.unwrap_err();
         assert!(
-            err.contains("isActive"),
+            err.to_string().contains("isActive"),
             "Error should mention field: {}",
             err
         );
