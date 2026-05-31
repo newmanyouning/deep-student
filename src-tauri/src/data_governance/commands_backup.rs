@@ -209,7 +209,7 @@ fn should_apply_change_by_strategy(
 ) -> DataGovernanceResult<bool> {
     match strategy {
         MergeStrategy::UseCloud => Ok(true),
-        // manual 仅用于“冲突记录”人工决策；无冲突记录应按 KeepLatest 自动收敛
+        // manual 仅用于"冲突记录"人工决策；无冲突记录应按 KeepLatest 自动收敛
         MergeStrategy::Manual | MergeStrategy::KeepLocal | MergeStrategy::KeepLatest => {
             let local = SyncManager::get_record_data(
                 conn,
@@ -531,7 +531,7 @@ pub(super) async fn acquire_backup_global_permit(
     job_ctx: &BackupJobContext,
     waiting_message: &str,
 ) -> Option<tokio::sync::OwnedSemaphorePermit> {
-    // 向前端暴露“正在等待”状态（不阻塞 UI）
+    // 向前端暴露"正在等待"状态（不阻塞 UI）
     job_ctx.mark_running(
         BackupJobPhase::Queued,
         0.0,

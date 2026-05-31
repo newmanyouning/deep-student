@@ -86,7 +86,7 @@ impl MemoryEvolution {
                 Some(report)
             }
             Err(e) => {
-                // 本轮执行失败时回滚节流时间，避免“失败也占用周期”导致长时间不重试。
+                // 本轮执行失败时回滚节流时间，避免"失败也占用周期"导致长时间不重试。
                 LAST_EVOLUTION_MS.store(last, Ordering::Relaxed);
                 warn!("[Evolution] Throttled cycle failed (non-fatal): {}", e);
                 None

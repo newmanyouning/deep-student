@@ -99,7 +99,7 @@ fn extract_str_field(args: &Value, field_names: &[&str]) -> Option<String> {
 
 /// 未知工具的保守型兜底提取。
 ///
-/// 仅当参数里存在明确的资源标识时才生成稳定作用域，避免把“始终允许”
+/// 仅当参数里存在明确的资源标识时才生成稳定作用域，避免把"始终允许"
 /// 扩大成整类未知工具的通配授权。当前支持：
 /// - 路径型目标（path / file_path / filepath / targetPath）
 /// - 常见资源 ID（noteId / fileId / mindmapId / ...）

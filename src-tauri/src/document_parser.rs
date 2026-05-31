@@ -924,13 +924,13 @@ impl DocumentParser {
         rid_map: &std::collections::HashMap<String, Vec<u8>>,
     ) {
         for tc in &table.rows {
-            if let docx_rs::TableChild::TableRow(row) = tc {
-                let mut cells: Vec<String> = Vec::new();
-                for rc in &row.cells {
-                    if let docx_rs::TableRowChild::TableCell(cell) = rc {
-                        let mut cell_text = String::new();
-                        for cc in &cell.children {
-                            if let docx_rs::TableCellContent::Paragraph(para) = cc {
+            let docx_rs::TableChild::TableRow(row) = tc;
+            let mut cells: Vec<String> = Vec::new();
+            for rc in &row.cells {
+                let docx_rs::TableRowChild::TableCell(cell) = rc;
+                let mut cell_text = String::new();
+                for cc in &cell.children {
+                    let docx_rs::TableCellContent::Paragraph(para) = cc;
                                 let t =
                                     Self::extract_paragraph_text_with_images(para, images, rid_map);
                                 if !t.trim().is_empty() {
@@ -1049,13 +1049,13 @@ impl DocumentParser {
         let mut rows: Vec<Vec<String>> = Vec::new();
 
         for tc in &table.rows {
-            if let docx_rs::TableChild::TableRow(row) = tc {
-                let mut cells: Vec<String> = Vec::new();
-                for rc in &row.cells {
-                    if let docx_rs::TableRowChild::TableCell(cell) = rc {
-                        let mut cell_text = String::new();
-                        for cc in &cell.children {
-                            if let docx_rs::TableCellContent::Paragraph(para) = cc {
+            let docx_rs::TableChild::TableRow(row) = tc;
+            let mut cells: Vec<String> = Vec::new();
+            for rc in &row.cells {
+                let docx_rs::TableRowChild::TableCell(cell) = rc;
+                let mut cell_text = String::new();
+                for cc in &cell.children {
+                    let docx_rs::TableCellContent::Paragraph(para) = cc;
                                 let t = Self::extract_paragraph_text(para);
                                 if !t.trim().is_empty() {
                                     if !cell_text.is_empty() {

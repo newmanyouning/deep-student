@@ -562,7 +562,6 @@ async fn execute_zip_export_with_progress(
     compression_level: u32,
     include_checksums: bool,
 ) {
-    use sha2::Digest;
     use std::fs::File;
     use std::io::Write;
     use std::time::Instant;

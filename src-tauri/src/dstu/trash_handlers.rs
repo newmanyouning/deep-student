@@ -385,7 +385,7 @@ pub async fn dstu_list_trash(
         }
     }
 
-    // 6. 获取已删除的作文会话（Learning Hub 使用 essay_session_* 作为“作文资源”）
+    // 6. 获取已删除的作文会话（Learning Hub 使用 essay_session_* 作为"作文资源"）
     let deleted_sessions = match VfsEssayRepo::list_deleted_sessions(&db, limit + offset, 0) {
         Ok(sessions) => sessions,
         Err(e) => {

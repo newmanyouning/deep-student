@@ -830,7 +830,7 @@ impl ToolExecutor for FetchExecutor {
             }
             Err(e) => {
                 // 发射工具调用错误事件
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
 
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),

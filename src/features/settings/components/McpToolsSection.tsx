@@ -47,12 +47,12 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@
 import { ApiKeyField } from './ApiKeyField';
 import { showGlobalNotification } from '@/components/UnifiedNotification';
 import { CustomScrollArea } from '@/components/custom-scroll-area';
-import { 
 import { settingsApi } from '@/api/settingsApi';
-  PRESET_MCP_SERVERS, 
-  presetToMcpConfig, 
+import {
+  PRESET_MCP_SERVERS,
+  presetToMcpConfig,
   CATEGORY_LABELS,
-  type PresetMcpServer 
+  type PresetMcpServer
 } from '@/mcp/presetMcpServers';
 
 // Types

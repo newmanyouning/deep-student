@@ -578,7 +578,7 @@ impl CanvasToolExecutor {
                     use super::canvas_tools::replace_content;
                     let (new_content, replace_count) =
                         replace_content(&current_content, search, replace, is_regex)
-                            .map_err(ToolError::Execution)?;
+                            .map_err(|e| ToolError::Execution(e.to_string()))?;
 
                     // 写入新内容
                     notes_manager

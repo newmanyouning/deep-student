@@ -1270,7 +1270,7 @@ impl ToolExecutor for PaperSaveExecutor {
                 Ok(result)
             }
             Err(e) => {
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
 
                 log::warn!(
                     "[PaperSave] Tool {} failed: {} ({}ms)",

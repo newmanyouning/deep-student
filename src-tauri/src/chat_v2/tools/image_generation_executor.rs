@@ -105,15 +105,15 @@ impl ImageGenerationExecutor {
         let llm_manager = ctx
             .llm_manager
             .as_ref()
-            .ok_or_else(|| ToolError::Internal(“LLM 管理器不可用，无法读取生图模型配置”.to_string()))?;
+            .ok_or_else(|| ToolError::Internal("LLM 管理器不可用,无法读取生图模型配置".to_string()))?;
         let assignments = llm_manager
             .get_model_assignments()
             .await
-            .map_err(|e| ToolError::Execution(format!(“读取模型分配失败: {}”, e)))?;
+            .map_err(|e| ToolError::Execution(format!("读取模型分配失败: {}", e)))?;
         let configs = llm_manager
             .get_api_configs()
             .await
-            .map_err(|e| ToolError::Execution(format!(“读取 API 配置失败: {}”, e)))?;
+            .map_err(|e| ToolError::Execution(format!("读取 API 配置失败: {}", e)))?;
 
         if let Some(config_id) = assignments
             .image_generation_model_config_id
@@ -124,7 +124,7 @@ impl ImageGenerationExecutor {
                 .iter()
                 .find(|cfg| cfg.id == config_id)
                 .cloned()
-                .ok_or_else(|| ToolError::NotFound(format!(“已选择的生图模型不存在: {}”, config_id)))?;
+                .ok_or_else(|| ToolError::NotFound(format!("已选择的生图模型不存在: {}", config_id)))?;
             Self::validate_model_config(&cfg)?;
             return Ok(ImageGenerationModel {
                 provider: provider_label(&cfg),
@@ -136,7 +136,7 @@ impl ImageGenerationExecutor {
             .iter()
             .find(|cfg| cfg.enabled && is_image_generation_config(cfg))
             .cloned()
-            .ok_or_else(|| ToolError::NotFound(“未配置可用的生图模型，请先在设置中选择”生图模型””.to_string()))?;
+            .ok_or_else(|| ToolError::NotFound("未配置可用的生图模型,请先在设置中选择「生图模型」".to_string()))?;
         Self::validate_model_config(&cfg)?;
         Ok(ImageGenerationModel {
             provider: provider_label(&cfg),
@@ -146,19 +146,19 @@ impl ImageGenerationExecutor {
 
     fn validate_model_config(config: &ApiConfig) -> ToolResult<()> {
         if config.base_url.trim().is_empty() {
-            return Err(ToolError::InvalidArgs(“生图模型缺少 Base URL”.to_string()));
+            return Err(ToolError::InvalidArgs("生图模型缺少 Base URL".to_string()));
         }
         if config.model.trim().is_empty() {
-            return Err(ToolError::InvalidArgs(“生图模型缺少 model 名称”.to_string()));
+            return Err(ToolError::InvalidArgs("生图模型缺少 model 名称".to_string()));
         }
         if config.api_key.trim().is_empty()
-            || config.api_key.trim() == “***”
+            || config.api_key.trim() == "***"
             || config.api_key.trim().chars().all(|c| c == '*')
         {
-            return Err(ToolError::InvalidArgs(“生图模型缺少 API key”.to_string()));
+            return Err(ToolError::InvalidArgs("生图模型缺少 API key".to_string()));
         }
         if !config.enabled {
-            return Err(ToolError::InvalidArgs(“生图模型未启用，或 API key 不可用”.to_string()));
+            return Err(ToolError::InvalidArgs("生图模型未启用,或 API key 不可用".to_string()));
         }
         Ok(())
     }
@@ -227,7 +227,7 @@ impl ImageGenerationExecutor {
             .await
             .map_err(|e| ToolError::Execution(format!("读取生图响应失败: {}", e)))?;
         let value: Value = serde_json::from_str(&body)
-            .map_err(|e| ToolError::Execution(format!("生图响应不是有效 JSON: {}，body={}", e, shorten(&body, 280))))?;
+            .map_err(|e| ToolError::Execution(format!("生图响应不是有效 JSON: {},body={}", e, shorten(&body, 280))))?;
 
         if !status.is_success() {
             return Err(ToolError::Execution(extract_image_api_error(&value)
@@ -315,7 +315,7 @@ impl ImageGenerationExecutor {
         let vfs_db = ctx
             .vfs_db
             .as_ref()
-            .ok_or_else(|| ToolError::Internal("VFS 数据库不可用，无法保存生成图片".to_string()))?;
+            .ok_or_else(|| ToolError::Internal("VFS 数据库不可用,无法保存生成图片".to_string()))?;
         let folder_id = ensure_image_generation_folder(vfs_db)?;
         let file_name = build_image_file_name(&generated.mime_type);
 

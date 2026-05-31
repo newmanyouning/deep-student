@@ -2372,7 +2372,7 @@ impl VfsFolderRepo {
         let canonical_item_type = canonical_folder_item_type(&item.item_type);
         // 位置唯一性：同一个 (item_type, item_id) 在任意时刻只能属于一个 folder_id
         // - 兼容历史迁移中唯一索引缺失/错误导致的重复记录
-        // - 与 get_folder_item_by_item_id_with_conn 的“单行假设”保持一致
+        // - 与 get_folder_item_by_item_id_with_conn 的"单行假设"保持一致
         conn.execute(
             "DELETE FROM folder_items WHERE item_id = ?1 AND item_type = ?2",
             params![item.item_id, canonical_item_type],

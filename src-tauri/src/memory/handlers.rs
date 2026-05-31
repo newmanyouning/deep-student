@@ -558,7 +558,7 @@ pub async fn memory_set_auto_extract_frequency(
         "balanced" => super::config::AutoExtractFrequency::Balanced,
         "aggressive" => super::config::AutoExtractFrequency::Aggressive,
         other => {
-            return Err(format!(
+            return Err(MemoryError::Other(format!(
                 "Invalid auto extract frequency '{}', expected one of: off, balanced, aggressive",
                 other
             ));

@@ -23,6 +23,7 @@
 use rusqlite::Connection;
 use serde_json::Value;
 use std::path::Path;
+use crate::chat_v2::ContentBlock;
 
 use crate::document_parser::DocumentParser;
 use crate::vfs::ocr_utils::parse_ocr_pages_json;

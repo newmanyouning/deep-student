@@ -8,7 +8,7 @@ const ANKI_CONNECT_URL: &str = "http://127.0.0.1:8765";
 
 // -- Error type -----------------------------------------------------------------
 
-#[derive(Debug)]
+#[derive(Debug, serde::Serialize)]
 pub enum AnkiConnectError {
     Request(String),
     Parse(String),

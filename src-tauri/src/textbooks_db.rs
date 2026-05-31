@@ -444,7 +444,7 @@ impl TextbooksDb {
 
     /// 通过 VFS 删除教材（永久删除）
     ///
-    /// 旧教材库入口没有完整的回收站恢复闭环，继续走软删除会让资源进入“几乎不可见”的状态。
+    /// 旧教材库入口没有完整的回收站恢复闭环，继续走软删除会让资源进入"几乎不可见"的状态。
     /// 这里直接复用 VFS 的完整 purge 链，确保同时清理 blob / resources / folder_items。
     pub fn delete_vfs(vfs_db: &VfsDatabase, id: &str) -> Result<bool> {
         match VfsTextbookRepo::purge_textbook_with_folder_item(vfs_db, id) {

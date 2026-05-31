@@ -2380,7 +2380,7 @@ impl MemoryService {
         let note_title = note.title.clone();
 
         VfsNoteRepo::delete_note_with_folder_item(&self.vfs_db, note_id)?;
-        // 先完成主存储删除，再做索引侧清理，避免“笔记还在但向量已删”的半成功状态。
+        // 先完成主存储删除，再做索引侧清理，避免"笔记还在但向量已删"的半成功状态。
         if let Err(e) = self
             .lance_store
             .delete_by_resource("text", &note.resource_id)

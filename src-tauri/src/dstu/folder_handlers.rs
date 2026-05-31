@@ -63,7 +63,7 @@ fn validate_string_input(s: &str, field_name: &str, max_len: usize) -> DstuResul
             "[DSTU::folder_handlers] validate_string_input: {} contains invalid control characters",
             field_name
         );
-        return Err(format!("{} 包含非法字符", field_name));
+        return Err(DstuError::from(format!("{} 包含非法字符", field_name)));
     }
     // HIGH-R002修复: 检测Unicode规范化绕过
     if contains_unicode_bypass_chars(s) {
@@ -71,7 +71,7 @@ fn validate_string_input(s: &str, field_name: &str, max_len: usize) -> DstuResul
             "[DSTU::folder_handlers] validate_string_input: {} contains Unicode bypass characters",
             field_name
         );
-        return Err(format!("{} 包含非法Unicode字符", field_name));
+        return Err(DstuError::from(format!("{} 包含非法Unicode字符", field_name)));
     }
     // 验证路径分隔符（MEDIUM-009修复）
     if s.contains('/') || s.contains('\\') || s.contains("..") {
@@ -79,14 +79,14 @@ fn validate_string_input(s: &str, field_name: &str, max_len: usize) -> DstuResul
             "[DSTU::folder_handlers] validate_string_input: {} contains path separators",
             field_name
         );
-        return Err(format!("{} 不能包含路径分隔符", field_name));
+        return Err(DstuError::from(format!("{} 不能包含路径分隔符", field_name)));
     }
     if s.len() > max_len {
         warn!(
             "[DSTU::folder_handlers] validate_string_input: {} exceeds max length {}",
             field_name, max_len
         );
-        return Err(format!("{} 长度超过限制", field_name));
+        return Err(DstuError::from(format!("{} 长度超过限制", field_name)));
     }
     Ok(())
 }

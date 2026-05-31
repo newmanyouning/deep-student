@@ -353,7 +353,7 @@ impl TemplateDesignerExecutor {
     /// - 键不存在 → Ok(default_val)
     /// - 键存在且是字符串数组 → Ok(parsed)
     /// - 键存在但不是数组或元素不是字符串 → Err
-    fn extract_fields(val: &Value, required: bool) -> ToolResult<Vec<String>> {
+    fn extract_fields(val: &Value, _required: bool) -> ToolResult<Vec<String>> {
         let v = val.get("fields");
         match v {
             None | Some(&Value::Null) => {
@@ -420,7 +420,7 @@ impl TemplateDesignerExecutor {
     /// 从 JSON 中提取 fieldExtractionRules（支持双命名）。
     fn extract_rules(
         val: &Value,
-        required: bool,
+        _required: bool,
     ) -> ToolResult<HashMap<String, FieldExtractionRule>> {
         let v = val
             .get("fieldExtractionRules")

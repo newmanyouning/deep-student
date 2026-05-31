@@ -992,7 +992,7 @@ impl ToolExecutor for MemoryToolExecutor {
                 ))
             }
             Err(e) => {
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
                 Ok(ToolResultInfo::failure(
                     Some(call.id.clone()),
                     Some(ctx.block_id.clone()),

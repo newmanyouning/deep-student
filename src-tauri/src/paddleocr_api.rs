@@ -30,15 +30,17 @@ struct SubmitJobRequest<'a> {
     optional_payload: Option<OcrOptionalPayload>,
 }
 
+fn is_false(b: &bool) -> bool { !*b }
+
 #[derive(Serialize)]
 struct OcrOptionalPayload {
     #[serde(rename = "useDocOrientationClassify")]
     use_doc_orientation_classify: bool,
     #[serde(rename = "useDocUnwarping")]
     use_doc_unwarping: bool,
-    #[serde(rename = "useChartRecognition", skip_serializing_if = "std::ops::Not::not")]
+    #[serde(rename = "useChartRecognition", skip_serializing_if = "is_false")]
     use_chart_recognition: bool,
-    #[serde(rename = "useTextlineOrientation", skip_serializing_if = "std::ops::Not::not")]
+    #[serde(rename = "useTextlineOrientation", skip_serializing_if = "is_false")]
     use_textline_orientation: bool,
 }
 

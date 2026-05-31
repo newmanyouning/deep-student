@@ -196,6 +196,12 @@ impl From<VfsError> for String {
     }
 }
 
+impl From<anyhow::Error> for VfsError {
+    fn from(e: anyhow::Error) -> Self {
+        VfsError::Other(format!("{:#}", e))
+    }
+}
+
 impl From<String> for VfsError {
     fn from(s: String) -> Self {
         VfsError::Other(s)

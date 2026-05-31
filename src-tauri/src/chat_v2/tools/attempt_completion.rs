@@ -191,7 +191,7 @@ impl ToolExecutor for AttemptCompletionExecutor {
         let params = match parse_params(&call.arguments) {
             Ok(p) => p,
             Err(e) => {
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
                 let result = ToolResultInfo {
                     tool_call_id: Some(call.id.clone()),
                     block_id: Some(ctx.block_id.clone()),

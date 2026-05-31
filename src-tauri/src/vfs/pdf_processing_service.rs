@@ -752,7 +752,6 @@ impl PdfProcessingService {
         // ★ P0 架构改造：image 模式必须等到页面压缩完成后才就绪
         let mut ready_modes: Vec<String> = vec![];
         let mut issues: Vec<ProcessingIssue> = Vec::new();
-        let mut issues: Vec<ProcessingIssue> = Vec::new();
         if has_extracted_text {
             ready_modes.push("text".to_string());
         }
@@ -1167,24 +1166,6 @@ impl PdfProcessingService {
         // 原因：发送时不再压缩，必须使用预处理的压缩结果
         let mut ready_modes: Vec<String> = vec![];
         let mut issues: Vec<ProcessingIssue> = Vec::new();
-        // 检查是否已有压缩版本（compressed_blob_hash 不为空且 blob 存在）
-        let has_compressed: bool = conn
-            .query_row(
-                "SELECT compressed_blob_hash FROM files WHERE id = ?1",
-                params![file_id],
-                |row| row.get::<_, Option<String>>(0),
-            )
-            .optional()
-            .unwrap_or(None)
-            .flatten()
-            .map(|h| {
-                !h.trim().is_empty()
-                    && VfsBlobRepo::get_blob_path_with_conn(&conn, &blobs_dir, &h)
-                        .ok()
-                        .flatten()
-                        .is_some()
-            })
-            .unwrap_or(false);
 
         // 图片上传后原图已存在 resources 表，image 模式立即就绪
         // 压缩是优化（减小 base64 体积），不应阻塞用户发送

@@ -1358,7 +1358,7 @@ pub async fn data_governance_run_sync(
                 conflicts_detected: 0,
                 duration_ms,
                 device_id,
-                error_message: Some(e),
+                error_message: Some(e.to_string()),
                 skipped_changes: 0,
             })
         }
@@ -1815,7 +1815,7 @@ pub async fn data_governance_run_sync_with_progress(
                 direction
             );
             emitter.emit_failed(&error_msg).await;
-            return Err(error_msg);
+            return Err(DataGovernanceError::Sync(error_msg));
         }
     };
 
@@ -1831,7 +1831,7 @@ pub async fn data_governance_run_sync_with_progress(
                 s
             );
             emitter.emit_failed(&error_msg).await;
-            return Err(error_msg);
+            return Err(DataGovernanceError::Sync(error_msg));
         }
     };
 
@@ -1841,7 +1841,7 @@ pub async fn data_governance_run_sync_with_progress(
         None => {
             let error_msg = "未提供云存储配置。请在调用前配置云存储。".to_string();
             emitter.emit_failed(&error_msg).await;
-            return Err(error_msg);
+            return Err(DataGovernanceError::Sync(error_msg));
         }
     };
 
@@ -1888,7 +1888,7 @@ pub async fn data_governance_run_sync_with_progress(
         Ok(Err(_)) => {
             let error_msg = "获取全局数据治理锁失败".to_string();
             emitter.emit_failed(&error_msg).await;
-            return Err(error_msg);
+            return Err(DataGovernanceError::Sync(error_msg));
         }
         Err(_) => {
             let error_msg = format!(
@@ -1896,7 +1896,7 @@ pub async fn data_governance_run_sync_with_progress(
                 SYNC_LOCK_TIMEOUT_SECS
             );
             emitter.emit_failed(&error_msg).await;
-            return Err(error_msg);
+            return Err(DataGovernanceError::Sync(error_msg));
         }
     };
 
@@ -1909,14 +1909,14 @@ pub async fn data_governance_run_sync_with_progress(
         Err(e) => {
             let error_msg = format!("创建云存储失败: {}", e);
             emitter.emit_failed(&error_msg).await;
-            return Err(error_msg);
+            return Err(DataGovernanceError::Sync(error_msg));
         }
     };
 
     let active_dir = match get_active_data_dir(&app) {
         Ok(dir) => dir,
         Err(e) => {
-            emitter.emit_failed(&e).await;
+            emitter.emit_failed(e.to_string()).await;
             return Err(e);
         }
     };
@@ -1976,7 +1976,7 @@ pub async fn data_governance_run_sync_with_progress(
             Err(e) => {
                 let error_msg = format!("打开数据库 {} 失败: {}", db_id.as_str(), e);
                 emitter.emit_failed(&error_msg).await;
-                return Err(error_msg);
+                return Err(DataGovernanceError::Sync(error_msg));
             }
         };
 
@@ -2011,7 +2011,7 @@ pub async fn data_governance_run_sync_with_progress(
                         let error_msg =
                             format!("补全数据库 {} 变更数据失败: {}", db_id.as_str(), e);
                         emitter.emit_failed(&error_msg).await;
-                        return Err(error_msg);
+                        return Err(DataGovernanceError::Sync(error_msg));
                     }
                 }
             }
@@ -2022,7 +2022,7 @@ pub async fn data_governance_run_sync_with_progress(
     if !db_found {
         let error_msg = "未找到可用的数据库。请先初始化数据库。".to_string();
         emitter.emit_failed(&error_msg).await;
-        return Err(error_msg);
+        return Err(DataGovernanceError::Sync(error_msg));
     }
 
     // 构建 PendingChanges 用于兼容 execute_upload 接口
@@ -2159,7 +2159,7 @@ pub async fn data_governance_run_sync_with_progress(
             })
         }
         Err(e) => {
-            emitter.emit_failed(&e).await;
+            emitter.emit_failed(e.to_string()).await;
             error!("[data_governance] 带进度同步失败: {}", e);
             #[cfg(feature = "data_governance")]
             {
@@ -2194,7 +2194,7 @@ pub async fn data_governance_run_sync_with_progress(
                 conflicts_detected: 0,
                 duration_ms,
                 device_id,
-                error_message: Some(e),
+                error_message: Some(e.to_string()),
                 skipped_changes: 0,
             })
         }
@@ -2220,7 +2220,7 @@ async fn execute_upload_with_progress_v2(
     let total = enriched.len() as u64;
 
     if enriched.is_empty() {
-        // 兜底：即使当前无 pending，也尝试刷新云端 manifest，修复“上次仅变更上传成功”的可见性缺口
+        // 兜底：即使当前无 pending，也尝试刷新云端 manifest，修复"上次仅变更上传成功"的可见性缺口
         manager
             .upload_manifest(storage, local_manifest)
             .await
@@ -2786,7 +2786,7 @@ pub async fn data_governance_mark_blob_deleted(
     manager
         .mark_blob_deleted(storage.as_ref(), &hash, relative_path, size)
         .await
-        .map_err(|e| format!("标记 blob 删除失败: {}", e))
+        .map_err(|e| DataGovernanceError::Backup(format!("marked blob delete failed: {}", e)))
 }
 
 /// 标记一个资产文件已被本地删除。
@@ -2814,7 +2814,7 @@ pub async fn data_governance_mark_asset_deleted(
     manager
         .mark_asset_deleted(storage.as_ref(), &key, size)
         .await
-        .map_err(|e| format!("标记资产删除失败: {}", e))
+        .map_err(|e| DataGovernanceError::Backup(format!("marked asset delete failed: {}", e)))
 }
 
 // ==================== __sync_conflicts 查询与解决 ====================

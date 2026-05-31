@@ -243,7 +243,7 @@ impl ToolExecutor for KnowledgeExecutor {
                 log::error!("[KnowledgeExecutor] Tool {} failed: {}", tool_name, e);
 
                 // 🔧 修复：发射工具调用错误事件
-                ctx.emit_tool_call_error(&e);
+                ctx.emit_tool_call_error(&e.to_string());
 
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),

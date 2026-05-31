@@ -2,7 +2,6 @@
 
 use std::path::PathBuf;
 use std::time::Instant;
-use tauri::Manager;
 use tracing::{error, info, warn};
 
 use super::backup::{AssetBackupConfig, AssetType, AssetTypeStats, BackupManager};

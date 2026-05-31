@@ -1184,7 +1184,7 @@ impl ToolExecutor for SessionToolExecutor {
                 Ok(tool_result)
             }
             Err(error) => {
-                ctx.emit_tool_call_error(&error);
+                ctx.emit_tool_call_error(&error.to_string());
 
                 log::warn!("{} Tool {} failed: {}", LOG_PREFIX, call.name, error);
 

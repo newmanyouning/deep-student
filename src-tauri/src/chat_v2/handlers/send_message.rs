@@ -456,7 +456,7 @@ pub async fn chat_v2_send_message(
 pub async fn chat_v2_cancel_stream(
     session_id: String,
     message_id: String,
-    window: Window,
+    _window: Window,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
 ) -> Result<(), String> {
     log::info!(

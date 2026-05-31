@@ -1104,16 +1104,17 @@ impl BuiltinResourceExecutor {
         let start_time = Instant::now();
 
         // ★ L-020 修复：获取资源元数据，区分 "未找到" 与 "查询出错"，不再静默吞掉错误
-        let (metadata, metadata_error) = if include_metadata {
+        let (metadata, metadata_error): (Option<Value>, Option<String>) = if include_metadata {
             match self.get_resource_metadata(vfs_db, resolved.resource_type, &resolved.read_id) {
                 Ok(meta) => (meta, None),
                 Err(e) => {
+                    let err_str = e.to_string();
                     log::warn!(
                         "[BuiltinResourceExecutor] get metadata failed for {}: {}",
                         resolved.read_id,
-                        e
+                        err_str
                     );
-                    (None, Some(e))
+                    (None, Some(err_str))
                 }
             }
         } else {
@@ -3274,11 +3275,12 @@ impl ToolExecutor for BuiltinResourceExecutor {
                 Ok(result)
             }
             Err(e) => {
-                // 🔧 修复：发射工具调用错误事件
+                // Fix: emit tool call error event
+                let err_msg = e.to_string();
                 ctx.emitter.emit_error_with_meta(
                     event_types::TOOL_CALL,
                     &ctx.block_id,
-                    &e,
+                    &err_msg,
                     ctx.variant_id.as_deref(),
                     ctx.skill_state_version,
                     ctx.round_id.as_deref(),
@@ -3289,7 +3291,7 @@ impl ToolExecutor for BuiltinResourceExecutor {
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    e,
+                    err_msg,
                     duration,
                 );
 

@@ -91,7 +91,10 @@ pub use compaction::{
     usable_tokens, COMPACTION_BUFFER, DEFAULT_CONTEXT_WINDOW, DEFAULT_MAX_OUTPUT, HEAD_USER_TURNS,
     MAX_TAIL_TOKENS, MIN_TAIL_TOKENS, TAIL_PRESERVE_RATIO, TRIGGER_RATIO,
 };
+pub use constants::*;
+pub use helpers::*;
 pub use llm_adapter::{parse_api_usage, ChatV2LLMAdapter};
+pub use variant_adapter::*;
 
 // ============================================================
 // 流水线主结构

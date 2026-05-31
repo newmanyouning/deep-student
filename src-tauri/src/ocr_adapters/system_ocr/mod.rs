@@ -40,7 +40,7 @@ pub async fn perform_system_ocr(image_data: &[u8]) -> Result<String, OcrError> {
 }
 
 /// 同步执行系统 OCR（平台分发）
-fn perform_system_ocr_blocking(image_data: &[u8]) -> Result<String, OcrError> {
+fn perform_system_ocr_blocking(_image_data: &[u8]) -> Result<String, OcrError> {
     #[cfg(target_os = "macos")]
     {
         return macos::recognize_text_blocking(image_data);

@@ -713,7 +713,7 @@ impl BackupManager {
     ///
     /// 关键保证：
     /// - `backup_id` **必须** 与目录名一致（否则删除/验证/恢复会失效）
-    /// - 使用 `create_dir` 而不是 `create_dir_all`，避免“目录已存在但继续写入”导致的覆盖风险
+    /// - 使用 `create_dir` 而不是 `create_dir_all`，避免"目录已存在但继续写入"导致的覆盖风险
     fn create_unique_backup_subdir(
         &self,
         suffix: Option<&str>,
@@ -1878,7 +1878,7 @@ impl BackupManager {
             use crate::data_governance::migration::ALL_MIGRATION_SETS;
             use std::collections::HashSet;
 
-            // fail-close：拒绝包含未知数据库的备份（避免“恢复成功但数据缺失”）
+            // fail-close：拒绝包含未知数据库的备份（避免"恢复成功但数据缺失"）
             //
             // 过去的实现会把未知数据库当作 max_known_version=0，
             // 进而跳过版本上限检查，并在 restore() 中静默跳过未知数据库文件。

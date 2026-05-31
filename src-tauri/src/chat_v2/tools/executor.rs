@@ -70,7 +70,7 @@ impl Default for ToolSensitivity {
 ///
 /// 替换原来 `Result<_, String>` 中的裸字符串错误。
 /// Display 实现生成面向 LLM 的中文错误消息，便于模型理解和恢复。
-#[derive(Debug)]
+#[derive(Debug, Clone, serde::Serialize)]
 pub enum ToolError {
     /// 参数验证错误
     InvalidArgs(String),

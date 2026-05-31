@@ -1206,7 +1206,7 @@ impl Database {
 
         // 兼容性修复：部分环境在重命名 document_tasks -> document_tasks_old 过程中，
         // anki_cards 表的外键可能被SQLite随同更新为引用 document_tasks_old，
-        // 随后旧表被删除会导致插入 anki_cards 时触发 “no such table: main.document_tasks_old”。
+        // 随后旧表被删除会导致插入 anki_cards 时触发 "no such table: main.document_tasks_old"。
         // 这里幂等检查 anki_cards 定义，若包含 document_tasks_old 则重建以修复外键。
         {
             let anki_cards_needs_fix: bool = conn
@@ -3855,7 +3855,7 @@ impl Database {
         Ok(source)
     }
 
-    /// 原子保存一个文档任务及其卡片，避免出现“任务已完成但卡片部分写入”的不一致状态
+    /// 原子保存一个文档任务及其卡片，避免出现"任务已完成但卡片部分写入"的不一致状态
     pub fn save_document_task_with_cards_atomic(
         &self,
         task: &DocumentTask,

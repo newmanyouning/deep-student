@@ -1,7 +1,7 @@
 # 项目重构进度
 
-> 最后更新: 2026-05-31 00:13 CST | PaddleOCR 全栈集成 + URL模式补充完成 ✅
-> 当前阶段: 静态修改 — 全部完成, 编译前检查 ~95%
+> 最后更新: 2026-05-31 | PaddleOCR 全栈集成 + URL模式补充完成 ✅
+> 当前阶段: 语法扫描 — 进行中 | 详细计划: SYNTAX_SCAN_PLAN.md
 
 ## 0. 重构协议
 
@@ -102,9 +102,68 @@ String → VfsError, DstuError, DataGovernanceError, EssayGradingError, MemoryEr
 
 ## 6. 下一步
 
+- **语法扫描**: 分批扫描全部 ~1,972 源文件，修复语法错误 (~44 批次)
 - **编译验证**: 统一编译 (cargo check + npm run build)
 - **前端验证**: 检查 TypeScript 类型与后端命令一致性
-- **编译验证**: 统一编译 (cargo check + npm run build)
+
+---
+
+## 7. 语法扫描进度
+
+> 详细批次定义: SYNTAX_SCAN_PLAN.md
+> 每批次完成后更新此表
+
+### 第一阶段: Rust 源文件 (397 files, ~340K lines)
+
+| 批次 | 文件数 | 状态 | 发现问题 | 完成时间 |
+|------|--------|------|----------|----------|
+| R1: 根级小文件 + adapters | 20 | ✅ 复核通过 | 1 (database.debug.rs) | 2026-05-31 |
+| R2: 核心入口 (lib/commands/models) | 3 | ✅ 复核通过 | 1 (lib.rs) | 2026-05-31 |
+| R3: 内部服务 Part 1 | 11 | ✅ 完成 | 0 | 2026-05-31 |
+| R4: 内部服务 Part 2 | 14 | ✅ 完成 | 0 | 2026-05-31 |
+| R5: 更多服务 + 工具 | 20 | ✅ 完成 | 0 | 2026-05-31 |
+| R6: VFS 核心 | 14 | ✅ 完成 | 19 (vfs/handlers.rs: VfsError::Other 缺闭括号) | 2026-05-31 |
+| R7: VFS repos Part 1 | 10 | ✅ 完成 | 0 | 2026-05-31 |
+| R8: VFS repos Part 2 + 其他 | 17 | ✅ 完成 | 0 | 2026-05-31 |
+| R9: Chat V2 核心 | 14 | ✅ 完成 | 0 | 2026-05-31 |
+| R10: Chat V2 pipeline + handlers | 20 | ✅ 完成 | 0 | 2026-05-31 |
+| R11: Chat V2 tools Part 1 | 16 | ✅ 完成 | 0 | 2026-05-31 |
+| R12: Chat V2 tools Part 2 + workspace | 19 | ✅ 完成 | 0 | 2026-05-31 |
+| R13: DSTU 模块 | 23 | ✅ 完成 | 0 | 2026-05-31 |
+| R14: Data Governance | 28 | ✅ 完成 | 0 | 2026-05-31 |
+| R15: LLM Manager | 17 | ✅ 完成 | 0 | 2026-05-31 |
+| R16: LLM Usage + Memory + Essay + QBank | 20 | ✅ 完成 | 0 | 2026-05-31 |
+| R17: Database + Providers + Tools | 8 | ✅ 完成 | 0 | 2026-05-31 |
+| R18: Multimodal + OCR + Translation | 17 | ✅ 完成 | 0 | 2026-05-31 |
+| R19: CMD + Cloud + Crypto + MCP | 22 | ✅ 完成 | 0 | 2026-05-31 |
+| R20: Utils + 剩余 | 15 | ✅ 完成 | 0 | 2026-05-31 |
+
+### 第二阶段: TypeScript/TSX 源文件 (~1,575 files)
+
+| 批次 | 文件数 | 状态 | 发现问题 | 完成时间 |
+|------|--------|------|----------|----------|
+| T1: 入口 + API + Config | 25 | ⏳ 待开始 | — | — |
+| T2: Stores | 14 | ⏳ 待开始 | — | — |
+| T3: Hooks Part 1 | 20 | ⏳ 待开始 | — | — |
+| T4: Hooks Part 2 + Lib + Services | 25 | ⏳ 待开始 | — | — |
+| T5: Types + Utils Part 1 | 25 | ⏳ 待开始 | — | — |
+| T6: Utils Part 2 | 30 | ⏳ 待开始 | — | — |
+| T7: MCP + Voice + Debug Panel | 40 | ⏳ 待开始 | — | — |
+| T8: DSTU + Essay + Components shared | 40 | ⏳ 待开始 | — | — |
+| T9-T20: Features 按子模块 | ~760 | ⏳ 待开始 | — | — |
+| T21: Study UI + 配置 | 120 | ⏳ 待开始 | — | — |
+
+### 第三阶段: 交叉检查
+
+| 批次 | 内容 | 状态 | 发现问题 | 完成时间 |
+|------|------|------|----------|----------|
+| C1: Rust mod vs 文件系统 | — | ⏳ 待开始 | — | — |
+| C2: TS import vs 文件系统 | — | ⏳ 待开始 | — | — |
+| C3: Tauri command 注册 vs 前端 | — | ⏳ 待开始 | — | — |
+
+### 整体进度: 20/44 批次 (45.5%) — Rust 阶段完成 ✅
+
+> ⚠️ CI 反馈补充修复 (2026-05-31): 24 个 Rust 文件中发现全角引号（U+201C/U+201D "like this"）替代 ASCII 引号，Rust 编译器不识别。已全局替换修复。另 2 个文件含全角单引号（U+2018/U+2019）也已修复。
 
 ---
 

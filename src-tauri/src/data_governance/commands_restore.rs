@@ -1,7 +1,7 @@
 // ==================== 恢复相关命令 ====================
 
 use std::path::PathBuf;
-use tauri::{Manager, State};
+use tauri::State;
 use tracing::{debug, error, info, warn};
 
 #[cfg(feature = "data_governance")]

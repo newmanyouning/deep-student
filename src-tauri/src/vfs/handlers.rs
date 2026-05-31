@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use rusqlite::{Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager as _, State};
 
 use crate::utils::unicode::sanitize_unicode;
 use crate::vfs::attachment_config::AttachmentConfig;
@@ -1536,7 +1536,7 @@ pub async fn vfs_set_attachment_root_folder(
     use crate::vfs::repos::VfsFolderRepo;
 
     if !VfsFolderRepo::folder_exists(&vfs_db, &folder_id)? {
-        return Err(format!("Folder not found: {}", folder_id));
+        return Err(VfsError::Other(format!("Folder not found: {}", folder_id)));
     }
 
     let config = AttachmentConfig::new(vfs_db.inner().clone());
@@ -1604,7 +1604,7 @@ pub async fn vfs_get_attachment_content(
             "[VFS::handlers] Invalid attachment ID format: {}",
             attachment_id
         );
-        return Err(format!("Invalid attachment ID format: {}", attachment_id));
+        return Err(VfsError::Other(format!("Invalid attachment ID format: {}", attachment_id)));
     }
 
     // ★ img_ 前缀：DOCX VLM 直提路径产生的图片 ID，blob hash 存在 questions.images_json 中
@@ -1768,7 +1768,7 @@ pub async fn vfs_get_attachment(
     log::debug!("[VFS::handlers] vfs_get_attachment: id={}", attachment_id);
 
     if !attachment_id.starts_with("att_") && !attachment_id.starts_with("file_") {
-        return Err(format!("Invalid attachment ID format: {}", attachment_id));
+        return Err(VfsError::Other(format!("Invalid attachment ID format: {}", attachment_id)));
     }
 
     Ok(VfsAttachmentRepo::get_by_id(&vfs_db, &attachment_id)?)
@@ -1789,7 +1789,7 @@ pub async fn vfs_delete_attachment(
     );
 
     if !attachment_id.starts_with("att_") {
-        return Err(format!("Invalid attachment ID format: {}", attachment_id));
+        return Err(VfsError::Other(format!("Invalid attachment ID format: {}", attachment_id)));
     }
 
     Ok(VfsAttachmentRepo::delete_attachment(&vfs_db, &attachment_id)?)
@@ -2206,7 +2206,7 @@ pub async fn vfs_upload_file(
                     );
                 }
             }
-            return Err(e.to_string());
+            return Err(VfsError::Other(e.to_string()));
         }
     };
 
@@ -2390,7 +2390,7 @@ pub async fn vfs_get_file(
     use crate::vfs::repos::VfsFileRepo;
 
     if !file_id.starts_with("file_") && !file_id.starts_with("tb_") {
-        return Err(format!("Invalid file ID format: {}", file_id));
+        return Err(VfsError::Other(format!("Invalid file ID format: {}", file_id)));
     }
 
     Ok(VfsFileRepo::get_file(&vfs_db, &file_id)?)
@@ -2427,7 +2427,7 @@ pub async fn vfs_delete_file(
     use crate::vfs::repos::VfsFileRepo;
 
     if !file_id.starts_with("file_") {
-        return Err(format!("Invalid file ID format: {}", file_id));
+        return Err(VfsError::Other(format!("Invalid file ID format: {}", file_id)));
     }
 
     let index_service = VfsIndexService::new(Arc::clone(&vfs_db));
@@ -2458,7 +2458,7 @@ pub async fn vfs_get_file_content(
 
     // 支持 file_ 与 tb_（教材）
     if !file_id.starts_with("file_") && !file_id.starts_with("tb_") {
-        return Err(format!("Invalid file ID format: {}", file_id));
+        return Err(VfsError::Other(format!("Invalid file ID format: {}", file_id)));
     }
 
     let conn = vfs_db.get_conn_safe()?;
@@ -2769,7 +2769,7 @@ pub async fn vfs_search(
     );
 
     if params.query.trim().is_empty() {
-        return Err("Query cannot be empty".to_string());
+        return Err(VfsError::Other("Query cannot be empty".to_string()));
     }
 
     let search_service = VfsSearchService::new(Arc::clone(&vfs_db));
@@ -2789,7 +2789,7 @@ pub async fn vfs_reindex_resource(
     log::info!("[VFS::handlers] vfs_reindex_resource: id={}", resource_id);
 
     if !resource_id.starts_with("res_") {
-        return Err(format!("Invalid resource ID format: {}", resource_id));
+        return Err(VfsError::Other(format!("Invalid resource ID format: {}", resource_id)));
     }
 
     // ★ 2026-02 修复：并发防护 - 检查资源是否正在索引中，避免重复执行
@@ -2807,7 +2807,7 @@ pub async fn vfs_reindex_resource(
                 "[VFS::handlers] vfs_reindex_resource: resource {} is already indexing, skipping",
                 resource_id
             );
-            return Err("资源正在索引中，请等待完成后再试".to_string());
+            return Err(VfsError::Other("资源正在索引中，请等待完成后再试".to_string()));
         }
     }
 
@@ -3010,7 +3010,7 @@ pub async fn vfs_assign_dimension_model(
     let conn = vfs_db.get_conn()?;
     let existing = crate::vfs::repos::embedding_dim_repo::get_by_key(&conn, dimension, &modality)?;
     if existing.is_none() {
-        return Err(format!("维度 {}:{} 不存在", dimension, modality));
+        return Err(VfsError::Other(format!("维度 {}:{} 不存在", dimension, modality)));
     }
     crate::vfs::repos::embedding_dim_repo::register_with_model(
         &conn,
@@ -3428,7 +3428,7 @@ pub async fn vfs_batch_index_pending(
             for resource_id in &pending {
                 let _ = VfsIndexStateRepo::mark_pending(&vfs_db, resource_id);
             }
-            return Err(e.to_string());
+            return Err(VfsError::Other(e.to_string()));
         }
     };
 
@@ -4102,7 +4102,7 @@ pub async fn vfs_get_all_index_status(
                 "[VFS::handlers] vfs_get_all_index_status: query error: {}",
                 e
             );
-            return Err(e.to_string());
+            return Err(VfsError::Other(e.to_string()));
         }
     };
 
@@ -4363,7 +4363,7 @@ pub async fn vfs_rag_search(
 
     // 验证查询
     if input.query.trim().is_empty() {
-        return Err("查询文本不能为空".to_string());
+        return Err(VfsError::Other("查询文本不能为空".to_string()));
     }
 
     let lance_store = Arc::clone(lance_store.inner());
@@ -4378,7 +4378,7 @@ pub async fn vfs_rag_search(
         "" | "text" => MODALITY_TEXT.to_string(),
         "multimodal" | "mm" => crate::vfs::repos::MODALITY_MULTIMODAL.to_string(),
         _ => {
-            return Err("modality 仅支持 'text' 或 'multimodal'".to_string());
+            return Err(VfsError::Other("modality 仅支持 'text' 或 'multimodal'".to_string()));
         }
     };
 
@@ -4429,7 +4429,7 @@ pub async fn vfs_rag_search(
 #[tauri::command]
 pub async fn vfs_get_lance_stats(
     modality: Option<String>,
-    vfs_db: State<'_, Arc<VfsDatabase>>,
+    _vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
 ) -> VfsResult<Vec<(String, usize)>> {
     use crate::vfs::repos::MODALITY_TEXT;
@@ -4447,7 +4447,7 @@ pub async fn vfs_get_lance_stats(
 #[tauri::command]
 pub async fn vfs_optimize_lance(
     modality: Option<String>,
-    vfs_db: State<'_, Arc<VfsDatabase>>,
+    _vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
 ) -> VfsResult<usize> {
     use crate::vfs::repos::MODALITY_TEXT;
@@ -5697,7 +5697,7 @@ pub async fn vfs_multimodal_index_resource(
 #[tauri::command]
 pub async fn vfs_diagnose_lance_schema(
     modality: Option<String>,
-    vfs_db: State<'_, Arc<VfsDatabase>>,
+    _vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
 ) -> VfsResult<Vec<crate::vfs::lance_store::LanceTableDiagnostic>> {
     use crate::vfs::repos::MODALITY_TEXT;
@@ -6559,7 +6559,7 @@ pub async fn vfs_download_paper(
 
     // 安全检查
     if !params.url.starts_with("https://") {
-        return Err("Only HTTPS URLs are allowed".to_string());
+        return Err(VfsError::Other("Only HTTPS URLs are allowed".to_string()));
     }
 
     // 下载 PDF
@@ -6576,7 +6576,7 @@ pub async fn vfs_download_paper(
         .map_err(|e| format!("Download failed: {}", e))?;
 
     if !response.status().is_success() {
-        return Err(format!("HTTP {}", response.status().as_u16()));
+        return Err(VfsError::Other(format!("HTTP {}", response.status().as_u16())));
     }
 
     let pdf_bytes = response
@@ -6587,7 +6587,7 @@ pub async fn vfs_download_paper(
 
     // PDF 签名验证
     if pdf_bytes.len() < 4 || &pdf_bytes[..4] != b"%PDF" {
-        return Err("Downloaded file is not a valid PDF".to_string());
+        return Err(VfsError::Other("Downloaded file is not a valid PDF".to_string()));
     }
 
     // SHA256 去重

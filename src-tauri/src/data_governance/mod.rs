@@ -179,6 +179,30 @@ impl From<crate::vfs::error::VfsError> for DataGovernanceError {
     }
 }
 
+impl From<tokio::sync::AcquireError> for DataGovernanceError {
+    fn from(e: tokio::sync::AcquireError) -> Self {
+        DataGovernanceError::Backup(format!("Global limiter acquire failed: {}", e))
+    }
+}
+
+impl From<backup::BackupError> for DataGovernanceError {
+    fn from(e: backup::BackupError) -> Self {
+        DataGovernanceError::Backup(e.to_string())
+    }
+}
+
+impl From<sync::SyncError> for DataGovernanceError {
+    fn from(e: sync::SyncError) -> Self {
+        DataGovernanceError::Sync(e.to_string())
+    }
+}
+
+impl From<&DataGovernanceError> for String {
+    fn from(e: &DataGovernanceError) -> Self {
+        e.to_string()
+    }
+}
+
 impl From<DataGovernanceError> for String {
     fn from(e: DataGovernanceError) -> Self {
         let code = match &e {
@@ -194,7 +218,7 @@ impl From<DataGovernanceError> for String {
 
 /// 启动期数据治理初始化失败时，判断是否应强制进入维护模式。
 ///
-/// Schema fingerprint drift 说明“当前物理 schema 与已记录基线不一致”，
+/// Schema fingerprint drift 说明"当前物理 schema 与已记录基线不一致"，
 /// 但在已完成迁移且运行时可降级的情况下，不应阻断整站启动。
 pub fn should_force_maintenance_mode_on_init_failure(err: &DataGovernanceError) -> bool {
     match err {

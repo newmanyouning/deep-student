@@ -10,8 +10,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import i18n from '@/i18n';
-import {
 import { settingsApi } from '@/api/settingsApi';
+import {
   ATTACHMENT_IMAGE_TYPES,
   ATTACHMENT_DOCUMENT_TYPES,
   ATTACHMENT_MAX_SIZE,

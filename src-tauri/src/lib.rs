@@ -217,7 +217,7 @@ pub fn run() {
 
         // hypothesi 的桥接插件使用 WebSocket 通信（默认端口 9223）
         // MCP 服务器会自动连接到这个端口
-        builder = builder.plugin(tauri_plugin_mcp_bridge::init());
+        let builder = builder.plugin(tauri_plugin_mcp_bridge::init());
 
         info!("🔧 [MCP Debug] tauri-plugin-mcp-bridge initialized successfully");
     }

@@ -25,7 +25,7 @@ pub struct EssayTextStats {
 
 const CN_PUNCTUATION: &[char] = &[
     '，', '。', '！', '？', '；', '：', '、', '（', '）', '【', '】', '《', '》', '〈', '〉', '「',
-    '」', '『', '』', '〔', '〕', '“', '”', '‘', '’', '—', '–', '…', '．', '·',
+    '」', '『', '』', '〔', '〕', '"', '"', ''', ''', '—', '–', '…', '．', '·',
 ];
 
 fn is_ascii_punctuation(c: char) -> bool {
@@ -67,7 +67,7 @@ fn is_ascii_punctuation(c: char) -> bool {
 
 pub fn calculate_text_stats(text: &str) -> EssayTextStats {
     let han_re = Regex::new(r"\p{Han}").expect("valid han regex");
-    let en_word_re = Regex::new(r"[A-Za-z]+(?:['’-][A-Za-z]+)*").expect("valid english word regex");
+    let en_word_re = Regex::new(r"[A-Za-z]+(?:[''-][A-Za-z]+)*").expect("valid english word regex");
     let punct_re = Regex::new(r"\p{P}").expect("valid punctuation regex");
     let paragraph_re = Regex::new(r"\r?\n\s*\r?\n").expect("valid paragraph split regex");
 

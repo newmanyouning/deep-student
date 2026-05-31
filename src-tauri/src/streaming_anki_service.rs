@@ -239,7 +239,7 @@ impl StreamingAnkiService {
                 }
             };
 
-        // 全局限额分配下，额度为 0 的分段直接跳过，避免“0 表示无限制”带来额外卡片。
+        // 全局限额分配下，额度为 0 的分段直接跳过，避免"0 表示无限制"带来额外卡片。
         if options.max_cards_total.unwrap_or(0) > 0 && options.max_cards_per_mistake <= 0 {
             self.update_task_status(
                 &task_id,
@@ -448,7 +448,7 @@ impl StreamingAnkiService {
                 }
                 template_info.push_str("template_id 白名单（只能从下列值中选择）：\n");
                 template_info.push_str(&format!("[{}]\n", whitelist.join(", ")));
-                template_info.push_str("名称到ID映射（若你想用某模板“名称”，必须写成对应ID）：\n");
+                template_info.push_str("名称到ID映射（若你想用某模板"名称"，必须写成对应ID）：\n");
                 template_info.push_str(&id_name_pairs.join("\n"));
                 template_info.push('\n');
                 system_sections.push(template_info);
@@ -1243,7 +1243,7 @@ impl StreamingAnkiService {
     /// 目的：
     /// - 去除外围Markdown代码块围栏与BOM
     /// - 尽量截取出最外层的JSON对象文本
-    /// - 不再做任何“字符白名单”过滤，避免误删日语假名、韩文、拉丁扩展等
+    /// - 不再做任何"字符白名单"过滤，避免误删日语假名、韩文、拉丁扩展等
     fn clean_json_string(&self, json_str: &str) -> String {
         let mut s = json_str.trim();
 
@@ -2181,7 +2181,7 @@ impl StreamingAnkiService {
         }
     }
 
-    /// 基于当前文档内的失败/截断任务与错误卡片，构建一个“统一重试”任务并插入到该文档中。
+    /// 基于当前文档内的失败/截断任务与错误卡片，构建一个"统一重试"任务并插入到该文档中。
     /// 返回 Some(DocumentTask) 表示已构建重试任务；返回 None 表示无需重试。
     pub async fn build_retry_task_for_document(
         &self,
@@ -2204,7 +2204,7 @@ impl StreamingAnkiService {
             return Ok(None);
         }
 
-        // 读取该文档下的“错误卡片”
+        // 读取该文档下的"错误卡片"
         let mut error_cards: Vec<crate::models::AnkiCard> = Vec::new();
         if let Ok(cards) = self.db.get_cards_for_document(document_id) {
             for c in cards.into_iter() {
@@ -2228,10 +2228,10 @@ impl StreamingAnkiService {
         };
         let new_index: u32 = tasks.iter().map(|t| t.segment_index).max().unwrap_or(0) + 1;
 
-        // 构建“错误卡修复”任务内容：直接携带 error_content，逐段修复
+        // 构建"错误卡修复"任务内容：直接携带 error_content，逐段修复
         let mut aggregated = String::new();
         aggregated.push_str(
-            "你将收到若干条‘错误卡片的原始输出片段’（例如被截断/不完整/被安全策略阻断的内容）。\n",
+            "你将收到若干条'错误卡片的原始输出片段'（例如被截断/不完整/被安全策略阻断的内容）。\n",
         );
         aggregated.push_str("请逐条修复并补全为有效的 Anki 卡片JSON。\n");
         aggregated.push_str("严格要求：\n- 对每条 ==FIX== 段，输出1个或多个完整卡片JSON\n- 每个卡片JSON输出后紧跟分隔符 <<<ANKI_CARD_JSON_END>>>\n- 不输出任何额外解释或Markdown，只输出JSON与分隔符\n\n");
