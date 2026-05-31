@@ -772,10 +772,10 @@ pub async fn dstu_create(
         }
         "textbooks" => {
             // 教材创建需要文件上传，这里仅支持元数据创建
-            return Err(
+            return Err(DstuError::from(
                 "Textbook creation requires file upload, use vfs_create_textbook instead"
                     .to_string(),
-            );
+            ));
         }
         "translations" => {
             // 从 metadata 提取翻译参数
@@ -3069,7 +3069,7 @@ pub async fn dstu_get_content(
         }
     };
 
-    get_content_by_type(&vfs_db, &resource_type, &id)
+    get_content_by_type(&vfs_db, &resource_type, &id).map_err(DstuError::from)
 }
 
 /// 获取题目集识别内容（支持多模态模式）
@@ -3099,6 +3099,7 @@ pub async fn dstu_get_exam_content(
     // 调用 exam_formatter 进行格式化
     super::exam_formatter::format_exam_for_context(&vfs_db.inner().clone(), &exam_id, is_multimodal)
         .await
+        .map_err(DstuError::from)
 }
 
 /// 设置资源元数据
@@ -3370,9 +3371,9 @@ pub async fn dstu_set_metadata(
                     && grade_level.is_none()
                     && custom_prompt.is_none()
                 {
-                    return Err(
+                    return Err(DstuError::from(
                         "Essay session metadata update requires at least one field".to_string()
-                    );
+                    ));
                 }
 
                 if let Err(e) = VfsEssayRepo::update_session(
@@ -6023,7 +6024,7 @@ pub async fn dstu_batch_move(
                     );
                     failures.push(FailedMoveItem {
                         item_id: resource_id.clone(),
-                        error: err_msg,
+                        error: err_msg.to_string(),
                     });
                 }
             }
@@ -6278,12 +6279,12 @@ pub async fn dstu_refresh_path_cache(
             "[DSTU::handlers] dstu_refresh_path_cache: SUCCESS - updated {} entries",
             updated_count
         );
-        Ok::<usize, String>(updated_count)
+        Ok::<usize, DstuError>(updated_count)
     })
     .await
-    .map_err(|e| format!("Task join error: {}", e))?;
+    .map_err(|e| DstuError::from(format!("Task join error: {}", e)))?;
 
-    result
+    result.map_err(DstuError::from)
 }
 
 /// 根据资源 ID 获取路径

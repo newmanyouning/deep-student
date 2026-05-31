@@ -235,11 +235,12 @@ impl PaddleOcrApiClient {
             .send()
             .await?;
 
-        if !resp.status().is_success() {
+        let status = resp.status();
+        if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
             return Err(PaddleOcrApiError::Api(format!(
                 "URL mode job submission failed ({}): {}",
-                resp.status(),
+                status,
                 body
             )));
         }
@@ -296,11 +297,12 @@ impl PaddleOcrApiClient {
             .send()
             .await?;
 
-        if !resp.status().is_success() {
+        let status = resp.status();
+        if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
             return Err(PaddleOcrApiError::Api(format!(
                 "Job submission failed ({}): {}",
-                resp.status(),
+                status,
                 body
             )));
         }

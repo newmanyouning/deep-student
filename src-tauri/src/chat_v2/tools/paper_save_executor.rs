@@ -418,7 +418,7 @@ impl PaperSaveExecutor {
                     let title = progress[i].title.clone();
                     log::warn!("[PaperSave] Failed to save paper '{}': {}", title, e);
                     progress[i].stage = PaperStage::Error;
-                    progress[i].error = Some(e.clone());
+                    progress[i].error = Some(e.to_string());
                     emit_progress(ctx, &progress);
                     results.push(json!({
                         "index": i,

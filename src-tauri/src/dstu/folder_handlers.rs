@@ -956,7 +956,7 @@ pub async fn dstu_folder_get_breadcrumbs(
             }
             Err(e) => {
                 error!("[DSTU::folder_handlers] dstu_folder_get_breadcrumbs: FAILED - folder_id={}, error={}", folder_id, e);
-                Err(e)
+                Err(e.into())
             }
         }
     })

@@ -656,7 +656,7 @@ impl ChatAnkiToolExecutor {
             if let Some(db) = &anki_db {
                 if let Err(error_key) = verify_document_ownership(db, doc_id, &ctx.session_id) {
                     final_status = "not_found".to_string();
-                    final_error = Some(error_key);
+                    final_error = Some(error_key.to_string());
                 }
             }
         }
@@ -791,7 +791,7 @@ impl ChatAnkiToolExecutor {
                             verify_block_ownership(chat_db, &block, &ctx.session_id)
                         {
                             final_status = "not_found".to_string();
-                            final_error = Some(error_key);
+                            final_error = Some(error_key.to_string());
                             break;
                         }
                         block_ever_found = true;
@@ -869,7 +869,7 @@ impl ChatAnkiToolExecutor {
                 if let (Some(db), Some(doc_id)) = (&anki_db, final_document_id.as_deref()) {
                     if let Err(error_key) = verify_document_ownership(db, doc_id, &ctx.session_id) {
                         final_status = "not_found".to_string();
-                        final_error = Some(error_key);
+                        final_error = Some(error_key.to_string());
                         break;
                     }
                     let tasks = db
@@ -1762,7 +1762,7 @@ impl ChatAnkiToolExecutor {
                     Some(ctx.block_id.clone()),
                     call.name.clone(),
                     call.arguments.clone(),
-                    error_msg,
+                    error_msg.to_string(),
                     start_time.elapsed().as_millis() as u64,
                 );
                 let _ = ctx.save_tool_block(&result);
@@ -2288,7 +2288,7 @@ impl ChatAnkiToolExecutor {
                         Some(ctx.block_id.clone()),
                         call.name.clone(),
                         call.arguments.clone(),
-                        error_msg,
+                        error_msg.to_string(),
                         start_time.elapsed().as_millis() as u64,
                     );
                     let _ = ctx.save_tool_block(&result);
@@ -2447,7 +2447,7 @@ impl ChatAnkiToolExecutor {
                     &pre_doc_id_for_spawn,
                     &session_id_for_persist,
                     &doc_name_for_persist,
-                    &e,
+                    &e.to_string(),
                 );
                 persist_anki_cards_terminal_block(
                     &chat_db_for_persist,
@@ -2456,7 +2456,7 @@ impl ChatAnkiToolExecutor {
                     &tool_name_for_persist,
                     block_status::ERROR,
                     None,
-                    Some(e),
+                    Some(e.to_string()),
                 );
             }
         });
@@ -2682,11 +2682,11 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> ToolResul
                             }
                         }
                         if resolved.is_empty() {
-                            return Err(ToolError::NotFound(err_msg));
+                            return Err(ToolError::NotFound(err_msg.to_string()));
                         }
                         resolved
                     } else {
-                        return Err(ToolError::NotFound(err_msg));
+                        return Err(ToolError::NotFound(err_msg.to_string()));
                     }
                 }
             };
@@ -4276,14 +4276,14 @@ fn resolve_file_like_source_id_by_resource_id(
     vfs_db: &VfsDatabase,
     resource_id: &str,
 ) -> ToolResult<Option<String>> {
-    let conn = vfs_db.get_conn_safe().map_err(|e| e.to_string())?;
+    let conn = vfs_db.get_conn_safe().map_err(|e| ToolError::from(e.to_string()))?;
     conn.query_row(
         "SELECT id FROM files WHERE resource_id = ?1 AND deleted_at IS NULL LIMIT 1",
         rusqlite::params![resource_id],
         |row| row.get::<_, String>(0),
     )
     .optional()
-    .map_err(|e| e.to_string())
+    .map_err(|e| ToolError::from(e.to_string()))
 }
 
 fn resolve_context_ref_from_any_id(
@@ -4709,7 +4709,7 @@ fn build_chatanki_requirements(goal: &str) -> String {
     format!(
         "学习目标：{goal}\n\
 规则：\n\
-- 每张卡只测试一个知识点（最小信息原则），避免"一卡多问"。\n\
+- 每张卡只测试一个知识点（最小信息原则），避免\"一卡多问\"。\n\
 - 若内容是「术语/名词解释/概念清单」形式：默认 **每条条目生成 1 张卡**（front=术语/问题，back=解释），不要遗漏，也不要把一条条目拆成多张（除非该条非常长且确有必要）。\n\
 - 优先覆盖内容中的所有条目/小点（尤其是名词解释/术语列表），不要遗漏。\n\
 - 正面问题要清晰可回忆；背面答案要简洁但不丢关键限定条件。\n\

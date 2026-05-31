@@ -2875,7 +2875,7 @@ pub async fn vfs_reindex_resource(
                     "message": format!("索引失败: {}", e)
                 }),
             );
-            Err(e.to_string())
+            Err(VfsError::from(e.to_string()))
         }
     }
 }
@@ -3273,7 +3273,7 @@ pub async fn vfs_get_default_embedding_dimension(
     let dim_str = match database.get_setting(key) {
         Ok(Some(s)) => s,
         Ok(None) => return Ok(None),
-        Err(e) => return Err(e.to_string()),
+        Err(e) => return Err(VfsError::from(e.to_string())),
     };
 
     let dimension: i32 = dim_str

@@ -142,7 +142,8 @@ pub async fn essay_grading_update_session(
         session.essay_type.as_deref(),
         session.grade_level.as_deref(),
         session.custom_prompt.as_deref(),
-    )?
+    )
+    .map_err(EssayGradingError::from)
 }
 
 /// 永久删除会话
