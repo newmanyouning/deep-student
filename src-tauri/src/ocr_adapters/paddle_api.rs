@@ -156,7 +156,7 @@ impl PaddleOcrApiFileResult {
     }
 
     /// 转换为 (text, regions) 元组（与 `test_ocr_with_engine` 兼容）
-    pub fn into_text_and_regions(self, mode: OcrMode) -> (String, Vec<OcrRegion>) {
+    pub fn into_text_and_regions(self, _mode: OcrMode) -> (String, Vec<OcrRegion>) {
         let mut all_text = String::new();
         let mut regions = Vec::new();
 
@@ -257,7 +257,7 @@ impl OcrAdapter for PaddleOcrApiAdapter {
 
                 if let Some(result) = parsed.get("result") {
                     if let Some(lpr) = result.get("layoutParsingResults").and_then(|v| v.as_array()) {
-                        for (i, item) in lpr.iter().enumerate() {
+                        for (_i, item) in lpr.iter().enumerate() {
                             if let Some(md) = item.get("markdown") {
                                 if let Some(text) = md.get("text").and_then(|v| v.as_str()) {
                                     if !markdown_text.is_empty() {
@@ -429,7 +429,7 @@ mod tests {
     #[test]
     fn test_parse_vl_jsonl_response() {
         let adapter = PaddleOcrApiAdapter::new();
-        let jsonl = r#"{"result":{"layoutParsingResults":[{"markdown":{"text":"# Hello\n\nWorld","images":{"fig1":"https://example.com/img1.png"}}}]}}"#;
+        let jsonl = "{\"result\":{\"layoutParsingResults\":[{\"markdown\":{\"text\":\"# Hello\\n\\nWorld\",\"images\":{\"fig1\":\"https://example.com/img1.png\"}}}]}}";
         let result = adapter
             .parse_response(jsonl, 100, 100, 0, "", OcrMode::FreeOcr)
             .unwrap();

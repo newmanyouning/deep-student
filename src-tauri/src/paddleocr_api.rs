@@ -484,9 +484,7 @@ impl PaddleOcrApiClient {
             if e.is_timeout() {
                 PaddleOcrApiError::Api(format!("连接超时 (15s): {}", PADDLEOCR_API_BASE))
             } else if e.is_connect() {
-                PaddleOcrApiError::Api(format!("连接被拒绝: {} — 请检查网络和防火墙", PADDLEOCR_API_BASE))
-            } else if e.is_dns() {
-                PaddleOcrApiError::Api(format!("DNS 解析失败: paddleocr.aistudio-app.com — 请检查 DNS 配置"))
+                PaddleOcrApiError::Api(format!("连接失败/DNS解析: {} — 请检查网络、DNS 和防火墙", PADDLEOCR_API_BASE))
             } else {
                 PaddleOcrApiError::Api(format!("网络错误: {}", e))
             }
@@ -618,20 +616,7 @@ mod tests {
 
     #[test]
     fn test_jsonl_line_deserialization_vl() {
-        let raw = r#"{
-            "result": {
-                "layoutParsingResults": [
-                    {
-                        "markdown": {
-                            "text": "# Page 1\n\nHello World",
-                            "images": {
-                                "fig1": "https://storage.example.com/fig1.png"
-                            }
-                        }
-                    }
-                ]
-            }
-        }"#;
+        let raw = "{\n            \"result\": {\n                \"layoutParsingResults\": [\n                    {\n                        \"markdown\": {\n                            \"text\": \"# Page 1\\n\\nHello World\",\n                            \"images\": {\n                                \"fig1\": \"https://storage.example.com/fig1.png\"\n                            }\n                        }\n                    }\n                ]\n            }\n        }";
         let line: JsonlLine = serde_json::from_str(raw).unwrap();
         assert_eq!(line.result.layout_parsing_results.len(), 1);
         assert_eq!(
