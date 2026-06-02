@@ -491,6 +491,7 @@ impl ToolExecutor for UserTodoExecutor {
             stripped,
             "user_vfs_todo_list_lists"
                 | "user_vfs_todo_create_item"
+                | "user_todo_create_item"
                 | "user_todo_complete_item"
                 | "user_vfs_todo_list_items"
                 | "user_todo_get_summary"
@@ -509,7 +510,7 @@ impl ToolExecutor for UserTodoExecutor {
         let tool_name = strip_tool_namespace(&call.name);
         let result = match tool_name {
             "user_vfs_todo_list_lists" => self.execute_list_lists(ctx),
-            "user_vfs_todo_create_item" => self.execute_create_item(&call.arguments, ctx),
+            "user_vfs_todo_create_item" | "user_todo_create_item" => self.execute_create_item(&call.arguments, ctx),
             "user_todo_complete_item" => self.execute_complete_item(&call.arguments, ctx),
             "user_vfs_todo_list_items" => self.execute_list_items(&call.arguments, ctx),
             "user_todo_get_summary" => self.execute_get_summary(ctx),
