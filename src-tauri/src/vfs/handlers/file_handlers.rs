@@ -226,6 +226,8 @@ pub async fn vfs_upload_file(
     let conn = vfs_db.get_conn_safe()?;
     let blobs_dir = vfs_db.blobs_dir();
     let is_image = params.mime_type.starts_with("image/");
+    let is_pdf =
+        params.mime_type == "application/pdf" || params.name.to_lowercase().ends_with(".pdf");
 
     let existing =
         VfsFileRepo::get_by_sha256_with_conn(&conn, &sha256)?;
@@ -291,7 +293,7 @@ pub async fn vfs_upload_file(
     // 已写入的 blob 文件和 DB 记录会成为孤儿数据（因去重设计影响较小，但仍应清理）。
     // 考虑方案：1) 用 SAVEPOINT 包裹 store_blob_db + create_file 的 DB 部分；
     //          2) 失败时补偿删除 blob 文件；3) 后台定期清理孤儿 blob。
-    let blob_hash = if is_image || size >= 1024 * 1024 {
+    let blob_hash = if is_image || is_pdf || size >= 1024 * 1024 {
         let blob = VfsBlobRepo::store_blob_with_conn(
             &conn,
             &blobs_dir,
@@ -303,10 +305,6 @@ pub async fn vfs_upload_file(
     } else {
         None
     };
-
-    // ★ P2-1 修复：添加文档处理逻辑（与 vfs_upload_attachment 保持一致）
-    let is_pdf =
-        params.mime_type == "application/pdf" || params.name.to_lowercase().ends_with(".pdf");
 
     let (preview_json, extracted_text, page_count): (Option<String>, Option<String>, Option<i32>) =
         if is_pdf {
