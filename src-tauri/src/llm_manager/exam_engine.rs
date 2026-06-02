@@ -930,7 +930,6 @@ impl LLMManager {
         page_path: &str,
         page_index: usize,
     ) -> Result<Vec<ExamSegmentationCard>> {
-        use crate::ocr_adapters::OcrRegion;
         use crate::paddleocr_api::PaddleOcrApiClient;
 
         let api_key = self.decrypt_api_key_if_needed(&config.api_key).map_err(|e| {
