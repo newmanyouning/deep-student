@@ -817,10 +817,13 @@ pub async fn memory_get_audit_logs(
     operation_filter: Option<String>,
     success_filter: Option<bool>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
+    lance_store: State<'_, Arc<VfsLanceStore>>,
+    llm_manager: State<'_, Arc<LLMManager>>,
 ) -> MemoryResult<Vec<MemoryAuditLogItem>> {
     let limit = limit.unwrap_or(50).clamp(1, 200);
     let offset = offset.unwrap_or(0);
-    let conn = vfs_db.get_conn_safe().map_err(|e| MemoryError::Database(e.to_string()))?;
+    let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
+    let conn = service.storage_ref().conn()?;
     Ok(audit_log::query_audit_logs(
         &conn,
         limit,
