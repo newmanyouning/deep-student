@@ -34,11 +34,11 @@ uuid = { version = "1.7.0", features = ["v4", "serde"] }
 tokio = { version = "1.35.1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["rt"] }
 rusqlite = { version = "0.29.0", features = ["bundled", "chrono", "backup"] }  # Android必须使用bundled
-base64 = "0.21.7"
+base64 = "0.22"
 tempfile = "3.10.1"
 chrono = { version = "0.4.38", features = ["serde"] }
 anyhow = "1.0.80"
-thiserror = "1.0"
+thiserror = "2.0"
 async-trait = "0.1.77"
 futures-util = "0.3"
 r2d2 = "0.8.9"
@@ -60,7 +60,7 @@ jsonschema = "0.42"
 zip = { version = "0.6", default-features = false, features = ["deflate"] }
 url = "2.4"
 dirs = "4.0"
-image = "0.24"
+image = "0.25"
 zerocopy = "0.7"
 backon = "0.4"
 config = { version = "0.14", features = ["toml"] }
@@ -70,12 +70,14 @@ html2text = "0.16.7"
 
 # 所有平台统一依赖配置
 tauri = { version = "2", features = ["protocol-asset"] }
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls", "stream", "blocking", "multipart"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls", "stream", "blocking", "multipart", "query"] }
 # 高性能缓存库
 moka = { version = "0.12", features = ["future"] }
 lru = "0.12"
 # 轻量级内置指标服务
-hyper = { version = "0.14", features = ["full"] }
+hyper = { version = "1", features = ["full"] }
+http-body-util = "0.1"
+hyper-util = { version = "0.1", default-features = false, features = ["tokio"] }
 # RAG文档处理依赖（PDF 文本提取已统一使用 pdfium-render，不再依赖 pdf-extract）
 docx-rs = "0.4"
 calamine = "0.26"  # Excel/OpenDocument 电子表格解析（纯Rust实现）
@@ -87,7 +89,7 @@ umya-spreadsheet = "2.3"  # Excel XLSX 读写编辑（round-trip）
 rtf-parser = "0.3"   # RTF 富文本解析
 csv = "1.3"          # CSV 解析
 encoding_rs = "0.8"  # 多编码支持（UTF-8/GBK）
-quick-xml = "0.37"   # XML 解析
+quick-xml = "0.38"   # XML 解析
 # 序列化支持
 bincode = "1.3"
 # 并行计算优化
@@ -97,11 +99,11 @@ dashmap = "5.5.3"
 log = "0.4"
 # 错误上报（Sentry）- Android 使用 rustls 避免 OpenSSL
 # 启用 debug-images 支持 Native crash 符号化，anyhow 捕获 C/C++ 层面异常
-sentry = { version = "0.32", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "debug-images", "anyhow"] }
-sentry-tracing = { version = "0.32", default-features = false }
+sentry = { version = "0.45", default-features = false, features = ["backtrace", "contexts", "panic", "rustls", "debug-images", "anyhow"] }
+sentry-tracing = { version = "0.45", default-features = false }
 futures = "0.3"
-tokio-tungstenite = { version = "0.21", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
-tungstenite = { version = "0.21", default-features = false }
+tokio-tungstenite = { version = "0.28", default-features = false, features = ["connect", "rustls-tls-webpki-roots"] }
+tungstenite = { version = "0.28", default-features = false }
 
 # Optional: LanceDB backend for vectors (feature-gated)
 lancedb = { version = "0.22.1", optional = true, default-features = false }
@@ -119,8 +121,8 @@ libc = "0.2"
 
 # PDF 后端渲染（pdfium-render）
 # 注意：需要运行 scripts/download-pdfium.sh 下载对应平台的 pdfium 动态库
-# 使用 image_024 匹配项目的 image = "0.24" 版本
-pdfium-render = { version = "0.8", default-features = false, features = ["image_024", "pdfium_7350", "thread_safe"] }
+# 使用 image_025 匹配项目的 image = "0.25" 版本
+pdfium-render = { version = "0.8", default-features = false, features = ["image_025", "pdfium_7350", "thread_safe"] }
 fs_extra = "1.3"
 urlencoding = "2.1.3"
 roxmltree = "0.20"
@@ -133,7 +135,6 @@ aws-config = { version = "1.5", optional = true, default-features = false, featu
 
 # MCP SSE和OAuth支持
 eventsource-stream = "0.2"
-reqwest-eventsource = "0.5"
 zstd = "0.13.3"
 tauri-plugin-clipboard-manager = "~2.2"
 
@@ -145,7 +146,7 @@ tauri-plugin-process = "2"
 
 # OAuth2 在 Android 上暂不支持（会引入 native-tls）
 [target.'cfg(not(target_os = "android"))'.dependencies]
-oauth2 = "4.4"
+oauth2 = { version = "5.0", features = ["reqwest"] }
 pkce = "0.2"
 # MCP客户端库
 
@@ -206,15 +207,17 @@ incremental = true     # 开启增量编译
 codegen-units = 256    # 最大化并行代码生成
 lto = false            # 调试/开发无需LTO
 
+[profile.test]
+opt-level = 0
+debug = 1
+
 # 移除所有 Cozo/Neo4j 测试二进制，仅保留主程序
 
 [features]
-# 默认启用 SQLite、Lance 与 MCP（确保现有行为不变）
+# 默认启用 Lance、MCP 等特性（确保现有行为不变）
 # 默认启用内部预置模型，可在开源版本中移除该特性
 # 默认启用 S3 云存储支持
-default = ["sqlite", "lance", "mcp", "builtin_free_models", "tokenizer_tiktoken", "cloud_storage_s3", "data_governance"]
-# 启用 SQLite 代码（始终开启占位）
-sqlite = []
+default = ["lance", "mcp", "builtin_free_models", "tokenizer_tiktoken", "cloud_storage_s3", "data_governance"]
 # 启用 LanceDB 向量后端（需网络拉取依赖）
 lance = ["lancedb", "arrow-array", "arrow-schema"]
 # P2修复：精确 tokenizer（默认启用以提供准确的 token 计数，避免启发式估算偏差）
@@ -227,10 +230,9 @@ mcp-debug = ["tauri-plugin-mcp-bridge"]
 # 已废弃且已移除：neo4j 特性占位（代码已完全清理）
 # neo4j = []
 # 其他开关
-db_migration = []
-# 仅为消除条件编译告警：不产生实际功能影响
 http = []
-old_migration_impl = []
+# MCP 客户端示例代码（仅在显式指定时编译）
+examples = []
 # 内置免费模型（发行版使用）。开源版本可禁用
 builtin_free_models = []
 # 云存储 S3 兼容支持（可选，避免默认增加编译时间）
@@ -239,6 +241,7 @@ cloud_storage_s3 = ["aws-sdk-s3", "aws-config"]
 data_governance = ["refinery"]
 # DevTools：仅在开发构建中启用，release 构建不应包含
 # 使用方式：cargo tauri dev --features devtools
+# 此为 dep-feature passthrough：激活 tauri/devtools，无应用层 cfg 守卫
 devtools = ["tauri/devtools"]
 
 # Workaround for chrono/arrow trait method conflict (force a compatible chrono)

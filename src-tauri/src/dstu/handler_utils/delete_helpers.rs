@@ -6,13 +6,13 @@ use std::sync::Arc;
 
 use rusqlite::Connection;
 
-use crate::dstu::error::DstuError;
+use crate::dstu::error::{DstuError, DstuResult};
 use crate::vfs::{
     repos::VfsMindMapRepo, VfsDatabase, VfsEssayRepo, VfsExamRepo, VfsFileRepo, VfsFolderRepo,
     VfsNoteRepo, VfsTextbookRepo, VfsTranslationRepo,
 };
 
-fn helper_error(action: &str, resource_type: &str, id: &str, error: impl ToString) -> String {
+fn helper_error(action: &str, resource_type: &str, id: &str, error: impl ToString) -> DstuError {
     DstuError::vfs_error(format!(
         "{} failed (type={}, id={}): {}",
         action,
@@ -20,11 +20,10 @@ fn helper_error(action: &str, resource_type: &str, id: &str, error: impl ToStrin
         id,
         error.to_string()
     ))
-    .to_string()
 }
 
-fn invalid_type_error(resource_type: &str, id: &str) -> String {
-    DstuError::invalid_node_type(format!("{} (id={})", resource_type, id)).to_string()
+fn invalid_type_error(resource_type: &str, id: &str) -> DstuError {
+    DstuError::invalid_node_type(format!("{} (id={})", resource_type, id))
 }
 
 /// 根据资源类型执行软删除
@@ -32,7 +31,7 @@ pub fn delete_resource_by_type(
     vfs_db: &Arc<VfsDatabase>,
     resource_type: &str,
     id: &str,
-) -> Result<(), String> {
+) -> DstuResult<()> {
     match resource_type {
         "notes" | "note" => {
             VfsNoteRepo::delete_note_with_folder_item(vfs_db, id)
@@ -89,7 +88,6 @@ pub fn delete_resource_by_type(
             );
         }
         "images" | "files" | "attachments" | "image" | "file" | "attachment" => {
-            // P0-FIX: 使用软删除而非硬删除，支持回收站恢复
             VfsFileRepo::delete_file(vfs_db, id)
                 .map_err(|e| helper_error("delete", resource_type, id, e))?;
             log::info!(
@@ -113,13 +111,11 @@ pub fn delete_resource_by_type(
 }
 
 /// 根据资源类型执行软删除（使用现有连接，支持外部事务）
-///
-/// ★ CONC-08 修复：供批量删除使用，支持在事务中调用
 pub fn delete_resource_by_type_with_conn(
     conn: &Connection,
     resource_type: &str,
     id: &str,
-) -> Result<(), String> {
+) -> DstuResult<()> {
     match resource_type {
         "notes" | "note" => {
             VfsNoteRepo::delete_note_with_folder_item_with_conn(conn, id)
@@ -133,36 +129,38 @@ pub fn delete_resource_by_type_with_conn(
         }
         "translations" | "translation" => {
             VfsTranslationRepo::delete_translation_with_folder_item_with_conn(conn, id)
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| DstuError::from(e.to_string()))?;
             log::info!("[DSTU::delete_helpers] delete_resource_by_type_with_conn: SUCCESS - type=translation, id={}", id);
         }
         "exams" | "exam" => {
             VfsExamRepo::delete_exam_sheet_with_folder_item_with_conn(conn, id)
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| DstuError::from(e.to_string()))?;
             log::info!("[DSTU::delete_helpers] delete_resource_by_type_with_conn: SUCCESS - type=exam, id={}", id);
         }
         "essays" | "essay" => {
             if id.starts_with("essay_session_") {
                 VfsEssayRepo::delete_session_with_folder_item_with_conn(conn, id)
-                    .map_err(|e| e.to_string())?;
+                    .map_err(|e| DstuError::from(e.to_string()))?;
                 log::info!("[DSTU::delete_helpers] delete_resource_by_type_with_conn: SUCCESS - type=essay_session, id={}", id);
             } else {
                 VfsEssayRepo::delete_essay_with_folder_item_with_conn(conn, id)
-                    .map_err(|e| e.to_string())?;
+                    .map_err(|e| DstuError::from(e.to_string()))?;
                 log::info!("[DSTU::delete_helpers] delete_resource_by_type_with_conn: SUCCESS - type=essay, id={}", id);
             }
         }
         "folders" | "folder" => {
-            VfsFolderRepo::delete_folder_with_conn(conn, id).map_err(|e| e.to_string())?;
+            VfsFolderRepo::delete_folder_with_conn(conn, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
             log::info!("[DSTU::delete_helpers] delete_resource_by_type_with_conn: SUCCESS - type=folder, id={}", id);
         }
         "images" | "files" | "attachments" | "image" | "file" | "attachment" => {
-            // P0-FIX: 使用软删除而非硬删除，支持回收站恢复
-            VfsFileRepo::delete_file_with_conn(conn, id).map_err(|e| e.to_string())?;
+            VfsFileRepo::delete_file_with_conn(conn, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
             log::info!("[DSTU::delete_helpers] delete_resource_by_type_with_conn: SUCCESS - type=file, id={}", id);
         }
         "mindmaps" | "mindmap" => {
-            VfsMindMapRepo::delete_mindmap_with_conn(conn, id).map_err(|e| e.to_string())?;
+            VfsMindMapRepo::delete_mindmap_with_conn(conn, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
             log::info!("[DSTU::delete_helpers] delete_resource_by_type_with_conn: SUCCESS - type=mindmap, id={}", id);
         }
         _ => {
@@ -177,7 +175,7 @@ pub fn purge_resource_by_type(
     vfs_db: &Arc<VfsDatabase>,
     resource_type: &str,
     id: &str,
-) -> Result<(), String> {
+) -> DstuResult<()> {
     match resource_type {
         "notes" | "note" => {
             VfsNoteRepo::purge_note(vfs_db, id)
@@ -188,17 +186,17 @@ pub fn purge_resource_by_type(
                 .map_err(|e| helper_error("purge", resource_type, id, e))?;
         }
         "translations" | "translation" => {
-            VfsTranslationRepo::purge_translation(vfs_db, id).map_err(|e| e.to_string())?;
+            VfsTranslationRepo::purge_translation(vfs_db, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         "exams" | "exam" => {
-            VfsExamRepo::purge_exam_sheet(vfs_db, id).map_err(|e| e.to_string())?;
+            VfsExamRepo::purge_exam_sheet(vfs_db, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         "essays" | "essay" => {
             if id.starts_with("essay_session_") {
-                // 会话没有软删除依赖，直接永久删除（同时删除其所有轮次）
                 let _ = VfsEssayRepo::purge_session(vfs_db, id)
                     .map_err(|e| helper_error("purge", resource_type, id, e))?;
-                // 兜底清理 folder_items（如果存在）
                 let _ = VfsFolderRepo::remove_item_by_item_id(vfs_db, "essay", id);
             } else {
                 VfsEssayRepo::purge_essay(vfs_db, id)
@@ -234,7 +232,7 @@ pub fn restore_resource_by_type(
     vfs_db: &Arc<VfsDatabase>,
     resource_type: &str,
     id: &str,
-) -> Result<(), String> {
+) -> DstuResult<()> {
     match resource_type {
         "notes" | "note" => {
             VfsNoteRepo::restore_note(vfs_db, id)
@@ -245,27 +243,33 @@ pub fn restore_resource_by_type(
                 .map_err(|e| helper_error("restore", resource_type, id, e))?;
         }
         "translations" | "translation" => {
-            VfsTranslationRepo::restore_translation(vfs_db, id).map_err(|e| e.to_string())?;
+            VfsTranslationRepo::restore_translation(vfs_db, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         "exams" | "exam" => {
-            VfsExamRepo::restore_exam(vfs_db, id).map_err(|e| e.to_string())?;
+            VfsExamRepo::restore_exam(vfs_db, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         "essays" | "essay" => {
             if id.starts_with("essay_session_") {
-                VfsEssayRepo::restore_session(vfs_db, id).map_err(|e| e.to_string())?;
+                VfsEssayRepo::restore_session(vfs_db, id)
+                    .map_err(|e| DstuError::from(e.to_string()))?;
             } else {
-                VfsEssayRepo::restore_essay(vfs_db, id).map_err(|e| e.to_string())?;
+                VfsEssayRepo::restore_essay(vfs_db, id)
+                    .map_err(|e| DstuError::from(e.to_string()))?;
             }
         }
         "folders" | "folder" => {
-            VfsFolderRepo::restore_folder(vfs_db, id).map_err(|e| e.to_string())?;
+            VfsFolderRepo::restore_folder(vfs_db, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         "images" | "files" | "attachments" | "image" | "file" | "attachment" => {
-            // P0-FIX: 支持从回收站恢复文件
-            VfsFileRepo::restore_file(vfs_db, id).map_err(|e| e.to_string())?;
+            VfsFileRepo::restore_file(vfs_db, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         "mindmaps" | "mindmap" => {
-            VfsMindMapRepo::restore_mindmap(vfs_db, id).map_err(|e| e.to_string())?;
+            VfsMindMapRepo::restore_mindmap(vfs_db, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         _ => {
             return Err(invalid_type_error(resource_type, id));
@@ -280,13 +284,11 @@ pub fn restore_resource_by_type(
 }
 
 /// 根据资源类型执行恢复（使用现有连接，用于事务批量操作）
-///
-/// ★ CONC-09 修复：支持在事务中批量恢复资源
 pub fn restore_resource_by_type_with_conn(
     conn: &Connection,
     resource_type: &str,
     id: &str,
-) -> Result<(), String> {
+) -> DstuResult<()> {
     match resource_type {
         "notes" | "note" => {
             VfsNoteRepo::restore_note_with_conn(conn, id)
@@ -298,27 +300,32 @@ pub fn restore_resource_by_type_with_conn(
         }
         "translations" | "translation" => {
             VfsTranslationRepo::restore_translation_with_conn(conn, id)
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         "exams" | "exam" => {
-            VfsExamRepo::restore_exam_with_conn(conn, id).map_err(|e| e.to_string())?;
+            VfsExamRepo::restore_exam_with_conn(conn, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         "essays" | "essay" => {
             if id.starts_with("essay_session_") {
-                VfsEssayRepo::restore_session_with_conn(conn, id).map_err(|e| e.to_string())?;
+                VfsEssayRepo::restore_session_with_conn(conn, id)
+                    .map_err(|e| DstuError::from(e.to_string()))?;
             } else {
-                VfsEssayRepo::restore_essay_with_conn(conn, id).map_err(|e| e.to_string())?;
+                VfsEssayRepo::restore_essay_with_conn(conn, id)
+                    .map_err(|e| DstuError::from(e.to_string()))?;
             }
         }
         "folders" | "folder" => {
-            VfsFolderRepo::restore_folder_with_conn(conn, id).map_err(|e| e.to_string())?;
+            VfsFolderRepo::restore_folder_with_conn(conn, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         "images" | "files" | "attachments" | "image" | "file" | "attachment" => {
-            VfsFileRepo::restore_file_with_conn(conn, id).map_err(|e| e.to_string())?;
+            VfsFileRepo::restore_file_with_conn(conn, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         "mindmaps" | "mindmap" => {
-            let _ =
-                VfsMindMapRepo::restore_mindmap_with_conn(conn, id).map_err(|e| e.to_string())?;
+            VfsMindMapRepo::restore_mindmap_with_conn(conn, id)
+                .map_err(|e| DstuError::from(e.to_string()))?;
         }
         _ => {
             return Err(invalid_type_error(resource_type, id));

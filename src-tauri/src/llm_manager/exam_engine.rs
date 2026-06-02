@@ -6,7 +6,7 @@ use crate::models::{AppError, AppErrorType, ExamCardBBox};
 use crate::providers::ProviderAdapter;
 use base64::{engine::general_purpose, Engine as _};
 use image::imageops::FilterType;
-use image::{GenericImageView, ImageOutputFormat};
+use image::GenericImageView;
 use log::{debug, error, info, warn};
 use serde_json::{json, Value};
 use std::io::Cursor;
@@ -199,9 +199,12 @@ impl LLMManager {
                 };
 
             let mut cursor = Cursor::new(Vec::new());
-            resized
-                .write_to(&mut cursor, ImageOutputFormat::Jpeg(85))
-                .map_err(|e| AppError::file_system(format!("压缩试卷图片失败: {}", e)))?;
+            {
+                use image::codecs::jpeg::JpegEncoder;
+                let encoder = JpegEncoder::new_with_quality(&mut cursor, 85);
+                resized.write_with_encoder(encoder)
+            }
+            .map_err(|e| AppError::file_system(format!("压缩试卷图片失败: {}", e)))?;
             let buffer = cursor.into_inner();
             let encoded = general_purpose::STANDARD.encode(&buffer);
             Ok((format!("data:image/jpeg;base64,{}", encoded), buffer.len()))
@@ -555,7 +558,7 @@ impl LLMManager {
                 config.model
             );
             match self
-                .call_deepseek_ocr_page_raw(config, page_path, page_index)
+                .call_deepseek_ocr_page_raw(config, *engine_type, page_path, page_index)
                 .await
             {
                 Ok(cards) => {
@@ -619,6 +622,42 @@ impl LLMManager {
         if engines.is_empty() {
             return Err(AppError::configuration(
                 "没有已启用的 OCR 引擎，请在设置中配置",
+            ));
+        }
+
+        // ★ 特殊路径: 如果有 PaddleOCR REST API 引擎，优先尝试
+        // REST API 是 job-based 流程，与 VLM prompt/response 不兼容，
+        // 因此需要独立处理，不参与渐进对冲的 VLM 请求构建。
+        if let Some(paddle_engine) = engines
+            .iter()
+            .find(|(_, et)| *et == crate::ocr_adapters::OcrEngineType::PaddleOcrApi)
+        {
+            let result = self
+                .call_paddle_ocr_free_text(paddle_engine, image_path)
+                .await;
+            match result {
+                Ok(text) => {
+                    OCR_CIRCUIT_BREAKER.record_success();
+                    return Ok(text);
+                }
+                Err(e) => {
+                    warn!(
+                        "[OCR-Hedge] PaddleOCR API 引擎失败，回退到 VLM 引擎: {}",
+                        e
+                    );
+                }
+            }
+        }
+
+        // 过滤掉 PaddleOCR API 引擎（已优先尝试，且不兼容 VLM 流程）
+        let engines: Vec<_> = engines
+            .into_iter()
+            .filter(|(_, et)| *et != crate::ocr_adapters::OcrEngineType::PaddleOcrApi)
+            .collect();
+
+        if engines.is_empty() {
+            return Err(AppError::configuration(
+                "PaddleOCR API 引擎已失败，且没有其他可用的 OCR 引擎",
             ));
         }
 
@@ -857,12 +896,18 @@ impl LLMManager {
     pub async fn call_deepseek_ocr_page_raw(
         &self,
         config: &ApiConfig,
+        engine_type: crate::ocr_adapters::OcrEngineType,
         page_path: &str,
         page_index: usize,
     ) -> Result<Vec<ExamSegmentationCard>> {
-        // S7 fix: 根据实际模型推断引擎类型，传递给解析器
-        let effective_engine =
-            crate::ocr_adapters::OcrAdapterFactory::infer_engine_from_model(&config.model);
+        let effective_engine = engine_type;
+
+        // ★ 特殊路径: PaddleOCR REST API (job-based, 非 VLM prompt/response)
+        if effective_engine == crate::ocr_adapters::OcrEngineType::PaddleOcrApi {
+            return self
+                .call_paddle_ocr_api_raw(config, page_path, page_index)
+                .await;
+        }
 
         let content = self
             .request_deepseek_ocr_content(config, page_path, page_index)
@@ -873,6 +918,174 @@ impl LLMManager {
             .await?;
 
         Ok(raw_regions)
+    }
+
+    /// PaddleOCR REST API 单页调用（job-based 流程）
+    ///
+    /// 上传图片到 AI Studio，提交 OCR job，轮询完成后解析结果。
+    /// 与 VLM 引擎的 prompt/response 流程不同，本方法使用独立的 REST API 调用链。
+    async fn call_paddle_ocr_api_raw(
+        &self,
+        config: &ApiConfig,
+        page_path: &str,
+        page_index: usize,
+    ) -> Result<Vec<ExamSegmentationCard>> {
+        use crate::ocr_adapters::OcrRegion;
+        use crate::paddleocr_api::PaddleOcrApiClient;
+
+        let api_key = self.decrypt_api_key_if_needed(&config.api_key).map_err(|e| {
+            AppError::configuration(format!("PaddleOCR API key 解密失败: {}", e))
+        })?;
+
+        let model = &config.model;
+        let abs_path = self.file_manager.resolve_image_path(page_path);
+
+        info!(
+            "[OCR::PaddleApi] 提交 OCR job: page={}, model={}",
+            page_index, model
+        );
+
+        let client = PaddleOcrApiClient::new(api_key);
+        let result = client
+            .ocr_file(&abs_path.to_string_lossy(), model)
+            .await
+            .map_err(|e| AppError::llm(format!("PaddleOCR API 调用失败 (page {}): {}", page_index, e)))?;
+
+        info!(
+            "[OCR::PaddleApi] 页面 {} OCR 完成 (model: {}, total_pages: {})",
+            page_index, result.model, result.total_pages
+        );
+
+        // 将 PaddleOCR 结果转换为 ExamSegmentationCard 列表
+        let mut cards = Vec::new();
+        for page in &result.pages {
+            let text = page.markdown_text.trim();
+
+            if text.is_empty() && page.images.is_empty() {
+                continue;
+            }
+
+            // 如果有图片，为每个图片创建一个区域
+            for img in &page.images {
+                cards.push(ExamSegmentationCard {
+                    question_label: format!("page_image_{}", img.name),
+                    bbox: ExamCardBBox {
+                        x: 0.0,
+                        y: 0.0,
+                        width: 1.0,
+                        height: 1.0,
+                    },
+                    ocr_text: Some(text.to_string()),
+                    tags: vec![],
+                    extra_metadata: Some(json!({
+                        "engine": "paddle_ocr_api",
+                        "source": "rest_api",
+                        "image_url": img.url,
+                    })),
+                    card_id: format!("ocr_p{}_img_{}", page_index, img.name),
+                });
+            }
+
+            // 如果有文本但没有图片，作为全页文本
+            if !text.is_empty() {
+                cards.push(ExamSegmentationCard {
+                    question_label: format!("page_{}", page_index),
+                    bbox: ExamCardBBox {
+                        x: 0.0,
+                        y: 0.0,
+                        width: 1.0,
+                        height: 1.0,
+                    },
+                    ocr_text: Some(text.to_string()),
+                    tags: vec![],
+                    extra_metadata: Some(json!({
+                        "engine": "paddle_ocr_api",
+                        "source": "rest_api",
+                    })),
+                    card_id: format!("ocr_p{}_text", page_index),
+                });
+            }
+        }
+
+        // 如果没有任何页面结果，返回一个兜底条目
+        if cards.is_empty() {
+            cards.push(ExamSegmentationCard {
+                question_label: format!("page_{}", page_index),
+                bbox: ExamCardBBox {
+                    x: 0.0,
+                    y: 0.0,
+                    width: 1.0,
+                    height: 1.0,
+                },
+                ocr_text: Some(format!(
+                    "[PaddleOCR API] 页面 {} 未识别到内容",
+                    page_index
+                )),
+                tags: vec![],
+                extra_metadata: Some(json!({
+                    "engine": "paddle_ocr_api",
+                    "source": "rest_api",
+                    "fallback": true,
+                })),
+                card_id: format!("ocr_p{}_fallback", page_index),
+            });
+        }
+
+        Ok(cards)
+    }
+
+    /// PaddleOCR REST API 单页 FreeText 调用（返回纯文本）
+    ///
+    /// 供 `call_ocr_free_text_with_fallback` 在 VLM 渐进对冲前优先尝试。
+    async fn call_paddle_ocr_free_text(
+        &self,
+        engine: &(ApiConfig, crate::ocr_adapters::OcrEngineType),
+        image_path: &str,
+    ) -> Result<String> {
+        use crate::paddleocr_api::PaddleOcrApiClient;
+
+        let (config, _engine_type) = engine;
+        let api_key = self.decrypt_api_key_if_needed(&config.api_key).map_err(|e| {
+            AppError::configuration(format!("PaddleOCR API key 解密失败: {}", e))
+        })?;
+
+        let model = &config.model;
+        let abs_path = self.file_manager.resolve_image_path(image_path);
+
+        info!(
+            "[OCR::PaddleApi::FreeText] 提交 OCR job: model={}",
+            model
+        );
+
+        let client = PaddleOcrApiClient::new(api_key);
+        let result = client
+            .ocr_file(&abs_path.to_string_lossy(), model)
+            .await
+            .map_err(|e| AppError::llm(format!("PaddleOCR API 调用失败: {}", e)))?;
+
+        info!(
+            "[OCR::PaddleApi::FreeText] OCR 完成: {} 页",
+            result.total_pages
+        );
+
+        // 合并所有页面的 Markdown 文本
+        let mut all_text = String::new();
+        for page in &result.pages {
+            let text = page.markdown_text.trim();
+            if !text.is_empty() {
+                if !all_text.is_empty() {
+                    all_text.push_str("\n\n---\n\n");
+                }
+                all_text.push_str(text);
+            }
+        }
+
+        if all_text.is_empty() {
+            warn!("[OCR::PaddleApi::FreeText] OCR 结果为空");
+            all_text = format!("[PaddleOCR API] 未识别到文本内容 (model: {})", model);
+        }
+
+        Ok(all_text)
     }
 
     /// 解析单页 DeepSeek-OCR grounding 输出
@@ -897,7 +1110,9 @@ impl LLMManager {
         let (img_w, img_h) = tokio::task::spawn_blocking({
             let path = abs_path.clone();
             move || -> Result<(u32, u32)> {
-                image::image_dimensions(&path)
+                let reader = image::io::Reader::open(&path)
+                    .map_err(|e| AppError::file_system(format!("读取图片尺寸失败: {}", e)))?;
+                reader.into_dimensions()
                     .map_err(|e| AppError::file_system(format!("读取图片尺寸失败: {}", e)))
             }
         })

@@ -251,7 +251,7 @@ async fn run_chat_translation(
     .await;
 
     match stream_result {
-        Ok(StreamStatus::Completed) => {
+        Ok(StreamStatus::Completed) | Ok(StreamStatus::Incomplete) => {
             emit_event(&window, &event_name, ChatTranslationEvent::Complete);
             info!(
                 "[ChatTranslation] complete event={} chars={}",

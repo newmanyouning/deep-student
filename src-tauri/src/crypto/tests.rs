@@ -2,7 +2,9 @@
 //!
 //! 测试加密解密、密钥管理等核心功能
 
+#[cfg(test)]
 use super::{CryptoService, EncryptedData};
+#[cfg(test)]
 use tempfile::TempDir;
 
 #[tokio::test]

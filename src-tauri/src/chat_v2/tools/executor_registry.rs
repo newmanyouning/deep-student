@@ -10,6 +10,19 @@ use tokio::time::{timeout, Duration};
 
 use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
+use crate::chat_v2::workspace::WorkspaceCoordinator;
+
+// 工具执行器类型 — 仅在工厂方法中引入，避免 Pipeline 依赖具体执行器
+use super::{
+    AcademicSearchExecutor, AskUserExecutor, AttemptCompletionExecutor,
+    AttachmentToolExecutor, BuiltinResourceExecutor, BuiltinRetrievalExecutor,
+    CanvasToolExecutor, ChatAnkiToolExecutor, CoordinatorSleepExecutor,
+    DocxToolExecutor, FetchExecutor, GeneralToolExecutor, ImageGenerationExecutor,
+    KnowledgeExecutor, MemoryToolExecutor, PaperSaveExecutor, PptxToolExecutor,
+    QBankExecutor, SessionToolExecutor, SkillsExecutor, SubagentExecutor,
+    TemplateDesignerExecutor, TodoListExecutor, UserTodoExecutor,
+    WorkspaceToolExecutor, XlsxToolExecutor,
+};
 
 // ============================================================================
 // 全局超时配置
@@ -293,6 +306,75 @@ impl ToolExecutorRegistry {
     /// 获取所有执行器名称（用于调试）
     pub fn executor_names(&self) -> Vec<&'static str> {
         self.executors.iter().map(|e| e.name()).collect()
+    }
+
+    // ====================================================================
+    // 工厂方法 — 创建预配置的注册表（替代 Pipeline 中的直接实例化）
+    // ====================================================================
+
+    /// 创建默认注册表（不含工作区执行器）
+    ///
+    /// 包含所有非工作区内置工具执行器，按注册顺序排列。
+    /// `GeneralToolExecutor` 始终最后注册，充当兜底 fallback。
+    pub fn create_default() -> Self {
+        Self::create_inner(None)
+    }
+
+    /// 创建含工作区执行器的注册表
+    ///
+    /// 在默认注册表基础上，额外注册工作区相关执行器：
+    /// - `WorkspaceToolExecutor`
+    /// - `SubagentExecutor`
+    /// - `CoordinatorSleepExecutor`
+    pub fn create_with_workspace(coordinator: Arc<WorkspaceCoordinator>) -> Self {
+        Self::create_inner(Some(coordinator))
+    }
+
+    /// 内部工厂方法 — 保持与原 `create_executor_registry_with_workspace` 完全一致
+    fn create_inner(coordinator: Option<Arc<WorkspaceCoordinator>>) -> Self {
+        let mut registry = Self::new();
+
+        registry.register(Arc::new(AttemptCompletionExecutor::new()));
+        registry.register(Arc::new(CanvasToolExecutor::new()));
+        // AnkiToolExecutor 已移除 — 旧 CardForge 2.0 管线由 ChatAnki 完全接管
+        registry.register(Arc::new(ChatAnkiToolExecutor::new()));
+        registry.register(Arc::new(BuiltinRetrievalExecutor::new()));
+        registry.register(Arc::new(BuiltinResourceExecutor::new()));
+        registry.register(Arc::new(AttachmentToolExecutor::new())); // 🆕 附件工具执行器（解决 P0 断裂点）
+        registry.register(Arc::new(FetchExecutor::new())); // 🆕 内置 Web Fetch 工具
+        registry.register(Arc::new(AcademicSearchExecutor::new())); // 🆕 学术论文搜索工具（arXiv + OpenAlex）
+        registry.register(Arc::new(PaperSaveExecutor::new())); // 🆕 论文保存+引用格式化工具
+        registry.register(Arc::new(KnowledgeExecutor::new()));
+        registry.register(Arc::new(TodoListExecutor::new()));
+        registry.register(Arc::new(QBankExecutor::new()));
+        registry.register(Arc::new(MemoryToolExecutor::new()));
+        registry.register(Arc::new(UserTodoExecutor::new()));
+        registry.register(Arc::new(SkillsExecutor::new())); // 🆕 Skills 工具执行器（渐进披露架构）
+        registry.register(Arc::new(TemplateDesignerExecutor::new())); // 🆕 模板设计师工具执行器
+        registry.register(Arc::new(AskUserExecutor::new())); // 🆕 用户提问工具执行器
+        registry.register(Arc::new(SessionToolExecutor::new())); // 🆕 会话管理工具执行器
+        registry.register(Arc::new(DocxToolExecutor::new())); // 🆕 DOCX 文档读写工具执行器
+        registry.register(Arc::new(PptxToolExecutor::new())); // 🆕 PPTX 演示文稿读写工具执行器
+        registry.register(Arc::new(XlsxToolExecutor::new())); // 🆕 XLSX 电子表格读写工具执行器
+        registry.register(Arc::new(ImageGenerationExecutor::new())); // 🆕 内置图片生成工具执行器
+
+        if let Some(coordinator) = coordinator {
+            registry.register(Arc::new(WorkspaceToolExecutor::new(coordinator.clone())));
+            // 注册 SubagentExecutor（subagent_call 语法糖）
+            registry.register(Arc::new(SubagentExecutor::new(coordinator.clone())));
+            // 🆕 注册 CoordinatorSleepExecutor（主代理睡眠/唤醒机制）
+            registry.register(Arc::new(CoordinatorSleepExecutor::new(coordinator)));
+        }
+
+        registry.register(Arc::new(GeneralToolExecutor::new()));
+
+        log::info!(
+            "[ChatV2::pipeline] ToolExecutorRegistry initialized with {} executors: {:?}",
+            registry.len(),
+            registry.executor_names()
+        );
+
+        registry
     }
 }
 

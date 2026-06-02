@@ -12,7 +12,7 @@ use crate::llm_manager::{
 use crate::mcp::McpConfig;
 use crate::models::{
     AnkiDocumentGenerationRequest, AnkiDocumentGenerationResponse, AnkiGenerationOptions, AppError,
-    CreateTemplateRequest, CustomAnkiTemplate, ExamSheetSessionDetail,
+    AppErrorType, CreateTemplateRequest, CustomAnkiTemplate, ExamSheetSessionDetail,
     ExamSheetSessionDetailRequest, ExamSheetSessionDetailResponse, ExamSheetSessionListRequest,
     ExamSheetSessionListResponse, ModelAssignments, PdfOcrRequest, PdfOcrResult,
     RenameExamSheetSessionRequest, RenameExamSheetSessionResponse, StreamContext,
@@ -797,7 +797,8 @@ pub async fn save_pdf_to_temp(
     };
 
     let pdf_bytes =
-        base64::Engine::decode(&base64::engine::general_purpose::STANDARD, &base64_data)
+        base64::engine::general_purpose::STANDARD
+            .decode(&base64_data)
             .map_err(|e| AppError::validation(format!("Base64 解码失败: {}", e)))?;
 
     // 生成唯一文件名
@@ -848,10 +849,11 @@ pub async fn update_exam_sheet_cards(
         .await?;
 
     for mistake_id in &outcome.updated_mistake_ids {
-        let _ = app_handle.emit(
+        app_handle.emit(
             "mistake_status_update",
             serde_json::json!({ "mistake_id": mistake_id }),
-        );
+        )
+        .map_err(|e| AppError::new(AppErrorType::Unknown, format!("emit failed: {}", e)))?;
     }
 
     Ok(UpdateExamSheetCardsResponse {
@@ -877,10 +879,11 @@ pub async fn rename_exam_sheet_session(
         .await?;
 
     for mistake_id in &outcome.updated_mistake_ids {
-        let _ = app_handle.emit(
+        app_handle.emit(
             "mistake_status_update",
             serde_json::json!({ "mistake_id": mistake_id }),
-        );
+        )
+        .map_err(|e| AppError::new(AppErrorType::Unknown, format!("emit failed: {}", e)))?;
     }
 
     Ok(RenameExamSheetSessionResponse {
@@ -2728,7 +2731,7 @@ pub async fn import_custom_templates_bulk(
 #[tauri::command]
 pub async fn import_builtin_templates(state: State<'_, AppState>) -> Result<String> {
     // 嵌入内置模板 JSON
-    const BUILTIN_TEMPLATES_JSON: &str = include_str!("data/builtin-templates.json");
+    const BUILTIN_TEMPLATES_JSON: &str = include_str!("../resources/builtin-templates.json");
 
     // 解析模板数组
     let templates: Vec<serde_json::Value> = serde_json::from_str(BUILTIN_TEMPLATES_JSON)
@@ -5445,7 +5448,9 @@ pub async fn get_learning_heatmap(
     }
 
     // 获取 VFS 数据库
-    let state = app_handle.state::<AppState>();
+    let state = app_handle.try_state::<AppState>().ok_or_else(|| {
+        AppError::new(AppErrorType::Unknown, "Failed to get AppState")
+    })?;
     if let Some(ref vfs_db) = state.vfs_db {
         if let Ok(conn) = vfs_db.get_conn() {
             // VFS 笔记编辑
@@ -5747,7 +5752,7 @@ pub async fn qbank_crop_source_image(
     let dyn_img = image::DynamicImage::ImageRgba8(cropped);
     let mut cursor = std::io::Cursor::new(Vec::new());
     dyn_img
-        .write_to(&mut cursor, image::ImageOutputFormat::Png)
+        .write_to(&mut cursor, image::ImageFormat::Png)
         .map_err(|e| AppError::validation(format!("裁剪图片编码失败: {}", e)))?;
     let buf = cursor.into_inner();
 

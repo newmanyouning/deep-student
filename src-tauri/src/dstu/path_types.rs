@@ -227,18 +227,29 @@ pub const RESOURCE_ID_PREFIXES: &[(&str, &str)] = &[
 
 /// 从资源 ID 推断资源类型
 ///
+/// 使用 `DstuNodeType::from_id_prefix` 作为规范源。
+/// 保留此函数用于向后兼容（返回 Option<String> 而非 DstuNodeType）。
+///
 /// # 参数
 /// - `id`: 资源 ID，如 "note_abc123"
 ///
 /// # 返回
 /// 资源类型字符串，如 Some("note")；无法识别返回 None
 pub fn get_resource_type_from_id(id: &str) -> Option<String> {
-    for (prefix, resource_type) in RESOURCE_ID_PREFIXES {
-        if id.starts_with(prefix) {
-            return Some(resource_type.to_string());
-        }
-    }
-    None
+    use crate::dstu::types::DstuNodeType;
+    DstuNodeType::from_id_prefix(id).map(|t| match t {
+        DstuNodeType::Note => "note",
+        DstuNodeType::Textbook => "textbook",
+        DstuNodeType::Exam => "exam",
+        DstuNodeType::Translation => "translation",
+        DstuNodeType::Essay => "essay",
+        DstuNodeType::Folder => "folder",
+        DstuNodeType::MindMap => "mindmap",
+        DstuNodeType::File if id.starts_with("img_") => "image",
+        DstuNodeType::File => "file",
+        DstuNodeType::Image => "image",
+        DstuNodeType::Retrieval => "retrieval",
+    }.to_string())
 }
 
 /// 检查字符串是否是有效的资源 ID（符合前缀规范和长度限制）

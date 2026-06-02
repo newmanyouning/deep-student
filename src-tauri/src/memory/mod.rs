@@ -10,8 +10,10 @@ pub mod llm_decision;
 pub mod query_rewriter;
 pub mod reranker;
 pub mod service;
+pub mod storage_trait;
 
 pub use error::{MemoryError, MemoryResult};
+pub use storage_trait::{MemoryStorage, MemoryStorageConn, VfsMemoryStorage};
 
 pub use audit_log::{MemoryAuditLogItem, MemoryAuditLogger, MemoryOpSource, MemoryOpType, OpTimer};
 pub use auto_extractor::MemoryAutoExtractor;

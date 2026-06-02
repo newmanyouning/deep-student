@@ -83,6 +83,16 @@ struct JobStatusData {
     result_url: Option<ResultUrl>,
 }
 
+impl JobStatusData {
+    fn total_pages(&self) -> u32 {
+        self.extract_progress.as_ref().map(|p| p.total_pages).unwrap_or(0)
+    }
+
+    fn extracted_pages(&self) -> u32 {
+        self.extract_progress.as_ref().map(|p| p.extracted_pages).unwrap_or(0)
+    }
+}
+
 #[derive(Debug, Deserialize)]
 struct ExtractProgress {
     #[serde(rename = "totalPages", default)]
@@ -453,5 +463,312 @@ impl PaddleOcrApiClient {
             model
         );
         Ok(pages)
+    }
+
+    // ----- Connectivity check -----
+
+    /// 轻量级连接性检查
+    ///
+    /// 仅验证 API 端点是否可达、TLS 握手是否成功。
+    /// 不创建 OCR job，不消耗配额。
+    ///
+    /// # 返回
+    /// - `Ok(())` — API 可达
+    /// - `Err(PaddleOcrApiError)` — 连接失败（含原因：DNS / TCP / TLS / HTTP 状态码）
+    pub async fn check_connectivity(&self) -> Result<(), PaddleOcrApiError> {
+        // 先测试基础 HTTP GET（无需认证的端点）
+        // PaddleOCR API 的 GET /api/v2/ocr/jobs 返回 401（未认证），但至少说明 API 可达
+        let url = format!("{}/ocr/jobs", PADDLEOCR_API_BASE);
+
+        let resp = self.client.get(&url).timeout(std::time::Duration::from_secs(15)).send().await.map_err(|e| {
+            if e.is_timeout() {
+                PaddleOcrApiError::Api(format!("连接超时 (15s): {}", PADDLEOCR_API_BASE))
+            } else if e.is_connect() {
+                PaddleOcrApiError::Api(format!("连接被拒绝: {} — 请检查网络和防火墙", PADDLEOCR_API_BASE))
+            } else if e.is_dns() {
+                PaddleOcrApiError::Api(format!("DNS 解析失败: paddleocr.aistudio-app.com — 请检查 DNS 配置"))
+            } else {
+                PaddleOcrApiError::Api(format!("网络错误: {}", e))
+            }
+        })?;
+
+        let status = resp.status();
+        let status_code = status.as_u16();
+
+        if status_code == 401 || status_code == 403 {
+            // 401/403 是预期行为（未带 token 或 token 无效），证明 API 可达
+            tracing::info!("[PaddleOCR] Connectivity check passed (HTTP {})", status_code);
+            Ok(())
+        } else if status_code == 200 {
+            // 理论上不会发生（GET /jobs 不应该返回 200），但记录一下
+            tracing::warn!("[PaddleOCR] Connectivity check: unexpected 200 response");
+            Ok(())
+        } else {
+            Err(PaddleOcrApiError::Api(format!(
+                "API 返回异常状态码: HTTP {} — body: {}",
+                status_code,
+                resp.text().await.unwrap_or_default()
+            )))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_submit_job_request_serialization() {
+        let req = SubmitJobRequest {
+            model: "PaddleOCR-VL-1.6",
+            file_url: Some("https://example.com/doc.pdf".to_string()),
+            optional_payload: Some(OcrOptionalPayload {
+                use_doc_orientation_classify: false,
+                use_doc_unwarping: false,
+                use_chart_recognition: false,
+                use_textline_orientation: false,
+            }),
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("\"model\":\"PaddleOCR-VL-1.6\""));
+        assert!(json.contains("\"fileUrl\":\"https://example.com/doc.pdf\""));
+        assert!(json.contains("\"optionalPayload\""));
+    }
+
+    #[test]
+    fn test_submit_job_request_no_file_url() {
+        let req = SubmitJobRequest {
+            model: "PP-OCRv5",
+            file_url: None,
+            optional_payload: None,
+        };
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("\"model\":\"PP-OCRv5\""));
+        assert!(!json.contains("fileUrl"), "fileUrl should be omitted when None");
+        assert!(!json.contains("optionalPayload"), "optionalPayload should be omitted when None");
+    }
+
+    #[test]
+    fn test_job_status_response_deserialization_done() {
+        let raw = r#"{
+            "data": {
+                "state": "done",
+                "extractProgress": {
+                    "totalPages": 5,
+                    "extractedPages": 5,
+                    "startTime": "2025-01-01T00:00:00Z",
+                    "endTime": "2025-01-01T00:01:00Z"
+                },
+                "resultUrl": {
+                    "jsonUrl": "https://storage.example.com/result.jsonl"
+                }
+            }
+        }"#;
+        let resp: JobStatusResponse = serde_json::from_str(raw).unwrap();
+        assert_eq!(resp.data.state, "done");
+        assert_eq!(resp.data.total_pages(), 5);
+        assert_eq!(resp.data.extracted_pages(), 5);
+        assert_eq!(
+            resp.data.result_url.as_ref().unwrap().json_url,
+            "https://storage.example.com/result.jsonl"
+        );
+    }
+
+    #[test]
+    fn test_job_status_response_deserialization_failed() {
+        let raw = r#"{
+            "data": {
+                "state": "failed",
+                "errorMsg": "图片解析失败：不支持的文件格式"
+            }
+        }"#;
+        let resp: JobStatusResponse = serde_json::from_str(raw).unwrap();
+        assert_eq!(resp.data.state, "failed");
+        assert_eq!(
+            resp.data.error_msg.as_deref(),
+            Some("图片解析失败：不支持的文件格式")
+        );
+    }
+
+    #[test]
+    fn test_job_status_response_deserialization_running() {
+        let raw = r#"{
+            "data": {
+                "state": "running",
+                "extractProgress": {
+                    "totalPages": 10,
+                    "extractedPages": 3
+                }
+            }
+        }"#;
+        let resp: JobStatusResponse = serde_json::from_str(raw).unwrap();
+        assert_eq!(resp.data.state, "running");
+        assert_eq!(resp.data.extracted_pages(), 3);
+    }
+
+    #[test]
+    fn test_job_status_response_deserialization_pending() {
+        let raw = r#"{"data": {"state": "pending"}}"#;
+        let resp: JobStatusResponse = serde_json::from_str(raw).unwrap();
+        assert_eq!(resp.data.state, "pending");
+        assert!(resp.data.error_msg.is_none());
+        assert!(resp.data.result_url.is_none());
+        assert!(resp.data.extract_progress.is_none());
+    }
+
+    #[test]
+    fn test_jsonl_line_deserialization_vl() {
+        let raw = r#"{
+            "result": {
+                "layoutParsingResults": [
+                    {
+                        "markdown": {
+                            "text": "# Page 1\n\nHello World",
+                            "images": {
+                                "fig1": "https://storage.example.com/fig1.png"
+                            }
+                        }
+                    }
+                ]
+            }
+        }"#;
+        let line: JsonlLine = serde_json::from_str(raw).unwrap();
+        assert_eq!(line.result.layout_parsing_results.len(), 1);
+        assert_eq!(
+            line.result.layout_parsing_results[0].markdown.text,
+            "# Page 1\n\nHello World"
+        );
+        assert_eq!(
+            line.result.layout_parsing_results[0]
+                .markdown
+                .images
+                .get("fig1")
+                .unwrap(),
+            "https://storage.example.com/fig1.png"
+        );
+    }
+
+    #[test]
+    fn test_jsonl_line_deserialization_v5() {
+        let raw = r#"{
+            "result": {
+                "ocrResults": [
+                    {"ocrImage": "https://storage.example.com/page_0.png"},
+                    {"ocrImage": "https://storage.example.com/page_1.png"}
+                ]
+            }
+        }"#;
+        let line: JsonlLine = serde_json::from_str(raw).unwrap();
+        assert_eq!(line.result.ocr_results.len(), 2);
+        assert_eq!(
+            line.result.ocr_results[0].ocr_image,
+            "https://storage.example.com/page_0.png"
+        );
+    }
+
+    #[test]
+    fn test_jsonl_line_both_fields_empty() {
+        let raw = r#"{"result": {}}"#;
+        let line: JsonlLine = serde_json::from_str(raw).unwrap();
+        assert!(line.result.layout_parsing_results.is_empty());
+        assert!(line.result.ocr_results.is_empty());
+    }
+
+    #[test]
+    fn test_submit_job_response_deserialization() {
+        let raw = r#"{"data": {"jobId": "job_abc123"}}"#;
+        let resp: SubmitJobResponse = serde_json::from_str(raw).unwrap();
+        assert_eq!(resp.data.job_id, "job_abc123");
+    }
+
+    #[test]
+    fn test_paddle_ocr_result_construction() {
+        let result = PaddleOcrResult {
+            total_pages: 2,
+            model: "PaddleOCR-VL-1.6".to_string(),
+            pages: vec![
+                PaddleOcrPage {
+                    page_index: 0,
+                    markdown_text: "# Page 1".to_string(),
+                    images: vec![],
+                },
+                PaddleOcrPage {
+                    page_index: 1,
+                    markdown_text: "# Page 2".to_string(),
+                    images: vec![PaddleOcrImage {
+                        name: "fig1".to_string(),
+                        url: "https://example.com/fig1.png".to_string(),
+                    }],
+                },
+            ],
+        };
+        assert_eq!(result.total_pages, 2);
+        assert_eq!(result.pages[0].markdown_text, "# Page 1");
+        assert_eq!(result.pages[1].images[0].name, "fig1");
+    }
+
+    #[test]
+    fn test_optional_payload_default() {
+        let payload = OcrOptionalPayload::default();
+        assert!(!payload.use_doc_orientation_classify);
+        assert!(!payload.use_doc_unwarping);
+        assert!(!payload.use_chart_recognition);
+        assert!(!payload.use_textline_orientation);
+
+        let json = serde_json::to_string(&payload).unwrap();
+        assert!(json.contains("\"useDocOrientationClassify\":false"));
+        assert!(json.contains("\"useDocUnwarping\":false"));
+        assert!(!json.contains("useChartRecognition"));
+        assert!(!json.contains("useTextlineOrientation"));
+    }
+
+    #[test]
+    fn test_optional_payload_v5() {
+        let payload = OcrOptionalPayload {
+            use_doc_orientation_classify: false,
+            use_doc_unwarping: false,
+            use_chart_recognition: false,
+            use_textline_orientation: true,
+        };
+        let json = serde_json::to_string(&payload).unwrap();
+        assert!(json.contains("\"useTextlineOrientation\":true"));
+    }
+
+    #[test]
+    fn test_optional_payload_full() {
+        let payload = OcrOptionalPayload {
+            use_doc_orientation_classify: true,
+            use_doc_unwarping: true,
+            use_chart_recognition: true,
+            use_textline_orientation: true,
+        };
+        let json = serde_json::to_string(&payload).unwrap();
+        assert!(json.contains("\"useDocOrientationClassify\":true"));
+        assert!(json.contains("\"useDocUnwarping\":true"));
+        assert!(json.contains("\"useChartRecognition\":true"));
+        assert!(json.contains("\"useTextlineOrientation\":true"));
+    }
+
+    #[test]
+    fn test_paddle_ocr_api_error_display() {
+        let err = PaddleOcrApiError::Api("rate limited".to_string());
+        assert!(err.to_string().contains("rate limited"));
+
+        let err = PaddleOcrApiError::Timeout(120);
+        assert!(err.to_string().contains("120"));
+
+        let err = PaddleOcrApiError::JobFailed("unsupported format".to_string());
+        assert!(err.to_string().contains("unsupported format"));
+    }
+
+    #[test]
+    fn test_paddle_ocr_page_defaults() {
+        let page = PaddleOcrPage {
+            page_index: 0,
+            markdown_text: String::new(),
+            images: vec![],
+        };
+        assert!(page.markdown_text.is_empty());
+        assert!(page.images.is_empty());
     }
 }

@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use crate::dstu::error::{DstuError, DstuResult};
 use crate::dstu::types::DstuNode;
 use crate::vfs::{
     repos::VfsMindMapRepo, VfsDatabase, VfsEssayRepo, VfsExamRepo, VfsFileRepo, VfsNoteRepo,
@@ -24,7 +25,7 @@ pub async fn get_resource_by_type_and_id(
     vfs_db: &Arc<VfsDatabase>,
     resource_type: &str,
     id: &str,
-) -> Result<Option<DstuNode>, String> {
+) -> DstuResult<Option<DstuNode>> {
     match resource_type {
         "notes" => {
             match VfsNoteRepo::get_note(vfs_db, id) {
@@ -37,7 +38,7 @@ pub async fn get_resource_by_type_and_id(
                 }
                 Err(e) => {
                     log::error!("[DSTU::crud] get_resource_by_type_and_id: FAILED - type=note, id={}, error={}", id, e);
-                    Err(e.to_string())
+                    Err(DstuError::from(e.to_string()))
                 }
             }
         }
@@ -51,7 +52,7 @@ pub async fn get_resource_by_type_and_id(
             }
             Err(e) => {
                 log::error!("[DSTU::crud] get_resource_by_type_and_id: FAILED - type=textbook, id={}, error={}", id, e);
-                Err(e.to_string())
+                Err(DstuError::from(e.to_string()))
             }
         },
         "translations" => {
@@ -62,7 +63,7 @@ pub async fn get_resource_by_type_and_id(
                 }
                 Err(e) => {
                     log::error!("[DSTU::crud] get_resource_by_type_and_id: FAILED - type=translation, id={}, error={}", id, e);
-                    Err(e.to_string())
+                    Err(DstuError::from(e.to_string()))
                 }
             }
         }
@@ -77,7 +78,7 @@ pub async fn get_resource_by_type_and_id(
                 }
                 Err(e) => {
                     log::error!("[DSTU::crud] get_resource_by_type_and_id: FAILED - type=exam, id={}, error={}", id, e);
-                    Err(e.to_string())
+                    Err(DstuError::from(e.to_string()))
                 }
             }
         }
@@ -96,12 +97,12 @@ pub async fn get_resource_by_type_and_id(
                 }
                 Err(e) => {
                     log::error!("[DSTU::crud] get_resource_by_type_and_id: FAILED - type=essay_session, id={}, error={}", id, e);
-                    Err(e.to_string())
+                    Err(DstuError::from(e.to_string()))
                 }
             },
             Err(e) => {
                 log::error!("[DSTU::crud] get_resource_by_type_and_id: FAILED - type=essay, id={}, error={}", id, e);
-                Err(e.to_string())
+                Err(DstuError::from(e.to_string()))
             }
         },
         "files" | "attachments" => {
@@ -115,7 +116,7 @@ pub async fn get_resource_by_type_and_id(
                 }
                 Err(e) => {
                     log::error!("[DSTU::crud] get_resource_by_type_and_id: FAILED - type=file, id={}, error={}", id, e);
-                    Err(e.to_string())
+                    Err(DstuError::from(e.to_string()))
                 }
             }
         }
@@ -129,7 +130,7 @@ pub async fn get_resource_by_type_and_id(
             }
             Err(e) => {
                 log::error!("[DSTU::crud] get_resource_by_type_and_id: FAILED - type=mindmap, id={}, error={}", id, e);
-                Err(e.to_string())
+                Err(DstuError::from(e.to_string()))
             }
         },
         _ => {
@@ -137,7 +138,7 @@ pub async fn get_resource_by_type_and_id(
                 "[DSTU::crud] get_resource_by_type_and_id: unsupported type={}",
                 resource_type
             );
-            Err(format!("Unsupported resource type: {}", resource_type))
+            Err(DstuError::from(format!("Unsupported resource type: {}", resource_type)))
         }
     }
 }
@@ -147,46 +148,46 @@ pub async fn fetch_resource_as_dstu_node(
     vfs_db: &Arc<VfsDatabase>,
     item: &crate::vfs::VfsFolderItem,
     _folder_path: &str,
-) -> Result<Option<DstuNode>, String> {
+) -> DstuResult<Option<DstuNode>> {
     match item.item_type.as_str() {
         "note" => match VfsNoteRepo::get_note(vfs_db, &item.item_id) {
             Ok(Some(note)) => Ok(Some(note_to_dstu_node(&note))),
             Ok(None) => Ok(None),
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(DstuError::from(e.to_string())),
         },
         "textbook" => match VfsTextbookRepo::get_textbook(vfs_db, &item.item_id) {
             Ok(Some(tb)) => Ok(Some(textbook_to_dstu_node(&tb))),
             Ok(None) => Ok(None),
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(DstuError::from(e.to_string())),
         },
         "exam" => match VfsExamRepo::get_exam_sheet(vfs_db, &item.item_id) {
             Ok(Some(exam)) => Ok(Some(exam_to_dstu_node(&exam))),
             Ok(None) => Ok(None),
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(DstuError::from(e.to_string())),
         },
         "translation" => match VfsTranslationRepo::get_translation(vfs_db, &item.item_id) {
             Ok(Some(tr)) => Ok(Some(translation_to_dstu_node(&tr))),
             Ok(None) => Ok(None),
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(DstuError::from(e.to_string())),
         },
         "essay" => match VfsEssayRepo::get_essay(vfs_db, &item.item_id) {
             Ok(Some(essay)) => Ok(Some(essay_to_dstu_node(&essay))),
             Ok(None) => match VfsEssayRepo::get_session(vfs_db, &item.item_id) {
                 Ok(Some(session)) => Ok(Some(session_to_dstu_node(&session))),
                 Ok(None) => Ok(None),
-                Err(e) => Err(e.to_string()),
+                Err(e) => Err(DstuError::from(e.to_string())),
             },
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(DstuError::from(e.to_string())),
         },
         "image" | "file" => match VfsFileRepo::get_file(vfs_db, &item.item_id) {
             Ok(Some(f)) => Ok(Some(file_to_dstu_node(&f))),
             Ok(None) => Ok(None),
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(DstuError::from(e.to_string())),
         },
         "mindmap" => match VfsMindMapRepo::get_mindmap(vfs_db, &item.item_id) {
             Ok(Some(m)) => Ok(Some(mindmap_to_dstu_node(&m))),
             Ok(None) => Ok(None),
-            Err(e) => Err(e.to_string()),
+            Err(e) => Err(DstuError::from(e.to_string())),
         },
         _ => {
             log::warn!("[DSTU::crud] Unknown item type: {}", item.item_type);
@@ -199,9 +200,9 @@ pub async fn fetch_resource_as_dstu_node(
 pub async fn get_resource_folder_path(
     vfs_db: &Arc<VfsDatabase>,
     source_id: &str,
-) -> Result<String, String> {
+) -> DstuResult<String> {
     crate::vfs::ref_handlers::get_resource_path_internal(vfs_db, source_id)
-        .map_err(|e| e.to_string())
+        .map_err(|e| DstuError::from(e.to_string()))
 }
 
 /// UUID 格式 ID 回退查找

@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use image::{image_dimensions, ImageFormat};
+use image::ImageFormat;
 use pdfium_render::prelude::*;
 use serde_json::json;
 use sha2::{Digest, Sha256};
@@ -1366,7 +1366,9 @@ impl PdfOcrService {
             _ => {
                 let abs_path = self.file_manager.resolve_image_path(&image_rel_path);
                 spawn_blocking(move || {
-                    image_dimensions(&abs_path)
+                    let reader = image::io::Reader::open(&abs_path)
+                        .map_err(|e| AppError::file_system(format!("读取图片尺寸失败: {}", e)))?;
+                    reader.into_dimensions()
                         .map_err(|e| AppError::file_system(format!("读取图片尺寸失败: {}", e)))
                 })
                 .await

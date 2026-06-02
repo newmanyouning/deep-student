@@ -24,7 +24,7 @@ use tauri::{AppHandle, Manager, State};
 
 #[cfg(feature = "data_governance")]
 use super::audit::{AuditFilter, AuditLog, AuditOperation, AuditRepository, AuditStatus};
-use super::commands_backup::{get_app_data_dir, sanitize_path_for_user};
+use super::commands_shared::get_app_data_dir;
 use super::commands_types::{
     AuditLogPagedResponse, AuditLogResponse, DatabaseDetailResponse, DatabaseHealthStatus,
     DatabaseStatusResponse, HealthCheckResponse, MaintenanceStatusResponse,
@@ -34,11 +34,6 @@ use super::commands_types::{
 use super::migration::{get_migration_set, MigrationCoordinator};
 use super::schema_registry::{DatabaseId, DatabaseStatus, SchemaRegistry};
 use super::{DataGovernanceError, DataGovernanceResult};
-use crate::backup_common::{log_and_skip_entry_err, BACKUP_GLOBAL_LIMITER};
-use crate::backup_job_manager::{
-    BackupJobContext, BackupJobKind, BackupJobManagerState, BackupJobParams, BackupJobPhase,
-    BackupJobResultPayload, BackupJobStatus, BackupJobSummary, PersistedJob,
-};
 use crate::utils::text::safe_truncate_chars;
 
 fn resolve_target_and_pending(

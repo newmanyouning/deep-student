@@ -5,7 +5,7 @@ use tokio::fs as async_fs;
 // use tokio::io::AsyncWriteExt; // Removed unused import
 use crate::models::AppError;
 use base64::{engine::general_purpose, Engine as _};
-use image::{imageops::FilterType, DynamicImage, GenericImageView, ImageOutputFormat};
+use image::{imageops::FilterType, DynamicImage, GenericImageView};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
@@ -130,7 +130,11 @@ impl FileManager {
 
         // 编码为 JPEG
         let mut buffer = Cursor::new(Vec::new());
-        if let Err(e) = processed_img.write_to(&mut buffer, ImageOutputFormat::Jpeg(jpeg_quality)) {
+        if let Err(e) = {
+            use image::codecs::jpeg::JpegEncoder;
+            let encoder = JpegEncoder::new_with_quality(&mut buffer, jpeg_quality);
+            processed_img.write_with_encoder(encoder)
+        } {
             error!("⚠️ [图片压缩] JPEG 编码失败: {}", e);
             return base64_data.to_string();
         }

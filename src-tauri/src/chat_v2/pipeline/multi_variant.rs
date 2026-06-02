@@ -577,7 +577,15 @@ impl ChatV2Pipeline {
             {
                 if let Some(vfs_db) = self.vfs_db.clone() {
                     // ① 早期门控：频率 + 隐私模式（同步 SQLite 读取，亚毫秒级）
-                    let mem_config = crate::memory::MemoryConfig::new(vfs_db.clone());
+                    use crate::memory::VfsMemoryStorage;
+                    use crate::vfs::lance_store::VfsLanceStore;
+                    let lance_store = match VfsLanceStore::new(vfs_db.clone()) {
+                        Ok(s) => std::sync::Arc::new(s),
+                        Err(_) => return Ok(String::new()),
+                    };
+                    let mem_storage = std::sync::Arc::new(VfsMemoryStorage::new(
+                        vfs_db.clone(), lance_store, self.llm_manager.clone()));
+                    let mem_config = crate::memory::MemoryConfig::new(mem_storage);
                     let frequency = mem_config
                         .get_auto_extract_frequency()
                         .unwrap_or(crate::memory::AutoExtractFrequency::Balanced);
@@ -620,7 +628,7 @@ impl ChatV2Pipeline {
                             tokio::spawn(async move {
                                 use crate::memory::{
                                     MemoryAutoExtractor, MemoryCategoryManager, MemoryEvolution,
-                                    MemoryService,
+                                    MemoryService, VfsMemoryStorage,
                                 };
                                 use crate::vfs::lance_store::VfsLanceStore;
 
@@ -628,9 +636,10 @@ impl ChatV2Pipeline {
                                     Ok(s) => std::sync::Arc::new(s),
                                     Err(_) => return,
                                 };
-                                let memory_service = MemoryService::new(
-                                    vfs_db.clone(),
-                                    lance_store,
+                                let mem_storage = std::sync::Arc::new(VfsMemoryStorage::new(
+                                    vfs_db.clone(), lance_store, llm_mgr.clone()));
+                                let memory_service = MemoryService::new_with_storage(
+                                    mem_storage.clone(),
                                     llm_mgr.clone(),
                                 );
 
@@ -657,7 +666,7 @@ impl ChatV2Pipeline {
                                             .unwrap_or(false);
                                         if should_refresh {
                                             let cat_mgr = MemoryCategoryManager::new(
-                                                vfs_db.clone(),
+                                                mem_storage.clone(),
                                                 llm_mgr.clone(),
                                             );
                                             let _ = cat_mgr
@@ -667,7 +676,7 @@ impl ChatV2Pipeline {
                                     }
 
                                     // 自进化：使用共享全局节流，间隔由频率档位决定
-                                    let evolution = MemoryEvolution::new(vfs_db);
+                                    let evolution = MemoryEvolution::new(mem_storage.clone());
                                     evolution.run_throttled(
                                         &memory_service,
                                         frequency.evolution_interval_ms(),
@@ -1571,7 +1580,7 @@ impl ChatV2Pipeline {
     }
 
     async fn load_user_profile_for_variant(&self, options: &SendOptions) -> Option<String> {
-        use crate::memory::{MemoryCategoryManager, MemoryConfig, MemoryService};
+        use crate::memory::{MemoryCategoryManager, MemoryConfig, MemoryService, VfsMemoryStorage};
         use crate::vfs::lance_store::VfsLanceStore;
 
         if options.memory_enabled == Some(false) {
@@ -1579,14 +1588,16 @@ impl ChatV2Pipeline {
         }
 
         let vfs_db = self.vfs_db.as_ref()?;
-        let mem_cfg = MemoryConfig::new(vfs_db.clone());
-        if mem_cfg.is_privacy_mode().ok()? {
-            return None;
-        }
         let lance_store = VfsLanceStore::new(vfs_db.clone())
             .ok()
             .map(std::sync::Arc::new)?;
-        let svc = MemoryService::new(vfs_db.clone(), lance_store, self.llm_manager.clone());
+        let mem_storage = std::sync::Arc::new(VfsMemoryStorage::new(
+            vfs_db.clone(), lance_store, self.llm_manager.clone()));
+        let mem_cfg = MemoryConfig::new(mem_storage.clone());
+        if mem_cfg.is_privacy_mode().ok()? {
+            return None;
+        }
+        let svc = MemoryService::new_with_storage(mem_storage.clone(), self.llm_manager.clone());
 
         let root_id = match svc.get_root_folder_id() {
             Ok(Some(id)) => id,
@@ -1595,7 +1606,7 @@ impl ChatV2Pipeline {
 
         let mut sections: Vec<String> = Vec::new();
 
-        let cat_mgr = MemoryCategoryManager::new(vfs_db.clone(), self.llm_manager.clone());
+        let cat_mgr = MemoryCategoryManager::new(mem_storage.clone(), self.llm_manager.clone());
         if let Ok(categories) = cat_mgr.load_all_category_summaries(&root_id) {
             for (cat_name, content) in &categories {
                 sections.push(format!("### {}\n{}", cat_name, content));

@@ -71,7 +71,7 @@ export function ChatV2({ sessionId, initialMessages = [], onMessage, onError }: 
       const msg: Message = { id, role: 'user', content: text, timestamp: Date.now() };
       store.getState().addMessage(msg);
       onMessage?.(msg);
-      await invoke('chat_v2_send', { sessionId, content: text, messageId: id });
+      await invoke('chat_v2_send_message', { sessionId, content: text, messageId: id });
     } catch (err) {
       onError?.(err as Error);
     }

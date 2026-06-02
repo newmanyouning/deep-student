@@ -1,21 +1,21 @@
 use rusqlite::params;
 use std::collections::HashSet;
+use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use tracing::{debug, info, warn};
 
 use crate::llm_manager::LLMManager;
 use crate::vfs::database::VfsDatabase;
-use crate::vfs::error::{VfsError, VfsResult};
-use crate::vfs::indexing::VfsFullIndexingService;
 use crate::vfs::lance_store::VfsLanceStore;
-use crate::vfs::repos::embedding_repo::VfsIndexStateRepo;
-use crate::vfs::repos::folder_repo::VfsFolderRepo;
-use crate::vfs::repos::index_unit_repo;
-use crate::vfs::repos::note_repo::VfsNoteRepo;
 use crate::vfs::types::{
     FolderTreeNode, VfsCreateNoteParams, VfsFolder, VfsNote, VfsUpdateNoteParams,
 };
+
+use super::storage_trait::VfsMemoryStorage;
+
+use super::error::{MemoryError, MemoryResult};
+use super::storage_trait::MemoryStorage;
 
 /// 文件夹树缓存，避免每次搜索/列表都执行 CTE 递归查询
 struct FolderIdCache {
@@ -289,24 +289,34 @@ pub struct SmartWriteOutput {
 #[derive(Clone)]
 pub struct MemoryService {
     config: MemoryConfig,
-    vfs_db: Arc<VfsDatabase>,
-    lance_store: Arc<VfsLanceStore>,
+    storage: Arc<dyn MemoryStorage>,
     llm_manager: Arc<LLMManager>,
     folder_cache: Arc<RwLock<Option<FolderIdCache>>>,
     audit_logger: MemoryAuditLogger,
 }
 
 impl MemoryService {
+    /// Production constructor: wraps concrete VFS types into VfsMemoryStorage,
+    /// then delegates to new_with_storage.
     pub fn new(
-        vfs_db: Arc<VfsDatabase>,
+        db: Arc<VfsDatabase>,
         lance_store: Arc<VfsLanceStore>,
         llm_manager: Arc<LLMManager>,
     ) -> Self {
-        let audit_logger = MemoryAuditLogger::new(vfs_db.clone());
+        let storage = Arc::new(VfsMemoryStorage::new(db, lance_store, llm_manager.clone()));
+        Self::new_with_storage(storage, llm_manager)
+    }
+
+    /// Generic constructor: accepts any MemoryStorage implementation.
+    /// Behavior is identical to `new` — both produce the same MemoryService.
+    pub fn new_with_storage(
+        storage: Arc<dyn MemoryStorage>,
+        llm_manager: Arc<LLMManager>,
+    ) -> Self {
+        let audit_logger = MemoryAuditLogger::new(storage.clone());
         Self {
-            config: MemoryConfig::new(vfs_db.clone()),
-            vfs_db,
-            lance_store,
+            config: MemoryConfig::new(storage.clone()),
+            storage,
             llm_manager,
             folder_cache: Arc::new(RwLock::new(None)),
             audit_logger,
@@ -317,12 +327,12 @@ impl MemoryService {
         &self.audit_logger
     }
 
-    pub fn vfs_db_ref(&self) -> &Arc<VfsDatabase> {
-        &self.vfs_db
+    pub fn storage_ref(&self) -> &Arc<dyn MemoryStorage> {
+        &self.storage
     }
 
     /// 获取或创建系统文件夹（用于存放 __user_profile__、__cat_*__ 等系统笔记）
-    pub fn get_or_create_system_folder_id(&self) -> VfsResult<String> {
+    pub fn get_or_create_system_folder_id(&self) -> MemoryResult<String> {
         let root_id = self.ensure_root_folder_id()?;
         if let Some(id) = self.find_system_folder_id(&root_id)? {
             return Ok(id);
@@ -333,14 +343,14 @@ impl MemoryService {
             None,
             None,
         );
-        VfsFolderRepo::create_folder(&self.vfs_db, &folder)?;
+        self.storage.create_folder(&folder)?;
         self.invalidate_folder_cache();
         debug!("[Memory] Created system folder: {}", folder.id);
         Ok(folder.id)
     }
 
-    fn find_system_folder_id(&self, root_id: &str) -> VfsResult<Option<String>> {
-        let children = VfsFolderRepo::list_folders_by_parent(&self.vfs_db, Some(root_id))?;
+    fn find_system_folder_id(&self, root_id: &str) -> MemoryResult<Option<String>> {
+        let children = self.storage.list_folders_by_parent(Some(root_id))?;
         Ok(children
             .iter()
             .find(|f| f.title == SYSTEM_FOLDER_TITLE)
@@ -402,33 +412,31 @@ impl MemoryService {
         MemoryPurpose::from_tags(tags) == purpose.unwrap_or_default()
     }
 
-    fn validate_user_writable_title(title: &str) -> VfsResult<()> {
+    fn validate_user_writable_title(title: &str) -> MemoryResult<()> {
         if Self::is_reserved_system_name(title) {
-            return Err(VfsError::InvalidArgument {
-                param: "title".to_string(),
-                reason: "标题使用系统保留前缀 '__'，请更换标题".to_string(),
-            });
+            return Err(MemoryError::Validation(
+                "标题使用系统保留前缀 '__'，请更换标题".to_string(),
+            ));
         }
         Ok(())
     }
 
-    fn validate_user_writable_folder_path(path: Option<&str>) -> VfsResult<()> {
+    fn validate_user_writable_folder_path(path: Option<&str>) -> MemoryResult<()> {
         let Some(path) = path else {
             return Ok(());
         };
         for segment in path.split('/').filter(|s| !s.trim().is_empty()) {
             if Self::is_reserved_system_name(segment) {
-                return Err(VfsError::InvalidArgument {
-                    param: "folder_path".to_string(),
-                    reason: "路径包含系统保留目录（'__*'）".to_string(),
-                });
+                return Err(MemoryError::Validation(
+                    "路径包含系统保留目录（'__*'）".to_string(),
+                ));
             }
         }
         Ok(())
     }
 
     /// 获取记忆文件夹 ID 列表（带缓存）
-    fn get_memory_folder_ids(&self, root_id: &str) -> VfsResult<Vec<String>> {
+    fn get_memory_folder_ids(&self, root_id: &str) -> MemoryResult<Vec<String>> {
         {
             let cache = self.folder_cache.read().unwrap_or_else(|p| p.into_inner());
             if let Some(ref c) = *cache {
@@ -437,7 +445,7 @@ impl MemoryService {
                 }
             }
         }
-        let folder_ids = VfsFolderRepo::get_folder_ids_recursive(&self.vfs_db, root_id)?;
+        let folder_ids = self.storage.get_folder_ids_recursive(root_id)?;
         {
             let mut cache = self.folder_cache.write().unwrap_or_else(|p| p.into_inner());
             *cache = Some(FolderIdCache {
@@ -458,10 +466,10 @@ impl MemoryService {
         *cache = None;
     }
 
-    pub fn get_config(&self) -> VfsResult<MemoryConfigOutput> {
+    pub fn get_config(&self) -> MemoryResult<MemoryConfigOutput> {
         let configured_root_id = self.config.get_root_folder_id()?;
         let (root_id, root_title) = if let Some(ref id) = configured_root_id {
-            if let Some(folder) = VfsFolderRepo::get_folder(&self.vfs_db, id)? {
+            if let Some(folder) = self.storage.get_folder(id)? {
                 (Some(id.clone()), Some(folder.title))
             } else {
                 (None, None)
@@ -484,19 +492,15 @@ impl MemoryService {
         })
     }
 
-    pub fn set_root_folder(&self, folder_id: &str) -> VfsResult<()> {
-        if !VfsFolderRepo::folder_exists(&self.vfs_db, folder_id)? {
-            return Err(VfsError::NotFound {
-                resource_type: "Folder".to_string(),
-                id: folder_id.to_string(),
-            });
+    pub fn set_root_folder(&self, folder_id: &str) -> MemoryResult<()> {
+        if !self.storage.folder_exists(folder_id)? {
+            return Err(MemoryError::NotFound(format!("Folder '{}' not found", folder_id)));
         }
-        if let Some(folder) = VfsFolderRepo::get_folder(&self.vfs_db, folder_id)? {
+        if let Some(folder) = self.storage.get_folder(folder_id)? {
             if Self::is_reserved_system_name(&folder.title) {
-                return Err(VfsError::InvalidArgument {
-                    param: "folder_id".to_string(),
-                    reason: "记忆根目录不能使用系统保留目录（'__*'）".to_string(),
-                });
+                return Err(MemoryError::Validation(
+                    "记忆根目录不能使用系统保留目录（'__*'）".to_string(),
+                ));
             }
         }
         self.config.set_root_folder_id(folder_id)?;
@@ -514,56 +518,44 @@ impl MemoryService {
     }
 
     async fn index_immediately(&self, resource_id: &str) {
-        match VfsFullIndexingService::new(
-            self.vfs_db.clone(),
-            self.llm_manager.clone(),
-            self.lance_store.clone(),
-        ) {
-            Ok(svc) => match svc.index_resource(resource_id, None, None).await {
-                Ok((chunks, _dim)) => {
-                    if let Err(e) = VfsIndexStateRepo::mark_indexed(
-                        &self.vfs_db,
-                        resource_id,
-                        &format!("mem_imm_{}", chrono::Utc::now().timestamp_millis()),
-                    ) {
-                        warn!(
-                            "[Memory] Failed to mark indexed after immediate indexing: {}",
-                            e
-                        );
-                    }
-                    info!(
-                        "[Memory] Immediate indexing succeeded: resource={}, chunks={}",
-                        resource_id, chunks
-                    );
-                }
-                Err(e) => {
+        let version = format!("mem_imm_{}", chrono::Utc::now().timestamp_millis());
+        match self.storage.index_resource(resource_id).await {
+            Ok((chunks, _dim)) => {
+                if let Err(e) = self.storage.mark_indexed(resource_id, &version) {
                     warn!(
-                        "[Memory] Immediate indexing failed (will retry via pending): {}",
+                        "[Memory] Failed to mark indexed after immediate indexing: {}",
                         e
                     );
                 }
-            },
+                info!(
+                    "[Memory] Immediate indexing succeeded: resource={}, chunks={}",
+                    resource_id, chunks
+                );
+            }
             Err(e) => {
-                warn!("[Memory] Failed to create indexing service: {}", e);
+                warn!(
+                    "[Memory] Immediate indexing failed (will retry via pending): {}",
+                    e
+                );
             }
         }
     }
 
-    pub fn set_privacy_mode(&self, enabled: bool) -> VfsResult<()> {
+    pub fn set_privacy_mode(&self, enabled: bool) -> MemoryResult<()> {
         self.config.set_privacy_mode(enabled)?;
         info!("[Memory] Set privacy mode: {}", enabled);
         Ok(())
     }
 
-    pub fn create_root_folder(&self, title: &str) -> VfsResult<String> {
+    pub fn create_root_folder(&self, title: &str) -> MemoryResult<String> {
         self.config.create_root_folder(title)
     }
 
-    pub fn get_or_create_root_folder(&self) -> VfsResult<String> {
+    pub fn get_or_create_root_folder(&self) -> MemoryResult<String> {
         self.config.get_or_create_root_folder()
     }
 
-    fn ensure_root_folder_id(&self) -> VfsResult<String> {
+    fn ensure_root_folder_id(&self) -> MemoryResult<String> {
         self.config.get_or_create_root_folder()
     }
 
@@ -573,7 +565,7 @@ impl MemoryService {
     /// - 分类刷新使用频率档位阈值控制，避免每次写入都触发 LLM 聚合
     pub fn spawn_post_write_maintenance(&self) {
         let svc = self.clone();
-        let vfs_db = self.vfs_db.clone();
+        let storage = self.storage.clone();
         let llm_manager = self.llm_manager.clone();
 
         crate::background_tasks::BACKGROUND_TASKS.spawn(async move {
@@ -589,7 +581,7 @@ impl MemoryService {
                 ),
             }
 
-            let mem_cfg = MemoryConfig::new(vfs_db.clone());
+            let mem_cfg = MemoryConfig::new(storage.clone());
             let frequency = mem_cfg
                 .get_auto_extract_frequency()
                 .unwrap_or(super::config::AutoExtractFrequency::Balanced);
@@ -603,7 +595,7 @@ impl MemoryService {
 
                 if should_refresh {
                     let cat_mgr = super::category_manager::MemoryCategoryManager::new(
-                        vfs_db.clone(),
+                        storage.clone(),
                         llm_manager,
                     );
                     if let Err(e) = cat_mgr.refresh_all_categories(&svc).await {
@@ -612,12 +604,12 @@ impl MemoryService {
                 }
             }
 
-            let evolution = super::evolution::MemoryEvolution::new(vfs_db);
+            let evolution = super::evolution::MemoryEvolution::new(storage.clone());
             evolution.run_throttled(&svc, frequency.evolution_interval_ms());
         });
     }
 
-    pub async fn search(&self, query: &str, top_k: usize) -> VfsResult<Vec<MemorySearchResult>> {
+    pub async fn search(&self, query: &str, top_k: usize) -> MemoryResult<Vec<MemorySearchResult>> {
         self.search_for_purpose(query, top_k, SearchPurpose::UserRetrieval)
             .await
     }
@@ -627,7 +619,7 @@ impl MemoryService {
         query: &str,
         top_k: usize,
         purpose: SearchPurpose,
-    ) -> VfsResult<Vec<MemorySearchResult>> {
+    ) -> MemoryResult<Vec<MemorySearchResult>> {
         if top_k == 0 {
             return Ok(vec![]);
         }
@@ -641,7 +633,7 @@ impl MemoryService {
             .llm_manager
             .generate_embedding(query)
             .await
-            .map_err(|e| VfsError::Other(format!("Embedding failed: {}", e)))?;
+            .map_err(|e| MemoryError::Other(format!("Embedding failed: {}", e)))?;
 
         self.search_with_embedding_for_purpose(query, &embedding, top_k, purpose)
             .await
@@ -655,7 +647,7 @@ impl MemoryService {
         query: &str,
         query_embedding: &[f32],
         top_k: usize,
-    ) -> VfsResult<Vec<MemorySearchResult>> {
+    ) -> MemoryResult<Vec<MemorySearchResult>> {
         self.search_with_embedding_for_purpose(
             query,
             query_embedding,
@@ -671,7 +663,7 @@ impl MemoryService {
         query_embedding: &[f32],
         top_k: usize,
         purpose: SearchPurpose,
-    ) -> VfsResult<Vec<MemorySearchResult>> {
+    ) -> MemoryResult<Vec<MemorySearchResult>> {
         if top_k == 0 {
             return Ok(vec![]);
         }
@@ -690,7 +682,7 @@ impl MemoryService {
 
         let retrieval_k = top_k.saturating_mul(3);
         let lance_results = self
-            .lance_store
+            .storage
             .hybrid_search(
                 "text",
                 query,
@@ -750,10 +742,10 @@ impl MemoryService {
         Ok(results)
     }
 
-    pub fn read(&self, note_id: &str) -> VfsResult<Option<(VfsNote, String)>> {
+    pub fn read(&self, note_id: &str) -> MemoryResult<Option<(VfsNote, String)>> {
         let root_id = self.ensure_root_folder_id()?;
 
-        let note = match VfsNoteRepo::get_note(&self.vfs_db, note_id)? {
+        let note = match self.storage.get_note(note_id)? {
             Some(note) => note,
             None => return Ok(None),
         };
@@ -762,7 +754,7 @@ impl MemoryService {
             return Ok(None);
         }
 
-        let content = VfsNoteRepo::get_note_content(&self.vfs_db, note_id)?.unwrap_or_default();
+        let content = self.storage.get_note_content(note_id)?.unwrap_or_default();
         Ok(Some((note, content)))
     }
 
@@ -772,7 +764,7 @@ impl MemoryService {
         title: &str,
         content: &str,
         mode: WriteMode,
-    ) -> VfsResult<MemoryWriteOutput> {
+    ) -> MemoryResult<MemoryWriteOutput> {
         self.write_typed(folder_path, title, content, mode, MemoryType::Fact, None)
     }
 
@@ -784,33 +776,26 @@ impl MemoryService {
         mode: WriteMode,
         memory_type: MemoryType,
         purpose: Option<MemoryPurpose>,
-    ) -> VfsResult<MemoryWriteOutput> {
+    ) -> MemoryResult<MemoryWriteOutput> {
         if title.trim().is_empty() {
-            return Err(VfsError::InvalidArgument {
-                param: "title".to_string(),
-                reason: "标题不能为空".to_string(),
-            });
+            return Err(MemoryError::Validation("标题不能为空".to_string()));
         }
         Self::validate_user_writable_title(title)?;
         Self::validate_user_writable_folder_path(folder_path)?;
         if MemoryAutoExtractor::contains_sensitive_pattern_pub(title)
             || MemoryAutoExtractor::contains_sensitive_pattern_pub(content)
         {
-            return Err(VfsError::InvalidArgument {
-                param: "title/content".to_string(),
-                reason: "包含敏感信息（手机号/身份证/银行卡/邮箱/密码）".to_string(),
-            });
+            return Err(MemoryError::Validation(
+                "包含敏感信息（手机号/身份证/银行卡/邮箱/密码）".to_string(),
+            ));
         }
         let max_chars = memory_type.max_content_chars();
         if content.chars().count() > max_chars {
-            return Err(VfsError::InvalidArgument {
-                param: "content".to_string(),
-                reason: format!(
-                    "内容超过 {} 字限制（类型: {}）",
-                    max_chars,
-                    memory_type.as_str()
-                ),
-            });
+            return Err(MemoryError::Validation(format!(
+                "内容超过 {} 字限制（类型: {}）",
+                max_chars,
+                memory_type.as_str()
+            )));
         }
 
         let root_id = self.ensure_root_folder_id()?;
@@ -825,8 +810,7 @@ impl MemoryService {
 
         match mode {
             WriteMode::Create => {
-                let note = VfsNoteRepo::create_note_in_folder(
-                    &self.vfs_db,
+                let note = self.storage.create_note_in_folder(
                     VfsCreateNoteParams {
                         title: title.to_string(),
                         content: content.to_string(),
@@ -835,7 +819,7 @@ impl MemoryService {
                     target_folder_id.as_deref(),
                 )?;
                 // ★ P2-2 修复：写入后触发索引入队
-                if let Err(e) = VfsIndexStateRepo::mark_pending(&self.vfs_db, &note.resource_id) {
+                if let Err(e) = self.storage.mark_pending(&note.resource_id) {
                     warn!("[Memory] Failed to mark pending for indexing: {}", e);
                 }
                 info!(
@@ -852,15 +836,14 @@ impl MemoryService {
                 let existing = self.find_note_by_title(target_folder_id.as_deref(), title)?;
                 if let Some(note) = existing {
                     let final_content = if mode == WriteMode::Append {
-                        let current = VfsNoteRepo::get_note_content(&self.vfs_db, &note.id)?
+                        let current = self.storage.get_note_content(&note.id)?
                             .unwrap_or_default();
                         format!("{}\n\n{}", current, content)
                     } else {
                         content.to_string()
                     };
 
-                    let updated_note = VfsNoteRepo::update_note(
-                        &self.vfs_db,
+                    let updated_note = self.storage.update_note(
                         &note.id,
                         VfsUpdateNoteParams {
                             title: Some(title.to_string()),
@@ -870,9 +853,7 @@ impl MemoryService {
                         },
                     )?;
                     // ★ P2-2 修复：更新后触发索引入队
-                    if let Err(e) =
-                        VfsIndexStateRepo::mark_pending(&self.vfs_db, &updated_note.resource_id)
-                    {
+                    if let Err(e) = self.storage.mark_pending(&updated_note.resource_id) {
                         warn!("[Memory] Failed to mark pending for indexing: {}", e);
                     }
                     info!(
@@ -885,8 +866,7 @@ impl MemoryService {
                         resource_id: updated_note.resource_id,
                     })
                 } else {
-                    let note = VfsNoteRepo::create_note_in_folder(
-                        &self.vfs_db,
+                    let note = self.storage.create_note_in_folder(
                         VfsCreateNoteParams {
                             title: title.to_string(),
                             content: content.to_string(),
@@ -894,8 +874,7 @@ impl MemoryService {
                         },
                         target_folder_id.as_deref(),
                     )?;
-                    if let Err(e) = VfsIndexStateRepo::mark_pending(&self.vfs_db, &note.resource_id)
-                    {
+                    if let Err(e) = self.storage.mark_pending(&note.resource_id) {
                         warn!("[Memory] Failed to mark pending for indexing: {}", e);
                     }
                     info!(
@@ -924,7 +903,7 @@ impl MemoryService {
         title: &str,
         content: &str,
         purpose: Option<MemoryPurpose>,
-    ) -> VfsResult<SmartWriteOutput> {
+    ) -> MemoryResult<SmartWriteOutput> {
         let root_id = self.ensure_root_folder_id()?;
         let target_folder_id = self.resolve_write_target_folder_id(folder_path, true, &root_id)?;
         let existing = self.find_note_by_title(target_folder_id.as_deref(), title)?;
@@ -933,7 +912,7 @@ impl MemoryService {
             let existing_type = MemoryType::from_tags(&note.tags);
             if existing_type == MemoryType::Study {
                 let existing_content =
-                    VfsNoteRepo::get_note_content(&self.vfs_db, &note.id)?.unwrap_or_default();
+                    self.storage.get_note_content(&note.id)?.unwrap_or_default();
                 if Self::same_text(&existing_content, content)
                     && Self::purpose_matches(&note.tags, purpose)
                 {
@@ -988,7 +967,7 @@ impl MemoryService {
         content: &str,
         memory_type: MemoryType,
         purpose: Option<MemoryPurpose>,
-    ) -> VfsResult<SmartWriteOutput> {
+    ) -> MemoryResult<SmartWriteOutput> {
         let purpose = match (memory_type, purpose) {
             (MemoryType::Fact, p) => p,
             (_, Some(MemoryPurpose::Systemic)) => Some(MemoryPurpose::Memorized),
@@ -1015,10 +994,9 @@ impl MemoryService {
                 })
             }
             MemoryType::Study => self.upsert_study_memory(folder_path, title, content, purpose),
-            MemoryType::Fact => Err(VfsError::InvalidArgument {
-                param: "memory_type".to_string(),
-                reason: "fact 不是显式学习内容写入类型".to_string(),
-            }),
+            MemoryType::Fact => Err(MemoryError::Validation(
+                "fact 不是显式学习内容写入类型".to_string(),
+            )),
         }
     }
 
@@ -1030,7 +1008,7 @@ impl MemoryService {
         folder_path: Option<&str>,
         title: &str,
         content: &str,
-    ) -> VfsResult<SmartWriteOutput> {
+    ) -> MemoryResult<SmartWriteOutput> {
         self.write_smart_with_source(
             folder_path,
             title,
@@ -1055,15 +1033,12 @@ impl MemoryService {
         memory_type: MemoryType,
         purpose: Option<MemoryPurpose>,
         idempotency_key: Option<&str>,
-    ) -> VfsResult<SmartWriteOutput> {
+    ) -> MemoryResult<SmartWriteOutput> {
         let timer = OpTimer::start();
         self.ensure_root_folder_id()?;
 
         if title.trim().is_empty() {
-            return Err(VfsError::InvalidArgument {
-                param: "title".to_string(),
-                reason: "标题不能为空".to_string(),
-            });
+            return Err(MemoryError::Validation("标题不能为空".to_string()));
         }
         Self::validate_user_writable_title(title)?;
         Self::validate_user_writable_folder_path(folder_path)?;
@@ -1099,10 +1074,9 @@ impl MemoryService {
                         return Ok(cached);
                     }
                 }
-                return Err(VfsError::Conflict {
-                    key: "memory.idempotency.in_progress".to_string(),
-                    message: "同一幂等键请求正在处理中，请稍后重试".to_string(),
-                });
+                return Err(MemoryError::Other(
+                    "同一幂等键请求正在处理中，请稍后重试".to_string(),
+                ));
             }
         }
 
@@ -1409,7 +1383,7 @@ impl MemoryService {
                                     downgraded: false,
                                 })
                             }
-                            Err(VfsError::NotFound { .. }) => {
+                            Err(MemoryError::NotFound(_)) => {
                                 let result = self.write_typed(
                                     folder_path,
                                     title,
@@ -1481,9 +1455,9 @@ impl MemoryService {
                             downgraded: false,
                         })
                     } else {
-                        let append_result: VfsResult<MemoryWriteOutput> = (|| {
+                        let append_result: MemoryResult<MemoryWriteOutput> = (|| {
                             self.ensure_note_in_memory_root(&target_id)?;
-                            let current = VfsNoteRepo::get_note_content(&self.vfs_db, &target_id)?
+                            let current = self.storage.get_note_content(&target_id)?
                                 .unwrap_or_default();
                             let final_content = format!("{}\n\n{}", current, content);
                             self.update_by_id_with_source(
@@ -1519,7 +1493,7 @@ impl MemoryService {
                                     downgraded: false,
                                 })
                             }
-                            Err(VfsError::NotFound { .. }) => {
+                            Err(MemoryError::NotFound(_)) => {
                                 let result = self.write_typed(
                                     folder_path,
                                     title,
@@ -1595,7 +1569,7 @@ impl MemoryService {
                             .delete_with_source(&target_id, source, session_id)
                             .await
                         {
-                            Err(VfsError::Other(format!(
+                            Err(MemoryError::Other(format!(
                                 "DELETE 决策失败：无法删除冲突记忆 {}: {}",
                                 target_id, e
                             )))
@@ -1703,7 +1677,7 @@ impl MemoryService {
         query: &str,
         top_k: usize,
         use_query_rewrite: bool,
-    ) -> VfsResult<Vec<MemorySearchResult>> {
+    ) -> MemoryResult<Vec<MemorySearchResult>> {
         if self.config.is_privacy_mode()? {
             warn!("[Memory] Privacy mode enabled, skipping search_with_rerank (no external API calls)");
             return Ok(vec![]);
@@ -1734,7 +1708,7 @@ impl MemoryService {
         let reranked = reranker
             .rerank(query, results)
             .await
-            .map_err(|e| VfsError::Other(format!("Rerank failed: {}", e)))?;
+            .map_err(|e| MemoryError::Other(format!("Rerank failed: {}", e)))?;
 
         Ok(reranked.into_iter().take(top_k).collect())
     }
@@ -1744,7 +1718,7 @@ impl MemoryService {
         folder_path: Option<&str>,
         limit: u32,
         offset: u32,
-    ) -> VfsResult<Vec<MemoryListItem>> {
+    ) -> MemoryResult<Vec<MemoryListItem>> {
         self.list_internal(folder_path, limit, offset, true)
     }
 
@@ -1753,18 +1727,18 @@ impl MemoryService {
         folder_path: Option<&str>,
         limit: u32,
         offset: u32,
-    ) -> VfsResult<Vec<MemoryListItem>> {
+    ) -> MemoryResult<Vec<MemoryListItem>> {
         self.list_internal(folder_path, limit, offset, false)
     }
 
-    pub fn count_active_memories(&self) -> VfsResult<u32> {
+    pub fn count_active_memories(&self) -> MemoryResult<u32> {
         let root_id = self.ensure_root_folder_id()?;
         let folder_ids = self.get_memory_folder_ids(&root_id)?;
         if folder_ids.is_empty() {
             return Ok(0);
         }
 
-        let conn = self.vfs_db.get_conn_safe()?;
+        let conn = self.storage.conn()?;
         let placeholders = vec!["?"; folder_ids.len()].join(", ");
         let sql = format!(
             r#"
@@ -1791,7 +1765,7 @@ impl MemoryService {
         limit: u32,
         offset: u32,
         recursive: bool,
-    ) -> VfsResult<Vec<MemoryListItem>> {
+    ) -> MemoryResult<Vec<MemoryListItem>> {
         let root_id = self.ensure_root_folder_id()?;
 
         let target_root_id = if let Some(path) = folder_path {
@@ -1816,7 +1790,7 @@ impl MemoryService {
             return Ok(vec![]);
         }
 
-        let conn = self.vfs_db.get_conn_safe()?;
+        let conn = self.storage.conn()?;
         let placeholders = vec!["?"; folder_ids.len()].join(", ");
         let sql = format!(
             r#"
@@ -1847,7 +1821,7 @@ impl MemoryService {
 
         let mut items = Vec::new();
         for note_id in note_ids {
-            if let Some(note) = VfsNoteRepo::get_note(&self.vfs_db, &note_id)? {
+            if let Some(note) = self.storage.get_note(&note_id)? {
                 let folder_path = self.get_note_folder_path(&note.id)?;
                 let hits = Self::extract_hits_from_tags(&note.tags);
                 let is_important = note.tags.iter().any(|t| t == "_important");
@@ -1877,17 +1851,17 @@ impl MemoryService {
             .unwrap_or(0)
     }
 
-    pub fn get_tree(&self) -> VfsResult<Option<FolderTreeNode>> {
+    pub fn get_tree(&self) -> MemoryResult<Option<FolderTreeNode>> {
         let root_id = self.ensure_root_folder_id()?;
 
-        let root_folder = match VfsFolderRepo::get_folder(&self.vfs_db, &root_id)? {
+        let root_folder = match self.storage.get_folder(&root_id)? {
             Some(f) => f,
             None => return Ok(None),
         };
 
-        let conn = self.vfs_db.get_conn_safe()?;
+        let conn = self.storage.conn()?;
         let children = self.build_subtree(&conn, &root_id)?;
-        let items = VfsFolderRepo::list_items_by_folder(&self.vfs_db, Some(&root_id))?;
+        let items = self.storage.list_items_by_folder(Some(&root_id))?;
 
         Ok(Some(FolderTreeNode {
             folder: root_folder,
@@ -1900,14 +1874,14 @@ impl MemoryService {
         &self,
         conn: &rusqlite::Connection,
         parent_id: &str,
-    ) -> VfsResult<Vec<FolderTreeNode>> {
+    ) -> MemoryResult<Vec<FolderTreeNode>> {
         let children_folders =
-            VfsFolderRepo::list_folders_by_parent_with_conn(conn, Some(parent_id))?;
+            self.storage.list_folders_by_parent_with_conn(conn, Some(parent_id))?;
         let mut nodes = Vec::new();
 
         for folder in children_folders {
             let sub_children = self.build_subtree(conn, &folder.id)?;
-            let items = VfsFolderRepo::list_items_by_folder_with_conn(conn, Some(&folder.id))?;
+            let items = self.storage.list_items_by_folder_with_conn(conn, Some(&folder.id))?;
             nodes.push(FolderTreeNode {
                 folder,
                 children: sub_children,
@@ -1919,13 +1893,13 @@ impl MemoryService {
         Ok(nodes)
     }
 
-    fn ensure_folder(&self, root_id: &str, path: &str) -> VfsResult<String> {
+    fn ensure_folder(&self, root_id: &str, path: &str) -> MemoryResult<String> {
         let parts: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
         let mut current_parent_id = root_id.to_string();
 
         for part in parts {
             let children =
-                VfsFolderRepo::list_folders_by_parent(&self.vfs_db, Some(&current_parent_id))?;
+                self.storage.list_folders_by_parent(Some(&current_parent_id))?;
 
             let existing = children.iter().find(|f| f.title == part);
             if let Some(folder) = existing {
@@ -1937,7 +1911,7 @@ impl MemoryService {
                     None,
                     None,
                 );
-                VfsFolderRepo::create_folder(&self.vfs_db, &new_folder)?;
+                self.storage.create_folder(&new_folder)?;
                 self.invalidate_folder_cache();
                 debug!(
                     "[Memory] Created subfolder: {} under {}",
@@ -1950,13 +1924,13 @@ impl MemoryService {
         Ok(current_parent_id)
     }
 
-    fn resolve_path_to_folder_id(&self, root_id: &str, path: &str) -> VfsResult<Option<String>> {
+    fn resolve_path_to_folder_id(&self, root_id: &str, path: &str) -> MemoryResult<Option<String>> {
         let parts: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
         let mut current_parent_id = root_id.to_string();
 
         for part in parts {
             let children =
-                VfsFolderRepo::list_folders_by_parent(&self.vfs_db, Some(&current_parent_id))?;
+                self.storage.list_folders_by_parent(Some(&current_parent_id))?;
 
             let existing = children.iter().find(|f| f.title == part);
             if let Some(folder) = existing {
@@ -1974,7 +1948,7 @@ impl MemoryService {
         folder_path: Option<&str>,
         strict_missing: bool,
         root_id: &str,
-    ) -> VfsResult<Option<String>> {
+    ) -> MemoryResult<Option<String>> {
         let auto_create_subfolders = self.config.is_auto_create_subfolders()?;
         let default_category = self.config.get_default_category()?;
         let has_default_category = !default_category.trim().is_empty();
@@ -2000,10 +1974,9 @@ impl MemoryService {
 
             let found = self.resolve_path_to_folder_id(root_id, path)?;
             if strict_missing {
-                let folder_id = found.ok_or_else(|| VfsError::NotFound {
-                    resource_type: "Folder".to_string(),
-                    id: path.to_string(),
-                })?;
+                let folder_id = found.ok_or_else(|| MemoryError::NotFound(
+                    format!("Folder '{}' not found", path),
+                ))?;
                 Ok(Some(folder_id))
             } else {
                 Ok(found.or_else(|| Some(root_id.to_string())))
@@ -2024,8 +1997,8 @@ impl MemoryService {
     fn get_cached_smart_write_result(
         &self,
         idempotency_key: &str,
-    ) -> VfsResult<Option<SmartWriteOutput>> {
-        let conn = self.vfs_db.get_conn_safe()?;
+    ) -> MemoryResult<Option<SmartWriteOutput>> {
+        let conn = self.storage.conn()?;
         let now_ms = chrono::Utc::now().timestamp_millis();
         let ttl_ms = SMART_WRITE_IDEMPOTENCY_RETENTION_HOURS * 60 * 60 * 1000;
         let min_created_at = now_ms - ttl_ms;
@@ -2061,8 +2034,8 @@ impl MemoryService {
         Ok(row)
     }
 
-    fn try_reserve_smart_write_key(&self, idempotency_key: &str) -> VfsResult<bool> {
-        let conn = self.vfs_db.get_conn_safe()?;
+    fn try_reserve_smart_write_key(&self, idempotency_key: &str) -> MemoryResult<bool> {
+        let conn = self.storage.conn()?;
         let now_ms = chrono::Utc::now().timestamp_millis();
         let inserted = conn.execute(
             r#"
@@ -2081,8 +2054,8 @@ impl MemoryService {
         Ok(inserted > 0)
     }
 
-    fn clear_smart_write_reservation(&self, idempotency_key: &str) -> VfsResult<()> {
-        let conn = self.vfs_db.get_conn_safe()?;
+    fn clear_smart_write_reservation(&self, idempotency_key: &str) -> MemoryResult<()> {
+        let conn = self.storage.conn()?;
         conn.execute(
             "DELETE FROM memory_write_idempotency WHERE idempotency_key = ?1 AND event = ?2",
             params![idempotency_key, SMART_WRITE_IDEMPOTENCY_IN_PROGRESS],
@@ -2094,8 +2067,8 @@ impl MemoryService {
         &self,
         idempotency_key: &str,
         output: &SmartWriteOutput,
-    ) -> VfsResult<()> {
-        let conn = self.vfs_db.get_conn_safe()?;
+    ) -> MemoryResult<()> {
+        let conn = self.storage.conn()?;
         let now_ms = chrono::Utc::now().timestamp_millis();
         conn.execute(
             r#"
@@ -2145,8 +2118,8 @@ impl MemoryService {
         &self,
         folder_id: Option<&str>,
         title: &str,
-    ) -> VfsResult<Option<VfsNote>> {
-        let conn = self.vfs_db.get_conn_safe()?;
+    ) -> MemoryResult<Option<VfsNote>> {
+        let conn = self.storage.conn()?;
         let note: Option<VfsNote> = if let Some(fid) = folder_id {
             conn.query_row(
                 r#"
@@ -2214,8 +2187,8 @@ impl MemoryService {
         Ok(note)
     }
 
-    fn get_note_by_resource_id(&self, resource_id: &str) -> VfsResult<Option<VfsNote>> {
-        let conn = self.vfs_db.get_conn_safe()?;
+    fn get_note_by_resource_id(&self, resource_id: &str) -> MemoryResult<Option<VfsNote>> {
+        let conn = self.storage.conn()?;
         let note: Option<VfsNote> = conn
             .query_row(
                 r#"
@@ -2242,8 +2215,8 @@ impl MemoryService {
         Ok(note)
     }
 
-    pub fn get_note_folder_path(&self, note_id: &str) -> VfsResult<String> {
-        let location = VfsNoteRepo::get_note_location(&self.vfs_db, note_id)?;
+    pub fn get_note_folder_path(&self, note_id: &str) -> MemoryResult<String> {
+        let location = self.storage.get_note_location(note_id)?;
         Ok(location.map(|l| l.folder_path).unwrap_or_default())
     }
 
@@ -2257,7 +2230,7 @@ impl MemoryService {
         note_id: &str,
         title: Option<&str>,
         content: Option<&str>,
-    ) -> VfsResult<MemoryWriteOutput> {
+    ) -> MemoryResult<MemoryWriteOutput> {
         self.update_by_id_with_source(note_id, title, content, MemoryOpSource::Handler, None)
     }
 
@@ -2268,12 +2241,11 @@ impl MemoryService {
         content: Option<&str>,
         source: MemoryOpSource,
         session_id: Option<&str>,
-    ) -> VfsResult<MemoryWriteOutput> {
+    ) -> MemoryResult<MemoryWriteOutput> {
         if title.is_none() && content.is_none() {
-            return Err(VfsError::InvalidArgument {
-                param: "title/content".to_string(),
-                reason: "至少需要提供 title 或 content 之一".to_string(),
-            });
+            return Err(MemoryError::Validation(
+                "至少需要提供 title 或 content 之一".to_string(),
+            ));
         }
 
         let timer = OpTimer::start();
@@ -2282,42 +2254,33 @@ impl MemoryService {
 
         if let Some(new_title) = title {
             if new_title.trim().is_empty() {
-                return Err(VfsError::InvalidArgument {
-                    param: "title".to_string(),
-                    reason: "标题不能为空".to_string(),
-                });
+                return Err(MemoryError::Validation("标题不能为空".to_string()));
             }
             Self::validate_user_writable_title(new_title)?;
             if MemoryAutoExtractor::contains_sensitive_pattern_pub(new_title) {
-                return Err(VfsError::InvalidArgument {
-                    param: "title".to_string(),
-                    reason: "标题包含敏感信息（手机号/身份证/银行卡/邮箱/密码）".to_string(),
-                });
+                return Err(MemoryError::Validation(
+                    "标题包含敏感信息（手机号/身份证/银行卡/邮箱/密码）".to_string(),
+                ));
             }
         }
 
         if let Some(new_content) = content {
             if MemoryAutoExtractor::contains_sensitive_pattern_pub(new_content) {
-                return Err(VfsError::InvalidArgument {
-                    param: "content".to_string(),
-                    reason: "内容包含敏感信息（手机号/身份证/银行卡/邮箱/密码）".to_string(),
-                });
+                return Err(MemoryError::Validation(
+                    "内容包含敏感信息（手机号/身份证/银行卡/邮箱/密码）".to_string(),
+                ));
             }
             let max_chars = memory_type.max_content_chars();
             if new_content.chars().count() > max_chars {
-                return Err(VfsError::InvalidArgument {
-                    param: "content".to_string(),
-                    reason: format!(
-                        "内容超过 {} 字限制（类型: {}）",
-                        max_chars,
-                        memory_type.as_str()
-                    ),
-                });
+                return Err(MemoryError::Validation(format!(
+                    "内容超过 {} 字限制（类型: {}）",
+                    max_chars,
+                    memory_type.as_str()
+                )));
             }
         }
 
-        let updated_note = VfsNoteRepo::update_note(
-            &self.vfs_db,
+        let updated_note = self.storage.update_note(
             note_id,
             VfsUpdateNoteParams {
                 title: title.map(|s| s.to_string()),
@@ -2327,7 +2290,7 @@ impl MemoryService {
             },
         )?;
 
-        if let Err(e) = VfsIndexStateRepo::mark_pending(&self.vfs_db, &updated_note.resource_id) {
+        if let Err(e) = self.storage.mark_pending(&updated_note.resource_id) {
             warn!("[Memory] Failed to mark pending for indexing: {}", e);
         }
 
@@ -2364,7 +2327,7 @@ impl MemoryService {
     // ========================================================================
 
     /// 删除记忆（软删除）
-    pub async fn delete(&self, note_id: &str) -> VfsResult<()> {
+    pub async fn delete(&self, note_id: &str) -> MemoryResult<()> {
         self.delete_with_source(note_id, MemoryOpSource::Handler, None)
             .await
     }
@@ -2374,15 +2337,15 @@ impl MemoryService {
         note_id: &str,
         source: MemoryOpSource,
         session_id: Option<&str>,
-    ) -> VfsResult<()> {
+    ) -> MemoryResult<()> {
         let timer = OpTimer::start();
         let note = self.ensure_note_in_memory_root(note_id)?;
         let note_title = note.title.clone();
 
-        VfsNoteRepo::delete_note_with_folder_item(&self.vfs_db, note_id)?;
+        self.storage.delete_note_with_folder_item(note_id)?;
         // 先完成主存储删除，再做索引侧清理，避免"笔记还在但向量已删"的半成功状态。
         if let Err(e) = self
-            .lance_store
+            .storage
             .delete_by_resource("text", &note.resource_id)
             .await
         {
@@ -2391,16 +2354,15 @@ impl MemoryService {
                 note.resource_id, e
             );
         }
-        if let Ok(conn) = self.vfs_db.get_conn() {
-            if let Err(e) = index_unit_repo::delete_by_resource(&conn, &note.resource_id) {
+        if let Ok(_conn) = self.storage.conn_unchecked() {
+            if let Err(e) = self.storage.delete_index_units_by_resource(&note.resource_id) {
                 warn!(
                     "[Memory] Failed to delete index units for {}: {}",
                     note.resource_id, e
                 );
             }
         }
-        if let Err(e) = VfsIndexStateRepo::mark_disabled_with_reason(
-            &self.vfs_db,
+        if let Err(e) = self.storage.mark_disabled_with_reason(
             &note.resource_id,
             "note deleted",
         ) {
@@ -2435,23 +2397,23 @@ impl MemoryService {
     // ========================================================================
 
     /// 添加记忆关联（双向）：A 和 B 互相引用
-    pub fn add_relation(&self, note_id_a: &str, note_id_b: &str) -> VfsResult<()> {
+    pub fn add_relation(&self, note_id_a: &str, note_id_b: &str) -> MemoryResult<()> {
         if note_id_a == note_id_b {
-            return Err(VfsError::Other("不能将记忆与自身建立关联".to_string()));
+            return Err(MemoryError::Other("不能将记忆与自身建立关联".to_string()));
         }
         let note_a = self.ensure_note_in_memory_root(note_id_a)?;
         let note_b = self.ensure_note_in_memory_root(note_id_b)?;
-        let conn = self.vfs_db.get_conn_safe()?;
+        let conn = self.storage.conn()?;
 
         let ref_tag_ab = format!("{}{}", TAG_REF_PREFIX, note_id_b);
         let ref_tag_ba = format!("{}{}", TAG_REF_PREFIX, note_id_a);
         conn.execute("SAVEPOINT memory_add_relation", [])?;
-        let tx_result: VfsResult<()> = (|| {
+        let tx_result: MemoryResult<()> = (|| {
             let mut tags_a = note_a.tags.clone();
             if !tags_a.contains(&ref_tag_ab) {
                 tags_a.push(ref_tag_ab);
-                VfsNoteRepo::update_note_with_conn(
-                    &conn,
+                self.storage.update_note_with_conn(
+                    conn.deref(),
                     note_id_a,
                     VfsUpdateNoteParams {
                         tags: Some(tags_a),
@@ -2464,8 +2426,8 @@ impl MemoryService {
             let mut tags_b = note_b.tags.clone();
             if !tags_b.contains(&ref_tag_ba) {
                 tags_b.push(ref_tag_ba);
-                VfsNoteRepo::update_note_with_conn(
-                    &conn,
+                self.storage.update_note_with_conn(
+                    conn.deref(),
                     note_id_b,
                     VfsUpdateNoteParams {
                         tags: Some(tags_b),
@@ -2509,23 +2471,23 @@ impl MemoryService {
     }
 
     /// 移除记忆关联（双向）
-    pub fn remove_relation(&self, note_id_a: &str, note_id_b: &str) -> VfsResult<()> {
+    pub fn remove_relation(&self, note_id_a: &str, note_id_b: &str) -> MemoryResult<()> {
         let note_a = self.ensure_note_in_memory_root(note_id_a)?;
         let note_b = self.ensure_note_in_memory_root(note_id_b)?;
-        let conn = self.vfs_db.get_conn_safe()?;
+        let conn = self.storage.conn()?;
 
         let ref_tag_ab = format!("{}{}", TAG_REF_PREFIX, note_id_b);
         let ref_tag_ba = format!("{}{}", TAG_REF_PREFIX, note_id_a);
         conn.execute("SAVEPOINT memory_remove_relation", [])?;
-        let tx_result: VfsResult<()> = (|| {
+        let tx_result: MemoryResult<()> = (|| {
             let tags_a: Vec<String> = note_a
                 .tags
                 .iter()
                 .filter(|t| *t != &ref_tag_ab)
                 .cloned()
                 .collect();
-            VfsNoteRepo::update_note_with_conn(
-                &conn,
+            self.storage.update_note_with_conn(
+                conn.deref(),
                 note_id_a,
                 VfsUpdateNoteParams {
                     tags: Some(tags_a),
@@ -2540,8 +2502,8 @@ impl MemoryService {
                 .filter(|t| *t != &ref_tag_ba)
                 .cloned()
                 .collect();
-            VfsNoteRepo::update_note_with_conn(
-                &conn,
+            self.storage.update_note_with_conn(
+                conn.deref(),
                 note_id_b,
                 VfsUpdateNoteParams {
                     tags: Some(tags_b),
@@ -2584,7 +2546,7 @@ impl MemoryService {
     }
 
     /// 获取与指定记忆关联的所有记忆 ID
-    pub fn get_related_ids(&self, note_id: &str) -> VfsResult<Vec<String>> {
+    pub fn get_related_ids(&self, note_id: &str) -> MemoryResult<Vec<String>> {
         let note = self.ensure_note_in_memory_root(note_id)?;
         Ok(note
             .tags
@@ -2601,7 +2563,7 @@ impl MemoryService {
     ///
     /// 系统标签（以 `_` 开头）会自动保留，用户只能修改非系统标签。
     /// 传入的 tags 中以 `_` 开头的条目会被静默忽略。
-    pub fn update_tags(&self, note_id: &str, user_tags: Vec<String>) -> VfsResult<()> {
+    pub fn update_tags(&self, note_id: &str, user_tags: Vec<String>) -> MemoryResult<()> {
         let note = self.ensure_note_in_memory_root(note_id)?;
 
         let system_tags: Vec<String> = note
@@ -2618,8 +2580,7 @@ impl MemoryService {
         let mut merged = system_tags;
         merged.extend(filtered_user_tags);
 
-        VfsNoteRepo::update_note(
-            &self.vfs_db,
+        self.storage.update_note(
             note_id,
             VfsUpdateNoteParams {
                 tags: Some(merged),
@@ -2651,13 +2612,13 @@ impl MemoryService {
     }
 
     /// 获取记忆的标签列表
-    pub fn get_tags(&self, note_id: &str) -> VfsResult<Vec<String>> {
+    pub fn get_tags(&self, note_id: &str) -> MemoryResult<Vec<String>> {
         let note = self.ensure_note_in_memory_root(note_id)?;
         Ok(note.tags)
     }
 
     /// 移动记忆到指定文件夹路径（在记忆根目录内）
-    pub fn move_to_folder(&self, note_id: &str, target_folder_path: &str) -> VfsResult<()> {
+    pub fn move_to_folder(&self, note_id: &str, target_folder_path: &str) -> MemoryResult<()> {
         Self::validate_user_writable_folder_path(Some(target_folder_path))?;
         let root_id = self.ensure_root_folder_id()?;
         self.ensure_note_in_memory_root(note_id)?;
@@ -2668,8 +2629,7 @@ impl MemoryService {
             self.ensure_folder(&root_id, target_folder_path)?
         };
 
-        VfsFolderRepo::move_item_by_item_id(
-            &self.vfs_db,
+        self.storage.move_item_by_item_id(
             "note",
             note_id,
             Some(&target_folder_id),
@@ -2705,7 +2665,7 @@ impl MemoryService {
         note_id: &str,
         memory_type: MemoryType,
         purpose: Option<MemoryPurpose>,
-    ) -> VfsResult<()> {
+    ) -> MemoryResult<()> {
         let note = self.ensure_note_in_memory_root(note_id)?;
         let mut merged: Vec<String> = note
             .tags
@@ -2719,8 +2679,7 @@ impl MemoryService {
         if let Some(p) = purpose {
             merged.push(p.to_tag());
         }
-        VfsNoteRepo::update_note(
-            &self.vfs_db,
+        self.storage.update_note(
             note_id,
             VfsUpdateNoteParams {
                 tags: Some(merged),
@@ -2731,27 +2690,25 @@ impl MemoryService {
         Ok(())
     }
 
-    fn ensure_note_in_memory_root(&self, note_id: &str) -> VfsResult<VfsNote> {
+    fn ensure_note_in_memory_root(&self, note_id: &str) -> MemoryResult<VfsNote> {
         let root_id = self.ensure_root_folder_id()?;
 
         let note =
-            VfsNoteRepo::get_note(&self.vfs_db, note_id)?.ok_or_else(|| VfsError::NotFound {
-                resource_type: "Note".to_string(),
-                id: note_id.to_string(),
-            })?;
+            self.storage.get_note(note_id)?.ok_or_else(|| MemoryError::NotFound(
+                format!("Note '{}' not found", note_id),
+            ))?;
 
         if !self.is_note_in_memory_root(note_id, &root_id)? {
-            return Err(VfsError::NotFound {
-                resource_type: "MemoryNote".to_string(),
-                id: note_id.to_string(),
-            });
+            return Err(MemoryError::NotFound(
+                format!("MemoryNote '{}' not found", note_id),
+            ));
         }
 
         Ok(note)
     }
 
-    fn is_note_in_memory_root(&self, note_id: &str, root_id: &str) -> VfsResult<bool> {
-        let location = VfsNoteRepo::get_note_location(&self.vfs_db, note_id)?;
+    fn is_note_in_memory_root(&self, note_id: &str, root_id: &str) -> MemoryResult<bool> {
+        let location = self.storage.get_note_location(note_id)?;
         let folder_id = match location.and_then(|loc| loc.folder_id) {
             Some(id) => id,
             None => return Ok(false),
@@ -2786,7 +2743,7 @@ impl MemoryService {
     /// 获取用户画像摘要（从特殊笔记读取，不存在时返回 None）
     ///
     /// 查找顺序：__system__ 子文件夹 → 根文件夹（向后兼容）
-    pub fn get_profile_summary(&self) -> VfsResult<Option<String>> {
+    pub fn get_profile_summary(&self) -> MemoryResult<Option<String>> {
         let root_id = match self.config.get_root_folder_id()? {
             Some(id) => id,
             None => return Ok(None),
@@ -2794,7 +2751,7 @@ impl MemoryService {
         if let Some(sys_id) = self.find_system_folder_id(&root_id)? {
             if let Some(note) = self.find_note_by_title(Some(&sys_id), PROFILE_NOTE_TITLE)? {
                 let content =
-                    VfsNoteRepo::get_note_content(&self.vfs_db, &note.id)?.unwrap_or_default();
+                    self.storage.get_note_content(&note.id)?.unwrap_or_default();
                 if !content.is_empty() {
                     return Ok(Some(content));
                 }
@@ -2803,7 +2760,7 @@ impl MemoryService {
         match self.find_note_by_title(Some(&root_id), PROFILE_NOTE_TITLE)? {
             Some(note) => {
                 let content =
-                    VfsNoteRepo::get_note_content(&self.vfs_db, &note.id)?.unwrap_or_default();
+                    self.storage.get_note_content(&note.id)?.unwrap_or_default();
                 if content.is_empty() {
                     Ok(None)
                 } else {
@@ -2815,7 +2772,7 @@ impl MemoryService {
     }
 
     /// 获取记忆根文件夹 ID（公开接口，供外部调用方获取记忆文件夹 ID 以排除全局搜索）
-    pub fn get_root_folder_id(&self) -> VfsResult<Option<String>> {
+    pub fn get_root_folder_id(&self) -> MemoryResult<Option<String>> {
         self.config.get_root_folder_id()
     }
 
@@ -2823,7 +2780,7 @@ impl MemoryService {
     ///
     /// 受 memU 自进化理念启发：用 LLM 将原子事实聚合为结构化画像，
     /// 而非简单的列表拼接。
-    pub fn refresh_profile_summary(&self) -> VfsResult<()> {
+    pub fn refresh_profile_summary(&self) -> MemoryResult<()> {
         let sys_folder_id = self.get_or_create_system_folder_id()?;
         let all_memories = self.list(None, PROFILE_MAX_ITEMS as u32, 0)?;
 
@@ -2844,7 +2801,7 @@ impl MemoryService {
                 facts.push((&mem.folder_path, format!("[学习记忆] {}", mem.title)));
                 continue;
             }
-            let content = VfsNoteRepo::get_note_content(&self.vfs_db, &mem.id)?.unwrap_or_default();
+            let content = self.storage.get_note_content(&mem.id)?.unwrap_or_default();
             let text = if !content.is_empty() {
                 content
             } else {
@@ -2861,8 +2818,7 @@ impl MemoryService {
 
         match self.find_note_by_title(Some(&sys_folder_id), PROFILE_NOTE_TITLE)? {
             Some(note) => {
-                VfsNoteRepo::update_note(
-                    &self.vfs_db,
+                self.storage.update_note(
                     &note.id,
                     VfsUpdateNoteParams {
                         title: None,
@@ -2874,8 +2830,7 @@ impl MemoryService {
                 debug!("[Memory] Profile summary updated ({} facts)", facts.len());
             }
             None => {
-                let profile_note = VfsNoteRepo::create_note_in_folder(
-                    &self.vfs_db,
+                let profile_note = self.storage.create_note_in_folder(
                     VfsCreateNoteParams {
                         title: PROFILE_NOTE_TITLE.to_string(),
                         content: profile_content,
@@ -2883,8 +2838,7 @@ impl MemoryService {
                     },
                     Some(&sys_folder_id),
                 )?;
-                if let Err(e) = VfsIndexStateRepo::mark_disabled_with_reason(
-                    &self.vfs_db,
+                if let Err(e) = self.storage.mark_disabled_with_reason(
                     &profile_note.resource_id,
                     "system profile note",
                 ) {
@@ -2928,7 +2882,7 @@ impl MemoryService {
     /// 记录搜索命中（直接 SQL 更新 tags，不触发 updated_at 变更以免重置时间衰减）
     pub fn record_search_hits(&self, note_ids: &[String]) {
         let now_ms = chrono::Utc::now().timestamp_millis().to_string();
-        let conn = match self.vfs_db.get_conn_safe() {
+        let conn = match self.storage.conn() {
             Ok(c) => c,
             Err(_) => return,
         };

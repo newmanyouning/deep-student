@@ -22,9 +22,54 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use tracing::{debug, info, warn};
 
-use crate::question_sync_service::QuestionSyncService;
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
+use std::sync::OnceLock;
+
+// ============================================================================
+// 同步回调 trait（Break circular dependency: question_repo ↔ question_sync_service）
+// ============================================================================
+
+/// Callback trait for question sync notifications.
+///
+/// Breaks the compile-time circular dependency between `question_repo` and
+/// `question_sync_service`.  `VfsQuestionRepo` calls this trait instead of
+/// directly importing `QuestionSyncService`.
+pub trait QuestionSyncCallback: Send + Sync {
+    /// Recalculate and persist the content hash for a question after its
+    /// content/metadata fields have changed.
+    fn update_content_hash(&self, conn: &Connection, question_id: &str) -> VfsResult<String>;
+
+    /// Mark a question's sync status as `modified` so that the next sync
+    /// pass will pick up the local changes.
+    fn mark_as_modified(&self, conn: &Connection, question_id: &str) -> VfsResult<()>;
+}
+
+// ---------------------------------------------------------------------------
+// Global callback registry (set once during app startup)
+// ---------------------------------------------------------------------------
+
+static QUESTION_SYNC_CALLBACK: OnceLock<Box<dyn QuestionSyncCallback>> = OnceLock::new();
+
+/// Register the global question-sync callback.
+///
+/// Must be called exactly once during application startup (see `lib.rs`).
+/// Panics if called a second time.
+pub fn register_question_sync_callback(cb: Box<dyn QuestionSyncCallback>) {
+    QUESTION_SYNC_CALLBACK
+        .set(cb)
+        .unwrap_or_else(|_| panic!("QuestionSyncCallback already registered"));
+}
+
+fn with_sync_callback<F, R>(f: F) -> R
+where
+    F: FnOnce(&dyn QuestionSyncCallback) -> R,
+{
+    let cb = QUESTION_SYNC_CALLBACK
+        .get()
+        .expect("QuestionSyncCallback not registered. Call register_question_sync_callback during app setup.");
+    f(cb.as_ref())
+}
 
 /// Log row-parse errors instead of silently discarding them.
 fn log_and_skip_err<T>(result: Result<T, rusqlite::Error>) -> Option<T> {
@@ -1681,7 +1726,7 @@ impl VfsQuestionRepo {
         }
 
         // 内容/元数据更新后立即重算 hash，避免同步冲突判断使用过期值
-        QuestionSyncService::update_content_hash_with_conn(conn, question_id)?;
+        with_sync_callback(|cb| cb.update_content_hash(conn, question_id))?;
 
         debug!("[VFS::QuestionRepo] Updated question id={}", question_id);
 
@@ -1768,8 +1813,8 @@ impl VfsQuestionRepo {
         );
 
         // ★ S-030: 答题记录变更也触发同步标记
-        QuestionSyncService::mark_as_modified_with_conn(conn, question_id)?;
-        QuestionSyncService::update_content_hash_with_conn(conn, question_id)?;
+        with_sync_callback(|cb| cb.mark_as_modified(conn, question_id))?;
+        with_sync_callback(|cb| cb.update_content_hash(conn, question_id))?;
 
         Self::get_question_with_conn(conn, question_id)?.ok_or_else(|| VfsError::NotFound {
             resource_type: "question".to_string(),

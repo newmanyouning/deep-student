@@ -77,39 +77,28 @@ pub fn is_uuid_format(s: &str) -> bool {
     s.chars().all(|c| c.is_ascii_hexdigit() || c == '-')
 }
 
-/// 根据 ID 前缀推断资源类型
+/// 根据 ID 前缀推断资源类型（复数形式）
 ///
-/// ## ID 前缀映射
-/// - `note_` → notes
-/// - `file_` / `tb_` / `att_` → files（统一文件存储）
-/// - `tr_` → translations
-/// - `exam_` → exams
-/// - `essay_` / `essay_session_` → essays
-/// - `fld_` → folders
-/// - 纯 UUID 格式 → folders（文件夹使用 UUID 作为 ID）
+/// 使用 `DstuNodeType::from_id_prefix` 作为规范源。
+///
+/// ## 返回
+/// 资源类型复数形式，如 "notes", "textbooks"；无法识别返回 "unknown"
 pub fn infer_resource_type_from_id(id: &str) -> &'static str {
-    if id.starts_with("note_") {
-        "notes"
-    } else if id.starts_with("file_")
-        || id.starts_with("tb_")
-        || id.starts_with("att_")
-        || id.starts_with("img_")
-    {
-        "files"
-    } else if id.starts_with("tr_") {
-        "translations"
-    } else if id.starts_with("exam_") {
-        "exams"
-    } else if id.starts_with("essay_session_") || id.starts_with("essay_") {
-        "essays"
-    } else if id.starts_with("fld_") || is_uuid_format(id) {
-        "folders"
-    } else if id.starts_with("mm_") {
-        "mindmaps"
-    } else if id.starts_with("res_") {
-        "resources"
-    } else {
-        "unknown"
+    use crate::dstu::types::DstuNodeType;
+    match DstuNodeType::from_id_prefix(id) {
+        Some(DstuNodeType::Note) => "notes",
+        Some(DstuNodeType::Textbook) => "textbooks",
+        Some(DstuNodeType::Exam) => "exams",
+        Some(DstuNodeType::Translation) => "translations",
+        Some(DstuNodeType::Essay) => "essays",
+        Some(DstuNodeType::Folder) => "folders",
+        Some(DstuNodeType::MindMap) => "mindmaps",
+        // file_ att_ img_ 均映射到 files
+        _ if id.starts_with("img_") => "images",
+        Some(DstuNodeType::File) | _ if id.starts_with("file_") || id.starts_with("att_") => "files",
+        _ if is_uuid_format(id) => "folders",
+        _ if id.starts_with("res_") => "resources",
+        _ => "unknown",
     }
 }
 

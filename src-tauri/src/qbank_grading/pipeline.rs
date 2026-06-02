@@ -5,15 +5,15 @@
 /// - ProviderAdapter: 多供应商适配
 /// - S-014 竞态防护
 /// - M-064 不完整流检测
-use futures_util::StreamExt;
 use regex::Regex;
 use rusqlite::{params, OptionalExtension};
 use serde_json::json;
 use std::sync::Arc;
 
-use crate::llm_manager::{build_provider_adapter, ApiConfig, LLMManager};
+use crate::utils::streaming_llm_pipeline::{StreamingLLMPipeline, StreamStatus};
+
+use crate::llm_manager::{ApiConfig, LLMManager};
 use crate::models::AppError;
-use crate::providers::ProviderAdapter;
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::repos::{AnswerSubmission, Question, VfsQuestionRepo};
 
@@ -30,14 +30,44 @@ pub struct QbankGradingDeps {
     pub emitter: QbankGradingEmitter,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum StreamStatus {
-    Completed,
-    Cancelled,
-    Incomplete,
-}
+/// 流式调用 LLM（通过共享 StreamingLLMPipeline）
+async fn stream_grade<F>(
+    config: &ApiConfig,
+    api_key: &str,
+    system_prompt: &str,
+    user_prompt: &str,
+    stream_event: &str,
+    llm: Arc<LLMManager>,
+    on_chunk: F,
+) -> Result<StreamStatus, AppError>
+where
+    F: FnMut(String),
+{
+    let messages = vec![
+        json!({ "role": "system", "content": system_prompt }),
+        json!({ "role": "user", "content": user_prompt }),
+    ];
 
-/// 运行 AI 评判管线
+    let max_tokens = crate::llm_manager::effective_max_tokens(
+        config.max_output_tokens,
+        config.max_tokens_limit,
+    )
+    .min(8192); // qbank_grading 特有上限
+
+    StreamingLLMPipeline::stream(
+        config,
+        api_key,
+        messages,
+        stream_event,
+        llm,
+        0.3,
+        max_tokens,
+        "评判",
+        None, // qbank_grading 不使用自定义 HTTP 错误映射
+        on_chunk,
+    )
+    .await
+}
 pub async fn run_qbank_grading(
     request: QbankGradingRequest,
     deps: QbankGradingDeps,
@@ -448,156 +478,4 @@ fn parse_verdict_and_score(result: &str) -> (Option<Verdict>, Option<i32>) {
         .map(|s| s.max(0).min(100)); // 范围裁剪
 
     (verdict, score)
-}
-
-/// 流式调用 LLM（复用 essay_grading 的 stream_grade 实现）
-async fn stream_grade<F>(
-    config: &ApiConfig,
-    api_key: &str,
-    system_prompt: &str,
-    user_prompt: &str,
-    stream_event: &str,
-    llm: Arc<LLMManager>,
-    mut on_chunk: F,
-) -> Result<StreamStatus, AppError>
-where
-    F: FnMut(String),
-{
-    let result = async {
-        let messages = vec![
-            json!({ "role": "system", "content": system_prompt }),
-            json!({ "role": "user", "content": user_prompt }),
-        ];
-
-        let mut request_body = json!({
-            "model": config.model,
-            "messages": messages,
-            "temperature": 0.3,
-            "max_tokens": crate::llm_manager::effective_max_tokens(
-                config.max_output_tokens,
-                config.max_tokens_limit,
-            )
-            .min(8192),
-            "stream": true,
-        });
-
-        crate::llm_manager::LLMManager::apply_reasoning_config(&mut request_body, config, None);
-
-        let adapter: Box<dyn ProviderAdapter> = build_provider_adapter(config);
-
-        let preq = adapter
-            .build_request(&config.base_url, api_key, &config.model, &request_body)
-            .map_err(|e| AppError::llm(format!("评判请求构建失败: {}", e)))?;
-
-        let mut header_map = reqwest::header::HeaderMap::new();
-        for (k, v) in preq.headers.iter() {
-            if let (Ok(name), Ok(val)) = (
-                reqwest::header::HeaderName::from_bytes(k.as_bytes()),
-                reqwest::header::HeaderValue::from_str(v),
-            ) {
-                header_map.insert(name, val);
-            }
-        }
-
-        let client = llm.get_http_client();
-
-        llm.consume_pending_cancel(stream_event).await;
-        let mut cancel_rx = llm.subscribe_cancel_stream(stream_event).await;
-
-        let response = client
-            .post(&preq.url)
-            .headers(header_map)
-            .json(&preq.body)
-            .send()
-            .await
-            .map_err(|e| AppError::llm(format!("评判请求失败: {}", e)))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::llm(format!(
-                "评判 API 返回错误 {}: {}",
-                status, error_text
-            )));
-        }
-
-        let mut stream = response.bytes_stream();
-        let mut buffer = String::new();
-        let mut stream_ended = false;
-        let mut cancelled = false;
-
-        while !stream_ended && !cancelled {
-            if llm.consume_pending_cancel(stream_event).await {
-                cancelled = true;
-                break;
-            }
-
-            tokio::select! {
-                changed = cancel_rx.changed() => {
-                    if changed.is_ok() && *cancel_rx.borrow() {
-                        cancelled = true;
-                    }
-                }
-                chunk_result = stream.next() => {
-                    match chunk_result {
-                        Some(chunk) => {
-                            let bytes = chunk.map_err(|e| AppError::llm(format!("读取流失败: {}", e)))?;
-                            buffer.push_str(&String::from_utf8_lossy(&bytes));
-
-                            while let Some(pos) = buffer.find("\n\n") {
-                                let line = buffer[..pos].trim().to_string();
-                                buffer = buffer[pos + 2..].to_string();
-
-                                if line.is_empty() {
-                                    continue;
-                                }
-
-                                if line == "data: [DONE]" {
-                                    stream_ended = true;
-                                    break;
-                                }
-
-                                let events = adapter.parse_stream(&line);
-                                for event in events {
-                                    match event {
-                                        crate::providers::StreamEvent::ContentChunk(content) => {
-                                            on_chunk(content);
-                                        }
-                                        crate::providers::StreamEvent::Done => {
-                                            stream_ended = true;
-                                            break;
-                                        }
-                                        _ => {}
-                                    }
-                                }
-
-                                if stream_ended {
-                                    break;
-                                }
-                            }
-                        }
-                        None => {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        if cancelled {
-            return Ok(StreamStatus::Cancelled);
-        }
-
-        if stream_ended {
-            Ok(StreamStatus::Completed)
-        } else {
-            log::warn!("[QbankGrading] SSE 流未收到 DONE 标记就结束，结果可能不完整");
-            Ok(StreamStatus::Incomplete)
-        }
-    }
-    .await;
-
-    llm.clear_cancel_stream(stream_event).await;
-
-    result
 }

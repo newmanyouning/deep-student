@@ -45,6 +45,7 @@
 mod deepseek;
 mod factory;
 mod paddle;
+mod paddle_api;
 pub mod system_ocr;
 pub mod types;
 
@@ -52,6 +53,7 @@ pub mod types;
 pub use deepseek::DeepSeekOcrAdapter;
 pub use factory::OcrAdapterFactory;
 pub use paddle::PaddleOcrVlAdapter;
+pub use paddle_api::PaddleOcrApiAdapter;
 pub use system_ocr::SystemOcrAdapter;
 pub use types::*;
 // Glm4vOcrAdapter 和 GenericVlmAdapter 直接定义在本模块中

@@ -12,13 +12,10 @@ use std::sync::Arc;
 use rusqlite::params;
 use tracing::{debug, info, warn};
 
-use crate::vfs::database::VfsDatabase;
-use crate::vfs::error::VfsResult;
-use crate::vfs::lance_store::VfsLanceStore;
-use crate::vfs::repos::embedding_repo::VfsIndexStateRepo;
-use crate::vfs::repos::index_unit_repo;
-use crate::vfs::repos::note_repo::VfsNoteRepo;
+use super::error::MemoryResult;
+use super::storage_trait::MemoryStorage;
 
+use crate::vfs::types::{FolderTreeNode, VfsUpdateNoteParams};
 use super::service::{MemoryListItem, MemoryService};
 
 const STALE_THRESHOLD_DAYS: i64 = 90;
@@ -28,8 +25,7 @@ const FOLDER_OVERFLOW_THRESHOLD: usize = 20;
 const EVOLUTION_SCAN_BATCH_SIZE: u32 = 200;
 
 pub struct MemoryEvolution {
-    vfs_db: Arc<VfsDatabase>,
-    lance_store: Option<Arc<VfsLanceStore>>,
+    storage: Arc<dyn MemoryStorage>,
 }
 
 #[derive(Debug, Default)]
@@ -40,12 +36,8 @@ pub struct EvolutionReport {
 }
 
 impl MemoryEvolution {
-    pub fn new(vfs_db: Arc<VfsDatabase>) -> Self {
-        let lance_store = VfsLanceStore::new(vfs_db.clone()).ok().map(Arc::new);
-        Self {
-            vfs_db,
-            lance_store,
-        }
+    pub fn new(storage: Arc<dyn MemoryStorage>) -> Self {
+        Self { storage }
     }
 
     /// 带全局节流的自进化执行入口
@@ -98,7 +90,7 @@ impl MemoryEvolution {
     pub fn run_evolution_cycle(
         &self,
         memory_service: &MemoryService,
-    ) -> VfsResult<EvolutionReport> {
+    ) -> MemoryResult<EvolutionReport> {
         let mut report = EvolutionReport::default();
 
         let mut all_memories = Vec::new();
@@ -137,8 +129,8 @@ impl MemoryEvolution {
     }
 
     /// 低频记忆降级：给超过阈值天数未命中的记忆添加 `_stale` 标签
-    fn demote_stale_memories(&self, memories: &[MemoryListItem]) -> VfsResult<usize> {
-        let conn = self.vfs_db.get_conn_safe()?;
+    fn demote_stale_memories(&self, memories: &[MemoryListItem]) -> MemoryResult<usize> {
+        let conn = self.storage.conn()?;
         let now = chrono::Utc::now();
         let mut demoted = 0usize;
 
@@ -211,8 +203,8 @@ impl MemoryEvolution {
     }
 
     /// 高频记忆升级：给频繁命中的记忆添加 `_important` 标签
-    fn promote_high_freq_memories(&self, memories: &[MemoryListItem]) -> VfsResult<usize> {
-        let conn = self.vfs_db.get_conn_safe()?;
+    fn promote_high_freq_memories(&self, memories: &[MemoryListItem]) -> MemoryResult<usize> {
+        let conn = self.storage.conn()?;
         let mut promoted = 0usize;
 
         conn.execute_batch("BEGIN IMMEDIATE")?;
@@ -267,7 +259,7 @@ impl MemoryEvolution {
     }
 
     /// 检查文件夹溢出并执行合并：同一文件夹中标题完全相同的记忆合并内容后去重
-    fn check_folder_overflow(&self, memory_service: &MemoryService) -> VfsResult<usize> {
+    fn check_folder_overflow(&self, memory_service: &MemoryService) -> MemoryResult<usize> {
         let mut folders: Vec<String> = vec![String::new()];
         if let Ok(Some(tree)) = memory_service.get_tree() {
             Self::collect_all_folder_paths(&tree.children, "", &mut folders);
@@ -276,7 +268,7 @@ impl MemoryEvolution {
             return Ok(0);
         }
         let mut merged_count = 0usize;
-        let conn = self.vfs_db.get_conn_safe()?;
+        let _conn = self.storage.conn()?;
 
         for folder in &folders {
             let folder_arg = if folder.is_empty() {
@@ -327,8 +319,7 @@ impl MemoryEvolution {
                 let mut seen_fragments = std::collections::HashSet::new();
                 let mut content_read_failed = false;
                 for mem in group {
-                    match crate::vfs::repos::note_repo::VfsNoteRepo::get_note_content(
-                        &self.vfs_db,
+                    match self.storage.get_note_content(
                         &mem.id,
                     ) {
                         Ok(Some(content)) => {
@@ -371,10 +362,9 @@ impl MemoryEvolution {
                     continue;
                 }
 
-                let updated_keep = match crate::vfs::repos::note_repo::VfsNoteRepo::update_note(
-                    &self.vfs_db,
+                let updated_keep = match self.storage.update_note(
                     &keep.id,
-                    crate::vfs::types::VfsUpdateNoteParams {
+                    VfsUpdateNoteParams {
                         title: None,
                         content: Some(combined_content),
                         tags: None,
@@ -392,7 +382,7 @@ impl MemoryEvolution {
                 };
 
                 if let Err(e) =
-                    VfsIndexStateRepo::mark_pending(&self.vfs_db, &updated_keep.resource_id)
+                    self.storage.mark_pending(&updated_keep.resource_id)
                 {
                     warn!(
                         "[Evolution] Failed to mark pending after merge update {}: {}",
@@ -401,44 +391,39 @@ impl MemoryEvolution {
                 }
 
                 for dup in &group[1..] {
-                    let resource_id: Option<String> = VfsNoteRepo::get_note(&self.vfs_db, &dup.id)
+                    let resource_id: Option<String> = self.storage.get_note(&dup.id)
                         .ok()
                         .flatten()
                         .map(|n| n.resource_id);
 
                     if let Err(e) =
-                        crate::vfs::repos::note_repo::VfsNoteRepo::delete_note_with_folder_item(
-                            &self.vfs_db,
+                        self.storage.delete_note_with_folder_item(
                             &dup.id,
                         )
                     {
                         warn!("[Evolution] Failed to delete duplicate {}: {}", dup.id, e);
                     } else {
                         if let Some(ref res_id) = resource_id {
-                            if let Some(ref lance) = self.lance_store {
-                                let lance_c = lance.clone();
-                                let res_id_c = res_id.clone();
-                                if let Ok(handle) = tokio::runtime::Handle::try_current() {
-                                    if let Err(e) = tokio::task::block_in_place(|| {
-                                        handle.block_on(async {
-                                            lance_c.delete_by_resource("text", &res_id_c).await
-                                        })
-                                    }) {
-                                        warn!(
-                                            "[Evolution] Failed to delete vector chunks for {}: {}",
-                                            res_id, e
-                                        );
-                                    }
+                            let res_id_c = res_id.clone();
+                            if let Ok(handle) = tokio::runtime::Handle::try_current() {
+                                if let Err(e) = tokio::task::block_in_place(|| {
+                                    handle.block_on(async {
+                                        self.storage.delete_by_resource("text", &res_id_c).await
+                                    })
+                                }) {
+                                    warn!(
+                                        "[Evolution] Failed to delete vector chunks for {}: {}",
+                                        res_id, e
+                                    );
                                 }
                             }
-                            if let Err(e) = index_unit_repo::delete_by_resource(&conn, res_id) {
+                            if let Err(e) = self.storage.delete_index_units_by_resource(res_id) {
                                 warn!(
                                     "[Evolution] Failed to delete index units for {}: {}",
                                     res_id, e
                                 );
                             }
-                            if let Err(e) = VfsIndexStateRepo::mark_disabled_with_reason(
-                                &self.vfs_db,
+                            if let Err(e) = self.storage.mark_disabled_with_reason(
                                 res_id,
                                 "evolution merged duplicate",
                             ) {
@@ -472,7 +457,7 @@ impl MemoryEvolution {
     }
 
     fn collect_all_folder_paths(
-        children: &[crate::vfs::types::FolderTreeNode],
+        children: &[FolderTreeNode],
         parent_path: &str,
         out: &mut Vec<String>,
     ) {

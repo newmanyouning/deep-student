@@ -38,6 +38,7 @@ pub mod commands;
 pub mod commands_asset;
 pub mod commands_backup;
 pub mod commands_restore;
+pub mod commands_shared;
 pub mod commands_sync;
 pub mod commands_types;
 pub mod commands_zip;

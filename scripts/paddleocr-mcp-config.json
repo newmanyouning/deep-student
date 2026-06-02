@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "paddleocr": {
+      "command": "node",
+      "args": [
+        "scripts/mcp-paddleocr-server.mjs"
+      ],
+      "env": {
+        "PADDLEOCR_API_TOKEN": ""
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

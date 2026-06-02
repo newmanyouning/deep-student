@@ -530,7 +530,7 @@ pub async fn memory_set_auto_create_subfolders(
     llm_manager: State<'_, Arc<LLMManager>>,
 ) -> MemoryResult<()> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    let cfg = super::config::MemoryConfig::new(service.vfs_db_ref().clone());
+    let cfg = super::config::MemoryConfig::new(service.storage_ref().clone());
     Ok(cfg.set_auto_create_subfolders(enabled)?)
 }
 
@@ -542,7 +542,7 @@ pub async fn memory_set_default_category(
     llm_manager: State<'_, Arc<LLMManager>>,
 ) -> MemoryResult<()> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    let cfg = super::config::MemoryConfig::new(service.vfs_db_ref().clone());
+    let cfg = super::config::MemoryConfig::new(service.storage_ref().clone());
     Ok(cfg.set_default_category(&category)?)
 }
 
@@ -565,7 +565,7 @@ pub async fn memory_set_auto_extract_frequency(
         }
     };
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    let cfg = super::config::MemoryConfig::new(service.vfs_db_ref().clone());
+    let cfg = super::config::MemoryConfig::new(service.storage_ref().clone());
     Ok(cfg.set_auto_extract_frequency(freq)?)
 }
 
@@ -624,7 +624,7 @@ pub async fn memory_get_profile(
     };
 
     let cat_mgr = super::category_manager::MemoryCategoryManager::new(
-        service.vfs_db_ref().clone(),
+        service.storage_ref().clone(),
         llm_manager.inner().clone(),
     );
 
@@ -820,8 +820,9 @@ pub async fn memory_get_audit_logs(
 ) -> MemoryResult<Vec<MemoryAuditLogItem>> {
     let limit = limit.unwrap_or(50).clamp(1, 200);
     let offset = offset.unwrap_or(0);
+    let conn = vfs_db.get_conn_safe().map_err(|e| MemoryError::Database(e.to_string()))?;
     Ok(audit_log::query_audit_logs(
-        &vfs_db,
+        &conn,
         limit,
         offset,
         source_filter.as_deref(),
@@ -864,10 +865,11 @@ pub async fn memory_to_anki_document(
             }
         }
 
-        let content =
-            crate::vfs::repos::note_repo::VfsNoteRepo::get_note_content(&vfs_db, &item.id)
-                ?
-                .unwrap_or_default();
+        let content = service
+            .read(&item.id)
+            ?
+            .map(|(_, c)| c)
+            .unwrap_or_default();
 
         let text = if content.is_empty() {
             &item.title

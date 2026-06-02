@@ -19,7 +19,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
-use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolExecutor, ToolResult, ToolSensitivity};
 use crate::chat_v2::events::event_types;
 use crate::chat_v2::repo::ChatV2Repo;
 use crate::chat_v2::types::{ReplaySkillPayloadSnapshot, ToolCall, ToolResultInfo};

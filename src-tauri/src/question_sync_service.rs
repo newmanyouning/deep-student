@@ -33,7 +33,8 @@ fn log_and_skip_err<T, E: std::fmt::Display>(result: Result<T, E>) -> Option<T> 
 }
 use crate::vfs::error::{VfsError, VfsResult};
 use crate::vfs::repos::question_repo::{
-    Difficulty, Question, QuestionImage, QuestionOption, QuestionStatus, QuestionType, SourceType,
+    Difficulty, Question, QuestionImage, QuestionOption, QuestionStatus, QuestionSyncCallback,
+    QuestionType, SourceType,
 };
 
 // ============================================================================
@@ -1622,6 +1623,20 @@ impl QuestionSyncService {
             resource_type: "question".to_string(),
             id: question_id.to_string(),
         })
+    }
+}
+
+// ============================================================================
+// QuestionSyncCallback implementation (breaks circular dependency with question_repo)
+// ============================================================================
+
+impl QuestionSyncCallback for QuestionSyncService {
+    fn update_content_hash(&self, conn: &Connection, question_id: &str) -> VfsResult<String> {
+        Self::update_content_hash_with_conn(conn, question_id)
+    }
+
+    fn mark_as_modified(&self, conn: &Connection, question_id: &str) -> VfsResult<()> {
+        Self::mark_as_modified_with_conn(conn, question_id)
     }
 }
 

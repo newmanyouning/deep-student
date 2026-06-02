@@ -31,6 +31,8 @@ use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
+use std::future::Future;
+use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -58,8 +60,7 @@ use crate::models::PdfOcrTextBlock;
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
 use crate::vfs::index_service::VfsIndexService;
-use crate::vfs::indexing::VfsFullIndexingService;
-use crate::vfs::lance_store::VfsLanceStore;
+use crate::vfs::indexing::types::{OcrPageResult, OcrPagesJson};
 use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
 use crate::vfs::types::PdfPreviewJson;
 use crate::vfs::unit_builder::UnitBuildInput;
@@ -358,30 +359,8 @@ const INITIAL_BACKOFF_MS: u64 = 1000;
 const MAX_BACKOFF_MS: u64 = 20_000;
 
 // ============================================================================
-// OCR 结果类型
+// OCR 结果类型（已移至 vfs/indexing/types.rs）
 // ============================================================================
-
-/// 单页 OCR 结果
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OcrPageResult {
-    /// 页码（0-indexed）
-    pub page_index: usize,
-    /// OCR 识别的文本块
-    pub blocks: Vec<PdfOcrTextBlock>,
-}
-
-/// OCR 结果 JSON（存储在 ocr_pages_json 字段）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct OcrPagesJson {
-    /// 总页数
-    pub total_pages: usize,
-    /// 每页的 OCR 结果
-    pub pages: Vec<OcrPageResult>,
-    /// OCR 完成时间
-    pub completed_at: String,
-}
 
 // ============================================================================
 // 服务实现
@@ -418,6 +397,15 @@ impl Default for ImageCompressionConfig {
 // 服务实现
 // ============================================================================
 
+/// 向量索引回调类型
+///
+/// 由 VfsIndexCoordinator 注入，避免 PdfProcessingService 直接依赖
+/// VfsFullIndexingService，从而打破 indexing ↔ pdf_processing_service 循环。
+pub type VectorIndexCallback =
+    Arc<dyn Fn(String /* resource_id */) -> Pin<Box<dyn Future<Output = VfsResult<()>> + Send>>
+        + Send
+        + Sync>;
+
 /// 媒体预处理服务（PDF + 图片）
 ///
 /// ## 依赖
@@ -440,6 +428,8 @@ pub struct PdfProcessingService {
     generation_counter: AtomicU64,
     /// App Handle（用于发送事件）
     app_handle: RwLock<Option<AppHandle>>,
+    /// 向量索引回调（由协调器注入，打破循环依赖）
+    vector_index_callback: Option<VectorIndexCallback>,
 }
 
 impl PdfProcessingService {
@@ -463,7 +453,13 @@ impl PdfProcessingService {
             running_tasks: DashMap::new(),
             generation_counter: AtomicU64::new(0),
             app_handle: RwLock::new(None),
+            vector_index_callback: None,
         }
+    }
+
+    /// 设置向量索引回调（由 VfsIndexCoordinator 调用）
+    pub fn set_vector_index_callback(&mut self, callback: VectorIndexCallback) {
+        self.vector_index_callback = Some(callback);
     }
 
     fn load_ocr_config(&self) -> OcrStrategyConfig {
@@ -2649,7 +2645,7 @@ impl PdfProcessingService {
             })?;
 
         // 2. 获取 LLMManager
-        let llm_manager: Arc<LLMManager> = app_handle
+        let _llm_manager: Arc<LLMManager> = app_handle
             .try_state::<Arc<LLMManager>>()
             .ok_or_else(|| VfsError::InvalidOperation {
                 operation: "vector_indexing".to_string(),
@@ -2772,59 +2768,32 @@ impl PdfProcessingService {
         )
         .await;
 
-        // 8. 创建 LanceStore 和 FullIndexingService
-        let lance_store = match VfsLanceStore::new(self.db.clone()) {
-            Ok(store) => Arc::new(store),
-            Err(e) => {
-                warn!(
-                    "[PdfProcessingService] Failed to create LanceStore for file {}: {}",
-                    file_id, e
-                );
-                // LanceStore 创建失败，跳过向量索引但不中断流水线
-                return Ok(());
+        // 8. 通过协调器的回调执行向量索引（避免直接依赖 VfsFullIndexingService）
+        if let Some(ref callback) = self.vector_index_callback {
+            match callback(resource_id.clone()).await {
+                Ok(()) => {
+                    info!(
+                        "[PdfProcessingService] Vector indexing completed for file {}",
+                        file_id
+                    );
+                    log::debug!(
+                        "[PdfProcessingService] Vector indexing completed for file {}",
+                        file_id
+                    );
+                }
+                Err(e) => {
+                    warn!(
+                        "[PdfProcessingService] Vector indexing failed for file {}: {}",
+                        file_id, e
+                    );
+                    // 索引失败不中断流水线，文件仍可使用
+                }
             }
-        };
-
-        let full_indexing_service = match VfsFullIndexingService::new(
-            self.db.clone(),
-            llm_manager,
-            lance_store,
-        ) {
-            Ok(service) => service,
-            Err(e) => {
-                warn!(
-                    "[PdfProcessingService] Failed to create VfsFullIndexingService for file {}: {}",
-                    file_id, e
-                );
-                return Ok(());
-            }
-        };
-
-        // 9. 执行索引
-        match full_indexing_service
-            .index_resource(resource_id, None, None)
-            .await
-        {
-            Ok((chunk_count, _dim)) => {
-                info!(
-                    "[PdfProcessingService] Vector indexing completed for file {}: {} chunks indexed",
-                    file_id, chunk_count
-                );
-
-                // ★ 注意：不将 "indexed" 加入 ready_modes
-                // ready_modes 仅用于注入模式（text/ocr/image），索引状态通过 stage 跟踪
-                log::debug!(
-                    "[PdfProcessingService] Vector indexing completed for file {}, {} chunks (not added to ready_modes)",
-                    file_id, chunk_count
-                );
-            }
-            Err(e) => {
-                warn!(
-                    "[PdfProcessingService] Vector indexing failed for file {}: {}",
-                    file_id, e
-                );
-                // 索引失败不中断流水线，文件仍可使用
-            }
+        } else {
+            warn!(
+                "[PdfProcessingService] No vector index callback set, skipping vector indexing for file {}",
+                file_id
+            );
         }
 
         // 10. 发送进度事件：索引完成

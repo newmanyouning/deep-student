@@ -24,6 +24,7 @@ jobs:
     runs-on: windows-latest
     env:
       NODE_OPTIONS: '--max-old-space-size=4096'
+      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v4
         with:
@@ -44,6 +45,9 @@ jobs:
       - run: node scripts/generate-version.mjs
       - name: Disable updater signing (build test)
         run: node -e "const fs=require('fs');const p='src-tauri/tauri.conf.json';const c=JSON.parse(fs.readFileSync(p,'utf8'));c.bundle.createUpdaterArtifacts=false;c.plugins.updater.pubkey='';fs.writeFileSync(p,JSON.stringify(c,null,2))"
+      - name: Fast compile check (fail early on syntax/type errors)
+        run: cargo check
+        working-directory: src-tauri
       - run: npx tauri build --target x86_64-pc-windows-msvc
       - uses: actions/upload-artifact@v4
         with:
@@ -56,6 +60,7 @@ jobs:
     runs-on: macos-latest
     env:
       NODE_OPTIONS: '--max-old-space-size=4096'
+      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v4
         with:
@@ -86,6 +91,9 @@ jobs:
           fi
       - name: Disable updater signing (build test)
         run: node -e "const fs=require('fs');const p='src-tauri/tauri.conf.json';const c=JSON.parse(fs.readFileSync(p,'utf8'));c.bundle.createUpdaterArtifacts=false;c.plugins.updater.pubkey='';fs.writeFileSync(p,JSON.stringify(c,null,2))"
+      - name: Fast compile check (fail early on syntax/type errors)
+        run: cargo check
+        working-directory: src-tauri
       - run: npx tauri build --target aarch64-apple-darwin
       - uses: actions/upload-artifact@v4
         with:
@@ -98,6 +106,7 @@ jobs:
     runs-on: macos-latest
     env:
       NODE_OPTIONS: '--max-old-space-size=4096'
+      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v4
         with:
@@ -128,6 +137,9 @@ jobs:
           fi
       - name: Disable updater signing (build test)
         run: node -e "const fs=require('fs');const p='src-tauri/tauri.conf.json';const c=JSON.parse(fs.readFileSync(p,'utf8'));c.bundle.createUpdaterArtifacts=false;c.plugins.updater.pubkey='';fs.writeFileSync(p,JSON.stringify(c,null,2))"
+      - name: Fast compile check (fail early on syntax/type errors)
+        run: cargo check
+        working-directory: src-tauri
       - run: npx tauri build --target x86_64-apple-darwin
       - uses: actions/upload-artifact@v4
         with:
@@ -140,6 +152,7 @@ jobs:
     runs-on: ubuntu-24.04
     env:
       NODE_OPTIONS: '--max-old-space-size=4096'
+      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v4
         with:
@@ -166,6 +179,9 @@ jobs:
       - run: node scripts/generate-version.mjs
       - name: Disable updater signing (build test)
         run: node -e "const fs=require('fs');const p='src-tauri/tauri.conf.json';const c=JSON.parse(fs.readFileSync(p,'utf8'));c.bundle.createUpdaterArtifacts=false;c.plugins.updater.pubkey='';fs.writeFileSync(p,JSON.stringify(c,null,2))"
+      - name: Fast compile check (fail early on syntax/type errors)
+        run: cargo check
+        working-directory: src-tauri
       - run: npx tauri build --target x86_64-unknown-linux-gnu --bundles deb,rpm,appimage
       - uses: actions/upload-artifact@v4
         with:
@@ -181,6 +197,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: '--max-old-space-size=4096'
+      CARGO_TERM_COLOR: always
     steps:
       - uses: actions/checkout@v4
         with:
@@ -242,6 +259,9 @@ jobs:
           echo "CXX_aarch64_linux_android=${NDK_PREBUILT}/bin/aarch64-linux-android21-clang++" >> $GITHUB_ENV
           echo "AR_aarch64_linux_android=${NDK_PREBUILT}/bin/llvm-ar" >> $GITHUB_ENV
           echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=${NDK_PREBUILT}/bin/aarch64-linux-android21-clang" >> $GITHUB_ENV
+      - name: Fast compile check (fail early on syntax/type errors)
+        run: cargo check
+        working-directory: src-tauri
       - name: Build Android APK
         env:
           GRADLE_OPTS: -Dorg.gradle.daemon=false

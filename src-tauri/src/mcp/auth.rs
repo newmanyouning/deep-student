@@ -6,9 +6,13 @@ use super::types::{McpError, McpResult};
 use chrono::{DateTime, Duration, Utc};
 use log::{debug, error, info, warn};
 use oauth2::{
-    basic::BasicClient, reqwest::async_http_client, AuthUrl, AuthorizationCode, ClientId,
-    ClientSecret, CsrfToken, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken,
-    RevocationUrl, Scope, TokenResponse, TokenUrl,
+    basic::{
+        BasicClient, BasicErrorResponse, BasicRevocationErrorResponse, BasicTokenResponse,
+        BasicTokenIntrospectionResponse,
+    },
+    AuthUrl, AuthorizationCode, Client, ClientId, ClientSecret, CsrfToken, EndpointNotSet,
+    EndpointSet, PkceCodeChallenge, PkceCodeVerifier, RedirectUrl, RefreshToken,
+    Scope, StandardRevocableToken, TokenResponse, TokenUrl,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -65,21 +69,67 @@ pub struct OAuthEndpoints {
     pub userinfo: Option<String>,
 }
 
+/// Fully configured OAuth 2.0 client (auth URL + token URL set)
+type ConfiguredClient = Client<
+    BasicErrorResponse,
+    BasicTokenResponse,
+    BasicTokenIntrospectionResponse,
+    StandardRevocableToken,
+    BasicRevocationErrorResponse,
+    EndpointSet,       // HasAuthUrl
+    EndpointNotSet,    // HasDeviceAuthUrl
+    EndpointNotSet,    // HasIntrospectionUrl
+    EndpointNotSet,    // HasRevocationUrl
+    EndpointSet,       // HasTokenUrl
+>;
+
+/// OAuth 客户端配置（存储字符串，按需构建 BasicClient）
+#[derive(Debug, Clone)]
+pub struct OAuthClientConfig {
+    pub client_id: String,
+    pub client_secret: Option<String>,
+    pub endpoints: OAuthEndpoints,
+    pub redirect_uri: String,
+}
+
 /// MCP认证管理器
 pub struct McpAuthManager {
-    oauth_clients: Arc<RwLock<HashMap<String, BasicClient>>>,
+    oauth_configs: Arc<RwLock<HashMap<String, OAuthClientConfig>>>,
     tokens: Arc<RwLock<HashMap<String, AuthToken>>>,
     pkce_verifiers: Arc<RwLock<HashMap<String, PkceCodeVerifier>>>,
+    http_client: oauth2::reqwest::Client,
 }
 
 impl McpAuthManager {
     /// 创建新的认证管理器
     pub fn new() -> Self {
         Self {
-            oauth_clients: Arc::new(RwLock::new(HashMap::new())),
+            oauth_configs: Arc::new(RwLock::new(HashMap::new())),
             tokens: Arc::new(RwLock::new(HashMap::new())),
             pkce_verifiers: Arc::new(RwLock::new(HashMap::new())),
+            http_client: oauth2::reqwest::Client::new(),
         }
+    }
+
+    /// 从配置构建 OAuth 客户端
+    fn build_client(config: &OAuthClientConfig) -> McpResult<ConfiguredClient> {
+        let auth_url = AuthUrl::new(config.endpoints.authorization.clone())
+            .map_err(|e| McpError::AuthenticationError(format!("Invalid auth URL: {}", e)))?;
+        let token_url = TokenUrl::new(config.endpoints.token.clone())
+            .map_err(|e| McpError::AuthenticationError(format!("Invalid token URL: {}", e)))?;
+
+        let client = BasicClient::new(ClientId::new(config.client_id.clone()));
+        let client = match &config.client_secret {
+            Some(secret) => client.set_client_secret(ClientSecret::new(secret.clone())),
+            None => client,
+        };
+        let client = client
+            .set_auth_uri(auth_url)
+            .set_token_uri(token_url)
+            .set_redirect_uri(RedirectUrl::new(config.redirect_uri.clone()).map_err(
+                |e| McpError::AuthenticationError(format!("Invalid redirect URI: {}", e)),
+            )?);
+        Ok(client)
     }
 
     /// 注册OAuth客户端
@@ -91,32 +141,18 @@ impl McpAuthManager {
         endpoints: OAuthEndpoints,
         redirect_uri: &str,
     ) -> McpResult<()> {
-        let auth_url = AuthUrl::new(endpoints.authorization)
-            .map_err(|e| McpError::AuthenticationError(format!("Invalid auth URL: {}", e)))?;
+        let config = OAuthClientConfig {
+            client_id: client_id.to_string(),
+            client_secret: client_secret.map(|s| s.to_string()),
+            endpoints,
+            redirect_uri: redirect_uri.to_string(),
+        };
 
-        let token_url = TokenUrl::new(endpoints.token)
-            .map_err(|e| McpError::AuthenticationError(format!("Invalid token URL: {}", e)))?;
+        // 验证配置可以构建有效客户端
+        Self::build_client(&config)?;
 
-        let mut client =
-            BasicClient::new(
-                ClientId::new(client_id.to_string()),
-                client_secret.map(|s| ClientSecret::new(s.to_string())),
-                auth_url,
-                Some(token_url),
-            )
-            .set_redirect_uri(RedirectUrl::new(redirect_uri.to_string()).map_err(
-                |e| McpError::AuthenticationError(format!("Invalid redirect URI: {}", e)),
-            )?);
-
-        if let Some(revocation_url) = endpoints.revocation {
-            client =
-                client.set_revocation_uri(RevocationUrl::new(revocation_url).map_err(|e| {
-                    McpError::AuthenticationError(format!("Invalid revocation URL: {}", e))
-                })?);
-        }
-
-        let mut clients = self.oauth_clients.write().await;
-        clients.insert(provider.to_string(), client);
+        let mut configs = self.oauth_configs.write().await;
+        configs.insert(provider.to_string(), config);
 
         info!("Registered OAuth client for provider: {}", provider);
         Ok(())
@@ -222,10 +258,11 @@ impl McpAuthManager {
         provider: &str,
         scopes: &[&str],
     ) -> McpResult<String> {
-        let clients = self.oauth_clients.read().await;
-        let client = clients.get(provider).ok_or_else(|| {
+        let configs = self.oauth_configs.read().await;
+        let config = configs.get(provider).ok_or_else(|| {
             McpError::AuthenticationError(format!("OAuth client not registered: {}", provider))
         })?;
+        let client = Self::build_client(config)?;
 
         // 生成PKCE challenge（2025强制要求）
         let (pkce_challenge, pkce_verifier) = PkceCodeChallenge::new_random_sha256();
@@ -254,10 +291,11 @@ impl McpAuthManager {
         code: &str,
         csrf_token: &str,
     ) -> McpResult<AuthToken> {
-        let clients = self.oauth_clients.read().await;
-        let client = clients.get(provider).ok_or_else(|| {
+        let configs = self.oauth_configs.read().await;
+        let config = configs.get(provider).ok_or_else(|| {
             McpError::AuthenticationError(format!("OAuth client not registered: {}", provider))
         })?;
+        let client = Self::build_client(config)?;
 
         // 获取PKCE verifier
         let mut verifiers = self.pkce_verifiers.write().await;
@@ -271,7 +309,7 @@ impl McpAuthManager {
         let token_result = client
             .exchange_code(AuthorizationCode::new(code.to_string()))
             .set_pkce_verifier(pkce_verifier)
-            .request_async(async_http_client)
+            .request_async(&self.http_client)
             .await
             .map_err(|e| McpError::AuthenticationError(format!("Token exchange failed: {}", e)))?;
 
@@ -303,14 +341,15 @@ impl McpAuthManager {
 
     /// 刷新令牌
     pub async fn refresh_token(&self, provider: &str, refresh_token: &str) -> McpResult<AuthToken> {
-        let clients = self.oauth_clients.read().await;
-        let client = clients.get(provider).ok_or_else(|| {
+        let configs = self.oauth_configs.read().await;
+        let config = configs.get(provider).ok_or_else(|| {
             McpError::AuthenticationError(format!("OAuth client not registered: {}", provider))
         })?;
+        let client = Self::build_client(config)?;
 
         let token_result = client
             .exchange_refresh_token(&RefreshToken::new(refresh_token.to_string()))
-            .request_async(async_http_client)
+            .request_async(&self.http_client)
             .await
             .map_err(|e| McpError::AuthenticationError(format!("Token refresh failed: {}", e)))?;
 

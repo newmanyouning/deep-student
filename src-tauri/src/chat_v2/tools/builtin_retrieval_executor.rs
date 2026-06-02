@@ -685,7 +685,7 @@ impl BuiltinRetrievalExecutor {
         call: &ToolCall,
         ctx: &ExecutionContext,
     ) -> ToolResult<Value> {
-        use crate::memory::service::MemoryService;
+        use crate::memory::{VfsMemoryStorage, service::MemoryService};
         use crate::vfs::indexing::{VfsFullSearchService, VfsSearchParams};
         use crate::vfs::lance_store::VfsLanceStore;
         use crate::vfs::multimodal_service::VfsMultimodalService;
@@ -831,9 +831,13 @@ impl BuiltinRetrievalExecutor {
         // 获取记忆文件夹下所有资源 ID 集合，从文本搜索结果中排除（源头去重）。
         // 这比事后跨源去重更可靠：不依赖 sourceId/title 匹配。
         let memory_resource_ids: std::collections::HashSet<String> = {
-            let memory_service = MemoryService::new(
+            let mem_storage = std::sync::Arc::new(VfsMemoryStorage::new(
                 std::sync::Arc::clone(vfs_db),
                 std::sync::Arc::clone(&lance_store),
+                std::sync::Arc::clone(llm_manager),
+            ));
+            let memory_service = MemoryService::new_with_storage(
+                mem_storage,
                 std::sync::Arc::clone(llm_manager),
             );
             memory_service
@@ -1048,9 +1052,13 @@ impl BuiltinRetrievalExecutor {
 
         // 记忆搜索（复用 shared_embedding，忽略错误，不影响主流程）
         {
-            let memory_service = MemoryService::new(
+            let mem_storage = std::sync::Arc::new(VfsMemoryStorage::new(
                 std::sync::Arc::clone(vfs_db),
                 std::sync::Arc::clone(&lance_store),
+                std::sync::Arc::clone(llm_manager),
+            ));
+            let memory_service = MemoryService::new_with_storage(
+                mem_storage,
                 std::sync::Arc::clone(llm_manager),
             );
 

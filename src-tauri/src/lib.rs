@@ -86,10 +86,10 @@ pub mod unified_file_manager;
 pub mod utils;
 pub mod vector_store;
 pub mod vendors;
-pub mod vfs; // VFS 虚拟文件系统（统一资源存储） // DSTU 访达协议层（VFS 的文件系统语义接口）
+pub mod vfs; // VFS 虚拟文件系统（统一资源存储）
 pub mod vlm_grounding_service;
 pub mod voice_input;
-pub mod workflow_error_handler; // SM-2 间隔重复算法 // 题目集同步冲突策略服务
+pub mod workflow_error_handler; // 工作流错误处理器（异常恢复、重试策略、降级处理）
 
 // 数据治理模块（条件编译，需启用 data_governance feature）
 #[cfg(feature = "data_governance")]
@@ -115,6 +115,10 @@ use tauri_plugin_opener;
 // Sentry for Rust (后端)
 use sentry::ClientInitGuard;
 use tracing::{debug, error, info, warn};
+
+// Question sync callback cycle-break
+use crate::question_sync_service::QuestionSyncService;
+use crate::vfs::repos::question_repo::register_question_sync_callback;
 
 // 全局 AppHandle，用于在任意位置发送 Tauri 事件
 static GLOBAL_APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
@@ -581,7 +585,8 @@ pub fn run() {
             #[cfg(feature = "data_governance")]
             {
                 if data_governance_init_failed {
-                    let app_state: tauri::State<crate::commands::AppState> = app.state();
+                    let app_state = app.try_state::<crate::commands::AppState>()
+                        .expect("AppState should be managed before entering maintenance mode");
                     if let Err(e) = app_state.database.enter_maintenance_mode() {
                         tracing::warn!(error = %e, "数据治理初始化失败后进入维护模式失败");
                     } else {
@@ -592,7 +597,8 @@ pub fn run() {
 
             // 在 Tokio 运行时中启动消息处理器并注册处理器
             // Retrieve the application state and clone the database from it
-            let app_state: tauri::State<crate::commands::AppState> = app.state();
+            let app_state = app.try_state::<crate::commands::AppState>()
+                .expect("AppState should be managed before use");
             let database = app_state.inner().database.clone();
             // 兼容命令注入：部分命令直接请求 `State<Arc<Database>>`（例如 schedule_memory_internalization）
             // 需要显式将 `Arc<Database>` 注入到 Tauri 状态中，否则会提示 `.manage()` 缺失
@@ -1107,6 +1113,8 @@ pub fn run() {
             crate::commands::get_mcp_config,
             crate::commands::import_mcp_config,
             crate::commands::export_mcp_config,
+            crate::cmd::mcp::test_rmcp_streamable_http,
+            crate::cmd::mcp::preheat_mcp_tools,
             crate::commands::test_all_search_engines
 
             // =============== Notes (isolated) ===============
@@ -1271,82 +1279,82 @@ pub fn run() {
             // VFS 虚拟文件系统命令
             // =================================================
             // 🆕 资源操作（已启用 - 替代独立 resources.db）
-            ,crate::vfs::handlers::vfs_create_or_reuse
-            ,crate::vfs::handlers::vfs_get_resource
-            ,crate::vfs::handlers::vfs_resource_exists
-            ,crate::vfs::handlers::vfs_increment_ref
-            ,crate::vfs::handlers::vfs_decrement_ref
+            ,crate::vfs::handlers::resource_handlers::vfs_create_or_reuse
+            ,crate::vfs::handlers::resource_handlers::vfs_get_resource
+            ,crate::vfs::handlers::resource_handlers::vfs_resource_exists
+            ,crate::vfs::handlers::resource_handlers::vfs_increment_ref
+            ,crate::vfs::handlers::resource_handlers::vfs_decrement_ref
             // 笔记操作
-            ,crate::vfs::handlers::vfs_create_note
-            ,crate::vfs::handlers::vfs_update_note
-            ,crate::vfs::handlers::vfs_get_note
-            ,crate::vfs::handlers::vfs_get_note_content
-            ,crate::vfs::handlers::vfs_list_notes
-            ,crate::vfs::handlers::vfs_delete_note
+            ,crate::vfs::handlers::note_handlers::vfs_create_note
+            ,crate::vfs::handlers::note_handlers::vfs_update_note
+            ,crate::vfs::handlers::note_handlers::vfs_get_note
+            ,crate::vfs::handlers::note_handlers::vfs_get_note_content
+            ,crate::vfs::handlers::note_handlers::vfs_list_notes
+            ,crate::vfs::handlers::note_handlers::vfs_delete_note
             // 列表操作（供 Learning Hub 调用）
-            ,crate::vfs::handlers::vfs_list_textbooks
-            ,crate::vfs::handlers::vfs_list_exam_sheets
-            ,crate::vfs::handlers::vfs_list_translations
-            ,crate::vfs::handlers::vfs_list_essays
-            ,crate::vfs::handlers::vfs_search_all
+            ,crate::vfs::handlers::index_handlers::vfs_list_textbooks
+            ,crate::vfs::handlers::index_handlers::vfs_list_exam_sheets
+            ,crate::vfs::handlers::index_handlers::vfs_list_translations
+            ,crate::vfs::handlers::index_handlers::vfs_list_essays
+            ,crate::vfs::handlers::index_handlers::vfs_search_all
             // 路径缓存操作（文档 24 Prompt 3）
-            ,crate::vfs::handlers::vfs_get_resource_path
-            ,crate::vfs::handlers::vfs_update_path_cache
+            ,crate::vfs::handlers::ref_handlers::vfs_get_resource_path
+            ,crate::vfs::handlers::ref_handlers::vfs_update_path_cache
             // 引用模式命令（Prompt 2）
             ,crate::vfs::ref_handlers::vfs_get_resource_refs
             ,crate::vfs::ref_handlers::vfs_resolve_resource_refs
             ,crate::vfs::ref_handlers::vfs_get_resource_ref_count
             // 附件操作命令
-            ,crate::vfs::handlers::vfs_upload_attachment
-            ,crate::vfs::handlers::vfs_get_attachment_content
-            ,crate::vfs::handlers::vfs_get_attachment
-            ,crate::vfs::handlers::vfs_delete_attachment
-            ,crate::vfs::handlers::vfs_get_attachment_config
-            ,crate::vfs::handlers::vfs_set_attachment_root_folder
-            ,crate::vfs::handlers::vfs_create_attachment_root_folder
-            ,crate::vfs::handlers::vfs_get_or_create_attachment_root_folder
+            ,crate::vfs::handlers::attachment_handlers::vfs_upload_attachment
+            ,crate::vfs::handlers::attachment_handlers::vfs_get_attachment_content
+            ,crate::vfs::handlers::attachment_handlers::vfs_get_attachment
+            ,crate::vfs::handlers::attachment_handlers::vfs_delete_attachment
+            ,crate::vfs::handlers::attachment_handlers::vfs_get_attachment_config
+            ,crate::vfs::handlers::attachment_handlers::vfs_set_attachment_root_folder
+            ,crate::vfs::handlers::attachment_handlers::vfs_create_attachment_root_folder
+            ,crate::vfs::handlers::attachment_handlers::vfs_get_or_create_attachment_root_folder
             // 统一文件操作命令（files 表）
-            ,crate::vfs::handlers::vfs_upload_file
-            ,crate::vfs::handlers::vfs_download_paper
-            ,crate::vfs::handlers::vfs_get_file
-            ,crate::vfs::handlers::vfs_list_files
-            ,crate::vfs::handlers::vfs_delete_file
-            ,crate::vfs::handlers::vfs_get_file_content
+            ,crate::vfs::handlers::file_handlers::vfs_upload_file
+            ,crate::vfs::handlers::pdf_handlers::vfs_download_paper
+            ,crate::vfs::handlers::file_handlers::vfs_get_file
+            ,crate::vfs::handlers::file_handlers::vfs_list_files
+            ,crate::vfs::handlers::file_handlers::vfs_delete_file
+            ,crate::vfs::handlers::file_handlers::vfs_get_file_content
             // Blob 操作命令（整卷识别多模态改造 - 2025-12-09）
-            ,crate::vfs::handlers::vfs_get_blob_base64
+            ,crate::vfs::handlers::pdf_handlers::vfs_get_blob_base64
             // PDF 页面图片获取（支持 RAG 引用渲染 - 2026-01）
-            ,crate::vfs::handlers::vfs_get_pdf_page_image
+            ,crate::vfs::handlers::pdf_handlers::vfs_get_pdf_page_image
             // PDF 预处理流水线命令（2026-02）
-            ,crate::vfs::handlers::vfs_get_pdf_processing_status
-            ,crate::vfs::handlers::vfs_cancel_pdf_processing
-            ,crate::vfs::handlers::vfs_retry_pdf_processing
-            ,crate::vfs::handlers::vfs_start_pdf_processing
-            ,crate::vfs::handlers::vfs_get_batch_pdf_processing_status
-            ,crate::vfs::handlers::vfs_list_pending_pdf_processing
+            ,crate::vfs::handlers::pdf_handlers::vfs_get_pdf_processing_status
+            ,crate::vfs::handlers::pdf_handlers::vfs_cancel_pdf_processing
+            ,crate::vfs::handlers::pdf_handlers::vfs_retry_pdf_processing
+            ,crate::vfs::handlers::pdf_handlers::vfs_start_pdf_processing
+            ,crate::vfs::handlers::pdf_handlers::vfs_get_batch_pdf_processing_status
+            ,crate::vfs::handlers::pdf_handlers::vfs_list_pending_pdf_processing
             // 媒体缓存管理命令
-            ,crate::vfs::handlers::vfs_get_media_cache_stats
-            ,crate::vfs::handlers::vfs_clear_media_cache
+            ,crate::vfs::handlers::debug_handlers::vfs_get_media_cache_stats
+            ,crate::vfs::handlers::debug_handlers::vfs_clear_media_cache
             // 整卷图片迁移命令（文档25）
             // VFS 统一知识管理命令
-            ,crate::vfs::handlers::vfs_search
-            ,crate::vfs::handlers::vfs_reindex_resource
-            ,crate::vfs::handlers::vfs_get_index_status
-            ,crate::vfs::handlers::vfs_toggle_index_disabled
-            ,crate::vfs::handlers::vfs_get_embedding_stats
-            ,crate::vfs::handlers::vfs_list_dimensions
-            ,crate::vfs::handlers::vfs_assign_dimension_model
-            ,crate::vfs::handlers::vfs_create_dimension
-            ,crate::vfs::handlers::vfs_delete_dimension
-            ,crate::vfs::handlers::vfs_get_preset_dimensions
-            ,crate::vfs::handlers::vfs_get_dimension_range
-            ,crate::vfs::handlers::vfs_set_default_embedding_dimension
-            ,crate::vfs::handlers::vfs_get_default_embedding_dimension
-            ,crate::vfs::handlers::vfs_clear_default_embedding_dimension
-            ,crate::vfs::handlers::vfs_get_pending_resources
-            ,crate::vfs::handlers::vfs_batch_index_pending
-            ,crate::vfs::handlers::vfs_set_indexing_config
-            ,crate::vfs::handlers::vfs_get_indexing_config
-            ,crate::vfs::handlers::vfs_get_all_index_status
+            ,crate::vfs::handlers::index_handlers::vfs_search
+            ,crate::vfs::handlers::index_handlers::vfs_reindex_resource
+            ,crate::vfs::handlers::index_handlers::vfs_get_index_status
+            ,crate::vfs::handlers::index_handlers::vfs_toggle_index_disabled
+            ,crate::vfs::handlers::index_handlers::vfs_get_embedding_stats
+            ,crate::vfs::handlers::index_handlers::vfs_list_dimensions
+            ,crate::vfs::handlers::index_handlers::vfs_assign_dimension_model
+            ,crate::vfs::handlers::index_handlers::vfs_create_dimension
+            ,crate::vfs::handlers::index_handlers::vfs_delete_dimension
+            ,crate::vfs::handlers::index_handlers::vfs_get_preset_dimensions
+            ,crate::vfs::handlers::index_handlers::vfs_get_dimension_range
+            ,crate::vfs::handlers::index_handlers::vfs_set_default_embedding_dimension
+            ,crate::vfs::handlers::index_handlers::vfs_get_default_embedding_dimension
+            ,crate::vfs::handlers::index_handlers::vfs_clear_default_embedding_dimension
+            ,crate::vfs::handlers::index_handlers::vfs_get_pending_resources
+            ,crate::vfs::handlers::index_handlers::vfs_batch_index_pending
+            ,crate::vfs::handlers::index_handlers::vfs_set_indexing_config
+            ,crate::vfs::handlers::index_handlers::vfs_get_indexing_config
+            ,crate::vfs::handlers::index_handlers::vfs_get_all_index_status
             // VFS 统一索引命令（index_handlers.rs）
             ,crate::vfs::index_handlers::vfs_unified_index_status
             ,crate::vfs::index_handlers::vfs_get_resource_units
@@ -1356,30 +1364,30 @@ pub fn run() {
             ,crate::vfs::index_handlers::vfs_delete_resource_index
             ,crate::vfs::index_handlers::vfs_list_embedding_dims
             // VFS 数据透视命令（OCR 查看/清除、文本块查看）
-            ,crate::vfs::handlers::vfs_get_resource_ocr_info
-            ,crate::vfs::handlers::vfs_clear_resource_ocr
-            ,crate::vfs::handlers::vfs_get_resource_text_chunks
+            ,crate::vfs::handlers::ocr_handlers::vfs_get_resource_ocr_info
+            ,crate::vfs::handlers::ocr_handlers::vfs_clear_resource_ocr
+            ,crate::vfs::handlers::ocr_handlers::vfs_get_resource_text_chunks
             // VFS RAG 向量检索命令
-            ,crate::vfs::handlers::vfs_rag_search
-            ,crate::vfs::handlers::vfs_get_lance_stats
-            ,crate::vfs::handlers::vfs_optimize_lance
+            ,crate::vfs::handlers::index_handlers::vfs_rag_search
+            ,crate::vfs::handlers::index_handlers::vfs_get_lance_stats
+            ,crate::vfs::handlers::index_handlers::vfs_optimize_lance
             // VFS 多模态统一管理命令（2026-01）
-            ,crate::vfs::handlers::vfs_multimodal_index
-            ,crate::vfs::handlers::vfs_multimodal_search
-            ,crate::vfs::handlers::vfs_multimodal_stats
-            ,crate::vfs::handlers::vfs_multimodal_delete
-            ,crate::vfs::handlers::vfs_multimodal_index_resource
+            ,crate::vfs::handlers::multimodal_handlers::vfs_multimodal_index
+            ,crate::vfs::handlers::multimodal_handlers::vfs_multimodal_search
+            ,crate::vfs::handlers::multimodal_handlers::vfs_multimodal_stats
+            ,crate::vfs::handlers::multimodal_handlers::vfs_multimodal_delete
+            ,crate::vfs::handlers::multimodal_handlers::vfs_multimodal_index_resource
             // 知识导图操作
-            ,crate::vfs::handlers::vfs_create_mindmap
-            ,crate::vfs::handlers::vfs_get_mindmap
-            ,crate::vfs::handlers::vfs_get_mindmap_content
-            ,crate::vfs::handlers::vfs_get_mindmap_versions
-            ,crate::vfs::handlers::vfs_get_mindmap_version_content
-            ,crate::vfs::handlers::vfs_get_mindmap_version
-            ,crate::vfs::handlers::vfs_update_mindmap
-            ,crate::vfs::handlers::vfs_delete_mindmap
-            ,crate::vfs::handlers::vfs_list_mindmaps
-            ,crate::vfs::handlers::vfs_set_mindmap_favorite
+            ,crate::vfs::handlers::mindmap_handlers::vfs_create_mindmap
+            ,crate::vfs::handlers::mindmap_handlers::vfs_get_mindmap
+            ,crate::vfs::handlers::mindmap_handlers::vfs_get_mindmap_content
+            ,crate::vfs::handlers::mindmap_handlers::vfs_get_mindmap_versions
+            ,crate::vfs::handlers::mindmap_handlers::vfs_get_mindmap_version_content
+            ,crate::vfs::handlers::mindmap_handlers::vfs_get_mindmap_version
+            ,crate::vfs::handlers::mindmap_handlers::vfs_update_mindmap
+            ,crate::vfs::handlers::mindmap_handlers::vfs_delete_mindmap
+            ,crate::vfs::handlers::mindmap_handlers::vfs_list_mindmaps
+            ,crate::vfs::handlers::mindmap_handlers::vfs_set_mindmap_favorite
             // 待办列表操作（独立于 VFS）
             ,crate::vfs::todo_handlers::vfs_todo_create_list
             ,crate::vfs::todo_handlers::vfs_todo_get_list
@@ -1414,11 +1422,11 @@ pub fn run() {
             ,crate::vfs::ocr_storage_handlers::vfs_ocr_mark_exported
             ,crate::vfs::ocr_storage_handlers::vfs_ocr_list_for_export
             // 索引诊断命令
-            ,crate::vfs::handlers::vfs_debug_index_status
-            ,crate::vfs::handlers::vfs_reset_disabled_to_pending
-            ,crate::vfs::handlers::vfs_reset_indexed_without_embeddings
-            ,crate::vfs::handlers::vfs_reset_all_index_state
-            ,crate::vfs::handlers::vfs_diagnose_lance_schema
+            ,crate::vfs::handlers::debug_handlers::vfs_debug_index_status
+            ,crate::vfs::handlers::debug_handlers::vfs_reset_disabled_to_pending
+            ,crate::vfs::handlers::debug_handlers::vfs_reset_indexed_without_embeddings
+            ,crate::vfs::handlers::debug_handlers::vfs_reset_all_index_state
+            ,crate::vfs::handlers::debug_handlers::vfs_diagnose_lance_schema
             // =================================================
             // LLM Usage 统计命令
             // =================================================
@@ -1432,47 +1440,47 @@ pub fn run() {
             // =================================================
             // DSTU 访达协议层命令
             // =================================================
-            ,crate::dstu::handlers::dstu_list
-            ,crate::dstu::handlers::dstu_get
-            ,crate::dstu::handlers::dstu_create
-            ,crate::dstu::handlers::dstu_update
-            ,crate::dstu::handlers::dstu_delete
-            ,crate::dstu::handlers::dstu_restore
-            ,crate::dstu::handlers::dstu_purge
-            ,crate::dstu::handlers::dstu_set_favorite
-            ,crate::dstu::handlers::dstu_list_deleted
-            ,crate::dstu::handlers::dstu_purge_all
-            ,crate::dstu::handlers::dstu_move
-            ,crate::dstu::handlers::dstu_rename
-            ,crate::dstu::handlers::dstu_copy
-            ,crate::dstu::handlers::dstu_search
-            ,crate::dstu::handlers::dstu_get_content
-            ,crate::dstu::handlers::dstu_set_metadata
-            ,crate::dstu::handlers::dstu_watch
-            ,crate::dstu::handlers::dstu_unwatch
+            ,crate::dstu::handlers::common::dstu_list
+            ,crate::dstu::handlers::common::dstu_get
+            ,crate::dstu::handlers::common::dstu_create
+            ,crate::dstu::handlers::common::dstu_update
+            ,crate::dstu::handlers::common::dstu_delete
+            ,crate::dstu::handlers::common::dstu_restore
+            ,crate::dstu::handlers::common::dstu_purge
+            ,crate::dstu::handlers::common::dstu_set_favorite
+            ,crate::dstu::handlers::common::dstu_list_deleted
+            ,crate::dstu::handlers::common::dstu_purge_all
+            ,crate::dstu::handlers::common::dstu_move
+            ,crate::dstu::handlers::common::dstu_rename
+            ,crate::dstu::handlers::common::dstu_copy
+            ,crate::dstu::handlers::search_handlers::dstu_search
+            ,crate::dstu::handlers::common::dstu_get_content
+            ,crate::dstu::handlers::common::dstu_set_metadata
+            ,crate::dstu::handlers::common::dstu_watch
+            ,crate::dstu::handlers::common::dstu_unwatch
             // 批量操作命令
-            ,crate::dstu::handlers::dstu_delete_many
-            ,crate::dstu::handlers::dstu_restore_many
-            ,crate::dstu::handlers::dstu_move_many
+            ,crate::dstu::handlers::common::dstu_delete_many
+            ,crate::dstu::handlers::common::dstu_restore_many
+            ,crate::dstu::handlers::common::dstu_move_many
             // 文件夹内搜索
-            ,crate::dstu::handlers::dstu_search_in_folder
+            ,crate::dstu::handlers::search_handlers::dstu_search_in_folder
             // 整卷识别多模态内容获取（文档 25 实现）
-            ,crate::dstu::handlers::dstu_get_exam_content
+            ,crate::dstu::handlers::common::dstu_get_exam_content
             // =================================================
             // 契约 E: 真实路径架构命令（文档 28 Prompt 5）
             // =================================================
             // E1: 路径解析
-            ,crate::dstu::handlers::dstu_parse_path
-            ,crate::dstu::handlers::dstu_build_path
+            ,crate::dstu::handlers::common::dstu_parse_path
+            ,crate::dstu::handlers::common::dstu_build_path
             // E2: 资源定位
-            ,crate::dstu::handlers::dstu_get_resource_location
-            ,crate::dstu::handlers::dstu_get_resource_by_path
+            ,crate::dstu::handlers::common::dstu_get_resource_location
+            ,crate::dstu::handlers::common::dstu_get_resource_by_path
             // E3: 移动操作
-            ,crate::dstu::handlers::dstu_move_to_folder
-            ,crate::dstu::handlers::dstu_batch_move
+            ,crate::dstu::handlers::common::dstu_move_to_folder
+            ,crate::dstu::handlers::common::dstu_batch_move
             // E4: 路径缓存
-            ,crate::dstu::handlers::dstu_refresh_path_cache
-            ,crate::dstu::handlers::dstu_get_path_by_id
+            ,crate::dstu::handlers::common::dstu_refresh_path_cache
+            ,crate::dstu::handlers::common::dstu_get_path_by_id
             // =================================================
             // DSTU 统一资源导出命令
             // =================================================
@@ -1679,6 +1687,39 @@ pub fn run() {
             ,crate::data_governance::commands::data_governance_get_migration_diagnostic_report
             ,crate::data_governance::commands::data_governance_run_slot_c_empty_db_test
             ,crate::data_governance::commands::data_governance_run_slot_d_clone_db_test
+            // =================================================
+            // Research reports (implementations + stubs)
+            // =================================================
+            ,crate::commands::research_list_reports
+            ,crate::commands::research_get_report
+            ,crate::commands::research_delete_report
+            ,crate::commands::research_export_all_reports_zip
+            ,crate::cmd::research_stubs::research_get_round
+            ,crate::cmd::research_stubs::research_get_round_visual_summary
+            ,crate::cmd::research_stubs::research_delete_round
+            ,crate::cmd::research_stubs::research_generate_round_report
+            ,crate::cmd::research_stubs::research_set_round_note
+            ,crate::cmd::research_stubs::research_get_round_note
+            ,crate::cmd::research_stubs::research_get_round_notes
+            ,crate::cmd::research_stubs::research_generate_session_report
+            ,crate::cmd::research_stubs::research_get_chunk_text
+            ,crate::cmd::research_stubs::research_get_chunk_context
+            ,crate::cmd::research_stubs::research_update_session_options
+            ,crate::cmd::research_stubs::research_delete_session
+            ,crate::cmd::research_stubs::research_run_until
+            ,crate::cmd::research_stubs::research_run_macro
+            ,crate::cmd::research_stubs::research_run_to_full_coverage
+            ,crate::cmd::research_stubs::research_audit_user_questions
+            ,crate::cmd::research_stubs::research_find_similar_questions
+            ,crate::cmd::research_stubs::research_get_full_chat_history
+            ,crate::cmd::research_stubs::research_deep_read_by_docs
+            ,crate::cmd::research_stubs::research_deep_read_by_tag
+            ,crate::cmd::research_stubs::research_count_tokens
+            ,crate::cmd::research_stubs::research_get_full_content
+            ,crate::cmd::research_stubs::research_get_setting
+            ,crate::cmd::research_stubs::research_set_setting
+            ,crate::cmd::research_stubs::research_delete_setting
+            ,crate::cmd::research_stubs::research_list_artifacts
         ])
         // 注册 pdfstream:// 自定义协议，用于 PDF 流式加载（支持 HTTP Range Request）
         .register_uri_scheme_protocol("pdfstream", |ctx, request| {
@@ -1750,6 +1791,9 @@ fn build_app_state(
     );
     app_handle.manage(vfs_db.clone());
 
+    // Register question-sync callback (breaks circular dependency question_repo ↔ question_sync_service)
+    register_question_sync_callback(Box::new(QuestionSyncService));
+
     // ★ VfsLanceStore：非核心，可降级
     match crate::vfs::VfsLanceStore::new(vfs_db.clone()) {
         Ok(store) => {
@@ -1816,12 +1860,32 @@ fn build_app_state(
     ));
 
     // ★ PDF 预处理流水线服务（2026-02）
-    let pdf_processing_service = Some(Arc::new(crate::vfs::PdfProcessingService::new(
+    let mut pdf_processing_service_raw = Arc::new(crate::vfs::PdfProcessingService::new(
         vfs_db.clone(),
         database.clone(),
         llm_manager.clone(),
         file_manager.clone(),
-    )));
+    ));
+
+    // ★ 注入向量索引回调（打破 indexing ↔ pdf_processing_service 循环依赖）
+    {
+        use crate::vfs::indexing::VfsIndexCoordinator;
+        let coordinator = Arc::new(VfsIndexCoordinator::new(
+            vfs_db.clone(),
+            llm_manager.clone(),
+        ));
+        let callback = coordinator.create_vector_index_callback();
+        if let Some(pps_mut) = Arc::get_mut(&mut pdf_processing_service_raw) {
+            pps_mut.set_vector_index_callback(callback);
+            tracing::info!(
+                "[AppSetup] Vector index callback injected into PdfProcessingService"
+            );
+        }
+        // 注册协调器到 Tauri 状态（供 handlers 使用）
+        app_handle.manage(coordinator);
+    }
+
+    let pdf_processing_service = Some(pdf_processing_service_raw);
     // 注册 PdfProcessingService 到 Tauri 状态（供 vfs_get_pdf_processing_status 等命令使用）
     if let Some(ref pps) = pdf_processing_service {
         app_handle.manage(pps.clone());

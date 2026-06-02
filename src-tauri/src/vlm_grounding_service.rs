@@ -1154,7 +1154,7 @@ impl VlmGroundingService {
 
         let mut buffer = std::io::Cursor::new(Vec::new());
         cropped
-            .write_to(&mut buffer, image::ImageOutputFormat::Png)
+            .write_to(&mut buffer, image::ImageFormat::Png)
             .map_err(|e| AppError::internal(format!("编码裁切图片失败: {}", e)))?;
 
         Ok(buffer.into_inner())

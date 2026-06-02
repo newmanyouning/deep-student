@@ -24,7 +24,7 @@ use serde_json::json;
 use tokio::sync::oneshot;
 
 use super::arg_utils::get_json_array_arg;
-use super::executor::{ExecutionContext, ToolExecutor, ToolError, ToolResult, ToolSensitivity};
+use super::executor::{ExecutionContext, ToolExecutor, ToolResult, ToolSensitivity};
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

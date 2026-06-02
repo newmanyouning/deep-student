@@ -1,10 +1,12 @@
 use std::net::SocketAddr;
 
 use anyhow::Result;
-use hyper::{
-    service::{make_service_fn, service_fn},
-    Body, Method, Request, Response, Server, StatusCode,
-};
+use http_body_util::Full;
+use hyper::body::{Bytes, Incoming};
+use hyper::server::conn::http1;
+use hyper::service::service_fn;
+use hyper::{Method, Request, Response, StatusCode};
+use hyper_util::rt::TokioIo;
 use std::sync::{LazyLock, OnceLock};
 use tokio::sync::Mutex;
 
@@ -46,21 +48,33 @@ async fn start_server(_app_handle: tauri::AppHandle) -> Result<()> {
         );
     }
 
-    let make_svc =
-        make_service_fn(|_conn| async { Ok::<_, hyper::Error>(service_fn(handle_request)) });
+    let listener = tokio::net::TcpListener::bind(&addr)
+        .await
+        .map_err(|e| anyhow::anyhow!("metrics server绑定失败: {}", e))?;
 
     log::info!(
         "[MetricsServer] Metrics server listening on http://{}",
         addr
     );
 
-    let server = Server::bind(&addr).serve(make_svc);
-    server
-        .await
-        .map_err(|e| anyhow::anyhow!("metrics server错误: {}", e))
+    loop {
+        let (stream, _) = listener
+            .accept()
+            .await
+            .map_err(|e| anyhow::anyhow!("metrics server accept错误: {}", e))?;
+        let io = TokioIo::new(stream);
+        tokio::spawn(async move {
+            if let Err(err) = http1::Builder::new()
+                .serve_connection(io, service_fn(handle_request))
+                .await
+            {
+                log::warn!("[MetricsServer] connection error: {}", err);
+            }
+        });
+    }
 }
 
-async fn handle_request(req: Request<Body>) -> Result<Response<Body>, hyper::Error> {
+async fn handle_request(req: Request<Incoming>) -> Result<Response<Full<Bytes>>, hyper::Error> {
     match (req.method(), req.uri().path()) {
         (&Method::GET, "/metrics") => {
             let _guard = METRICS_GATHER_GUARD.lock().await;
@@ -68,15 +82,15 @@ async fn handle_request(req: Request<Body>) -> Result<Response<Body>, hyper::Err
             let response = Response::builder()
                 .status(StatusCode::OK)
                 .header("Content-Type", "text/plain; version=0.0.4")
-                .body(Body::from(payload))
-                .unwrap_or_else(|_| Response::new(Body::from("metrics response build failed")));
+                .body(Full::new(Bytes::from(payload)))
+                .unwrap_or_else(|_| Response::new(Full::new(Bytes::from("metrics response build failed"))));
             Ok(response)
         }
         _ => {
             let response = Response::builder()
                 .status(StatusCode::NOT_FOUND)
-                .body(Body::from("Not Found"))
-                .unwrap_or_else(|_| Response::new(Body::from("Not Found")));
+                .body(Full::new(Bytes::from("Not Found")))
+                .unwrap_or_else(|_| Response::new(Full::new(Bytes::from("Not Found"))));
             Ok(response)
         }
     }

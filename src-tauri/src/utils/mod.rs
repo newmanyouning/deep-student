@@ -7,4 +7,5 @@ pub mod unicode;
 
 pub mod fetch;
 pub mod sse_buffer;
+pub mod streaming_llm_pipeline;
 pub mod text;

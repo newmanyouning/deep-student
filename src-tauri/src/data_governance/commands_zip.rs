@@ -1,8 +1,8 @@
 // ==================== ZIP 导出/导入命令 ====================
 
 use std::path::PathBuf;
-use tauri::{Manager, State};
-use tracing::{debug, error, info, warn};
+use tauri::State;
+use tracing::{error, info, warn};
 
 use super::{DataGovernanceError, DataGovernanceResult};
 
@@ -15,16 +15,16 @@ use super::backup::{
 use crate::backup_common::log_and_skip_entry_err;
 use crate::backup_job_manager::{
     BackupJobContext, BackupJobKind, BackupJobManagerState, BackupJobParams, BackupJobPhase,
-    BackupJobResultPayload, BackupJobStatus, BackupJobSummary,
+    BackupJobResultPayload,
 };
-use crate::utils::text::safe_truncate_chars;
 use std::time::Instant;
 
 #[cfg(feature = "data_governance")]
 use super::commands::try_save_audit_log;
-use super::commands_backup::{
+use super::commands_backup::validate_user_path;
+use super::commands_shared::{
     acquire_backup_global_permit, ensure_existing_path_within_backup_dir, get_app_data_dir,
-    get_backup_dir, sanitize_path_for_user, validate_backup_id, validate_user_path,
+    get_backup_dir, sanitize_path_for_user, validate_backup_id,
     BackupJobStartResponse,
 };
 

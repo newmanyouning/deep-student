@@ -5,10 +5,11 @@
 /// - M-8: 评分边界校验，防止除零
 /// - PP-2: 评分正则支持属性顺序变化
 use base64::Engine;
-use futures_util::StreamExt;
 use regex::Regex;
 use serde_json::json;
 use std::sync::Arc;
+
+use crate::utils::streaming_llm_pipeline::{StreamingLLMPipeline, StreamStatus};
 
 /// ★ PP-1: 作文输入最大字符数（与前端保持一致）
 const MAX_INPUT_CHARS: usize = 50000;
@@ -16,9 +17,8 @@ const MAX_INPUT_CHARS: usize = 50000;
 /// ★ 从 4000 放宽到 8000，避免正常批改结果被截断导致丢失评分信息
 const MAX_PREVIOUS_RESULT_CHARS: usize = 8000;
 
-use crate::llm_manager::{build_provider_adapter, ApiConfig, LLMManager};
+use crate::llm_manager::{ApiConfig, LLMManager};
 use crate::models::AppError;
-use crate::providers::ProviderAdapter;
 // ★ VFS 统一存储（2025-12-07）
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::repos::VfsEssayRepo;
@@ -38,14 +38,6 @@ pub struct GradingDeps {
     pub vfs_db: Arc<VfsDatabase>, // ★ VFS 统一存储
     pub emitter: GradingEventEmitter,
     pub custom_modes: Vec<GradingMode>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum StreamStatus {
-    Completed,
-    Cancelled,
-    /// ★ M-064: 流未收到 DONE 标记就结束（网络中断/服务端异常）
-    Incomplete,
 }
 
 /// 运行批改管线
@@ -597,225 +589,88 @@ async fn stream_grade<F>(
     is_multimodal: bool,
     essay_images: &[String],
     topic_images: &[String],
-    mut on_chunk: F,
+    on_chunk: F,
 ) -> Result<StreamStatus, AppError>
 where
     F: FnMut(String),
 {
-    let result = async {
-        // 构造消息
-        let has_images = !essay_images.is_empty() || !topic_images.is_empty();
-        let messages = if is_multimodal && has_images {
-            // 多模态模式：构造图文混合 content
-            let mut user_content_parts: Vec<serde_json::Value> = Vec::new();
+    // 构造消息（保持原有的多模态支持逻辑）
+    let has_images = !essay_images.is_empty() || !topic_images.is_empty();
+    let messages = if is_multimodal && has_images {
+        let mut user_content_parts: Vec<serde_json::Value> = Vec::new();
 
-            // 先添加题目参考图片（如果有）
-            if !topic_images.is_empty() {
-                user_content_parts.push(json!({
-                    "type": "text",
-                    "text": "【题目/参考材料图片】"
-                }));
-                for img_b64 in topic_images {
-                    let mime = guess_image_mime(img_b64);
-                    user_content_parts.push(json!({
-                        "type": "image_url",
-                        "image_url": {
-                            "url": format!("data:{};base64,{}", mime, img_b64)
-                        }
-                    }));
-                }
-            }
-
-            // 添加作文原图
-            if !essay_images.is_empty() {
-                user_content_parts.push(json!({
-                    "type": "text",
-                    "text": "【学生作文原图】以下是学生手写/打印作文的原始图片，请直接阅读图片内容进行批改："
-                }));
-                for img_b64 in essay_images {
-                    let mime = guess_image_mime(img_b64);
-                    user_content_parts.push(json!({
-                        "type": "image_url",
-                        "image_url": {
-                            "url": format!("data:{};base64,{}", mime, img_b64)
-                        }
-                    }));
-                }
-            }
-
-            // 最后追加文本 prompt（含上下文、题干等）
+        if !topic_images.is_empty() {
             user_content_parts.push(json!({
                 "type": "text",
-                "text": user_prompt
+                "text": "【题目/参考材料图片】"
             }));
-
-            println!(
-                "📸 [EssayGrading] 多模态批改：{} 张作文图 + {} 张题目图",
-                essay_images.len(),
-                topic_images.len()
-            );
-
-            vec![
-                json!({
-                    "role": "system",
-                    "content": system_prompt
-                }),
-                json!({
-                    "role": "user",
-                    "content": user_content_parts
-                }),
-            ]
-        } else {
-            // 纯文本模式（文本模型或无图片）
-            vec![
-                json!({
-                    "role": "system",
-                    "content": system_prompt
-                }),
-                json!({
-                    "role": "user",
-                    "content": user_prompt
-                }),
-            ]
-        };
-
-        // 构造请求体
-        let mut request_body = json!({
-            "model": config.model,
-            "messages": messages,
-            "temperature": 0.7,
-            "max_tokens": crate::llm_manager::effective_max_tokens(
-                config.max_output_tokens,
-                config.max_tokens_limit,
-            ),
-            "stream": true,
-        });
-
-        crate::llm_manager::LLMManager::apply_reasoning_config(&mut request_body, config, None);
-
-        // 选择适配器
-        let adapter: Box<dyn ProviderAdapter> = build_provider_adapter(config);
-
-        // 构造 HTTP 请求
-        let preq = adapter
-            .build_request(&config.base_url, api_key, &config.model, &request_body)
-            .map_err(|e| AppError::llm(format!("批改请求构建失败: {}", e)))?;
-
-        let mut header_map = reqwest::header::HeaderMap::new();
-        for (k, v) in preq.headers.iter() {
-            if let (Ok(name), Ok(val)) = (
-                reqwest::header::HeaderName::from_bytes(k.as_bytes()),
-                reqwest::header::HeaderValue::from_str(v),
-            ) {
-                header_map.insert(name, val);
-            }
-        }
-
-        // 复用 LLMManager 配置好的 HTTP 客户端
-        let client = llm.get_http_client();
-
-        // 注册取消监听
-        llm.consume_pending_cancel(stream_event).await;
-        let mut cancel_rx = llm.subscribe_cancel_stream(stream_event).await;
-
-        // 发送流式请求
-        let response = client
-            .post(&preq.url)
-            .headers(header_map)
-            .json(&preq.body)
-            .send()
-            .await
-            .map_err(|e| AppError::llm(format!("批改请求失败: {}", e)))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            return Err(AppError::llm(format!(
-                "批改 API 返回错误 {}: {}",
-                status, error_text
-            )));
-        }
-
-        // 解析 SSE 流
-        let mut stream = response.bytes_stream();
-        let mut buffer = String::new();
-        let mut stream_ended = false;
-        let mut cancelled = false;
-
-        while !stream_ended && !cancelled {
-            if llm.consume_pending_cancel(stream_event).await {
-                cancelled = true;
-                break;
-            }
-
-            tokio::select! {
-                changed = cancel_rx.changed() => {
-                    if changed.is_ok() && *cancel_rx.borrow() {
-                        cancelled = true;
+            for img_b64 in topic_images {
+                let mime = guess_image_mime(img_b64);
+                user_content_parts.push(json!({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": format!("data:{};base64,{}", mime, img_b64)
                     }
-                }
-                chunk_result = stream.next() => {
-                    match chunk_result {
-                        Some(chunk) => {
-                            let bytes = chunk.map_err(|e| AppError::llm(format!("读取流失败: {}", e)))?;
-                            buffer.push_str(&String::from_utf8_lossy(&bytes));
-
-                            while let Some(pos) = buffer.find("\n\n") {
-                                let line = buffer[..pos].trim().to_string();
-                                buffer = buffer[pos + 2..].to_string();
-
-                                if line.is_empty() {
-                                    continue;
-                                }
-
-                                if line == "data: [DONE]" {
-                                    stream_ended = true;
-                                    break;
-                                }
-
-                                let events = adapter.parse_stream(&line);
-                                for event in events {
-                                    match event {
-                                        crate::providers::StreamEvent::ContentChunk(content) => {
-                                            on_chunk(content);
-                                        }
-                                        crate::providers::StreamEvent::Done => {
-                                            stream_ended = true;
-                                            break;
-                                        }
-                                        _ => {}
-                                    }
-                                }
-
-                                if stream_ended {
-                                    break;
-                                }
-                            }
-                        }
-                        None => {
-                            break;
-                        }
-                    }
-                }
+                }));
             }
         }
 
-        if cancelled {
-            return Ok(StreamStatus::Cancelled);
+        if !essay_images.is_empty() {
+            user_content_parts.push(json!({
+                "type": "text",
+                "text": "【学生作文原图】以下是学生手写/打印作文的原始图片，请直接阅读图片内容进行批改："
+            }));
+            for img_b64 in essay_images {
+                let mime = guess_image_mime(img_b64);
+                user_content_parts.push(json!({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": format!("data:{};base64,{}", mime, img_b64)
+                    }
+                }));
+            }
         }
 
-        // ★ M-064: 区分正常完成和流意外中断
-        if stream_ended {
-            Ok(StreamStatus::Completed)
-        } else {
-            println!("⚠️ [EssayGrading] SSE 流未收到 DONE 标记就结束，结果可能不完整");
-            Ok(StreamStatus::Incomplete)
-        }
-    }.await;
+        user_content_parts.push(json!({
+            "type": "text",
+            "text": user_prompt
+        }));
 
-    llm.clear_cancel_stream(stream_event).await;
+        println!(
+            "📸 [EssayGrading] 多模态批改：{} 张作文图 + {} 张题目图",
+            essay_images.len(),
+            topic_images.len()
+        );
 
-    result
+        vec![
+            json!({ "role": "system", "content": system_prompt }),
+            json!({ "role": "user", "content": user_content_parts }),
+        ]
+    } else {
+        vec![
+            json!({ "role": "system", "content": system_prompt }),
+            json!({ "role": "user", "content": user_prompt }),
+        ]
+    };
+
+    let max_tokens = crate::llm_manager::effective_max_tokens(
+        config.max_output_tokens,
+        config.max_tokens_limit,
+    );
+
+    StreamingLLMPipeline::stream(
+        config,
+        api_key,
+        messages,
+        stream_event,
+        llm,
+        0.7,
+        max_tokens,
+        "批改",
+        None, // essay_grading 不使用自定义 HTTP 错误映射
+        on_chunk,
+    )
+    .await
 }
 
 /// 根据 base64 数据的前几个字节猜测图片 MIME 类型

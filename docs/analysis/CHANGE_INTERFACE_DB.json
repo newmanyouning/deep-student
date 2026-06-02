@@ -1,0 +1,977 @@
+{
+  "version": "1.0",
+  "generated": "2026-06-01",
+  "baseline_commit": "d2f44248 (fix: add RECORD_AUDIO permission for Android manifest)",
+  "head_commit": "aca0aad9 (fix: also disable createUpdaterArtifacts in build-test)",
+  "refactoring_commit": "36e55f23 (refactor: 全模块错误类型标准化与架构重构)",
+  "summary": {
+    "files_changed_rust": 118,
+    "insertions": 4013,
+    "deletions": 6288
+  },
+  "changed_commands": {
+    "added": [
+      {
+        "name": "vfs_ocr_store_result",
+        "module": "vfs::ocr_storage_handlers",
+        "params": "vfs_db: State<'_, Arc<VfsDatabase>>, resource_id: String, text: String, confidence: f64, source: String",
+        "returns": "VfsResult<String>",
+        "description": "Store OCR result into database"
+      },
+      {
+        "name": "vfs_ocr_list_results",
+        "module": "vfs::ocr_storage_handlers",
+        "params": "vfs_db: State<'_, Arc<VfsDatabase>>, resource_id: String",
+        "returns": "VfsResult<Vec<OcrStorageEntry>>",
+        "description": "List OCR results for a resource"
+      },
+      {
+        "name": "vfs_ocr_delete_result",
+        "module": "vfs::ocr_storage_handlers",
+        "params": "vfs_db: State<'_, Arc<VfsDatabase>>, id: String",
+        "returns": "VfsResult<()>",
+        "description": "Delete OCR result by id"
+      },
+      {
+        "name": "vfs_ocr_mark_exported",
+        "module": "vfs::ocr_storage_handlers",
+        "params": "vfs_db: State<'_, Arc<VfsDatabase>>, id: String",
+        "returns": "VfsResult<()>",
+        "description": "Mark OCR result as exported"
+      },
+      {
+        "name": "vfs_ocr_list_for_export",
+        "module": "vfs::ocr_storage_handlers",
+        "params": "vfs_db: State<'_, Arc<VfsDatabase>>",
+        "returns": "VfsResult<Vec<OcrStorageEntry>>",
+        "description": "List OCR results pending export"
+      }
+    ],
+    "removed": [
+      {
+        "name": "resource_create_or_reuse",
+        "was_in": "chat_v2::handlers::resource_handlers",
+        "reason": "Deprecated, functionality migrated to VFS (vfs_create_or_reuse)"
+      },
+      {
+        "name": "resource_get",
+        "was_in": "chat_v2::handlers::resource_handlers",
+        "reason": "Deprecated, migrated to VFS (vfs_get_resource)"
+      },
+      {
+        "name": "resource_get_latest",
+        "was_in": "chat_v2::handlers::resource_handlers",
+        "reason": "Deprecated, migrated to VFS (vfs_get_resource)"
+      },
+      {
+        "name": "resource_exists",
+        "was_in": "chat_v2::handlers::resource_handlers",
+        "reason": "Deprecated, migrated to VFS (vfs_resource_exists)"
+      },
+      {
+        "name": "resource_increment_ref",
+        "was_in": "chat_v2::handlers::resource_handlers",
+        "reason": "Deprecated, migrated to VFS (vfs_increment_ref)"
+      },
+      {
+        "name": "resource_decrement_ref",
+        "was_in": "chat_v2::handlers::resource_handlers",
+        "reason": "Deprecated, migrated to VFS (vfs_decrement_ref)"
+      },
+      {
+        "name": "resource_get_versions_by_source",
+        "was_in": "chat_v2::handlers::resource_handlers",
+        "reason": "Deprecated, functionality migrated to VFS"
+      },
+      {
+        "name": "resource_get_content_from_vfs",
+        "was_in": "chat_v2::handlers::resource_handlers",
+        "reason": "Deprecated, functionality migrated to VFS"
+      }
+    ],
+    "renamed": [
+      {
+        "old": "workspace_create",
+        "new": "chat_v2_workspace_create",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_get",
+        "new": "chat_v2_workspace_get",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_close",
+        "new": "chat_v2_workspace_close",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_delete",
+        "new": "chat_v2_workspace_delete",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_create_agent",
+        "new": "chat_v2_workspace_create_agent",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_list_agents",
+        "new": "chat_v2_workspace_list_agents",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_send_message",
+        "new": "chat_v2_workspace_send_message",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_list_messages",
+        "new": "chat_v2_workspace_list_messages",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_set_context",
+        "new": "chat_v2_workspace_set_context",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_get_context",
+        "new": "chat_v2_workspace_get_context",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_list_documents",
+        "new": "chat_v2_workspace_list_documents",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_get_document",
+        "new": "chat_v2_workspace_get_document",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_list_all",
+        "new": "chat_v2_workspace_list_all",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_run_agent",
+        "new": "chat_v2_workspace_run_agent",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_cancel_agent",
+        "new": "chat_v2_workspace_cancel_agent",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_manual_wake",
+        "new": "chat_v2_workspace_manual_wake",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_cancel_sleep",
+        "new": "chat_v2_workspace_cancel_sleep",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "workspace_restore_executions",
+        "new": "chat_v2_workspace_restore_executions",
+        "module": "chat_v2::handlers::workspace_handlers",
+        "group": "workspace prefix standardization"
+      },
+      {
+        "old": "check_anki_connect_status",
+        "new": "anki_connect_check_status",
+        "module": "commands",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "get_anki_deck_names",
+        "new": "anki_connect_get_deck_names",
+        "module": "commands",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "get_anki_model_names",
+        "new": "anki_connect_get_model_names",
+        "module": "commands",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "create_anki_deck",
+        "new": "anki_connect_create_deck",
+        "module": "commands",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "add_cards_to_anki_connect",
+        "new": "anki_connect_add_cards",
+        "module": "commands",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "import_anki_package",
+        "new": "anki_connect_import_package",
+        "module": "commands",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "save_anki_cards",
+        "new": "anki_connect_save_cards",
+        "module": "commands",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "batch_export_cards",
+        "new": "anki_connect_batch_export_cards",
+        "module": "commands",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "save_json_file",
+        "new": "anki_connect_save_json_file",
+        "module": "commands",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "export_cards_as_apkg",
+        "new": "anki_connect_export_apkg",
+        "module": "commands",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "export_cards_as_apkg_with_template",
+        "new": "anki_connect_export_apkg_with_template",
+        "module": "commands",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "export_multi_template_apkg",
+        "new": "anki_connect_export_multi_apkg",
+        "module": "cmd::anki_connect",
+        "group": "anki_connect prefix standardization"
+      },
+      {
+        "old": "start_enhanced_document_processing",
+        "new": "enhanced_anki_start_document_processing",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "pause_document_processing",
+        "new": "enhanced_anki_pause_document_processing",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "resume_document_processing",
+        "new": "enhanced_anki_resume_document_processing",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "get_document_processing_state",
+        "new": "enhanced_anki_get_document_processing_state",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "get_document_task_counts",
+        "new": "enhanced_anki_get_document_task_counts",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "trigger_task_processing",
+        "new": "enhanced_anki_trigger_task_processing",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "get_document_tasks",
+        "new": "enhanced_anki_get_document_tasks",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "get_task_cards",
+        "new": "enhanced_anki_get_task_cards",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "update_anki_card",
+        "new": "enhanced_anki_update_card",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "delete_anki_card",
+        "new": "enhanced_anki_delete_card",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "delete_document_task",
+        "new": "enhanced_anki_delete_document_task",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "delete_document_session",
+        "new": "enhanced_anki_delete_document_session",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "export_apkg_for_selection",
+        "new": "enhanced_anki_export_apkg_for_selection",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "get_document_cards",
+        "new": "enhanced_anki_get_document_cards",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "list_anki_library_cards",
+        "new": "enhanced_anki_list_library_cards",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "export_anki_cards",
+        "new": "enhanced_anki_export_cards",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "recover_stuck_document_tasks",
+        "new": "enhanced_anki_recover_stuck_tasks",
+        "module": "cmd::enhanced_anki",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "list_document_sessions",
+        "new": "enhanced_anki_list_document_sessions",
+        "module": "cmd::enhanced_anki",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "get_anki_stats",
+        "new": "enhanced_anki_get_stats",
+        "module": "cmd::enhanced_anki",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "get_pending_memory_candidates",
+        "new": "enhanced_anki_get_pending_memory_candidates",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "dismiss_pending_memory_candidates",
+        "new": "enhanced_anki_dismiss_pending_memory_candidates",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "mark_pending_memory_candidates_saved",
+        "new": "enhanced_anki_mark_pending_memory_candidates_saved",
+        "module": "commands",
+        "group": "enhanced_anki prefix standardization"
+      },
+      {
+        "old": "todo_create_list",
+        "new": "vfs_todo_create_list",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_get_list",
+        "new": "vfs_todo_get_list",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_list_lists",
+        "new": "vfs_todo_list_lists",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_update_list",
+        "new": "vfs_todo_update_list",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_delete_list",
+        "new": "vfs_todo_delete_list",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_toggle_list_favorite",
+        "new": "vfs_todo_toggle_list_favorite",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_ensure_inbox",
+        "new": "vfs_todo_ensure_inbox",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_create_item",
+        "new": "vfs_todo_create_item",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_get_item",
+        "new": "vfs_todo_get_item",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_list_items",
+        "new": "vfs_todo_list_items",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_update_item",
+        "new": "vfs_todo_update_item",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_toggle_item",
+        "new": "vfs_todo_toggle_item",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_delete_item",
+        "new": "vfs_todo_delete_item",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_reorder_items",
+        "new": "vfs_todo_reorder_items",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_list_today",
+        "new": "vfs_todo_list_today",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_list_overdue",
+        "new": "vfs_todo_list_overdue",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_list_upcoming",
+        "new": "vfs_todo_list_upcoming",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_list_completed",
+        "new": "vfs_todo_list_completed",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_search",
+        "new": "vfs_todo_search",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "todo_get_active_summary",
+        "new": "vfs_todo_get_active_summary",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "pomodoro_create_record",
+        "new": "vfs_pomodoro_create_record",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "pomodoro_get_record",
+        "new": "vfs_pomodoro_get_record",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "pomodoro_list_by_todo",
+        "new": "vfs_pomodoro_list_by_todo",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "pomodoro_today_stats",
+        "new": "vfs_pomodoro_today_stats",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      },
+      {
+        "old": "pomodoro_list_today",
+        "new": "vfs_pomodoro_list_today",
+        "module": "vfs::todo_handlers",
+        "group": "vfs prefix standardization"
+      }
+    ],
+    "signature_changed": [
+      {
+        "name": "check_anki_connect_availability",
+        "old_sig": "pub async fn check_anki_connect_availability() -> Result<bool, String>",
+        "new_sig": "pub async fn check_anki_connect_availability() -> AnkiConnectResult<bool>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "get_deck_names",
+        "old_sig": "pub async fn get_deck_names() -> Result<Vec<String>, String>",
+        "new_sig": "pub async fn get_deck_names() -> AnkiConnectResult<Vec<String>>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "get_model_names",
+        "old_sig": "pub async fn get_model_names() -> Result<Vec<String>, String>",
+        "new_sig": "pub async fn get_model_names() -> AnkiConnectResult<Vec<String>>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "get_model_field_names",
+        "old_sig": "pub async fn get_model_field_names(model_name: &str) -> Result<Vec<String>, String>",
+        "new_sig": "pub async fn get_model_field_names(model_name: &str) -> AnkiConnectResult<Vec<String>>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "create_deck_if_not_exists",
+        "old_sig": "pub async fn create_deck_if_not_exists(deck_name: &str) -> Result<(), String>",
+        "new_sig": "pub async fn create_deck_if_not_exists(deck_name: &str) -> AnkiConnectResult<()>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "import_apkg",
+        "old_sig": "pub async fn import_apkg(path: &str) -> Result<bool, String>",
+        "new_sig": "pub async fn import_apkg(path: &str) -> AnkiConnectResult<bool>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "vfs_get_dimension_range",
+        "old_sig": "pub async fn vfs_get_dimension_range() -> Result<(i32, i32), String>",
+        "new_sig": "pub async fn vfs_get_dimension_range() -> VfsResult<(i32, i32)>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "vfs_get_preset_dimensions",
+        "old_sig": "pub async fn vfs_get_preset_dimensions() -> Result<Vec<i32>, String>",
+        "new_sig": "pub async fn vfs_get_preset_dimensions() -> VfsResult<Vec<i32>>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "dstu_parse_path",
+        "old_sig": "pub async fn dstu_parse_path(path: String) -> Result<DstuParsedPath, String>",
+        "new_sig": "pub async fn dstu_parse_path(path: String) -> DstuResult<DstuParsedPath>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "dstu_unwatch",
+        "old_sig": "pub async fn dstu_unwatch(path: String) -> Result<(), String>",
+        "new_sig": "pub async fn dstu_unwatch(path: String) -> DstuResult<()>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "dstu_watch",
+        "old_sig": "pub async fn dstu_watch(path: String) -> Result<(), String>",
+        "new_sig": "pub async fn dstu_watch(path: String) -> DstuResult<()>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "data_governance_get_sync_status",
+        "old_sig": "pub async fn data_governance_get_sync_status(app: tauri::AppHandle) -> Result<SyncStatusResponse, String>",
+        "new_sig": "pub async fn data_governance_get_sync_status(app: tauri::AppHandle) -> DataGovernanceResult<SyncStatusResponse>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "data_governance_detect_conflicts",
+        "old_sig": "pub async fn data_governance_detect_conflicts(app: tauri::AppHandle, cloud_manifest_json: Option<String>, cloud_config: Option<CloudStorageConfig>) -> Result<ConflictDetectionResponse, String>",
+        "new_sig": "pub async fn data_governance_detect_conflicts(app: tauri::AppHandle, cloud_manifest_json: Option<String>, cloud_config: Option<CloudStorageConfig>) -> DataGovernanceResult<ConflictDetectionResponse>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "data_governance_resolve_conflicts",
+        "old_sig": "pub async fn data_governance_resolve_conflicts(app: tauri::AppHandle, strategy: String, cloud_manifest_json: String) -> Result<SyncResultResponse, String>",
+        "new_sig": "pub async fn data_governance_resolve_conflicts(app: tauri::AppHandle, strategy: String, cloud_manifest_json: String) -> DataGovernanceResult<SyncResultResponse>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "data_governance_run_sync",
+        "old_sig": "pub async fn data_governance_run_sync(app: tauri::AppHandle, direction: String, cloud_config: Option<CloudStorageConfig>, strategy: Option<String>) -> Result<SyncExecutionResponse, String>",
+        "new_sig": "pub async fn data_governance_run_sync(app: tauri::AppHandle, direction: String, cloud_config: Option<CloudStorageConfig>, strategy: Option<String>) -> DataGovernanceResult<SyncExecutionResponse>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "data_governance_scan_assets",
+        "old_sig": "pub async fn data_governance_scan_assets(app: tauri::AppHandle) -> Result<AssetScanResponse, String>",
+        "new_sig": "pub async fn data_governance_scan_assets(app: tauri::AppHandle) -> DataGovernanceResult<AssetScanResponse>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "data_governance_start_backup",
+        "old_sig": "pub async fn data_governance_start_backup(app: tauri::AppHandle) -> Result<BackupJobStartResponse, String>",
+        "new_sig": "pub async fn data_governance_start_backup(app: tauri::AppHandle) -> DataGovernanceResult<BackupJobStartResponse>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "data_governance_restore",
+        "old_sig": "pub async fn data_governance_restore(app: tauri::AppHandle, backup_ids: Vec<String>, restore_target: String) -> Result<RestoreResultResponse, String>",
+        "new_sig": "pub async fn data_governance_restore(app: tauri::AppHandle, backup_ids: Vec<String>, restore_target: String) -> DataGovernanceResult<RestoreResultResponse>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "data_governance_backup_verify_with_assets",
+        "old_sig": "pub async fn data_governance_backup_verify_with_assets(app: tauri::AppHandle) -> Result<BackupVerifyWithAssetsResponse, String>",
+        "new_sig": "pub async fn data_governance_backup_verify_with_assets(app: tauri::AppHandle) -> DataGovernanceResult<BackupVerifyWithAssetsResponse>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "vfs_unified_index_status",
+        "old_sig": "pub async fn vfs_unified_index_status(vfs_db: State<'_, Arc<VfsDatabase>>) -> Result<IndexStatusSummary, String>",
+        "new_sig": "pub async fn vfs_unified_index_status(vfs_db: State<'_, Arc<VfsDatabase>>) -> VfsResult<IndexStatusSummary>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "vfs_get_resource_units",
+        "old_sig": "pub async fn vfs_get_resource_units(vfs_db: State<'_, Arc<VfsDatabase>>, resource_id: String) -> Result<Vec<UnitIndexStatus>, String>",
+        "new_sig": "pub async fn vfs_get_resource_units(vfs_db: State<'_, Arc<VfsDatabase>>, resource_id: String) -> VfsResult<Vec<UnitIndexStatus>>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "vfs_reindex_unit",
+        "old_sig": "pub async fn vfs_reindex_unit(vfs_db: State<'_, Arc<VfsDatabase>>, unit_id: String, mode: String) -> Result<bool, String>",
+        "new_sig": "pub async fn vfs_reindex_unit(vfs_db: State<'_, Arc<VfsDatabase>>, unit_id: String, mode: String) -> VfsResult<bool>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "vfs_unified_batch_index",
+        "old_sig": "pub async fn vfs_unified_batch_index(vfs_db: State<'_, Arc<VfsDatabase>>, llm_manager: State<'_, LlmManager>, lance_store: State<'_, Arc<VfsLanceStore>>, mode: String, batch_size: Option<i32>) -> Result<BatchIndexResult, String>",
+        "new_sig": "pub async fn vfs_unified_batch_index(vfs_db: State<'_, Arc<VfsDatabase>>, llm_manager: State<'_, LlmManager>, lance_store: State<'_, Arc<VfsLanceStore>>, mode: String, batch_size: Option<i32>) -> VfsResult<BatchIndexResult>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "vfs_sync_resource_units",
+        "old_sig": "pub async fn vfs_sync_resource_units(vfs_db: State<'_, Arc<VfsDatabase>>, resource_id: String, page_count: Option<i32>, extracted_text: Option<String>, preview_json: Option<String>) -> Result<Vec<UnitIndexStatus>, String>",
+        "new_sig": "pub async fn vfs_sync_resource_units(vfs_db: State<'_, Arc<VfsDatabase>>, resource_id: String, page_count: Option<i32>, extracted_text: Option<String>, preview_json: Option<String>) -> VfsResult<Vec<UnitIndexStatus>>",
+        "change_type": "return type migrated from String to typed error"
+      },
+      {
+        "name": "vfs_create_resource",
+        "old_sig": "pub async fn vfs_create_resource(vfs_db: State<'_, Arc<VfsDatabase>>, ...) -> Result<VfsCreateResourceResult, String>",
+        "new_sig": "pub async fn vfs_create_resource(vfs_db: State<'_, Arc<VfsDatabase>>, ...) -> VfsResult<VfsCreateResourceResult>",
+        "change_type": "return type migrated from String to VfsResult"
+      },
+      {
+        "name": "vfs_get_resource",
+        "old_sig": "pub async fn vfs_get_resource(vfs_db: State<'_, Arc<VfsDatabase>>, ...) -> Result<Option<VfsResource>, String>",
+        "new_sig": "pub async fn vfs_get_resource(vfs_db: State<'_, Arc<VfsDatabase>>, ...) -> VfsResult<Option<VfsResource>>",
+        "change_type": "return type migrated from String to VfsResult"
+      },
+      {
+        "name": "vfs_resource_exists",
+        "old_sig": "pub async fn vfs_resource_exists(vfs_db: State<'_, Arc<VfsDatabase>>, ...) -> Result<bool, String>",
+        "new_sig": "pub async fn vfs_resource_exists(vfs_db: State<'_, Arc<VfsDatabase>>, ...) -> VfsResult<bool>",
+        "change_type": "return type migrated from String to VfsResult"
+      },
+      {
+        "name": "vfs_increment_ref",
+        "old_sig": "pub async fn vfs_increment_ref(vfs_db: State<'_, Arc<VfsDatabase>>, ...) -> Result<(), String>",
+        "new_sig": "pub async fn vfs_increment_ref(vfs_db: State<'_, Arc<VfsDatabase>>, ...) -> VfsResult<()>",
+        "change_type": "return type migrated from String to VfsResult"
+      },
+      {
+        "name": "vfs_decrement_ref",
+        "old_sig": "pub async fn vfs_decrement_ref(vfs_db: State<'_, Arc<VfsDatabase>>, ...) -> Result<(), String>",
+        "new_sig": "pub async fn vfs_decrement_ref(vfs_db: State<'_, Arc<VfsDatabase>>, ...) -> VfsResult<()>",
+        "change_type": "return type migrated from String to VfsResult"
+      },
+      {
+        "name": "validate_id_format",
+        "old_sig": "fn validate_id_format(id: &str, prefix: &str, param_name: &str) -> Result<(), String>",
+        "new_sig": "fn validate_id_format(id: &str, prefix: &str, param_name: &str) -> VfsResult<()>",
+        "change_type": "return type migrated from String to VfsResult (internal helper)",
+        "internal": true
+      },
+      {
+        "name": "validate_id_format_any",
+        "old_sig": "fn validate_id_format_any(id: &str, prefixes: &[&str], param_name: &str) -> Result<(), String>",
+        "new_sig": "fn validate_id_format_any(id: &str, prefixes: &[&str], param_name: &str) -> VfsResult<()>",
+        "change_type": "return type migrated from String to VfsResult (internal helper)",
+        "internal": true
+      },
+      {
+        "name": "ToolExecutor::execute",
+        "old_sig": "fn execute(&self, call: &ToolCall, ctx: &ExecutionContext) -> Result<ToolResultInfo, String>",
+        "new_sig": "fn execute(&self, call: &ToolCall, ctx: &ExecutionContext) -> ToolResult<ToolResultInfo>",
+        "change_type": "return type migrated from String to ToolError (trait method)",
+        "trait": true
+      },
+      {
+        "name": "ExecutionContext::save_tool_block",
+        "old_sig": "pub fn save_tool_block(&self, result: &ToolResultInfo) -> Result<(), String>",
+        "new_sig": "pub fn save_tool_block(&self, result: &ToolResultInfo) -> ToolResult<()>",
+        "change_type": "return type migrated from String to ToolError (internal method)",
+        "internal": true
+      },
+      {
+        "name": "delete_persisted_todo_list",
+        "old_sig": "pub fn delete_persisted_todo_list(db: &ChatV2Database, session_id: &str) -> Result<(), String>",
+        "new_sig": "pub fn delete_persisted_todo_list(db: &ChatV2Database, session_id: &str) -> ToolResult<()>",
+        "change_type": "return type migrated from String to ToolError (internal function)",
+        "internal": true
+      },
+      {
+        "name": "parse_params",
+        "old_sig": "pub fn parse_params(arguments: &Value) -> Result<AttemptCompletionParams, String>",
+        "new_sig": "pub fn parse_params(arguments: &Value) -> ToolResult<AttemptCompletionParams>",
+        "change_type": "return type migrated from String to ToolError (internal function)",
+        "internal": true
+      }
+    ]
+  },
+  "changed_types": [
+    {
+      "type": "ToolError",
+      "change": "new error type added",
+      "module": "chat_v2::tools::executor",
+      "variants": ["InvalidArgs(String)", "Execution(String)", "Timeout(String)", "NotFound(String)", "Cancelled", "Internal(String)"]
+    },
+    {
+      "type": "AnkiConnectError",
+      "change": "new error type added",
+      "module": "anki_connect_service",
+      "variants": ["Request(String)", "Parse(String)", "Other(String)"]
+    },
+    {
+      "type": "EssayGradingError",
+      "change": "new error type added",
+      "module": "essay_grading::error",
+      "variants": ["Database(String)", "Validation(String)", "NotFound(String)", "Internal(String)", "Other(String)"]
+    },
+    {
+      "type": "MemoryError",
+      "change": "new error type added",
+      "module": "memory::error",
+      "variants": ["Database(String)", "Validation(String)", "NotFound(String)", "Other(String)"]
+    },
+    {
+      "type": "ReviewPlanError",
+      "change": "new error type added",
+      "module": "review_plan_error",
+      "variants": ["Database(String)", "Validation(String)", "NotFound(String)", "Other(String)"]
+    },
+    {
+      "type": "DstuError",
+      "change": "new error type added (previously based on String errors)",
+      "module": "dstu::error",
+      "variants": ["InvalidPath(String)", "MissingSegment(String)", "InvalidNodeType(String)", "NotFound(String)", "AlreadyExists(String)", "NotSupported(String)", "PermissionDenied(String)", "VfsError(String)", "DatabaseError(String)", "SerializationError(String)", "IoError(String)", "Internal(String)"]
+    },
+    {
+      "type": "VfsError",
+      "change": "added Serialize derive, added From<anyhow::Error>, From<String>",
+      "module": "vfs::error",
+      "old": "enum VfsError (no Serialize, no From<anyhow>, no From<String>)",
+      "new": "enum VfsError (Serialize, From<anyhow::Error>, From<String>)"
+    },
+    {
+      "type": "DataGovernanceError",
+      "change": "added Serialize impl, added 9 From implementations, added From<DataGovernanceError> for String",
+      "module": "data_governance::mod",
+      "old": "basic Display impl, no Serialize, minimal From impls",
+      "new": "manual Serialize with code+message fields, From<String>, From<anyhow>, From<rusqlite>, From<io>, From<serde_json>, From<VfsError>, From<AcquireError>, From<BackupError>, From<SyncError>"
+    },
+    {
+      "type": "ToolResult<T>",
+      "change": "new type alias added",
+      "new": "pub type ToolResult<T> = Result<T, ToolError>",
+      "module": "chat_v2::tools::executor"
+    },
+    {
+      "type": "AnkiConnectResult<T>",
+      "change": "new type alias added",
+      "new": "pub type AnkiConnectResult<T> = Result<T, AnkiConnectError>",
+      "module": "anki_connect_service"
+    },
+    {
+      "type": "EssayGradingResult<T>",
+      "change": "new type alias added",
+      "new": "pub type EssayGradingResult<T> = Result<T, EssayGradingError>",
+      "module": "essay_grading::error"
+    },
+    {
+      "type": "MemoryResult<T>",
+      "change": "new type alias added",
+      "new": "pub type MemoryResult<T> = Result<T, MemoryError>",
+      "module": "memory::error"
+    },
+    {
+      "type": "ReviewPlanResult<T>",
+      "change": "new type alias added",
+      "new": "pub type ReviewPlanResult<T> = Result<T, ReviewPlanError>",
+      "module": "review_plan_error"
+    },
+    {
+      "type": "DstuResult<T>",
+      "change": "new type alias added",
+      "new": "pub type DstuResult<T> = Result<T, DstuError>",
+      "module": "dstu::error"
+    },
+    {
+      "type": "AppErrorType",
+      "change": "added Display implementation",
+      "module": "models",
+      "old": "enum AppErrorType (no Display)",
+      "new": "enum AppErrorType (impl Display, serializes variant names as strings)"
+    },
+    {
+      "type": "OcrStorageEntry",
+      "change": "new struct added",
+      "module": "vfs::ocr_storage",
+      "fields": ["id: String", "resource_id: String", "text: String", "confidence: f64", "source: String", "exported: bool", "created_at: String"]
+    }
+  ],
+  "moved_modules": [
+    {
+      "old_path": "src-tauri/src/chat_v2/adapters/llm_adapter.rs",
+      "new_path": "DELETED",
+      "change": "module removed (zero references, functionality migrated to pipeline)",
+      "reason": "LLM adapter functionality migrated to pipeline"
+    },
+    {
+      "old_path": "src-tauri/src/chat_v2/adapters/tool_adapter.rs",
+      "new_path": "DELETED",
+      "change": "module removed (zero references)",
+      "reason": "Tool adapter functionality migrated to pipeline"
+    },
+    {
+      "old_path": "src-tauri/src/chat_v2/adapters/vfs_rag_adapter.rs",
+      "new_path": "DELETED",
+      "change": "module removed (zero references)",
+      "reason": "RAG adapter functionality migrated to pipeline"
+    },
+    {
+      "old_path": "src-tauri/src/chat_v2/adapters/mod.rs",
+      "new_path": "DELETED",
+      "change": "parent module declaration removed"
+    },
+    {
+      "old_path": "src-tauri/src/chat_v2/handlers/resource_handlers.rs",
+      "new_path": "DELETED",
+      "change": "file deleted (resource_* commands deprecated, migrated to VFS)",
+      "reason": "Resource handlers deleted; functionality migrated to vfs_* equivalents"
+    },
+    {
+      "old_path": "src-tauri/src/chat_v2/resource_repo.rs",
+      "new_path": "DELETED",
+      "change": "file deleted (resource storage migrated to VFS)",
+      "reason": "Resource repository deleted; storage migrated to VFS vfs.db"
+    },
+    {
+      "old_path": "N/A",
+      "new_path": "src-tauri/src/paddleocr_api.rs",
+      "change": "new module added (PaddleOCR REST API integration)",
+      "size": "457 lines"
+    },
+    {
+      "old_path": "N/A",
+      "new_path": "src-tauri/src/dstu/error.rs",
+      "change": "new module added (DSTU typed error definitions)",
+      "size": "13 lines"
+    },
+    {
+      "old_path": "N/A",
+      "new_path": "src-tauri/src/essay_grading/error.rs",
+      "change": "new module added (Essay Grading typed error definitions)",
+      "size": "57 lines"
+    },
+    {
+      "old_path": "N/A",
+      "new_path": "src-tauri/src/memory/error.rs",
+      "change": "new module added (Memory typed error definitions)",
+      "size": "50 lines"
+    },
+    {
+      "old_path": "N/A",
+      "new_path": "src-tauri/src/review_plan_error.rs",
+      "change": "new module added (Review Plan typed error definitions)",
+      "size": "50 lines"
+    },
+    {
+      "old_path": "N/A",
+      "new_path": "src-tauri/src/chat_v2/handlers/shared.rs",
+      "change": "new module added (shared handler utilities)",
+      "size": "89 lines"
+    },
+    {
+      "old_path": "N/A",
+      "new_path": "src-tauri/src/vfs/ocr_storage.rs",
+      "change": "new module added (OCR result storage)",
+      "size": "96 lines"
+    },
+    {
+      "old_path": "N/A",
+      "new_path": "src-tauri/src/vfs/ocr_storage_handlers.rs",
+      "change": "new module added (OCR storage Tauri command handlers)",
+      "size": "59 lines"
+    }
+  ],
+  "dependency_changes": [
+    {
+      "crate": "sha2",
+      "old_ver": "used",
+      "new_ver": "removed import",
+      "breaking_changes": ["sha2::Digest import removed from commands.rs (unused import cleanup)"],
+      "impact": "none - unused import only"
+    },
+    {
+      "crate": "Cargo.lock",
+      "old_ver": "previous",
+      "new_ver": "updated",
+      "breaking_changes": [],
+      "impact": "minor - lock file update, 1 line changed"
+    }
+  ]
+}

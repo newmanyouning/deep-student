@@ -14,6 +14,7 @@ pub mod notes;
 pub mod ocr;
 pub mod textbooks;
 pub mod translation;
+pub mod research_stubs; // 研究模块命令桩（26个待实现）
 pub mod web_search; // 外部搜索相关命令
 
 // Re-export AppState from the main commands module

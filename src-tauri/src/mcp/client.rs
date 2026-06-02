@@ -437,7 +437,7 @@ impl WebSocketTransport {
                                 maybe_msg = outbound_rx.recv() => {
                                     match maybe_msg {
                                         Some(txt) => {
-                                            if let Err(e) = write.send(Message::Text(txt)).await {
+                                            if let Err(e) = write.send(Message::Text(txt.into())).await {
                                                 error!("MCP WS send error: {}", e);
                                                 break;
                                             }
@@ -449,13 +449,13 @@ impl WebSocketTransport {
                                 inbound = read.next() => {
                                     match inbound {
                                         Some(Ok(Message::Text(txt))) => {
-                                            if let Err(e) = inbound_tx.try_send(txt) {
+                                            if let Err(e) = inbound_tx.try_send(txt.to_string()) {
                                                 tracing::warn!("MCP WS inbound channel full, dropping text frame: {}", e);
                                             }
                                         }
                                         Some(Ok(Message::Binary(bin))) => {
                                             // Assume UTF-8 JSON if server sends binary
-                                            if let Ok(txt) = String::from_utf8(bin) {
+                                            if let Ok(txt) = String::from_utf8(bin.to_vec()) {
                                                 if let Err(e) = inbound_tx.try_send(txt) {
                                                     tracing::warn!("MCP WS inbound channel full, dropping binary frame: {}", e);
                                                 }
@@ -466,14 +466,14 @@ impl WebSocketTransport {
                                             if let Err(e) = write.send(Message::Pong(p)).await { error!("MCP WS pong error: {}", e); break; }
                                         }
                                         Some(Ok(Message::Pong(_))) => { /* ignore */ }
-                                        Some(Ok(Message::Frame(_))) => { /* ignore */ }
                                         Some(Ok(Message::Close(_))) => { break; }
+                                        Some(Ok(Message::Frame(_))) => { /* ignore */ }
                                         Some(Err(e)) => { error!("MCP WS read error: {}", e); break; }
                                         None => { break; }
                                     }
                                 }
                                 _ = heartbeat.tick() => {
-                                    if let Err(e) = write.send(Message::Ping(Vec::new())).await {
+                                    if let Err(e) = write.send(Message::Ping(Vec::new().into())).await {
                                         error!("MCP WS heartbeat error: {}", e);
                                         break;
                                     }

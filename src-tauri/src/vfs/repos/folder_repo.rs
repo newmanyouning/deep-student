@@ -19,7 +19,6 @@ use tracing::{debug, info, warn};
 use crate::vfs::canonical_folder_item_type;
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
-use crate::vfs::repos::path_cache_repo::VfsPathCacheRepo;
 use crate::vfs::repos::{
     VfsEssayRepo, VfsExamRepo, VfsFileRepo, VfsMindMapRepo, VfsNoteRepo, VfsTranslationRepo,
 };
@@ -29,7 +28,7 @@ use crate::vfs::types::{
 };
 
 /// 最大文件夹深度限制（契约 F）
-const MAX_FOLDER_DEPTH: usize = 10;
+use super::folder_tree_helper::MAX_FOLDER_DEPTH;
 
 /// 最大文件夹数量（契约 F）
 const MAX_FOLDERS_COUNT: usize = 500;
@@ -378,34 +377,7 @@ impl VfsFolderRepo {
         conn: &Connection,
         folder_id: &str,
     ) -> VfsResult<Option<VfsFolder>> {
-        let folder = conn
-            .query_row(
-                r#"
-                SELECT id, parent_id, title, icon, color, is_expanded, is_favorite, sort_order,
-                       CASE typeof(created_at) WHEN 'text' THEN CAST(strftime('%s', created_at) AS INTEGER) * 1000 ELSE created_at END,
-                       CASE typeof(updated_at) WHEN 'text' THEN CAST(strftime('%s', updated_at) AS INTEGER) * 1000 ELSE updated_at END
-                FROM folders
-                WHERE id = ?1
-                "#,
-                params![folder_id],
-                |row| {
-                    Ok(VfsFolder {
-                        id: row.get(0)?,
-                        parent_id: row.get(1)?,
-                        title: row.get(2)?,
-                        icon: row.get(3)?,
-                        color: row.get(4)?,
-                        is_expanded: row.get::<_, i32>(5)? != 0,
-                        is_favorite: row.get::<_, i32>(6)? != 0,
-                        sort_order: row.get(7)?,
-                        created_at: row.get(8)?,
-                        updated_at: row.get(9)?,
-                    })
-                },
-            )
-            .optional()?;
-
-        Ok(folder)
+        super::folder_tree_helper::get_folder_with_conn(conn, folder_id)
     }
 
     /// 检查文件夹是否存在
@@ -1103,7 +1075,7 @@ impl VfsFolderRepo {
             // ★ 双缓存同步修复：同步清理 path_cache 表（使用批量方法）
             // 如果失败，记录警告但不阻止主操作
             if let Err(e) =
-                VfsPathCacheRepo::invalidate_by_folders_batch_with_conn(conn, &folder_ids)
+                super::folder_tree_helper::invalidate_path_cache_by_folders_batch(conn, &folder_ids)
             {
                 warn!(
                     "[VFS::FolderRepo] Failed to invalidate path_cache for {} folders: {}",
@@ -1814,7 +1786,7 @@ impl VfsFolderRepo {
             // ★ 双缓存同步修复：同步清理 path_cache 表（使用批量方法）
             // 如果失败，记录警告但不阻止主操作
             if let Err(e) =
-                VfsPathCacheRepo::invalidate_by_folders_batch_with_conn(conn, &folder_ids)
+                super::folder_tree_helper::invalidate_path_cache_by_folders_batch(conn, &folder_ids)
             {
                 warn!(
                     "[VFS::FolderRepo] Failed to invalidate path_cache for {} folders: {}",
@@ -1878,32 +1850,7 @@ impl VfsFolderRepo {
         conn: &Connection,
         folder_id: &str,
     ) -> VfsResult<Vec<String>> {
-        // 使用 CTE 递归查询
-        let mut stmt = conn.prepare(
-            r#"
-            WITH RECURSIVE folder_tree AS (
-                SELECT id, parent_id, title, 0 as depth
-                FROM folders WHERE id = ?1 AND deleted_at IS NULL
-                UNION ALL
-                SELECT f.id, f.parent_id, f.title, ft.depth + 1
-                FROM folders f JOIN folder_tree ft ON f.parent_id = ft.id
-                WHERE ft.depth < ?2 AND f.deleted_at IS NULL
-            )
-            SELECT id FROM folder_tree
-            "#,
-        )?;
-
-        let ids = stmt
-            .query_map(params![folder_id, MAX_FOLDER_DEPTH], |row| row.get(0))?
-            .collect::<Result<Vec<String>, _>>()?;
-
-        debug!(
-            "[VFS::FolderRepo] get_folder_ids_recursive: {} -> {} folders",
-            folder_id,
-            ids.len()
-        );
-
-        Ok(ids)
+        super::folder_tree_helper::get_folder_ids_recursive_with_conn(conn, folder_id)
     }
 
     /// 批量获取多个文件夹下的所有内容项

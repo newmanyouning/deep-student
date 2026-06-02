@@ -7,9 +7,8 @@ use sha2::{Digest, Sha256};
 
 use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
-use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
-use crate::memory::{MemoryOpSource, MemoryOpType, MemoryService, MemoryType, OpTimer, WriteMode};
+use crate::memory::{MemoryOpSource, MemoryOpType, MemoryService, MemoryType, OpTimer, VfsMemoryStorage, WriteMode};
 use crate::vfs::lance_store::VfsLanceStore;
 
 pub const MEMORY_SEARCH: &str = "builtin-memory_search";
@@ -78,9 +77,13 @@ impl MemoryToolExecutor {
             .unwrap_or_else(|| VfsLanceStore::new(vfs_db.clone()).map(Arc::new))
             .map_err(|e| ToolError::Execution(format!("Failed to create lance store: {}", e)))?;
 
-        Ok(MemoryService::new(
+        let mem_storage = std::sync::Arc::new(VfsMemoryStorage::new(
             vfs_db.clone(),
             lance_store,
+            llm_manager.clone(),
+        ));
+        Ok(MemoryService::new_with_storage(
+            mem_storage,
             llm_manager.clone(),
         ))
     }

@@ -18,7 +18,8 @@ use url::Url;
 use uuid::Uuid;
 
 use super::{
-    adapters::get_adapter, build_provider_adapter, normalize_nonstream_response_to_openai, parser,
+    adapters::get_adapter, build_provider_adapter, image_processing::detect_image_format_from_base64,
+    normalize_nonstream_response_to_openai, parser,
     should_use_openai_responses_for_config, ApiConfig, ImagePayload, LLMManager, MergedChatMessage,
     Result,
 };
@@ -763,7 +764,6 @@ impl LLMManager {
 
         // 记录开始时间和统计信息
         let _start_instant = std::time::Instant::now();
-        let mut request_bytes = 0usize;
         let _response_bytes = 0usize;
         let _chunk_count = 0usize;
 
@@ -1079,7 +1079,7 @@ impl LLMManager {
                                     for image_base64 in images {
                                         // 直接使用预处理后的图片，不再实时压缩
                                         let image_format =
-                                            Self::detect_image_format_from_base64(image_base64);
+                                            detect_image_format_from_base64(image_base64);
                                         content.push(json!({
                                             "type": "image_url",
                                             "image_url": { "url": format!("data:image/{};base64,{}", image_format, image_base64) }
@@ -1534,11 +1534,6 @@ impl LLMManager {
 
         // 注入阶段可能修改 messages，此处确保请求体携带最新副本
         request_body["messages"] = serde_json::Value::Array(messages.clone());
-
-        // 计算请求体大小
-        request_bytes = serde_json::to_string(&request_body)
-            .unwrap_or_default()
-            .len();
 
         // 简化：不再在此处估算输入token
 
@@ -2695,7 +2690,7 @@ impl LLMManager {
 
                 if let Some(images) = &images_base64 {
                     for image_base64 in images {
-                        let image_format = Self::detect_image_format_from_base64(image_base64);
+                        let image_format = detect_image_format_from_base64(image_base64);
                         debug!("检测到图像格式: {}", image_format);
                         content.push(json!({
                             "type": "image_url",
@@ -2757,7 +2752,7 @@ impl LLMManager {
 
                     if let Some(images) = &msg.image_base64 {
                         for image_base64 in images {
-                            let image_format = Self::detect_image_format_from_base64(image_base64);
+                            let image_format = detect_image_format_from_base64(image_base64);
                             content.push(json!({
                                 "type": "image_url",
                                 "image_url": { "url": format!("data:image/{};base64,{}", image_format, image_base64) }
@@ -3722,7 +3717,7 @@ impl LLMManager {
 
                 if let Some(images) = &images_base64 {
                     for image_base64 in images {
-                        let image_format = Self::detect_image_format_from_base64(image_base64);
+                        let image_format = detect_image_format_from_base64(image_base64);
                         debug!("检测到图像格式: {}", image_format);
                         content.push(json!({
                             "type": "image_url",
@@ -3766,7 +3761,7 @@ impl LLMManager {
                     let mut parts = vec![json!({"type":"text","text": msg.content})];
                     if let Some(images) = &msg.image_base64 {
                         for image_base64 in images {
-                            let image_format = Self::detect_image_format_from_base64(image_base64);
+                            let image_format = detect_image_format_from_base64(image_base64);
                             parts.push(json!({
                                 "type": "image_url",
                                 "image_url": {"url": format!("data:image/{};base64,{}", image_format, image_base64)}

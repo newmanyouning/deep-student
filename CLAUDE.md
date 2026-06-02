@@ -22,7 +22,6 @@
 | VfsError | vfs/error.rs | ✅ | ✅ | ✅ | — | — | ✅(新增) | ✅ |
 | DstuError | dstu/error.rs | ✅ | ✅(thiserror) | ✅ | ✅(新增) | — | ✅(新增) | ✅ |
 | ChatV2Error | chat_v2/error.rs | ✅ | ✅(thiserror) | ✅ | — | ✅ | — | ✅ (JSON) |
-| ReviewPlanError | review_plan_error.rs | ✅ | ✅ | — | ✅ | ✅ | ✅ | — |
 | DataGovernanceError | data_governance/mod.rs | ✅(manual) | ✅(thiserror) | ✅ | ✅(新增) | ✅(新增) | ✅(新增) | ✅ (JSON) |
 | EssayGradingError | essay_grading/error.rs | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ |
 | MemoryError | memory/error.rs | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
@@ -31,8 +30,8 @@
 
 ### From 转换链（完整）
 ```
-VfsError → MemoryError, EssayGradingError, DstuError, ReviewPlanError, DataGovernanceError, ToolError
-anyhowError → ReviewPlanError, ChatV2Error, EssayGradingError, MemoryError, DataGovernanceError
+VfsError → MemoryError, EssayGradingError, DstuError, DataGovernanceError, ToolError
+anyhowError → ChatV2Error, EssayGradingError, MemoryError, DataGovernanceError
 AppError → EssayGradingError
 rusqlite → ChatV2Error, DstuError, VfsError, DataGovernanceError
 io::Error → VfsError, DstuError, DataGovernanceError
@@ -52,7 +51,7 @@ String → VfsError, DstuError, DataGovernanceError, EssayGradingError, MemoryEr
 | VFS (todo/pomodoro) | 25 | VfsResult<T> | ✅ |
 | Chat V2 (handlers) | ~85 | ChatV2Result<T> | ✅ |
 | Chat V2 (tools) | ~150 | ToolResult<T> | ✅ |
-| Review Plan | 17 | ReviewPlanResult<T> | ✅ |
+| Review Plan | 17 | anyhow::Result<T> | ✅ |
 | DSTU (全模块) | ~59 | DstuResult<T> | ✅ |
 | Essay Grading | 20 | EssayGradingResult<T> | ✅ |
 | Memory | 27 | MemoryResult<T> | ✅ |
@@ -72,9 +71,9 @@ String → VfsError, DstuError, DataGovernanceError, EssayGradingError, MemoryEr
 | AnkiConnectError | anki_connect_service.rs | Request, Parse, Other | Anki 服务通信 |
 | EssayGradingError | essay_grading/error.rs | Database, Validation, NotFound, Internal, Other | 作文批改 |
 | MemoryError | memory/error.rs | Database, Validation, NotFound, Other | 记忆系统 |
-| ReviewPlanError | review_plan_error.rs | Database, Validation, NotFound, Other | 复习计划 |
-
 ---
+
+
 
 ## 4. 冲突任务进度
 
@@ -116,7 +115,7 @@ String → VfsError, DstuError, DataGovernanceError, EssayGradingError, MemoryEr
 
 | 批次 | 文件数 | 状态 | 发现问题 | 完成时间 |
 |------|--------|------|----------|----------|
-| R1: 根级小文件 + adapters | 20 | ✅ 复核通过 | 1 (database.debug.rs) | 2026-05-31 |
+| R1: 根级小文件 + adapters | 20 | ✅ 复核通过 | 1 (database.debug.rs — 已删除) | 2026-05-31 |
 | R2: 核心入口 (lib/commands/models) | 3 | ✅ 复核通过 | 1 (lib.rs) | 2026-05-31 |
 | R3: 内部服务 Part 1 | 11 | ✅ 完成 | 0 | 2026-05-31 |
 | R4: 内部服务 Part 2 | 14 | ✅ 完成 | 0 | 2026-05-31 |
@@ -170,7 +169,7 @@ String → VfsError, DstuError, DataGovernanceError, EssayGradingError, MemoryEr
 0.9.40 | Rust 1.96 | React 18 | Tauri 2 | ~3000 文件
 
 ## 附录 B: 重构统计
-- **新增错误类型**: 5 个 (ToolError, AnkiConnectError, EssayGradingError, MemoryError, ReviewPlanError)
+- **新增错误类型**: 4 个 (ToolError, AnkiConnectError, EssayGradingError, MemoryError)
 - **新增 From 转换**: 16 个
 - **新增 error.rs 文件**: 4 个 (essay_grading, memory, dstu(impls), vfs(impls))
 - **删除废弃模块**: 3 个模块 (6 文件)

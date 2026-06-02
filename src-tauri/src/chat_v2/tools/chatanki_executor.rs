@@ -4862,7 +4862,7 @@ fn default_field_extraction_rules() -> HashMap<String, FieldExtractionRule> {
 pub(crate) fn import_builtin_templates_if_empty(
     db: &crate::database::Database,
 ) -> ToolResult<usize> {
-    const BUILTIN_TEMPLATES_JSON: &str = include_str!("../../data/builtin-templates.json");
+    const BUILTIN_TEMPLATES_JSON: &str = include_str!("../../../resources/builtin-templates.json");
     let templates: Vec<Value> = serde_json::from_str(BUILTIN_TEMPLATES_JSON)
         .map_err(|e| format!("Parse builtin templates failed: {}", e))?;
     let mut imported = 0usize;

@@ -4,7 +4,8 @@ use std::time::Instant;
 use rusqlite::params;
 use tracing::warn;
 
-use crate::vfs::database::VfsDatabase;
+use super::error::MemoryResult;
+use super::storage_trait::MemoryStorage;
 
 #[derive(Debug, Clone)]
 pub struct MemoryAuditEntry {
@@ -90,16 +91,16 @@ fn truncate_preview(text: &str, max_chars: usize) -> String {
 
 #[derive(Clone)]
 pub struct MemoryAuditLogger {
-    vfs_db: Arc<VfsDatabase>,
+    storage: Arc<dyn MemoryStorage>,
 }
 
 impl MemoryAuditLogger {
-    pub fn new(vfs_db: Arc<VfsDatabase>) -> Self {
-        Self { vfs_db }
+    pub fn new(storage: Arc<dyn MemoryStorage>) -> Self {
+        Self { storage }
     }
 
     pub fn log(&self, entry: &MemoryAuditEntry) {
-        let conn = match self.vfs_db.get_conn_safe() {
+        let conn = match self.storage.conn() {
             Ok(c) => c,
             Err(e) => {
                 warn!("[MemoryAudit] DB connection failed: {}", e);
@@ -296,14 +297,14 @@ pub struct MemoryAuditLogItem {
 }
 
 pub fn query_audit_logs(
-    vfs_db: &VfsDatabase,
+    conn: &rusqlite::Connection,
     limit: u32,
     offset: u32,
     source_filter: Option<&str>,
     operation_filter: Option<&str>,
     success_filter: Option<bool>,
-) -> Result<Vec<MemoryAuditLogItem>, crate::vfs::error::VfsError> {
-    let conn = vfs_db.get_conn_safe()?;
+) -> MemoryResult<Vec<MemoryAuditLogItem>> {
+    // conn is passed in directly
 
     let mut conditions: Vec<String> = Vec::new();
     let mut param_values: Vec<rusqlite::types::Value> = Vec::new();

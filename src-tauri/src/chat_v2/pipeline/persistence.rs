@@ -968,8 +968,20 @@ impl ChatV2Pipeline {
             None => return,
         };
 
+        use crate::memory::VfsMemoryStorage;
+        use crate::vfs::lance_store::VfsLanceStore;
+        let lance_store = match VfsLanceStore::new(vfs_db.clone()) {
+            Ok(s) => std::sync::Arc::new(s),
+            Err(e) => {
+                log::warn!("[AutoMemory] Failed to create lance store: {}", e);
+                return;
+            }
+        };
+        let mem_storage = std::sync::Arc::new(VfsMemoryStorage::new(
+            vfs_db.clone(), lance_store, self.llm_manager.clone()));
+
         // ① 早期门控：读取频率 + 隐私模式配置（同步 SQLite 主键查询，亚毫秒级）
-        let mem_config = crate::memory::MemoryConfig::new(vfs_db.clone());
+        let mem_config = crate::memory::MemoryConfig::new(mem_storage.clone());
         let frequency = mem_config
             .get_auto_extract_frequency()
             .unwrap_or(crate::memory::AutoExtractFrequency::Balanced);
@@ -1022,7 +1034,7 @@ impl ChatV2Pipeline {
 
         // fire-and-forget: 不走 spawn_tracked 因为 Pipeline 不持有 ChatV2State。
         tokio::spawn(async move {
-            use crate::memory::{MemoryAutoExtractor, MemoryService};
+            use crate::memory::{MemoryAutoExtractor, MemoryService, VfsMemoryStorage};
             use crate::vfs::lance_store::VfsLanceStore;
 
             let lance_store = match VfsLanceStore::new(vfs_db.clone()) {
@@ -1033,8 +1045,10 @@ impl ChatV2Pipeline {
                 }
             };
 
+            let storage = std::sync::Arc::new(VfsMemoryStorage::new(
+                vfs_db.clone(), lance_store, llm_manager.clone()));
             let memory_service =
-                MemoryService::new(vfs_db.clone(), lance_store, llm_manager.clone());
+                MemoryService::new_with_storage(storage.clone(), llm_manager.clone());
 
             let extractor = MemoryAutoExtractor::new(llm_manager.clone());
 
@@ -1064,7 +1078,7 @@ impl ChatV2Pipeline {
                         if should_refresh {
                             use crate::memory::MemoryCategoryManager;
                             let cat_mgr =
-                                MemoryCategoryManager::new(vfs_db.clone(), llm_manager.clone());
+                                MemoryCategoryManager::new(storage.clone(), llm_manager.clone());
                             if let Err(e) = cat_mgr.refresh_all_categories(&memory_service).await {
                                 log::warn!("[AutoMemory] Category refresh failed: {}", e);
                             }
@@ -1073,7 +1087,7 @@ impl ChatV2Pipeline {
 
                     // 自进化：使用共享全局节流，间隔由频率档位决定
                     use crate::memory::MemoryEvolution;
-                    let evolution = MemoryEvolution::new(vfs_db);
+                    let evolution = MemoryEvolution::new(storage.clone());
                     evolution.run_throttled(&memory_service, frequency.evolution_interval_ms());
                 }
                 Err(e) => {

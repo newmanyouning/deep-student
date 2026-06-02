@@ -173,47 +173,9 @@ const NoTagTreeShadPanel: React.FC<Props> = ({ graphId = 'default', onImported }
   }, []);
 
   const handleGenerate = useCallback(async () => {
-    setError(''); setSuccess(''); setIsGenerating(true); setPreviewMd('');
-    stopStreaming();
-    try {
-      // ★ 文档31清理：使用 graphId 而非 subject
-      const eventName = await TauriAPI.unifiedGenerateTagHierarchyPreviewStream(
-        userHint.trim(),
-        modelOverrideId ?? undefined,
-        undefined,
-        graphId,
-      );
-      // 监听主内容增量
-      const un1 = await (await import('@tauri-apps/api/event')).listen<any>(eventName, (e) => {
-        const chunk = (e?.payload as any) || {};
-        const content = typeof chunk.content === 'string' ? chunk.content : '';
-        if (content) setPreviewMd(prev => prev + content);
-        if (chunk.is_complete === true) {
-          setIsGenerating(false);
-          stopStreaming();
-        }
-      });
-      // 监听结束事件
-      const un2 = await (await import('@tauri-apps/api/event')).listen<any>(`${eventName}_end`, () => {
-        setIsGenerating(false);
-        stopStreaming();
-        showGlobalNotification('success', t('knowledge_graph.tag_tree.generate_success'));
-      });
-      // 可选：错误事件
-      const un3 = await (await import('@tauri-apps/api/event')).listen<any>(`${eventName}_error`, (e) => {
-        setError(typeof e?.payload?.message === 'string' ? e.payload.message : t('knowledge_graph.tag_tree.generate_error'));
-        setIsGenerating(false);
-        stopStreaming();
-        showGlobalNotification('error', t('knowledge_graph.tag_tree.generate_failed'));
-      });
-      streamUnsubsRef.current = [un1, un2, un3];
-    } catch (e: any) {
-      setError(e?.message || String(e));
-      setIsGenerating(false);
-      const message = e?.message || String(e);
-      showGlobalNotification('error', t('knowledge_graph.tag_tree.generate_failed_with_error', { error: message }));
-    }
-  }, [graphId, userHint, modelOverrideId, stopStreaming, t]);
+    setIsGenerating(false);
+    showGlobalNotification('error', '该功能已废弃（图谱模块已移除）');
+  }, [t]);
 
   // 组件卸载时停止监听
   useEffect(() => {
@@ -228,76 +190,9 @@ const NoTagTreeShadPanel: React.FC<Props> = ({ graphId = 'default', onImported }
   }, [previewMd, validation]);
 
   const handleImport = useCallback(async () => {
-    setError(''); setSuccess(''); setImporting(true); setImportLogs([]);
-    if (!canImport) { setError(t('knowledge_graph.tag_tree.validation_blocked')); setImporting(false); return; }
-    
-    // 先清理之前可能残留的监听器
-    stopStreaming();
-    
-    const cleanupListeners: (() => void)[] = [];
-    const cleanup = () => {
-      cleanupListeners.forEach(fn => fn());
-      cleanupListeners.length = 0;
-      setImporting(false);
-    };
-    
-    try {
-      const eventName = await TauriAPI.unifiedImportTagHierarchyStream(previewMd, false);
-      const { listen } = await import('@tauri-apps/api/event');
-      
-      const un1 = await listen<any>(`${eventName}_start`, (e) => {
-        setImportLogs(prev => [...prev, t('knowledge_graph.tag_tree.log_start', { total: e?.payload?.total ?? '-', roots: e?.payload?.root_count ?? '-' })]);
-      });
-      cleanupListeners.push(un1);
-      
-      const un2 = await listen<any>(eventName, (e) => {
-        const p = e?.payload || {};
-        if (p.stage === 'wrapper_created') {
-          setImportLogs(prev => [...prev, t('knowledge_graph.tag_tree.log_wrapper_created', { name: p.tag?.name })]);
-        } else if (p.stage === 'tag_created') {
-          const progressText = p.current && p.total ? ` [${p.current}/${p.total}]` : '';
-          if (p.success) setImportLogs(prev => [...prev, t('knowledge_graph.tag_tree.log_tag_created', { progress: progressText, name: p.name, level: p.level })]);
-          else setImportLogs(prev => [...prev, t('knowledge_graph.tag_tree.log_tag_failed', { progress: progressText, name: p.name, error: p.error })]);
-        } else if (p.stage === 'vector_generation_start') {
-          setImportLogs(prev => [...prev, t('knowledge_graph.tag_tree.log_vector_start')]);
-        } else if (p.stage === 'vector_generation_end') {
-          setImportLogs(prev => [...prev, t('knowledge_graph.tag_tree.log_vector_end')]);
-        }
-      });
-      cleanupListeners.push(un2);
-      
-      const un3 = await listen<any>(`${eventName}_error`, (e) => {
-        const fallback = t('common:messages.error.unknown');
-        const message = e?.payload?.message ?? fallback;
-        setImportLogs(prev => [...prev, `${t('common:status.error')}：${message}`]);
-        showGlobalNotification('error', t('knowledge_graph.tag_tree.import_failed', { error: message }));
-        // 注意：不在这里清理，等待 _end 事件
-      });
-      cleanupListeners.push(un3);
-      
-      const un4 = await listen<any>(`${eventName}_end`, (e) => {
-        setImportLogs(prev => [...prev, t('knowledge_graph.tag_tree.log_done', { created: e?.payload?.created ?? 0, failed: e?.payload?.failed ?? 0 })]);
-        
-        // 清理所有监听器
-        cleanup();
-        
-        // 刷新图谱
-        window.dispatchEvent(new Event('irec-tag-updated'));
-        onImported && onImported();
-        showGlobalNotification('success', t('knowledge_graph.tag_tree.import_success'));
-      });
-      cleanupListeners.push(un4);
-      
-      // 保存清理函数供 stopStreaming 使用
-      streamUnsubsRef.current = cleanupListeners;
-      
-    } catch (e: any) {
-      cleanup();
-      setError(e?.message || String(e));
-      const message = e?.message || String(e);
-      showGlobalNotification('error', t('knowledge_graph.tag_tree.import_failed', { error: message }));
-    }
-  }, [previewMd, canImport, onImported, stopStreaming, t]);
+    setImporting(false);
+    showGlobalNotification('error', '该功能已废弃（图谱模块已移除）');
+  }, [t]);
 
   return (
     <Card className="w-full max-w-[1100px] max-h-full flex flex-col">

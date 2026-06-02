@@ -21,14 +21,13 @@ use tracing::{debug, info, warn};
 
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
-use crate::vfs::repos::folder_repo::VfsFolderRepo;
 use crate::vfs::{canonical_folder_item_type, file_folder_item_sql, is_file_folder_item_type};
 
 /// 最大路径长度（约束 D）
 const MAX_PATH_LENGTH: usize = 1000;
 
 /// 最大文件夹深度
-const MAX_FOLDER_DEPTH: usize = 10;
+use super::folder_tree_helper::MAX_FOLDER_DEPTH;
 
 // ============================================================================
 // 契约 C2: 路径缓存条目
@@ -343,7 +342,7 @@ impl VfsPathCacheRepo {
         Self::ensure_table_exists(conn)?;
 
         // 1. 获取文件夹及其所有子文件夹的 ID
-        let folder_ids = VfsFolderRepo::get_folder_ids_recursive_with_conn(conn, folder_id)?;
+        let folder_ids = super::folder_tree_helper::get_folder_ids_recursive_with_conn(conn, folder_id)?;
 
         if folder_ids.is_empty() {
             return Ok(0);
@@ -378,90 +377,7 @@ impl VfsPathCacheRepo {
         conn: &Connection,
         folder_ids: &[String],
     ) -> VfsResult<usize> {
-        const BATCH_SIZE: usize = 100;
-
-        if folder_ids.is_empty() {
-            return Ok(0);
-        }
-
-        Self::ensure_table_exists(conn)?;
-
-        let mut total_deleted = 0usize;
-
-        // 1. 分批删除文件夹自身的缓存
-        for chunk in folder_ids.chunks(BATCH_SIZE) {
-            let placeholders: Vec<String> = (1..=chunk.len()).map(|i| format!("?{}", i)).collect();
-            let in_clause = placeholders.join(", ");
-
-            let sql = format!(
-                "DELETE FROM path_cache WHERE item_type = 'folder' AND item_id IN ({})",
-                in_clause
-            );
-            let params: Vec<&dyn rusqlite::ToSql> =
-                chunk.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
-            let deleted = conn.execute(&sql, params.as_slice())?;
-            total_deleted += deleted;
-        }
-
-        // 2. 分批获取并删除资源的缓存
-        for chunk in folder_ids.chunks(BATCH_SIZE) {
-            let placeholders: Vec<String> = (1..=chunk.len()).map(|i| format!("?{}", i)).collect();
-            let in_clause = placeholders.join(", ");
-
-            // 获取该批次文件夹下的所有资源
-            let sql = format!(
-                "SELECT item_type, item_id FROM folder_items WHERE folder_id IN ({})",
-                in_clause
-            );
-            let params: Vec<&dyn rusqlite::ToSql> =
-                chunk.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
-
-            let mut stmt = conn.prepare(&sql)?;
-            let items: Vec<(String, String)> = stmt
-                .query_map(params.as_slice(), |row| {
-                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-                })?
-                .collect::<Result<Vec<_>, _>>()?;
-
-            // 按 item_type 分组以优化删除
-            let mut items_by_type: std::collections::HashMap<String, Vec<String>> =
-                std::collections::HashMap::new();
-            for (item_type, item_id) in items {
-                items_by_type.entry(item_type).or_default().push(item_id);
-            }
-
-            // 分批删除每种类型的资源缓存
-            for (item_type, item_ids) in items_by_type {
-                for item_chunk in item_ids.chunks(BATCH_SIZE) {
-                    let placeholders: Vec<String> = (1..=item_chunk.len())
-                        .map(|i| format!("?{}", i + 1)) // 从 ?2 开始，?1 是 item_type
-                        .collect();
-                    let in_clause = placeholders.join(", ");
-
-                    let sql = format!(
-                        "DELETE FROM path_cache WHERE item_type = ?1 AND item_id IN ({})",
-                        in_clause
-                    );
-
-                    let mut params: Vec<&dyn rusqlite::ToSql> =
-                        vec![&item_type as &dyn rusqlite::ToSql];
-                    for id in item_chunk {
-                        params.push(id as &dyn rusqlite::ToSql);
-                    }
-
-                    let deleted = conn.execute(&sql, params.as_slice())?;
-                    total_deleted += deleted;
-                }
-            }
-        }
-
-        debug!(
-            "[VFS::PathCacheRepo] Batch invalidated {} cache entries for {} folders",
-            total_deleted,
-            folder_ids.len()
-        );
-
-        Ok(total_deleted)
+        super::folder_tree_helper::invalidate_path_cache_by_folders_batch(conn, folder_ids)
     }
 
     /// 通过路径前缀使缓存失效
@@ -570,7 +486,7 @@ impl VfsPathCacheRepo {
             .to_string();
 
         // 1. 获取文件夹及其所有子文件夹的 ID
-        let folder_ids = VfsFolderRepo::get_folder_ids_recursive_with_conn(conn, folder_id)?;
+        let folder_ids = super::folder_tree_helper::get_folder_ids_recursive_with_conn(conn, folder_id)?;
 
         if folder_ids.is_empty() {
             warn!(
@@ -584,7 +500,7 @@ impl VfsPathCacheRepo {
 
         // 2. 重建文件夹自身的缓存
         for fid in &folder_ids {
-            if let Ok(Some(_folder)) = VfsFolderRepo::get_folder_with_conn(conn, fid) {
+            if let Ok(Some(_folder)) = super::folder_tree_helper::get_folder_with_conn(conn, fid) {
                 let folder_path = Self::compute_folder_path_with_conn(conn, fid)?;
                 let full_path = format!("/{}", folder_path);
 

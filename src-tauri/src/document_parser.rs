@@ -3018,7 +3018,7 @@ impl DocumentParser {
                 }
                 Ok(XmlEvent::Text(ref e)) => {
                     if let Some(ref tag) = current_meta_tag {
-                        let text = e.unescape().unwrap_or_default().to_string();
+                        let text = e.decode().unwrap_or_default().to_string();
                         if !text.is_empty() {
                             metadata.insert(tag.clone(), text);
                         }
@@ -3178,7 +3178,7 @@ impl DocumentParser {
         loop {
             match reader.read_event_into(&mut buf) {
                 Ok(Event::Text(e)) => {
-                    if let Ok(text) = e.unescape() {
+                    if let Ok(text) = e.decode() {
                         let trimmed = text.trim();
                         if !trimmed.is_empty() {
                             if !output.is_empty() {

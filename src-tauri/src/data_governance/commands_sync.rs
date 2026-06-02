@@ -20,8 +20,9 @@ use super::{DataGovernanceError, DataGovernanceResult};
 use super::commands::{check_maintenance_mode, try_save_audit_log, SYNC_LOCK_TIMEOUT_SECS};
 use super::commands_backup::{
     apply_downloaded_changes_to_databases, build_id_column_map, get_active_data_dir,
-    get_app_data_dir, resolve_database_path, validate_user_path,
+    resolve_database_path, validate_user_path,
 };
+use super::commands_shared::get_app_data_dir;
 
 /// 便捷函数：获取各表主键列名映射
 fn id_column_map() -> HashMap<String, String> {

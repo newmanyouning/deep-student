@@ -29,18 +29,6 @@ export async function llmGenerateAnswerWithContext(query: string, contextJson: s
   }
 }
 
-export async function unifiedFixTagHierarchy(graphId: string = 'default'): Promise<string> {
-  try {
-    console.log('Starting tag tree fix/init (unified API)...');
-    const response = await invoke<string>('unified_fix_tag_hierarchy', { ...withGraphId(graphId) });
-    console.log('Tag tree fix complete:', response);
-    return response;
-  } catch (error) {
-    console.error('Failed to fix tag tree:', error);
-    throw new Error(`Failed to fix tag tree: ${error}`);
-  }
-}
-
 /**
  * 初始化默认数学五层标签树（若后端提供该命令）
  */

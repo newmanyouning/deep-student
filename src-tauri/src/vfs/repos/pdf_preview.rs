@@ -280,7 +280,7 @@ fn render_single_page(
         let mut encoder =
             JpegEncoder::new_with_quality(&mut jpeg_bytes, preview_config.jpeg_quality);
         encoder
-            .encode(rgb_image.as_raw(), width, height, image::ColorType::Rgb8)
+            .encode(rgb_image.as_raw(), width, height, image::ColorType::Rgb8.into())
             .map_err(|e| VfsError::Other(format!("编码 JPEG 失败: {:?}", e)))?;
 
         (jpeg_bytes, "image/jpeg", "jpg")

@@ -2,13 +2,13 @@
 use super::client::{McpError, McpResult, Transport};
 use crate::utils::sse_buffer::SseLineBuffer;
 use async_trait::async_trait;
+use eventsource_stream::Eventsource;
 use futures::stream::StreamExt;
 use log::{debug, error, info, warn};
 use reqwest::{
     header::{HeaderMap, HeaderValue, AUTHORIZATION},
     Client,
 };
-use reqwest_eventsource::{Event as SSEEvent, EventSource};
 use serde_json::{json, Value};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -179,104 +179,109 @@ impl SSETransport {
                 .map_err(|e| McpError::TransportError(e.to_string()))?
         };
 
-        // 启动事件处理循环
+        // 启动事件处理循环（使用 eventsource-stream 替代 reqwest-eventsource）
         tokio::spawn(async move {
-            // 显式声明 SSE Accept 头以提高兼容性
-            let es_result =
-                EventSource::new(client.get(&endpoint).header("Accept", "text/event-stream"));
-            let mut es = match es_result {
-                Ok(es) => es,
-                Err(e) => {
-                    error!("Failed to create EventSource: {:?}", e);
-                    connected.store(false, Ordering::SeqCst);
-                    return;
-                }
-            };
             let mut backoff_ms = 500u64;
 
             loop {
-                match es.next().await {
-                    Some(Ok(SSEEvent::Open)) => {
-                        connected.store(true, Ordering::SeqCst);
-                        backoff_ms = 500; // 重置退避时间
-                        info!("SSE connection opened");
-                    }
-                    Some(Ok(SSEEvent::Message(msg))) => {
-                        // 保存事件ID用于断线续传
-                        if !msg.id.is_empty() {
-                            *last_event_id.write().await = Some(msg.id.clone());
+                // 构建 SSE 连接请求，携带 Last-Event-ID 以支持断线续传
+                let mut request = client
+                    .get(&endpoint)
+                    .header("Accept", "text/event-stream");
+
+                if let Some(last_id) = last_event_id.read().await.as_ref() {
+                    request = request.header("Last-Event-ID", last_id.as_str());
+                    info!("SSE reconnecting with Last-Event-ID: {}", last_id);
+                }
+
+                // 发送请求
+                let response = match request.send().await {
+                    Ok(resp) => {
+                        if !resp.status().is_success() {
+                            error!("SSE connection failed with status: {}", resp.status());
+                            connected.store(false, Ordering::SeqCst);
+                            tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
+                            backoff_ms = (backoff_ms * 2).min(30_000);
+                            continue;
                         }
-
-                        // 处理SSE消息
-                        let mut buffer_guard = buffer.lock().await;
-                        let lines = buffer_guard.process_chunk(&msg.data);
-
-                        for line in lines {
-                            // 解析SSE数据行
-                            if let Some(data) = line.strip_prefix("data: ") {
-                                if data.trim() == "[DONE]" {
-                                    debug!("SSE stream done marker received");
-                                    continue;
-                                }
-
-                                // 检查是否是会话ID
-                                if let Ok(json_data) = serde_json::from_str::<Value>(data) {
-                                    if let Some(sid) =
-                                        json_data.get("sessionId").and_then(|v| v.as_str())
-                                    {
-                                        *session_id.write().await = Some(sid.to_string());
-                                        info!("SSE session ID: {}", sid);
-                                    }
-                                }
-
-                                if let Err(e) = recv_tx.try_send(data.to_string()) {
-                                    match e {
-                                        mpsc::error::TrySendError::Full(_) => {
-                                            tracing::warn!(
-                                                "SSE recv channel full, dropping message"
-                                            );
-                                        }
-                                        mpsc::error::TrySendError::Closed(_) => {
-                                            warn!("SSE receiver dropped");
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                        resp
                     }
-                    Some(Err(e)) => {
-                        error!("SSE error: {:?}", e);
+                    Err(e) => {
+                        error!("SSE connection error: {:?}", e);
                         connected.store(false, Ordering::SeqCst);
-
-                        // 指数退避重连
                         tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
                         backoff_ms = (backoff_ms * 2).min(30_000);
-
-                        // 尝试重新创建连接，携带 Last-Event-ID 以支持断线续传
-                        let mut reconnect_request =
-                            client.get(&endpoint).header("Accept", "text/event-stream");
-
-                        // 添加 Last-Event-ID 头以恢复断点
-                        if let Some(last_id) = last_event_id.read().await.as_ref() {
-                            reconnect_request = reconnect_request.header("Last-Event-ID", last_id);
-                            info!("SSE reconnecting with Last-Event-ID: {}", last_id);
-                        }
-
-                        match EventSource::new(reconnect_request) {
-                            Ok(new_es) => {
-                                es = new_es;
-                                info!("SSE reconnecting...");
-                            }
-                            Err(e) => {
-                                error!("SSE reconnect failed: {:?}", e);
-                                break;
-                            }
-                        }
+                        continue;
                     }
-                    None => {
-                        info!("SSE stream ended");
-                        break;
+                };
+
+                // 连接成功
+                connected.store(true, Ordering::SeqCst);
+                backoff_ms = 500;
+                info!("SSE connection opened");
+
+                // 使用 eventsource-stream 解析 SSE 事件流
+                let mut stream = response.bytes_stream().eventsource();
+
+                loop {
+                    match stream.next().await {
+                        Some(Ok(event)) => {
+                            // 保存事件ID用于断线续传
+                            if !event.id.is_empty() {
+                                *last_event_id.write().await = Some(event.id.clone());
+                            }
+
+                            // 处理SSE消息
+                            let mut buffer_guard = buffer.lock().await;
+                            let lines = buffer_guard.process_chunk(&event.data);
+
+                            for line in lines {
+                                // 解析SSE数据行
+                                if let Some(data) = line.strip_prefix("data: ") {
+                                    if data.trim() == "[DONE]" {
+                                        debug!("SSE stream done marker received");
+                                        continue;
+                                    }
+
+                                    // 检查是否是会话ID
+                                    if let Ok(json_data) = serde_json::from_str::<Value>(data) {
+                                        if let Some(sid) =
+                                            json_data.get("sessionId").and_then(|v| v.as_str())
+                                        {
+                                            *session_id.write().await = Some(sid.to_string());
+                                            info!("SSE session ID: {}", sid);
+                                        }
+                                    }
+
+                                    if let Err(e) = recv_tx.try_send(data.to_string()) {
+                                        match e {
+                                            mpsc::error::TrySendError::Full(_) => {
+                                                tracing::warn!(
+                                                    "SSE recv channel full, dropping message"
+                                                );
+                                            }
+                                            mpsc::error::TrySendError::Closed(_) => {
+                                                warn!("SSE receiver dropped");
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        Some(Err(e)) => {
+                            error!("SSE stream error: {:?}", e);
+                            connected.store(false, Ordering::SeqCst);
+
+                            // 指数退避重连
+                            tokio::time::sleep(Duration::from_millis(backoff_ms)).await;
+                            backoff_ms = (backoff_ms * 2).min(30_000);
+                            break; // 跳出内层循环，由外层循环触发重连
+                        }
+                        None => {
+                            info!("SSE stream ended");
+                            break; // 跳出内层循环
+                        }
                     }
                 }
             }

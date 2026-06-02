@@ -1,8 +1,7 @@
 // ==================== 备份相关命令 ====================
 
 use std::path::{Path, PathBuf};
-use std::time::Instant;
-use tauri::{Manager, State};
+use tauri::State;
 use tracing::{debug, error, info, warn};
 
 use super::{DataGovernanceError, DataGovernanceResult};
@@ -10,8 +9,7 @@ use super::{DataGovernanceError, DataGovernanceResult};
 #[cfg(feature = "data_governance")]
 use super::audit::{AuditLog, AuditOperation};
 use super::backup::{
-    export_backup_to_zip, AssetBackupConfig, AssetType, AssetTypeStats, BackupManager,
-    BackupSelection, TieredAssetConfig, ZipExportOptions,
+    AssetType, AssetTypeStats, BackupManager,
 };
 use super::schema_registry::DatabaseId;
 use super::sync::{
@@ -23,23 +21,14 @@ use crate::backup_job_manager::{
     BackupJobContext, BackupJobKind, BackupJobManagerState, BackupJobParams, BackupJobPhase,
     BackupJobResultPayload, BackupJobStatus, BackupJobSummary, PersistedJob,
 };
-use crate::utils::text::safe_truncate_chars;
-
 #[cfg(feature = "data_governance")]
 use super::commands::try_save_audit_log;
-use super::commands_restore::{
+use super::commands_shared::{
+    acquire_backup_global_permit, ensure_existing_path_within_backup_dir,
     execute_backup_with_progress_resumable, execute_zip_import_with_progress_resumable,
+    get_app_data_dir, get_backup_dir, sanitize_path_for_user, validate_backup_id,
+    BackupJobStartResponse,
 };
-
-/// 获取应用数据基础目录（Tauri app_data_dir）
-///
-/// 注意：此目录是基础目录，**不是**运行时数据库/资产的实际存储位置。
-/// 运行时存储位置请使用 `get_active_data_dir`。
-pub(super) fn get_app_data_dir(app: &tauri::AppHandle) -> DataGovernanceResult<PathBuf> {
-    app.path()
-        .app_data_dir()
-        .map_err(|e| DataGovernanceError::from(format!("获取应用数据目录失败: {}", e)))
-}
 
 /// 获取活动数据空间目录（运行时所有数据库和资产的实际存储位置）
 ///
@@ -53,11 +42,6 @@ pub(super) fn get_active_data_dir(app: &tauri::AppHandle) -> DataGovernanceResul
     Ok(crate::data_space::get_data_space_manager()
         .map(|mgr| mgr.active_dir())
         .unwrap_or_else(|| base_dir.join("slots").join("slotA")))
-}
-
-/// 获取备份目录
-pub(super) fn get_backup_dir(app_data_dir: &PathBuf) -> PathBuf {
-    app_data_dir.join("backups")
 }
 
 /// 统一解析数据库文件路径
@@ -425,24 +409,6 @@ pub(super) fn apply_downloaded_changes_to_databases(
     Ok(agg)
 }
 
-/// 将路径中用户主目录替换为 "~/"，避免在面向用户的错误信息中泄露完整文件系统路径
-pub(super) fn sanitize_path_for_user(path: &Path) -> String {
-    let path_str = path.to_string_lossy();
-    if let Some(home) = dirs::home_dir() {
-        let home_str = home.to_string_lossy();
-        if path_str.starts_with(home_str.as_ref()) {
-            return format!("~/{}", &path_str[home_str.len()..].trim_start_matches('/'));
-        }
-    }
-    // 如果无法获取 home 目录，至少只保留最后两级路径
-    let components: Vec<&str> = path_str.split('/').filter(|s| !s.is_empty()).collect();
-    if components.len() > 2 {
-        format!(".../{}", components[components.len() - 2..].join("/"))
-    } else {
-        path_str.to_string()
-    }
-}
-
 /// 验证用户提供的路径
 ///
 /// [P3 Fix] 虽然允许用户选择任意路径，但仍需拒绝明显的路径遍历攻击：
@@ -464,104 +430,6 @@ pub(super) fn validate_user_path(path: &Path, _app_data_dir: &Path) -> DataGover
     }
 
     Ok(())
-}
-
-pub(super) fn validate_backup_id(raw_backup_id: &str) -> DataGovernanceResult<String> {
-    let trimmed = raw_backup_id.trim();
-    if trimmed.is_empty() {
-        return Err(DataGovernanceError::from("backup_id 不能为空".to_string()));
-    }
-
-    let decoded = urlencoding::decode(trimmed)
-        .map_err(|e| DataGovernanceError::from(format!("backup_id 编码非法: {}", e)))?
-        .into_owned();
-
-    if decoded != trimmed {
-        return Err(DataGovernanceError::from("backup_id 不允许包含 URL 编码".to_string()));
-    }
-
-    if decoded.len() > 128 {
-        return Err(DataGovernanceError::from("backup_id 长度超限（最大 128）".to_string()));
-    }
-
-    if decoded.contains('/')
-        || decoded.contains('\\')
-        || decoded.contains("..")
-        || decoded.starts_with('.')
-    {
-        return Err(DataGovernanceError::from("backup_id 包含非法路径片段".to_string()));
-    }
-
-    if !decoded
-        .chars()
-        .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_' | '.'))
-    {
-        return Err(DataGovernanceError::from("backup_id 包含非法字符".to_string()));
-    }
-
-    Ok(decoded)
-}
-
-pub(super) fn ensure_existing_path_within_backup_dir(
-    path: &std::path::Path,
-    backup_dir: &std::path::Path,
-) -> DataGovernanceResult<()> {
-    let canonical_backup_dir = std::fs::canonicalize(backup_dir)?;
-    let canonical_path = std::fs::canonicalize(path)?;
-
-    if !canonical_path.starts_with(&canonical_backup_dir) {
-        return Err(DataGovernanceError::from(format!(
-            "备份路径越界: {}。请确认路径在备份目录内，或前往「设置 > 数据治理」重新选择备份目录",
-            sanitize_path_for_user(&canonical_path)
-        )));
-    }
-
-    Ok(())
-}
-
-/// 获取全局备份互斥锁（取消友好）
-///
-/// 背景：备份/恢复/ZIP 导入导出都会读写同一套备份目录和数据库文件。
-/// 若并发执行，容易导致：
-/// - 备份目录写入覆盖（尤其是历史上秒级时间戳目录名）
-/// - restore 与备份/导出并发，造成一致性风险或 Windows 文件锁问题
-///
-/// 这里统一使用 `backup_common::BACKUP_GLOBAL_LIMITER` 串行化所有相关任务。
-pub(super) async fn acquire_backup_global_permit(
-    job_ctx: &BackupJobContext,
-    waiting_message: &str,
-) -> Option<tokio::sync::OwnedSemaphorePermit> {
-    // 向前端暴露"正在等待"状态（不阻塞 UI）
-    job_ctx.mark_running(
-        BackupJobPhase::Queued,
-        0.0,
-        Some(waiting_message.to_string()),
-        0,
-        0,
-    );
-
-    let fut = BACKUP_GLOBAL_LIMITER.clone().acquire_owned();
-    tokio::pin!(fut);
-
-    loop {
-        if job_ctx.is_cancelled() {
-            job_ctx.cancelled(Some("用户取消任务".to_string()));
-            return None;
-        }
-
-        tokio::select! {
-            permit = &mut fut => {
-                return match permit {
-                    Ok(p) => Some(p),
-                    Err(e) => {
-                        job_ctx.fail(format!("获取全局备份锁失败: {}", e));
-                        None
-                    }
-                };
-            }
-            _ = tokio::time::sleep(std::time::Duration::from_millis(200)) => {}
-        }
-    }
 }
 
 /// 获取备份列表
@@ -1048,19 +916,6 @@ pub struct DatabaseVerifyStatus {
     pub id: String,
     pub is_valid: bool,
     pub error: Option<String>,
-}
-
-/// 后台备份任务启动响应
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct BackupJobStartResponse {
-    /// 任务 ID，用于查询状态和取消
-    pub job_id: String,
-    /// 任务类型
-    pub kind: String,
-    /// 初始状态
-    pub status: String,
-    /// 提示消息
-    pub message: String,
 }
 
 /// 磁盘空间检查响应

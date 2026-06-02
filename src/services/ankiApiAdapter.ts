@@ -168,109 +168,104 @@ export const ankiApiAdapter = {
       throw new Error(i18next.t('anki:api_adapter.missing_field_extraction_rules'));
     }
 
-    try {
-      // 尝试使用分段生成API
-      return await invoke('generate_anki_cards_for_segment', params);
-    } catch (error: unknown) {
-      notificationAdapter.show(i18next.t('anki:api_adapter.segment_fallback_warning'), 'warning');
-      // 降级方案：使用现有的流式生成API，但只处理单个片段
-      const cards: AnkiCard[] = [];
+    console.warn('[ankiApiAdapter] generateAnkiCardsForSegment: backend command removed, using enhanced_anki_start_document_processing');
+    // 使用现有的流式生成API，但只处理单个片段
+    const cards: AnkiCard[] = [];
 
-      // 创建临时的事件监听器来收集卡片
-      const { guardedListen } = await import('../utils/guardedListen');
-      let resolveListener: (() => void) | null = null;
-      const donePromise = new Promise<void>((resolve) => {
-        resolveListener = resolve;
+    // 创建临时的事件监听器来收集卡片
+    const { guardedListen } = await import('../utils/guardedListen');
+    let resolveListener: (() => void) | null = null;
+    const donePromise = new Promise<void>((resolve) => {
+      resolveListener = resolve;
+    });
+
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let documentIdRef: string | null = null;
+    let unlisten: (() => void | Promise<void>) | null = null;
+
+    try {
+      unlisten = await new Promise<() => void | Promise<void>>((resolve) => {
+        guardedListen('anki_generation_event', (event: any) => {
+          const payload = event?.payload?.payload ?? event?.payload ?? event;
+          if (!payload) return;
+          const normalized = payload.type
+            ? { type: payload.type, data: payload.data }
+            : (() => {
+                const keys = Object.keys(payload);
+                if (keys.length === 0) return null;
+                const eventType = keys[0];
+                return { type: eventType, data: payload[eventType] };
+              })();
+          if (!normalized) return;
+
+          const eventDocumentId =
+            normalized?.data?.document_id ||
+            payload?.document_id ||
+            normalized?.data?.documentId;
+          if (documentIdRef && eventDocumentId && eventDocumentId !== documentIdRef) {
+            return;
+          }
+
+          if (normalized.type === 'NewCard' && normalized.data) {
+            const cardData = normalized.data?.card ?? normalized.data;
+            cards.push(cardData);
+          }
+
+          if (
+            normalized.type === 'TaskCompleted' ||
+            normalized.type === 'DocumentProcessingCompleted' ||
+            normalized.type === 'TaskFailed' ||
+            normalized.type === 'DocumentProcessingFailed' ||
+            normalized.type === 'DocumentProcessingCancelled'
+          ) {
+            resolveListener?.();
+          }
+        }).then(resolve);
       });
 
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      let documentIdRef: string | null = null;
-      let unlisten: (() => void | Promise<void>) | null = null;
+      timeoutId = setTimeout(() => {
+        notificationAdapter.show(i18next.t('anki:api_adapter.segment_timeout_warning'), 'warning');
+        resolveListener?.();
+      }, 12000);
 
-      try {
-        unlisten = await new Promise<() => void | Promise<void>>((resolve) => {
-          guardedListen('anki_generation_event', (event: any) => {
-            const payload = event?.payload?.payload ?? event?.payload ?? event;
-            if (!payload) return;
-            const normalized = payload.type
-              ? { type: payload.type, data: payload.data }
-              : (() => {
-                  const keys = Object.keys(payload);
-                  if (keys.length === 0) return null;
-                  const eventType = keys[0];
-                  return { type: eventType, data: payload[eventType] };
-                })();
-            if (!normalized) return;
-
-            const eventDocumentId =
-              normalized?.data?.document_id ||
-              payload?.document_id ||
-              normalized?.data?.documentId;
-            if (documentIdRef && eventDocumentId && eventDocumentId !== documentIdRef) {
-              return;
-            }
-
-            if (normalized.type === 'NewCard' && normalized.data) {
-              const cardData = normalized.data?.card ?? normalized.data;
-              cards.push(cardData);
-            }
-
-            if (
-              normalized.type === 'TaskCompleted' ||
-              normalized.type === 'DocumentProcessingCompleted' ||
-              normalized.type === 'TaskFailed' ||
-              normalized.type === 'DocumentProcessingFailed' ||
-              normalized.type === 'DocumentProcessingCancelled'
-            ) {
-              resolveListener?.();
-            }
-          }).then(resolve);
-        });
-
-        timeoutId = setTimeout(() => {
-          notificationAdapter.show(i18next.t('anki:api_adapter.segment_timeout_warning'), 'warning');
-          resolveListener?.();
-        }, 12000);
-
-        // 启动生成
-        documentIdRef = await invoke('enhanced_anki_start_document_processing', {
-          // 双写兼容：后端为 snake_case
-          document_content: params.content,
-          documentContent: params.content,
-          original_document_name: `segment_${params.segmentIndex}`,
-          originalDocumentName: `segment_${params.segmentIndex}`,
-          options: {
-            ...params.options,
-            max_cards_per_mistake: 10, // 限制每个分段的卡片数量
-          }
-        });
-
-        await donePromise;
-      } finally {
-        if (timeoutId) {
-          clearTimeout(timeoutId);
+      // 启动生成
+      documentIdRef = await invoke('enhanced_anki_start_document_processing', {
+        // 双写兼容：后端为 snake_case
+        document_content: params.content,
+        documentContent: params.content,
+        original_document_name: `segment_${params.segmentIndex}`,
+        originalDocumentName: `segment_${params.segmentIndex}`,
+        options: {
+          ...params.options,
+          max_cards_per_mistake: 10, // 限制每个分段的卡片数量
         }
-        if (unlisten) {
-          try {
-            await Promise.resolve(unlisten());
-          } catch (unlistenErr: unknown) {
-            console.warn('[ankiApiAdapter] Failed to cleanup anki_generation_event listener', unlistenErr);
-          }
-        }
-        if (documentIdRef) {
-          try {
-            await invoke('enhanced_anki_delete_document_session', {
-              documentId: documentIdRef,
-              document_id: documentIdRef,
-            });
-          } catch (cleanupErr: unknown) {
-            console.warn('[ankiApiAdapter] Failed to delete temporary document session', cleanupErr);
-          }
+      });
+
+      await donePromise;
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (unlisten) {
+        try {
+          await Promise.resolve(unlisten());
+        } catch (unlistenErr: unknown) {
+          console.warn('[ankiApiAdapter] Failed to cleanup anki_generation_event listener', unlistenErr);
         }
       }
-
-      return cards;
+      if (documentIdRef) {
+        try {
+          await invoke('enhanced_anki_delete_document_session', {
+            documentId: documentIdRef,
+            document_id: documentIdRef,
+          });
+        } catch (cleanupErr: unknown) {
+          console.warn('[ankiApiAdapter] Failed to delete temporary document session', cleanupErr);
+        }
+      }
     }
+
+    return cards;
   }
 };
 

@@ -35,6 +35,12 @@ impl From<anyhow::Error> for MemoryError {
     }
 }
 
+impl From<rusqlite::Error> for MemoryError {
+    fn from(e: rusqlite::Error) -> Self {
+        MemoryError::Database(e.to_string())
+    }
+}
+
 impl From<String> for MemoryError {
     fn from(s: String) -> Self {
         MemoryError::Other(s)

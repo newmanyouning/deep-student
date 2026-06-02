@@ -27,9 +27,12 @@
 #![cfg(test)]
 
 use crate::llm_manager::adapters::{
-    AnthropicAdapter as AnthropicReqAdapter, DeepSeekAdapter, DoubaoAdapter, ErnieAdapter,
-    GeminiAdapter as GeminiReqAdapter, GenericOpenAIAdapter, GrokAdapter, MiniMaxAdapter,
-    MistralAdapter, MoonshotAdapter, QwenAdapter, RequestAdapter, ZhipuAdapter,
+    AnthropicAdapter as AnthropicReqAdapter, DeepSeekAdapter,
+    GeminiAdapter as GeminiReqAdapter, GenericOpenAIAdapter, MiniMaxAdapter, MoonshotAdapter,
+    QwenAdapter, RequestAdapter, ZhipuAdapter,
+};
+use crate::llm_manager::adapters::generic_openai::{
+    DOUBAO_OVERRIDES, ERNIE_OVERRIDES, GROK_OVERRIDES, MISTRAL_OVERRIDES,
 };
 use crate::providers::{
     AnthropicAdapter as AnthropicParser, GeminiAdapter as GeminiParser, OpenAIAdapter,
@@ -92,8 +95,8 @@ fn collect_tool_calls(events: &[StreamEvent]) -> Vec<&serde_json::Value> {
 }
 
 /// 文本流断言：把 `ContentChunk` 拼起来等于 `expected`
-fn assert_streaming_text<A: RequestAdapter>(adapter: A, fixture: &str, expected: &str) {
-    let parser = parser_for(&adapter);
+fn assert_streaming_text(adapter: &dyn RequestAdapter, fixture: &str, expected: &str) {
+    let parser = parser_for(adapter);
     let events = drive_parser(parser.as_ref(), fixture);
     let combined = collect_content(&events);
     assert_eq!(
@@ -108,8 +111,8 @@ fn assert_streaming_text<A: RequestAdapter>(adapter: A, fixture: &str, expected:
 /// 工具调用流断言：解析后至少存在一次工具调用，且函数名 & 参数符合预期
 ///
 /// `expected_args_json`: 期望的参数 JSON（去除空白后比较）
-fn assert_streaming_tool_call<A: RequestAdapter>(
-    adapter: A,
+fn assert_streaming_tool_call(
+    adapter: &dyn RequestAdapter,
     fixture: &str,
     expected_name: &str,
     expected_args_json: serde_json::Value,
@@ -219,13 +222,15 @@ data: [DONE]
 
 #[test]
 fn streaming_text_generic_openai() {
-    assert_streaming_text(GenericOpenAIAdapter, OPENAI_TEXT_FIXTURE, "Hello, world");
+    let adapter = GenericOpenAIAdapter { overrides: None };
+    assert_streaming_text(&adapter, OPENAI_TEXT_FIXTURE, "Hello, world");
 }
 
 #[test]
 fn streaming_tool_call_generic_openai() {
+    let adapter = GenericOpenAIAdapter { overrides: None };
     assert_streaming_tool_call(
-        GenericOpenAIAdapter,
+        &adapter,
         OPENAI_TOOL_FIXTURE,
         "get_weather",
         serde_json::json!({"city": "Paris"}),
@@ -290,13 +295,15 @@ data: [DONE]
 
 #[test]
 fn streaming_text_doubao() {
-    assert_streaming_text(DoubaoAdapter, DOUBAO_TEXT_FIXTURE, "豆包你好");
+    let adapter = GenericOpenAIAdapter { overrides: Some(&DOUBAO_OVERRIDES) };
+    assert_streaming_text(&adapter, DOUBAO_TEXT_FIXTURE, "豆包你好");
 }
 
 #[test]
 fn streaming_tool_call_doubao() {
+    let adapter = GenericOpenAIAdapter { overrides: Some(&DOUBAO_OVERRIDES) };
     assert_streaming_tool_call(
-        DoubaoAdapter,
+        &adapter,
         DOUBAO_TOOL_FIXTURE,
         "book_flight",
         serde_json::json!({"city": "Shanghai"}),
@@ -324,13 +331,15 @@ data: [DONE]
 
 #[test]
 fn streaming_text_ernie() {
-    assert_streaming_text(ErnieAdapter, ERNIE_TEXT_FIXTURE, "文心一言，您好");
+    let adapter = GenericOpenAIAdapter { overrides: Some(&ERNIE_OVERRIDES) };
+    assert_streaming_text(&adapter, ERNIE_TEXT_FIXTURE, "文心一言，您好");
 }
 
 #[test]
 fn streaming_tool_call_ernie() {
+    let adapter = GenericOpenAIAdapter { overrides: Some(&ERNIE_OVERRIDES) };
     assert_streaming_tool_call(
-        ErnieAdapter,
+        &adapter,
         ERNIE_TOOL_FIXTURE,
         "check_balance",
         serde_json::json!({"user_id": 12345}),
@@ -358,13 +367,15 @@ data: [DONE]
 
 #[test]
 fn streaming_text_grok() {
-    assert_streaming_text(GrokAdapter, GROK_TEXT_FIXTURE, "Grok here!");
+    let adapter = GenericOpenAIAdapter { overrides: Some(&GROK_OVERRIDES) };
+    assert_streaming_text(&adapter, GROK_TEXT_FIXTURE, "Grok here!");
 }
 
 #[test]
 fn streaming_tool_call_grok() {
+    let adapter = GenericOpenAIAdapter { overrides: Some(&GROK_OVERRIDES) };
     assert_streaming_tool_call(
-        GrokAdapter,
+        &adapter,
         GROK_TOOL_FIXTURE,
         "web_search",
         serde_json::json!({"query": "xai news"}),
@@ -426,13 +437,15 @@ data: [DONE]
 
 #[test]
 fn streaming_text_mistral() {
-    assert_streaming_text(MistralAdapter, MISTRAL_TEXT_FIXTURE, "Bonjour!");
+    let adapter = GenericOpenAIAdapter { overrides: Some(&MISTRAL_OVERRIDES) };
+    assert_streaming_text(&adapter, MISTRAL_TEXT_FIXTURE, "Bonjour!");
 }
 
 #[test]
 fn streaming_tool_call_mistral() {
+    let adapter = GenericOpenAIAdapter { overrides: Some(&MISTRAL_OVERRIDES) };
     assert_streaming_tool_call(
-        MistralAdapter,
+        &adapter,
         MISTRAL_TOOL_FIXTURE,
         "order_baguette",
         serde_json::json!({"qty": 2}),

@@ -100,6 +100,56 @@ impl DstuNodeType {
         }
     }
 
+    /// 转换为单数字符串（用于 type 字段）
+    ///
+    /// 返回资源类型的单数形式，如 "note", "textbook", "exam"
+    pub fn to_type_string(&self) -> &'static str {
+        match self {
+            DstuNodeType::Note => "note",
+            DstuNodeType::Textbook => "textbook",
+            DstuNodeType::Exam => "exam",
+            DstuNodeType::Translation => "translation",
+            DstuNodeType::Essay => "essay",
+            DstuNodeType::Image => "image",
+            DstuNodeType::File => "file",
+            DstuNodeType::Folder => "folder",
+            DstuNodeType::MindMap => "mindmap",
+            DstuNodeType::Retrieval => "retrieval",
+        }
+    }
+
+    /// 从资源 ID 前缀推断节点类型（新的规范函数）
+    ///
+    /// 这是推断资源类型的唯一规范入口。
+    /// 所有 ID 前缀映射应集中在此函数中。
+    ///
+    /// # 参数
+    /// - `id`: 资源 ID（如 "note_abc123", "tb_xyz"）
+    ///
+    /// # 返回
+    /// 推断成功返回 `Some(DstuNodeType)`，无法识别返回 `None`
+    pub fn from_id_prefix(id: &str) -> Option<Self> {
+        if id.starts_with("note_") {
+            Some(DstuNodeType::Note)
+        } else if id.starts_with("tb_") {
+            Some(DstuNodeType::Textbook)
+        } else if id.starts_with("file_") || id.starts_with("att_") || id.starts_with("img_") {
+            Some(DstuNodeType::File)
+        } else if id.starts_with("exam_") {
+            Some(DstuNodeType::Exam)
+        } else if id.starts_with("tr_") {
+            Some(DstuNodeType::Translation)
+        } else if id.starts_with("essay_session_") || id.starts_with("essay_") {
+            Some(DstuNodeType::Essay)
+        } else if id.starts_with("fld_") {
+            Some(DstuNodeType::Folder)
+        } else if id.starts_with("mm_") {
+            Some(DstuNodeType::MindMap)
+        } else {
+            None
+        }
+    }
+
     /// 获取显示名称的 i18n 键
     pub fn display_name_key(&self) -> &'static str {
         match self {
@@ -495,6 +545,18 @@ pub struct DstuCreateOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file_base64: Option<String>,
 
+    /// 文件数据（Base64 编码，用于教材/文件/图片创建，与 file_base64 同义）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_data: Option<String>,
+
+    /// 目标文件夹 ID
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub folder_id: Option<String>,
+
+    /// 标签列表（仅笔记类资源）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<Vec<String>>,
+
     /// 扩展元数据
     #[serde(skip_serializing_if = "Option::is_none")]
     pub metadata: Option<Value>,
@@ -508,6 +570,9 @@ impl DstuCreateOptions {
             name: name.into(),
             content: Some(content.into()),
             file_base64: None,
+            file_data: None,
+            folder_id: None,
+            tags: None,
             metadata: None,
         }
     }
@@ -519,6 +584,9 @@ impl DstuCreateOptions {
             name: name.into(),
             content: None,
             file_base64: None,
+            file_data: None,
+            folder_id: None,
+            tags: None,
             metadata: None,
         }
     }
@@ -534,6 +602,9 @@ impl DstuCreateOptions {
             name: name.into(),
             content: None,
             file_base64: Some(file_base64.into()),
+            file_data: None,
+            folder_id: None,
+            tags: None,
             metadata: None,
         }
     }
@@ -655,77 +726,9 @@ impl DstuWatchEvent {
 
 /// C1: 路径解析结果（真实文件夹路径）
 ///
-/// 用于解析 DSTU 真实路径格式：`/{folder_path}/{resource_id}`
-///
-/// ## 路径示例
-/// - `/高考复习/函数/note_abc123` → 在"高考复习/函数"文件夹下的笔记
-/// - `/我的教材/tb_xyz789` → 在"我的教材"文件夹下的教材
-/// - `/exam_sheet_001` → 根目录下的题目集（无文件夹）
-/// - `/@trash` → 回收站（虚拟路径）
-/// - `/@recent` → 最近使用（虚拟路径）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DstuParsedPath {
-    /// 完整路径
-    pub full_path: String,
-    /// 文件夹部分（不含资源 ID），如 "/高考复习/函数"
-    pub folder_path: Option<String>,
-    /// 资源 ID（最后一段），如 "note_abc123"
-    pub resource_id: Option<String>,
-    /// 资源类型（从 ID 前缀推断）
-    pub resource_type: Option<String>,
-    /// 是否为根目录
-    pub is_root: bool,
-    /// 是否为虚拟路径（@trash, @recent）
-    pub is_virtual: bool,
-}
-
-impl DstuParsedPath {
-    /// 创建根路径
-    pub fn root() -> Self {
-        Self {
-            full_path: "/".to_string(),
-            folder_path: None,
-            resource_id: None,
-            resource_type: None,
-            is_root: true,
-            is_virtual: false,
-        }
-    }
-
-    /// 创建虚拟路径
-    pub fn virtual_path(name: &str) -> Self {
-        Self {
-            full_path: format!("/@{}", name),
-            folder_path: None,
-            resource_id: None,
-            resource_type: None,
-            is_root: false,
-            is_virtual: true,
-        }
-    }
-
-    /// 从 ID 前缀推断资源类型
-    pub fn infer_resource_type(id: &str) -> Option<String> {
-        if id.starts_with("note_") {
-            Some("note".to_string())
-        } else if id.starts_with("file_") || id.starts_with("tb_") || id.starts_with("att_") {
-            Some("file".to_string())
-        } else if id.starts_with("exam_") {
-            Some("exam".to_string())
-        } else if id.starts_with("tr_") {
-            Some("translation".to_string())
-        } else if id.starts_with("essay_session_") || id.starts_with("essay_") {
-            Some("essay".to_string())
-        } else if id.starts_with("fld_") {
-            Some("folder".to_string())
-        } else if id.starts_with("mm_") {
-            Some("mindmap".to_string())
-        } else {
-            None
-        }
-    }
-}
+/// 已迁移至 `path_types::ParsedPath`。此类型别名保留用于向后兼容。
+/// 新代码应直接使用 `path_types::ParsedPath`。
+pub type DstuParsedPath = crate::dstu::path_types::ParsedPath;
 
 /// C2: 路径缓存条目
 #[derive(Debug, Clone, Serialize, Deserialize)]

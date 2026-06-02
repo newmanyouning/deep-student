@@ -49,6 +49,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
     steps:
       - name: Free disk space
         run: |
@@ -101,6 +102,7 @@ jobs:
           - sync_weird_tests
     env:
       CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
       # proptest 在 CI 里用随机种子；固定一下便于 reproduce
       PROPTEST_CASES: '64'
     steps:
@@ -136,6 +138,7 @@ jobs:
     timeout-minutes: 20
     env:
       CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
     steps:
       - name: Free disk space
         run: |

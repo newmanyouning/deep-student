@@ -14,11 +14,10 @@ use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 use crate::llm_manager::LLMManager;
-use crate::vfs::database::VfsDatabase;
-use crate::vfs::error::VfsResult;
-use crate::vfs::repos::embedding_repo::VfsIndexStateRepo;
-use crate::vfs::repos::note_repo::VfsNoteRepo;
 use crate::vfs::types::{VfsCreateNoteParams, VfsUpdateNoteParams};
+
+use super::error::{MemoryError, MemoryResult};
+use super::storage_trait::MemoryStorage;
 
 use super::service::{MemoryListItem, MemoryService};
 
@@ -35,14 +34,14 @@ const SEED_CATEGORIES: &[(&str, &str)] = &[
 ];
 
 pub struct MemoryCategoryManager {
-    vfs_db: Arc<VfsDatabase>,
+    storage: Arc<dyn MemoryStorage>,
     llm_manager: Arc<LLMManager>,
 }
 
 impl MemoryCategoryManager {
-    pub fn new(vfs_db: Arc<VfsDatabase>, llm_manager: Arc<LLMManager>) -> Self {
+    pub fn new(storage: Arc<dyn MemoryStorage>, llm_manager: Arc<LLMManager>) -> Self {
         Self {
-            vfs_db,
+            storage,
             llm_manager,
         }
     }
@@ -76,7 +75,7 @@ impl MemoryCategoryManager {
     /// 合并两个来源的分类：
     /// 1. 预定义种子分类（保证基础结构存在）
     /// 2. 记忆根文件夹下的实际子文件夹（捕获 LLM 自动创建的新分类）
-    pub async fn refresh_all_categories(&self, memory_service: &MemoryService) -> VfsResult<()> {
+    pub async fn refresh_all_categories(&self, memory_service: &MemoryService) -> MemoryResult<()> {
         let mut categories: Vec<(String, String)> = SEED_CATEGORIES
             .iter()
             .map(|(name, path)| (name.to_string(), path.to_string()))
@@ -133,7 +132,7 @@ impl MemoryCategoryManager {
         memory_service: &MemoryService,
         category_name: &str,
         folder_path: &str,
-    ) -> VfsResult<()> {
+    ) -> MemoryResult<()> {
         let memories = memory_service.list_shallow(Some(folder_path), 50, 0)?;
 
         let memories: Vec<&MemoryListItem> = memories
@@ -163,7 +162,7 @@ impl MemoryCategoryManager {
                 memory_contents.push(format!("[学习记忆] {}", mem.title));
                 continue;
             }
-            let content = VfsNoteRepo::get_note_content(&self.vfs_db, &mem.id)?.unwrap_or_default();
+            let content = self.storage.get_note_content(&mem.id)?.unwrap_or_default();
             if content.is_empty() {
                 memory_contents.push(mem.title.clone());
             } else {
@@ -196,7 +195,7 @@ impl MemoryCategoryManager {
         &self,
         category_name: &str,
         memory_contents: &[String],
-    ) -> VfsResult<String> {
+    ) -> MemoryResult<String> {
         let facts_list = memory_contents
             .iter()
             .enumerate()
@@ -230,7 +229,7 @@ impl MemoryCategoryManager {
             .call_memory_decision_raw_prompt(&prompt)
             .await
             .map_err(|e| {
-                crate::vfs::error::VfsError::Other(format!(
+                MemoryError::Other(format!(
                     "Category summary LLM call failed: {}",
                     e
                 ))
@@ -245,10 +244,10 @@ impl MemoryCategoryManager {
         root_folder_id: &str,
         title: &str,
         content: &str,
-    ) -> VfsResult<()> {
+    ) -> MemoryResult<()> {
         use rusqlite::params;
 
-        let conn = self.vfs_db.get_conn_safe()?;
+        let conn = self.storage.conn()?;
         let existing: Option<String> = conn
             .query_row(
                 r#"
@@ -264,8 +263,7 @@ impl MemoryCategoryManager {
             .ok();
 
         if let Some(note_id) = existing {
-            let updated = VfsNoteRepo::update_note(
-                &self.vfs_db,
+            let updated = self.storage.update_note(
                 &note_id,
                 VfsUpdateNoteParams {
                     title: None,
@@ -274,8 +272,7 @@ impl MemoryCategoryManager {
                     expected_updated_at: None,
                 },
             )?;
-            if let Err(e) = VfsIndexStateRepo::mark_disabled_with_reason(
-                &self.vfs_db,
+            if let Err(e) = self.storage.mark_disabled_with_reason(
                 &updated.resource_id,
                 "system category note",
             ) {
@@ -286,8 +283,7 @@ impl MemoryCategoryManager {
             }
             debug!("[CategoryManager] Updated category note: {}", title);
         } else {
-            let note = VfsNoteRepo::create_note_in_folder(
-                &self.vfs_db,
+            let note = self.storage.create_note_in_folder(
                 VfsCreateNoteParams {
                     title: title.to_string(),
                     content: content.to_string(),
@@ -295,8 +291,7 @@ impl MemoryCategoryManager {
                 },
                 Some(root_folder_id),
             )?;
-            if let Err(e) = VfsIndexStateRepo::mark_disabled_with_reason(
-                &self.vfs_db,
+            if let Err(e) = self.storage.mark_disabled_with_reason(
                 &note.resource_id,
                 "system category note",
             ) {
@@ -311,10 +306,10 @@ impl MemoryCategoryManager {
         Ok(())
     }
 
-    fn delete_category_note_if_exists(&self, root_folder_id: &str, title: &str) -> VfsResult<()> {
+    fn delete_category_note_if_exists(&self, root_folder_id: &str, title: &str) -> MemoryResult<()> {
         use rusqlite::params;
 
-        let conn = self.vfs_db.get_conn_safe()?;
+        let conn = self.storage.conn()?;
         let existing: Option<String> = conn
             .query_row(
                 r#"
@@ -330,7 +325,7 @@ impl MemoryCategoryManager {
             .ok();
 
         if let Some(note_id) = existing {
-            VfsNoteRepo::delete_note_with_folder_item(&self.vfs_db, &note_id)?;
+            self.storage.delete_note_with_folder_item(&note_id)?;
             debug!("[CategoryManager] Deleted empty category note: {}", title);
         }
 
@@ -343,7 +338,7 @@ impl MemoryCategoryManager {
     pub fn load_all_category_summaries(
         &self,
         root_folder_id: &str,
-    ) -> VfsResult<Vec<(String, String)>> {
+    ) -> MemoryResult<Vec<(String, String)>> {
         let sys_folder_id = self.find_system_folder(root_folder_id)?;
         let mut folder_ids = Vec::new();
         if let Some(sys_id) = sys_folder_id {
@@ -364,7 +359,7 @@ impl MemoryCategoryManager {
                     continue;
                 }
                 let content =
-                    VfsNoteRepo::get_note_content(&self.vfs_db, &note_id)?.unwrap_or_default();
+                    self.storage.get_note_content(&note_id)?.unwrap_or_default();
                 if !content.is_empty() {
                     results.push((decoded, content));
                 }
@@ -374,9 +369,9 @@ impl MemoryCategoryManager {
         Ok(results)
     }
 
-    fn list_category_notes_in_folder(&self, folder_id: &str) -> VfsResult<Vec<(String, String)>> {
+    fn list_category_notes_in_folder(&self, folder_id: &str) -> MemoryResult<Vec<(String, String)>> {
         use rusqlite::params;
-        let conn = self.vfs_db.get_conn_safe()?;
+        let conn = self.storage.conn()?;
         let mut stmt = conn.prepare(
             r#"
             SELECT n.id, n.title FROM notes n
@@ -395,9 +390,8 @@ impl MemoryCategoryManager {
         Ok(notes)
     }
 
-    fn find_system_folder(&self, root_folder_id: &str) -> VfsResult<Option<String>> {
-        use crate::vfs::repos::folder_repo::VfsFolderRepo;
-        let children = VfsFolderRepo::list_folders_by_parent(&self.vfs_db, Some(root_folder_id))?;
+    fn find_system_folder(&self, root_folder_id: &str) -> MemoryResult<Option<String>> {
+        let children = self.storage.list_folders_by_parent(Some(root_folder_id))?;
         Ok(children
             .iter()
             .find(|f| f.title == "__system__")

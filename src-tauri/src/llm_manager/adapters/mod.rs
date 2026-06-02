@@ -16,14 +16,9 @@
 
 mod anthropic;
 mod deepseek;
-mod doubao;
-mod ernie;
 mod gemini;
 mod generic_openai;
-mod grok;
-mod mimo;
 mod minimax;
-mod mistral;
 mod moonshot;
 mod qwen;
 pub mod zhipu;
@@ -33,19 +28,17 @@ mod streaming_harness;
 
 pub use anthropic::AnthropicAdapter;
 pub use deepseek::DeepSeekAdapter;
-pub use doubao::DoubaoAdapter;
-pub use ernie::ErnieAdapter;
 pub use gemini::GeminiAdapter;
 pub use generic_openai::GenericOpenAIAdapter;
-pub use grok::GrokAdapter;
-pub use mimo::MimoAdapter;
 pub use minimax::MiniMaxAdapter;
-pub use mistral::MistralAdapter;
 pub use moonshot::MoonshotAdapter;
 pub use qwen::QwenAdapter;
 pub use zhipu::ZhipuAdapter;
 
 use crate::llm_manager::ApiConfig;
+use generic_openai::{
+    DOUBAO_OVERRIDES, ERNIE_OVERRIDES, GROK_OVERRIDES, MIMO_OVERRIDES, MISTRAL_OVERRIDES,
+};
 use serde_json::{json, Map, Value};
 use std::collections::HashMap;
 use std::sync::LazyLock;
@@ -202,38 +195,38 @@ static ADAPTER_REGISTRY: LazyLock<HashMap<&'static str, Box<dyn RequestAdapter>>
 
         // 注册所有适配器
         // 通用 OpenAI 兼容（默认）
-        m.insert("openai", Box::new(GenericOpenAIAdapter));
-        m.insert("general", Box::new(GenericOpenAIAdapter));
-        m.insert("siliconflow", Box::new(GenericOpenAIAdapter)); // SiliconFlow 使用通用适配器
-        m.insert("nvidia", Box::new(GenericOpenAIAdapter)); // NVIDIA NIM hosted API 使用 OpenAI-compatible 路径
+        m.insert("openai", Box::new(GenericOpenAIAdapter { overrides: None }));
+        m.insert("general", Box::new(GenericOpenAIAdapter { overrides: None }));
+        m.insert("siliconflow", Box::new(GenericOpenAIAdapter { overrides: None })); // SiliconFlow 使用通用适配器
+        m.insert("nvidia", Box::new(GenericOpenAIAdapter { overrides: None })); // NVIDIA NIM hosted API 使用 OpenAI-compatible 路径
 
         // 国产模型供应商（专用适配器）
-        m.insert("mimo", Box::new(MimoAdapter));
+        m.insert("mimo", Box::new(GenericOpenAIAdapter { overrides: Some(&MIMO_OVERRIDES) }));
         m.insert("minimax", Box::new(MiniMaxAdapter));
         m.insert("deepseek", Box::new(DeepSeekAdapter));
         m.insert("qwen", Box::new(QwenAdapter));
         m.insert("zhipu", Box::new(ZhipuAdapter));
-        m.insert("doubao", Box::new(DoubaoAdapter));
+        m.insert("doubao", Box::new(GenericOpenAIAdapter { overrides: Some(&DOUBAO_OVERRIDES) }));
         m.insert("moonshot", Box::new(MoonshotAdapter));
         m.insert("kimi", Box::new(MoonshotAdapter)); // kimi 别名
-        m.insert("ernie", Box::new(ErnieAdapter));
-        m.insert("baidu", Box::new(ErnieAdapter)); // baidu 别名
+        m.insert("ernie", Box::new(GenericOpenAIAdapter { overrides: Some(&ERNIE_OVERRIDES) }));
+        m.insert("baidu", Box::new(GenericOpenAIAdapter { overrides: Some(&ERNIE_OVERRIDES) })); // baidu 别名
 
         // 海外供应商
         m.insert("anthropic", Box::new(AnthropicAdapter));
         m.insert("claude", Box::new(AnthropicAdapter));
         m.insert("google", Box::new(GeminiAdapter));
         m.insert("gemini", Box::new(GeminiAdapter));
-        m.insert("xai", Box::new(GrokAdapter));
-        m.insert("grok", Box::new(GrokAdapter));
-        m.insert("mistral", Box::new(MistralAdapter));
+        m.insert("xai", Box::new(GenericOpenAIAdapter { overrides: Some(&GROK_OVERRIDES) }));
+        m.insert("grok", Box::new(GenericOpenAIAdapter { overrides: Some(&GROK_OVERRIDES) }));
+        m.insert("mistral", Box::new(GenericOpenAIAdapter { overrides: Some(&MISTRAL_OVERRIDES) }));
 
         m
     });
 
 /// 默认适配器（当找不到匹配时使用）
 static DEFAULT_ADAPTER: LazyLock<Box<dyn RequestAdapter>> =
-    LazyLock::new(|| Box::new(GenericOpenAIAdapter));
+    LazyLock::new(|| Box::new(GenericOpenAIAdapter { overrides: None }));
 
 /// 聚合平台列表（这些平台托管多个供应商的模型，不应作为适配器选择依据）
 const AGGREGATOR_PLATFORMS: &[&str] =

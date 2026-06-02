@@ -26,7 +26,7 @@ impl ChatV2Pipeline {
     /// - LLM 直读模式（本方法）：将分类文件注入 system prompt，每次对话都有
     /// - 向量搜索模式（memory_search 工具）：LLM 按需主动搜索
     async fn load_user_profile(&self, ctx: &PipelineContext) -> Option<String> {
-        use crate::memory::{MemoryCategoryManager, MemoryConfig, MemoryService};
+        use crate::memory::{MemoryCategoryManager, MemoryConfig, MemoryService, VfsMemoryStorage};
         use crate::vfs::lance_store::VfsLanceStore;
 
         if ctx.options.memory_enabled == Some(false) {
@@ -34,14 +34,16 @@ impl ChatV2Pipeline {
         }
 
         let vfs_db = self.vfs_db.as_ref()?;
-        let mem_cfg = MemoryConfig::new(vfs_db.clone());
-        if mem_cfg.is_privacy_mode().ok()? {
-            return None;
-        }
         let lance_store = VfsLanceStore::new(vfs_db.clone())
             .ok()
             .map(std::sync::Arc::new)?;
-        let svc = MemoryService::new(vfs_db.clone(), lance_store, self.llm_manager.clone());
+        let storage = std::sync::Arc::new(VfsMemoryStorage::new(
+            vfs_db.clone(), lance_store, self.llm_manager.clone()));
+        let mem_cfg = MemoryConfig::new(storage.clone());
+        if mem_cfg.is_privacy_mode().ok()? {
+            return None;
+        }
+        let svc = MemoryService::new_with_storage(storage.clone(), self.llm_manager.clone());
 
         let root_id = match svc.get_root_folder_id() {
             Ok(Some(id)) => id,
@@ -51,7 +53,7 @@ impl ChatV2Pipeline {
         let mut sections: Vec<String> = Vec::new();
 
         // 1. 加载分类摘要文件（Memory Category Layer）
-        let cat_mgr = MemoryCategoryManager::new(vfs_db.clone(), self.llm_manager.clone());
+        let cat_mgr = MemoryCategoryManager::new(storage.clone(), self.llm_manager.clone());
         match cat_mgr.load_all_category_summaries(&root_id) {
             Ok(categories) => {
                 for (cat_name, content) in &categories {

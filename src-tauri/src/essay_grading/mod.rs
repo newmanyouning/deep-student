@@ -25,7 +25,6 @@ use crate::vfs::repos::VfsEssayRepo;
 use crate::vfs::types::{
     VfsCreateEssaySessionParams, VfsEssaySession, VfsUpdateEssaySessionParams,
 };
-use error::EssayGradingResult as _;
 use events::GradingEventEmitter;
 use types::{GradingRequest, GradingResponse, GradingRoundResponse};
 

@@ -23,6 +23,7 @@ pub mod blob_repo;
 pub mod embedding_dim_repo;
 pub mod embedding_repo;
 pub mod essay_repo;
+pub mod folder_tree_helper;
 pub mod exam_repo;
 pub mod file_repo;
 pub mod folder_repo;

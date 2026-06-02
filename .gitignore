@@ -282,3 +282,14 @@ AGENTS.md
 UI-REVIEW.md
 FRONTEND_ANALYSIS.md
 .codex-page-state.png
+
+# API keys and credentials
+scripts/all_vendor_api_keys.json
+scripts/test_api_keys.json
+
+# Build artifacts and test output
+src-tauri/cargo_check*.txt
+src-tauri/cargo_errors.txt
+src-tauri/cargo_full.txt
+scripts/__pycache__/
+scripts/connectivity_test_results.json

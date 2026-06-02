@@ -26,7 +26,6 @@ use std::time::Duration;
 
 use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
-use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
 
 // ============================================================================
@@ -437,7 +436,7 @@ impl AcademicSearchExecutor {
                 }
                 Ok(Event::Text(ref e)) => {
                     if in_entry {
-                        let text = e.unescape().unwrap_or_default().to_string();
+                        let text = e.decode().unwrap_or_default().to_string();
                         if in_author_name {
                             authors.push(text.trim().to_string());
                         } else {

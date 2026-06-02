@@ -7,7 +7,6 @@ use tauri::Emitter;
 
 use super::executor::{ExecutionContext, ToolError, ToolExecutor, ToolResult, ToolSensitivity};
 use super::strip_tool_namespace;
-use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
 use crate::chat_v2::workspace::{
     AgentRole, AgentStatus, DocumentType, MessageType, SubagentTaskData, WorkspaceCoordinator,

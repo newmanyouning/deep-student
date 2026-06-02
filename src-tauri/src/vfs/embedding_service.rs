@@ -18,7 +18,7 @@ use tracing::{debug, info, warn};
 
 use crate::llm_manager::LLMManager;
 use crate::vfs::error::{VfsError, VfsResult};
-use crate::vfs::indexing::TextChunk;
+use crate::vfs::indexing::types::TextChunk;
 use crate::vfs::lance_store::{VfsLanceRow, VfsLanceStore};
 use crate::vfs::repos::{VfsEmbedding, MODALITY_TEXT};
 

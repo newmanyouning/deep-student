@@ -1,12 +1,15 @@
-use futures_util::StreamExt;
 use serde_json::json;
 /// 翻译管线 - 核心业务逻辑
 use std::sync::Arc;
 
+use crate::utils::streaming_llm_pipeline::StreamingLLMPipeline;
+
+// 重新导出供 chat_popover.rs 等调用方使用
+pub use crate::utils::streaming_llm_pipeline::StreamStatus;
+
 use crate::database::Database;
-use crate::llm_manager::{build_provider_adapter, ApiConfig, LLMManager};
+use crate::llm_manager::{ApiConfig, LLMManager};
 use crate::models::AppError;
-use crate::providers::ProviderAdapter;
 // ★ VFS 统一存储（2025-12-07）
 use crate::vfs::database::VfsDatabase;
 
@@ -19,12 +22,6 @@ pub struct TranslationDeps {
     pub db: Arc<Database>, // 主数据库（配置/设置读取）
     pub emitter: TranslationEventEmitter,
     pub vfs_db: Arc<VfsDatabase>, // ★ VFS 数据库（必需，唯一存储）
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum StreamStatus {
-    Completed,
-    Cancelled,
 }
 
 /// 运行翻译管线
@@ -240,163 +237,43 @@ pub(crate) async fn stream_translate<F>(
     user_prompt: &str,
     stream_event: &str,
     llm: Arc<LLMManager>,
-    mut on_chunk: F,
+    on_chunk: F,
 ) -> Result<StreamStatus, AppError>
 where
     F: FnMut(String),
 {
-    let result = async {
-        // 构造消息
-        let messages = vec![
-            json!({
-                "role": "system",
-                "content": system_prompt
-            }),
-            json!({
-                "role": "user",
-                "content": user_prompt
-            }),
-        ];
+    let messages = vec![
+        json!({ "role": "system", "content": system_prompt }),
+        json!({ "role": "user", "content": user_prompt }),
+    ];
 
-        // 构造请求体
-        let mut request_body = json!({
-            "model": config.model,
-            "messages": messages,
-            "temperature": 0.3,
-            "max_tokens": crate::llm_manager::effective_max_tokens(
-                config.max_output_tokens,
-                config.max_tokens_limit,
-            ),
-            "stream": true, // 关键：启用流式
-        });
+    let max_tokens = crate::llm_manager::effective_max_tokens(
+        config.max_output_tokens,
+        config.max_tokens_limit,
+    );
 
-        crate::llm_manager::LLMManager::apply_reasoning_config(&mut request_body, config, None);
-
-        // 选择适配器
-        let adapter: Box<dyn ProviderAdapter> = build_provider_adapter(config);
-
-        // 构造 HTTP 请求
-        let preq = adapter
-            .build_request(&config.base_url, api_key, &config.model, &request_body)
-            .map_err(|e| AppError::llm(format!("翻译请求构建失败: {}", e)))?;
-
-        let mut header_map = reqwest::header::HeaderMap::new();
-        for (k, v) in preq.headers.iter() {
-            if let (Ok(name), Ok(val)) = (
-                reqwest::header::HeaderName::from_bytes(k.as_bytes()),
-                reqwest::header::HeaderValue::from_str(v),
-            ) {
-                header_map.insert(name, val);
-            }
+    /// 翻译专用的 HTTP 错误映射
+    fn translate_error_handler(status: u16) -> Option<&'static str> {
+        match status {
+            401 => Some("API 密钥无效或已过期，请检查设置"),
+            403 => Some("API 访问被拒绝，请检查账户权限"),
+            429 => Some("请求过于频繁，请稍后重试"),
+            500..=599 => Some("翻译服务暂时不可用，请稍后重试"),
+            _ => None,
         }
+    }
 
-        // 复用 LLMManager 配置好的 HTTP 客户端
-        let client = llm.get_http_client();
-
-        // 注册取消监听
-        llm.consume_pending_cancel(stream_event).await;
-        let mut cancel_rx = llm.subscribe_cancel_stream(stream_event).await;
-
-        // 发送流式请求
-        let response = client
-            .post(&preq.url)
-            .headers(header_map)
-            .json(&preq.body)
-            .send()
-            .await
-            .map_err(|e| AppError::llm(format!("翻译请求失败: {}", e)))?;
-
-        if !response.status().is_success() {
-            let status = response.status();
-            let error_text = response.text().await.unwrap_or_default();
-            // 记录完整错误到日志（仅开发调试用）
-            eprintln!(
-                "❌ [Translation] API error {}: {}",
-                status, error_text
-            );
-            // 返回用户友好的错误消息，不暴露敏感信息
-            let user_message = match status.as_u16() {
-                401 => "API 密钥无效或已过期，请检查设置",
-                403 => "API 访问被拒绝，请检查账户权限",
-                429 => "请求过于频繁，请稍后重试",
-                500..=599 => "翻译服务暂时不可用，请稍后重试",
-                _ => "翻译请求失败，请重试",
-            };
-            return Err(AppError::llm(user_message.to_string()));
-        }
-
-        // 解析 SSE 流
-        let mut stream = response.bytes_stream();
-        let mut buffer = String::new();
-        let mut stream_ended = false;
-        let mut cancelled = false;
-
-        while !stream_ended && !cancelled {
-            if llm.consume_pending_cancel(stream_event).await {
-                cancelled = true;
-                break;
-            }
-
-            tokio::select! {
-                changed = cancel_rx.changed() => {
-                    if changed.is_ok() && *cancel_rx.borrow() {
-                        cancelled = true;
-                    }
-                }
-                chunk_result = stream.next() => {
-                    match chunk_result {
-                        Some(chunk) => {
-                            let bytes = chunk.map_err(|e| AppError::llm(format!("读取流失败: {}", e)))?;
-                            buffer.push_str(&String::from_utf8_lossy(&bytes));
-
-                            while let Some(pos) = buffer.find("\n\n") {
-                                let line = buffer[..pos].trim().to_string();
-                                buffer = buffer[pos + 2..].to_string();
-
-                                if line.is_empty() {
-                                    continue;
-                                }
-
-                                if line == "data: [DONE]" {
-                                    stream_ended = true;
-                                    break;
-                                }
-
-                                let events = adapter.parse_stream(&line);
-                                for event in events {
-                                    match event {
-                                        crate::providers::StreamEvent::ContentChunk(content) => {
-                                            on_chunk(content);
-                                        }
-                                        crate::providers::StreamEvent::Done => {
-                                            stream_ended = true;
-                                            break;
-                                        }
-                                        _ => {}
-                                    }
-                                }
-
-                                if stream_ended {
-                                    break;
-                                }
-                            }
-                        }
-                        None => {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
-        if cancelled {
-            return Ok(StreamStatus::Cancelled);
-        }
-
-        Ok(StreamStatus::Completed)
-    }.await;
-
-    llm.clear_cancel_stream(stream_event).await;
-
-    result
+    StreamingLLMPipeline::stream(
+        config,
+        api_key,
+        messages,
+        stream_event,
+        llm,
+        0.3,
+        max_tokens,
+        "翻译",
+        Some(translate_error_handler),
+        on_chunk,
+    )
+    .await
 }

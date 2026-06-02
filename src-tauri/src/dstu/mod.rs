@@ -104,6 +104,7 @@ pub use handlers::{
     dstu_purge_all,
     // E4: 路径缓存
     dstu_refresh_path_cache,
+    dstu_rename,
     dstu_restore,
     dstu_restore_many,
     dstu_search,
@@ -113,6 +114,9 @@ pub use handlers::{
     dstu_set_favorite,
     dstu_set_metadata,
     dstu_update,
+    // 资源变化监听命令
+    dstu_unwatch,
+    dstu_watch,
 };
 
 // folder_handlers 导出（文档 23 Prompt 3/4 实现）

@@ -4,7 +4,7 @@
 
 use super::{
     DeepSeekOcrAdapter, GenericVlmAdapter, Glm4vOcrAdapter, OcrAdapter, OcrEngineType,
-    PaddleOcrVlAdapter, SystemOcrAdapter,
+    PaddleOcrApiAdapter, PaddleOcrVlAdapter, SystemOcrAdapter,
 };
 use regex::Regex;
 use std::sync::{Arc, LazyLock};
@@ -27,9 +27,7 @@ impl OcrAdapterFactory {
             OcrEngineType::PaddleOcrVlV1 => Arc::new(PaddleOcrVlAdapter::with_engine(
                 OcrEngineType::PaddleOcrVlV1,
             )),
-            OcrEngineType::PaddleOcrApi => Arc::new(PaddleOcrVlAdapter::with_engine(
-                OcrEngineType::PaddleOcrApi,
-            )),
+            OcrEngineType::PaddleOcrApi => Arc::new(PaddleOcrApiAdapter::new()),
             OcrEngineType::Glm4vOcr => Arc::new(Glm4vOcrAdapter::new()),
             OcrEngineType::GenericVlm => Arc::new(GenericVlmAdapter::new()),
             OcrEngineType::SystemOcr => Arc::new(SystemOcrAdapter::new()),
@@ -166,6 +164,9 @@ impl OcrAdapterFactory {
             OcrEngineType::Glm4vOcr
         } else if model_lower.contains("deepseek") && model_lower.contains("ocr") {
             OcrEngineType::DeepSeekOcr
+        } else if model_lower.contains("paddleocr-vl-1.6") || model_lower.contains("paddleocr_vl_1_6") {
+            // PaddleOCR-VL-1.6 仅在 REST API (AI Studio) 可用，不是 VLM 引擎
+            OcrEngineType::PaddleOcrApi
         } else if model_lower.contains("paddleocr-vl-1") || model_lower.contains("paddleocr_vl_1") {
             OcrEngineType::PaddleOcrVl
         } else if model_lower.contains("pp-ocrv5") || model_lower.contains("pp-structurev3") || model_lower.contains("pp_structurev3") {

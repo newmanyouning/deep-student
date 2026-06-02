@@ -333,32 +333,14 @@ pub async fn dstu_export(
 // ============================================================================
 
 /// 从路径推断资源节点类型
+///
+/// 使用 `DstuNodeType::from_id_prefix` 作为规范源。
 fn infer_node_type_from_path(path: &str) -> Result<DstuNodeType, String> {
-    // 从路径末尾提取 resource_id，根据前缀判断类型
+    use crate::dstu::types::DstuNodeType;
     let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
     let id = segments.last().ok_or("路径为空")?;
 
-    if id.starts_with("note_") {
-        Ok(DstuNodeType::Note)
-    } else if id.starts_with("tb_") {
-        Ok(DstuNodeType::Textbook)
-    } else if id.starts_with("exam_") {
-        Ok(DstuNodeType::Exam)
-    } else if id.starts_with("tr_") {
-        Ok(DstuNodeType::Translation)
-    } else if id.starts_with("essay_session_") || id.starts_with("essay_") {
-        Ok(DstuNodeType::Essay)
-    } else if id.starts_with("img_") {
-        Ok(DstuNodeType::Image)
-    } else if id.starts_with("file_") || id.starts_with("att_") {
-        Ok(DstuNodeType::File)
-    } else if id.starts_with("mm_") {
-        Ok(DstuNodeType::MindMap)
-    } else if id.starts_with("fld_") {
-        Ok(DstuNodeType::Folder)
-    } else {
-        Err(format!("无法从 ID '{}' 推断资源类型", id))
-    }
+    DstuNodeType::from_id_prefix(id).ok_or_else(|| format!("无法从 ID '{}' 推断资源类型", id))
 }
 
 /// 清理文件名中的非法字符

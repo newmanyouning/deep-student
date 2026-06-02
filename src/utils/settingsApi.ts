@@ -82,6 +82,9 @@ export async function testMcpConnection(command: string, args: string[], env?: R
 
 
 
+// TODOs (2026-06-01): 以下 ~26 个 research_* 命令在 Rust 后端尚未实现。
+// 后端桩函数定义在 src-tauri/src/cmd/research_stubs.rs，返回 "not yet implemented" 错误。
+// 逐项实现后请移除对应桩函数，并更新 lib.rs 中的 generate_handler! 注册为真实命令。
 export async function researchGetRound(sessionId: string, roundNo: number): Promise<any> {
   return await invoke('research_get_round', { ...withSessionId(sessionId), round_no: roundNo, roundNo });
 }
