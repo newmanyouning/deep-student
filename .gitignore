@@ -297,3 +297,4 @@ scripts/connectivity_test_results.json
 # Test PDF files (large, local only)
 scripts/*.pdf
 scripts/*.PDF
+scripts/test_ocr_pdfs.py
