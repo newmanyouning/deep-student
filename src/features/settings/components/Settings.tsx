@@ -1146,7 +1146,7 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
         </NotionDialog>
         {/* 外部搜索设置 */}
         {activeTab === 'search' && (
-          <ExternalSearchTab config={config} setConfig={setConfig} />
+          <ExternalSearchTab config={config} setConfig={setConfig} onSave={handleSave} saving={saving} />
         )}
         {/* 模型分配 */}
         {/* 模型分配 */}

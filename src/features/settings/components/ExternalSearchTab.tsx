@@ -8,6 +8,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/shad/Input';
+import { NotionButton } from '@/components/ui/NotionButton';
 import { SettingSection } from './SettingsCommon';
 import { EngineSettingsSection } from './EngineSettingsSection';
 import WebSearchAdvancedConfig from '@/components/WebSearchAdvancedConfig';
@@ -82,18 +83,22 @@ const GroupTitle = ({ title }: { title: string }) => (
 interface ExternalSearchTabProps {
   config: any;
   setConfig: (fn: (prev: any) => any) => void;
+  onSave?: (silent?: boolean) => Promise<void>;
+  saving?: boolean;
 }
 
 export const ExternalSearchTab: React.FC<ExternalSearchTabProps> = ({
   config,
   setConfig,
+  onSave,
+  saving,
 }) => {
   const { t } = useTranslation(['settings', 'common']);
 
   return (
     <div className="space-y-1 pb-10 text-left animate-in fade-in duration-500">
-      <SettingSection 
-        title={t('settings:sections.external_search_title')} 
+      <SettingSection
+        title={t('settings:sections.external_search_title')}
         description={t('settings:sections.external_search_desc')}
         hideHeader
       >
@@ -107,7 +112,7 @@ export const ExternalSearchTab: React.FC<ExternalSearchTabProps> = ({
           <GroupTitle title={t('settings:sections.advanced_search_title')} />
           <div className="space-y-px">
             {/* 🔧 修复 #4: 移除 onConfigChange 中的重复通知，各 handler 已自行通知 */}
-            <WebSearchAdvancedConfig 
+            <WebSearchAdvancedConfig
               onConfigChange={() => {
                 // 不再发通知，避免与 WebSearchAdvancedConfig 内部通知重复
               }}
@@ -205,6 +210,20 @@ export const ExternalSearchTab: React.FC<ExternalSearchTabProps> = ({
             </SettingRow>
           </div>
         </div>
+
+        {/* 5. 保存按钮 */}
+        {onSave && (
+          <div className="mt-8 pt-6 border-t border-border/40 flex justify-end">
+            <NotionButton
+              variant="primary"
+              size="sm"
+              onClick={() => onSave(false)}
+              disabled={saving}
+            >
+              {saving ? t('common:actions.saving', '保存中...') : t('common:actions.save', '保存')}
+            </NotionButton>
+          </div>
+        )}
       </SettingSection>
     </div>
   );
