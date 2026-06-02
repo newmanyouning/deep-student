@@ -1174,7 +1174,8 @@ pub fn data_governance_run_slot_d_clone_db_test(
 #[cfg(test)]
 mod tests {
     use super::{refresh_schema_registry_from_dir, resolve_target_and_pending};
-    use crate::data_governance::commands_backup::{infer_database_from_table, validate_backup_id};
+    use crate::data_governance::commands_backup::infer_database_from_table;
+    use crate::data_governance::commands_shared::validate_backup_id;
     use crate::data_governance::schema_registry::{DatabaseId, DatabaseStatus, SchemaRegistry};
     use std::sync::{Arc, RwLock};
     use tempfile::TempDir;

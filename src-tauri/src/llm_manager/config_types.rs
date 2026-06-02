@@ -53,7 +53,7 @@ pub(crate) struct ProviderProtocolRegistryRecord {
 
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct ProviderProtocolRegistryDocument {
-    providers: Vec<ProviderProtocolRegistryRecord>,
+    pub(crate) providers: Vec<ProviderProtocolRegistryRecord>,
 }
 
 #[derive(Debug, Clone, Default)]

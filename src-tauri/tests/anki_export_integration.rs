@@ -83,7 +83,7 @@ async fn test_export_all_templates() -> Result<()> {
             Some(tmpl.clone()),
         )
         .await
-        .map_err(|e: String| anyhow::anyhow!(e))?;
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
 
         // 验证生成文件
         assert!(

@@ -117,7 +117,7 @@ fn assert_streaming_tool_call(
     expected_name: &str,
     expected_args_json: serde_json::Value,
 ) {
-    let parser = parser_for(&adapter);
+    let parser = parser_for(adapter);
     let events = drive_parser(parser.as_ref(), fixture);
     let calls = collect_tool_calls(&events);
     assert!(
