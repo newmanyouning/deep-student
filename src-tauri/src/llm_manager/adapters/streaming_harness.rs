@@ -259,13 +259,13 @@ data: [DONE]
 
 #[test]
 fn streaming_text_deepseek() {
-    assert_streaming_text(DeepSeekAdapter, DEEPSEEK_TEXT_FIXTURE, "答案是 42");
+    assert_streaming_text(&DeepSeekAdapter, DEEPSEEK_TEXT_FIXTURE, "答案是 42");
 }
 
 #[test]
 fn streaming_tool_call_deepseek() {
     assert_streaming_tool_call(
-        DeepSeekAdapter,
+        &DeepSeekAdapter,
         DEEPSEEK_TOOL_FIXTURE,
         "search",
         serde_json::json!({"q": "deepseek"}),
@@ -403,13 +403,13 @@ data: [DONE]
 
 #[test]
 fn streaming_text_minimax() {
-    assert_streaming_text(MiniMaxAdapter, MINIMAX_TEXT_FIXTURE, "海螺AI问候");
+    assert_streaming_text(&MiniMaxAdapter, MINIMAX_TEXT_FIXTURE, "海螺AI问候");
 }
 
 #[test]
 fn streaming_tool_call_minimax() {
     assert_streaming_tool_call(
-        MiniMaxAdapter,
+        &MiniMaxAdapter,
         MINIMAX_TOOL_FIXTURE,
         "translate",
         serde_json::json!({"text": "hi"}),
@@ -473,13 +473,13 @@ data: [DONE]
 
 #[test]
 fn streaming_text_moonshot() {
-    assert_streaming_text(MoonshotAdapter, MOONSHOT_TEXT_FIXTURE, "Kimi 上线。");
+    assert_streaming_text(&MoonshotAdapter, MOONSHOT_TEXT_FIXTURE, "Kimi 上线。");
 }
 
 #[test]
 fn streaming_tool_call_moonshot() {
     assert_streaming_tool_call(
-        MoonshotAdapter,
+        &MoonshotAdapter,
         MOONSHOT_TOOL_FIXTURE,
         "summarize",
         serde_json::json!({"doc_id": "abc"}),
@@ -507,13 +507,13 @@ data: [DONE]
 
 #[test]
 fn streaming_text_qwen() {
-    assert_streaming_text(QwenAdapter, QWEN_TEXT_FIXTURE, "通义千问在此");
+    assert_streaming_text(&QwenAdapter, QWEN_TEXT_FIXTURE, "通义千问在此");
 }
 
 #[test]
 fn streaming_tool_call_qwen() {
     assert_streaming_tool_call(
-        QwenAdapter,
+        &QwenAdapter,
         QWEN_TOOL_FIXTURE,
         "calc",
         serde_json::json!({"expr": "1+1"}),
@@ -541,13 +541,13 @@ data: [DONE]
 
 #[test]
 fn streaming_text_zhipu() {
-    assert_streaming_text(ZhipuAdapter, ZHIPU_TEXT_FIXTURE, "智谱GLM已就绪");
+    assert_streaming_text(&ZhipuAdapter, ZHIPU_TEXT_FIXTURE, "智谱GLM已就绪");
 }
 
 #[test]
 fn streaming_tool_call_zhipu() {
     assert_streaming_tool_call(
-        ZhipuAdapter,
+        &ZhipuAdapter,
         ZHIPU_TOOL_FIXTURE,
         "web_browser",
         serde_json::json!({"url": "https://example.com"}),
@@ -613,13 +613,13 @@ data: {\"type\":\"message_stop\"}
 
 #[test]
 fn streaming_text_anthropic() {
-    assert_streaming_text(AnthropicReqAdapter, ANTHROPIC_TEXT_FIXTURE, "Hi there!");
+    assert_streaming_text(&AnthropicReqAdapter, ANTHROPIC_TEXT_FIXTURE, "Hi there!");
 }
 
 #[test]
 fn streaming_tool_call_anthropic() {
     assert_streaming_tool_call(
-        AnthropicReqAdapter,
+        &AnthropicReqAdapter,
         ANTHROPIC_TOOL_FIXTURE,
         "get_stock_price",
         serde_json::json!({"ticker": "AAPL"}),
@@ -645,13 +645,13 @@ data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCa
 
 #[test]
 fn streaming_text_gemini() {
-    assert_streaming_text(GeminiReqAdapter, GEMINI_TEXT_FIXTURE, "Hello from Gemini");
+    assert_streaming_text(&GeminiReqAdapter, GEMINI_TEXT_FIXTURE, "Hello from Gemini");
 }
 
 #[test]
 fn streaming_tool_call_gemini() {
     assert_streaming_tool_call(
-        GeminiReqAdapter,
+        &GeminiReqAdapter,
         GEMINI_TOOL_FIXTURE,
         "find_movies",
         serde_json::json!({"location": "Mountain View", "genre": "comedy"}),
