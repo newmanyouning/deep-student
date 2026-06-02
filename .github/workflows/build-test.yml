@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       platform:
-        description: 'Target: windows / macos-arm64 / macos-x64 / linux / android / all-desktop'
+        description: 'Target: windows / macos-arm64 / macos-x64 / linux / android / ipad / all-desktop'
         required: true
         type: string
         default: 'windows'
@@ -279,3 +279,55 @@ jobs:
         with:
           name: android-apk
           path: src-tauri/gen/android/app/build/outputs/apk/release/*.apk
+
+  # ── iPad ──
+  build-ipad:
+    if: contains(fromJSON('["ipad", "all-desktop"]'), github.event.inputs.platform)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      CARGO_TERM_COLOR: always
+      NODE_OPTIONS: '--max-old-space-size=4096'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.source_ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+      - run: npm ci --legacy-peer-deps
+      - run: node scripts/generate-version.mjs
+      - name: Initialize Tauri iOS project
+        working-directory: src-tauri
+        run: |
+          if [ ! -d "gen/apple" ]; then
+            npx tauri ios init
+          fi
+      - name: Fast compile check (fail early on syntax/type errors)
+        run: cargo check
+        working-directory: src-tauri
+      - name: Build iPad app
+        working-directory: src-tauri
+        run: |
+          npx tauri ios build --target aarch64-apple-ios --debug
+          mkdir -p Payload
+          APP_PATH=$(find gen/apple/build -name "*.app" -type d | head -1)
+          if [ -n "$APP_PATH" ]; then
+            cp -R "$APP_PATH" Payload/
+            zip -r "DeepStudent-iPadOS.ipa" Payload/
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipad-installer
+          path: src-tauri/DeepStudent-iPadOS.ipa

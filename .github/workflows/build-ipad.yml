@@ -1,0 +1,364 @@
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║  iPad (iPadOS) 构建工作流                                        ║
+# ╠══════════════════════════════════════════════════════════════════╣
+# ║                                                                  ║
+# ║  用途: 为 iPad 构建 .ipa 安装包                                   ║
+# ║  触发: 手动 workflow_dispatch                                     ║
+# ║  环境: macOS (需要 Xcode 15+)                                     ║
+# ║                                                                  ║
+# ║  iPadOS 构建特点:                                                 ║
+# ║  - Tauri 2 通过 tauri ios build 生成 Xcode 项目                   ║
+# ║  - 需要 Apple Developer 账号配置签名                               ║
+# ║  - 产物为 .ipa 文件，需特殊方式安装到 iPad                          ║
+# ║                                                                  ║
+# ╚══════════════════════════════════════════════════════════════════╝
+
+name: Build iPad (iPadOS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: '构建代码来源 (分支/tag/commit SHA)'
+        required: false
+        default: 'main'
+        type: string
+      build_type:
+        description: '构建类型'
+        required: true
+        type: choice
+        options:
+          - debug
+          - release
+        default: 'debug'
+      signing_method:
+        description: '签名方式'
+        required: true
+        type: choice
+        options:
+          - development
+          - ad-hoc
+          - enterprise
+        default: 'development'
+
+concurrency:
+  group: build-ipad-${{ github.run_id }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  NODE_OPTIONS: '--max-old-space-size=4096'
+
+jobs:
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # iPad (iPadOS) 构建
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  build-ipad:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      # ── 1. 环境准备 ──
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.source_ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios, aarch64-apple-darwin
+
+      - uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      # ── 2. 安装依赖 ──
+      - run: npm ci --legacy-peer-deps
+      - run: node scripts/generate-version.mjs
+
+      # ── 3. Tauri iOS 项目初始化 ──
+      - name: Initialize Tauri iOS project
+        working-directory: src-tauri
+        run: |
+          # 如果 gen/apple 目录不存在，执行 tauri ios init
+          if [ ! -d "gen/apple" ]; then
+            echo "::group::Initializing Tauri iOS project"
+            npx tauri ios init
+            echo "::endgroup::"
+          else
+            echo "iOS project already initialized, skipping init"
+          fi
+
+      # ── 4. 配置签名 ──
+      - name: Import Apple Developer Certificate
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "::warning::APPLE_CERTIFICATE_BASE64 secret not set — using auto-signing (development only)"
+            exit 0
+          fi
+
+          # 导入证书
+          CERT_PATH="$RUNNER_TEMP/apple_dev.p12"
+          echo "$APPLE_CERTIFICATE" | base64 -d > "$CERT_PATH"
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import "$CERT_PATH" -k build.keychain -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+
+          # 导入 Provisioning Profile
+          PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles"
+          mkdir -p "$PROFILE_PATH"
+          echo "$APPLE_PROVISIONING_PROFILE" | base64 -d > "$PROFILE_PATH/deepstudent.mobileprovision"
+
+          echo "Apple signing configured successfully"
+
+      # ── 5. 配置 Xcode 项目签名 ──
+      - name: Configure Xcode signing
+        working-directory: src-tauri
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_BUNDLE_ID: com.deepstudent.app
+        run: |
+          TEAM_ID="${APPLE_TEAM_ID:-}"
+          if [ -z "$TEAM_ID" ]; then
+            echo "::warning::APPLE_TEAM_ID not set. Using auto-signing."
+          fi
+
+          # 更新 ExportOptions.plist 以匹配签名方式
+          SIGNING_METHOD="${{ github.event.inputs.signing_method }}"
+          case "$SIGNING_METHOD" in
+            development)
+              METHOD="development"
+              ;;
+            ad-hoc)
+              METHOD="ad-hoc"
+              ;;
+            enterprise)
+              METHOD="enterprise"
+              ;;
+          esac
+
+          # 创建 exportOptions.plist
+          cat > gen/apple/ExportOptions.plist << PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>${METHOD}</string>
+            <key>teamID</key>
+            <string>${TEAM_ID}</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+          </dict>
+          </plist>
+          PLIST
+
+      # ── 6. 前端构建 ──
+      - run: npm run build
+
+      # ── 7. Rust 编译检查 ──
+      - name: Fast compile check
+        working-directory: src-tauri
+        run: cargo check
+
+      # ── 8. Tauri iOS 构建 ──
+      - name: Build iPad app
+        working-directory: src-tauri
+        run: |
+          BUILD_TYPE="${{ github.event.inputs.build_type }}"
+          if [ "$BUILD_TYPE" = "release" ]; then
+            npx tauri ios build --target aarch64-apple-ios --release
+          else
+            npx tauri ios build --target aarch64-apple-ios --debug
+          fi
+
+      # ── 9. 导出 IPA ──
+      - name: Export IPA
+        working-directory: src-tauri
+        run: |
+          # 查找生成的 .app
+          APP_PATH=$(find gen/apple/build -name "*.app" -type d | head -1)
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::Could not find .app bundle"
+            exit 1
+          fi
+          echo "Found app: $APP_PATH"
+
+          # 创建 Payload 目录并打包为 IPA
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
+          zip -r "DeepStudent-iPadOS.ipa" Payload/
+          rm -rf Payload
+
+          echo "IPA created: $(pwd)/DeepStudent-iPadOS.ipa"
+          ls -lh DeepStudent-iPadOS.ipa
+
+      # ── 10. 上传产物 ──
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipad-installer-${{ github.event.inputs.build_type }}
+          path: |
+            src-tauri/DeepStudent-iPadOS.ipa
+            src-tauri/gen/apple/build/**/*.app
+          if-no-files-found: warn
+          retention-days: 30
+
+      # ── 11. 生成安装说明 ──
+      - name: Generate installation guide
+        run: |
+          cat > iPad-Installation-Guide.md << 'GUIDE'
+          # Deep Student iPad 安装说明
+
+          > 构建时间: ${{ github.event.inputs.build_type }}
+          > 签名方式: ${{ github.event.inputs.signing_method }}
+          > Bundle ID: com.deepstudent.app
+
+          ---
+
+          ## ⚠️ 重要提示
+
+          iPad 应用无法像桌面应用那样直接双击安装。需要根据签名方式选择对应的安装方法。
+
+          ---
+
+          ## 安装方法
+
+          ### 方法 1: Apple Configurator 2 (推荐 — Development/Ad-Hoc)
+
+          1. 在 Mac 上安装 [Apple Configurator 2](https://apps.apple.com/app/apple-configurator/id1037126344)
+          2. 用 USB 线连接 iPad 到 Mac
+          3. 打开 Apple Configurator 2，选择你的 iPad
+          4. 将 `DeepStudent-iPadOS.ipa` 拖入 iPad 界面
+          5. 等待安装完成
+
+          **注意**: iPad 需在 "设置 → 通用 → VPN 与设备管理" 中信任开发者证书
+
+          ---
+
+          ### 方法 2: Xcode (Development)
+
+          1. 在 Mac 上打开 Xcode
+          2. 菜单栏: Window → Devices and Simulators
+          3. 用 USB 连接 iPad，在左侧选择设备
+          4. 点击 "+" 号，选择 `DeepStudent-iPadOS.ipa`
+          5. 等待安装完成
+
+          ---
+
+          ### 方法 3: TestFlight (App Store Connect — 需要 Developer 账号)
+
+          1. 使用 Xcode 或 Transporter 将 IPA 上传到 App Store Connect
+          2. 在 App Store Connect → TestFlight 中添加内部测试员
+          3. 测试员在 iPad 上安装 TestFlight app
+          4. 在 TestFlight 中接受邀请并安装
+
+          **优点**: 无线安装，自动更新，无需 USB
+          **限制**: 最多 100 个内部测试员，需要 Apple Developer Program ($99/年)
+
+          ---
+
+          ### 方法 4: OTA 分发 (Ad-Hoc/Enterprise)
+
+          如果你有 Web 服务器：
+
+          1. 创建 `manifest.plist`:
+          ```xml
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+           "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>items</key>
+            <array>
+              <dict>
+                <key>assets</key>
+                <array>
+                  <dict>
+                    <key>kind</key>
+                    <string>software-package</string>
+                    <key>url</key>
+                    <string>https://your-server.com/DeepStudent-iPadOS.ipa</string>
+                  </dict>
+                </array>
+                <key>metadata</key>
+                <dict>
+                  <key>bundle-identifier</key>
+                  <string>com.deepstudent.app</string>
+                  <key>bundle-version</key>
+                  <string>1.0</string>
+                  <key>kind</key>
+                  <string>software</string>
+                  <key>title</key>
+                  <string>Deep Student</string>
+                </dict>
+              </dict>
+            </array>
+          </dict>
+          </plist>
+          ```
+
+          2. 将 IPA 和 plist 上传到 HTTPS 服务器
+          3. 在 iPad Safari 中打开: `itms-services://?action=download-manifest&url=https://your-server.com/manifest.plist`
+
+          **要求**: 服务器必须 HTTPS，plist MIME type 为 `application/xml`
+
+          ---
+
+          ## Ad-Hoc 构建 — 设备 UDID 注册
+
+          如果是 Ad-Hoc 签名方式，**必须先将 iPad 的 UDID 添加到 Provisioning Profile 中**：
+
+          1. 在 Mac 上连接 iPad，打开 Finder → 点击 iPad → 点击序列号切换到 UDID
+          2. 在 [Apple Developer Portal](https://developer.apple.com/account/resources/devices/list) 添加设备 UDID
+          3. 重新生成包含该设备的 Provisioning Profile
+          4. 更新 GitHub Secrets 中的 `APPLE_PROVISIONING_PROFILE_BASE64`
+
+          ---
+
+          ## 首次安装后的信任步骤
+
+          无论哪种方法安装，首次打开应用时：
+          1. 打开 **设置 → 通用 → VPN 与设备管理**
+          2. 找到开发者证书，点击 **信任**
+          3. 返回桌面，可以正常打开 Deep Student
+          GUIDE
+
+          echo "Installation guide created"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ipad-installation-guide
+          path: iPad-Installation-Guide.md
+
+      # ── 12. 上传到 Release (如果是 release 构建且指定了 tag) ──
+      - name: Upload IPA to Release
+        if: github.event.inputs.build_type == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 查找最新的 release
+          LATEST_RELEASE=$(gh api "repos/${{ github.repository }}/releases/latest" --jq '.tag_name' 2>/dev/null || echo "")
+          if [ -n "$LATEST_RELEASE" ]; then
+            echo "Uploading to release: $LATEST_RELEASE"
+            gh release upload "$LATEST_RELEASE" \
+              src-tauri/DeepStudent-iPadOS.ipa \
+              --clobber
+          else
+            echo "::warning::No release found, skipping upload"
+          fi
