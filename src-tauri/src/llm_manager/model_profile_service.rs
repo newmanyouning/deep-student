@@ -895,7 +895,11 @@ impl super::LLMManager {
 
         for ocr_config in &enabled_models {
             if let Some(config) = configs.iter().find(|c| c.id == ocr_config.config_id) {
-                if config.is_multimodal {
+                let engine = OcrEngineType::from_str(&ocr_config.engine_type);
+                // PaddleOCR REST API 引擎使用 job-based 流程，不标记 multimodal，
+                // 但仍然是合法的 OCR 引擎，需要加入可用列表。
+                let is_ocr_usable = config.is_multimodal || engine == OcrEngineType::PaddleOcrApi;
+                if is_ocr_usable {
                     log::debug!(
                         "[OCR] 使用引擎 {} 对应的模型配置: id={}, model={} (priority={})",
                         ocr_config.engine_type, config.id, config.model, ocr_config.priority
@@ -927,7 +931,8 @@ impl super::LLMManager {
                 AppError::configuration(format!("找不到 ID 为 {} 的模型配置", model_id))
             })?;
 
-        if !config.is_multimodal {
+        // PaddleOCR REST API 使用 job-based 流程，不标记 multimodal，也是合法的 OCR 模型
+        if !config.is_multimodal && !config.model.contains("PaddleOCR") && !config.model.contains("PP-OCR") && !config.model.contains("PP-Structure") {
             return Err(AppError::configuration(
                 "当前配置的 OCR 模型未启用多模态能力，请选择支持图像输入的模型（如 DeepSeek-OCR）",
             ));
