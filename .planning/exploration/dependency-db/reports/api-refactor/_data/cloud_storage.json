@@ -1,0 +1,125 @@
+[
+  {
+    "name": "cloud_storage_check_connection",
+    "params": [
+      "config: CloudStorageConfig"
+    ],
+    "returns": "Result<bool>",
+    "doc": "检查云存储连接"
+  },
+  {
+    "name": "cloud_storage_delete",
+    "params": [
+      "config: CloudStorageConfig",
+      "key: String"
+    ],
+    "returns": "Result<()>",
+    "doc": "删除云存储中的文件"
+  },
+  {
+    "name": "cloud_storage_exists",
+    "params": [
+      "config: CloudStorageConfig",
+      "key: String"
+    ],
+    "returns": "Result<bool>",
+    "doc": "检查文件是否存在"
+  },
+  {
+    "name": "cloud_storage_get",
+    "params": [
+      "config: CloudStorageConfig",
+      "key: String"
+    ],
+    "returns": "Result<Option<Vec<u8>>>",
+    "doc": "从云存储下载文件"
+  },
+  {
+    "name": "cloud_storage_is_s3_enabled",
+    "params": [],
+    "returns": "bool",
+    "doc": "检查 S3 feature 是否启用"
+  },
+  {
+    "name": "cloud_storage_list",
+    "params": [
+      "config: CloudStorageConfig",
+      "prefix: String"
+    ],
+    "returns": "Result<Vec<FileInfo>>",
+    "doc": "列出云存储中的文件"
+  },
+  {
+    "name": "cloud_storage_put",
+    "params": [
+      "config: CloudStorageConfig",
+      "key: String",
+      "data: Vec<u8>"
+    ],
+    "returns": "Result<()>",
+    "doc": "上传文件到云存储"
+  },
+  {
+    "name": "cloud_storage_stat",
+    "params": [
+      "config: CloudStorageConfig",
+      "key: String"
+    ],
+    "returns": "Result<Option<FileInfo>>",
+    "doc": "获取文件信息"
+  },
+  {
+    "name": "cloud_sync_delete_version",
+    "params": [
+      "config: CloudStorageConfig",
+      "version_id: String"
+    ],
+    "returns": "Result<()>",
+    "doc": "删除云端备份版本"
+  },
+  {
+    "name": "cloud_sync_download",
+    "params": [
+      "app_handle: AppHandle",
+      "config: CloudStorageConfig",
+      "version_id: Option<String>",
+      "local_dir: String"
+    ],
+    "returns": "Result<DownloadResult>",
+    "doc": "从云端下载备份（带实时进度事件）  通过 `cloud-sync-progress` Tauri 事件向前端推送字节级下载进度。"
+  },
+  {
+    "name": "cloud_sync_get_device_id",
+    "params": [],
+    "returns": "String",
+    "doc": "获取设备 ID"
+  },
+  {
+    "name": "cloud_sync_get_status",
+    "params": [
+      "config: CloudStorageConfig"
+    ],
+    "returns": "Result<SyncStatus>",
+    "doc": "获取同步状态"
+  },
+  {
+    "name": "cloud_sync_list_versions",
+    "params": [
+      "config: CloudStorageConfig"
+    ],
+    "returns": "Result<Vec<BackupVersion>>",
+    "doc": "列出云端所有备份版本"
+  },
+  {
+    "name": "cloud_sync_upload",
+    "params": [
+      "app_handle: AppHandle",
+      "config: CloudStorageConfig",
+      "zip_path: String",
+      "app_version: Option<String>",
+      "note: Option<String>"
+    ],
+    "returns": "Result<UploadResult>",
+    "doc": "上传备份到云端（带实时进度事件）  通过 `cloud-sync-progress` Tauri 事件向前端推送字节级传输进度。"
+  }
+]

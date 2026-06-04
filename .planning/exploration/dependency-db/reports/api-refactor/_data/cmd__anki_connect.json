@@ -1,0 +1,117 @@
+[
+  {
+    "name": "add_cards_to_anki_connect",
+    "params": [
+      "selected_cards: Vec<crate::models::AnkiCard>",
+      "deck_name: String",
+      "mut note_type: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<Option<u64>>>",
+    "doc": "将选定的卡片添加到AnkiConnect"
+  },
+  {
+    "name": "anki_get_deck_names",
+    "params": [],
+    "returns": "Result<Vec<String>>",
+    "doc": "🧩 兼容旧前端：保留 anki_get_deck_names 别名"
+  },
+  {
+    "name": "batch_export_cards",
+    "params": [
+      "notes: Vec<BatchExportNote>",
+      "format: String",
+      "options: BatchExportOptions",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "批量导出卡片 - 支持多种格式"
+  },
+  {
+    "name": "check_anki_connect_status",
+    "params": [],
+    "returns": "Result<bool>",
+    "doc": "检查AnkiConnect连接状态"
+  },
+  {
+    "name": "create_anki_deck",
+    "params": [
+      "deck_name: String"
+    ],
+    "returns": "Result<()>",
+    "doc": "创建牌组（如果不存在）"
+  },
+  {
+    "name": "export_cards_as_apkg",
+    "params": [
+      "selected_cards: Vec<crate::models::AnkiCard>",
+      "deck_name: String",
+      "note_type: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "导出选定的卡片为.apkg文件"
+  },
+  {
+    "name": "export_cards_as_apkg_with_template",
+    "params": [
+      "selected_cards: Vec<crate::models::AnkiCard>",
+      "deck_name: String",
+      "mut note_type: String",
+      "template_id: Option<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "导出选定的卡片为.apkg文件（支持模板）"
+  },
+  {
+    "name": "export_multi_template_apkg",
+    "params": [
+      "cards: Vec<crate::models::AnkiCard>",
+      "deck_name: String",
+      "output_path: Option<String>",
+      "state: State<'_, AppState>",
+      "window: Window"
+    ],
+    "returns": "Result<String>",
+    "doc": "多模板 APKG 导出（前端导出按钮直接调用） 每种 template_id 创建独立的 Anki model，每张卡片用自己的模板渲染"
+  },
+  {
+    "name": "get_anki_deck_names",
+    "params": [],
+    "returns": "Result<Vec<String>>",
+    "doc": "获取所有牌组名称"
+  },
+  {
+    "name": "get_anki_model_names",
+    "params": [],
+    "returns": "Result<Vec<String>>",
+    "doc": "获取所有笔记类型名称"
+  },
+  {
+    "name": "import_anki_package",
+    "params": [
+      "path: String"
+    ],
+    "returns": "Result<bool>",
+    "doc": "导入 APKG 到本机 Anki（通过 AnkiConnect）"
+  },
+  {
+    "name": "save_anki_cards",
+    "params": [
+      "request: SaveAnkiCardsRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<SaveAnkiCardsResponse>",
+    "doc": ""
+  },
+  {
+    "name": "save_json_file",
+    "params": [
+      "content: String",
+      "suggested_name: String"
+    ],
+    "returns": "Result<String>",
+    "doc": "保存 JSON 文件到临时目录"
+  }
+]

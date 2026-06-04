@@ -1,0 +1,387 @@
+[
+  {
+    "name": "canvas_note_append",
+    "params": [
+      "_subject: String",
+      "content: String",
+      "section: Option<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "Canvas AI 工具：追加内容到笔记 可指定追加到特定章节末尾，否则追加到文档末尾"
+  },
+  {
+    "name": "canvas_note_read",
+    "params": [
+      "_subject: String",
+      "section: Option<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "Canvas AI 工具：读取笔记内容 支持读取完整内容或指定章节"
+  },
+  {
+    "name": "canvas_note_replace",
+    "params": [
+      "_subject: String",
+      "search: String",
+      "replace: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<u32>",
+    "doc": "Canvas AI 工具：替换笔记内容 支持普通字符串替换和正则表达式替换"
+  },
+  {
+    "name": "canvas_note_set",
+    "params": [
+      "_subject: String",
+      "content: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "Canvas AI 工具：设置笔记完整内容 完全覆盖现有内容，谨慎使用"
+  },
+  {
+    "name": "notes_assets_bulk_delete",
+    "params": [
+      "paths: Vec<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<usize>",
+    "doc": ""
+  },
+  {
+    "name": "notes_assets_index_scan",
+    "params": [
+      "subject: String",
+      "noteId: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<usize>",
+    "doc": ""
+  },
+  {
+    "name": "notes_assets_scan_orphans",
+    "params": [
+      "subject: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<String>>",
+    "doc": ""
+  },
+  {
+    "name": "notes_create",
+    "params": [
+      "_subject: String",
+      "note: NewNotePayload",
+      "state: State<'_, AppState>",
+      "_window: Window"
+    ],
+    "returns": "Result<crate::notes_manager::NoteItem>",
+    "doc": ""
+  },
+  {
+    "name": "notes_db_stats",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<NotesDbStats>",
+    "doc": ""
+  },
+  {
+    "name": "notes_db_vacuum",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": ""
+  },
+  {
+    "name": "notes_delete",
+    "params": [
+      "subject: String",
+      "id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": ""
+  },
+  {
+    "name": "notes_delete_asset",
+    "params": [
+      "relative_path: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": ""
+  },
+  {
+    "name": "notes_empty_trash",
+    "params": [
+      "_subject: Option<String>",
+      "state: State<'_, AppState>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>"
+    ],
+    "returns": "Result<usize>",
+    "doc": "清空回收站（对 deleted_at 非空的笔记执行硬删除）"
+  },
+  {
+    "name": "notes_export",
+    "params": [
+      "request: NotesExportCommandRequest",
+      "state: State<'_, AppState>",
+      "window: Window"
+    ],
+    "returns": "Result<NotesExportCommandResponse>",
+    "doc": ""
+  },
+  {
+    "name": "notes_export_single",
+    "params": [
+      "request: NotesExportSingleCommandRequest",
+      "state: State<'_, AppState>",
+      "window: Window"
+    ],
+    "returns": "Result<NotesExportCommandResponse>",
+    "doc": ""
+  },
+  {
+    "name": "notes_get",
+    "params": [
+      "subject: String",
+      "id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::notes_manager::NoteItem>",
+    "doc": "获取单条笔记（包含内容）"
+  },
+  {
+    "name": "notes_get_pref",
+    "params": [
+      "key: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Option<String>>",
+    "doc": ""
+  },
+  {
+    "name": "notes_get_subject_rag_config",
+    "params": [
+      "subject: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<NotesSubjectRagConfig>",
+    "doc": ""
+  },
+  {
+    "name": "notes_hard_delete",
+    "params": [
+      "subject: Option<String>",
+      "id: String",
+      "state: State<'_, AppState>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "笔记硬删除：彻底从数据库与磁盘移除（包含版本/资产）"
+  },
+  {
+    "name": "notes_import",
+    "params": [
+      "request: NotesImportCommandRequest",
+      "state: State<'_, AppState>",
+      "window: Window"
+    ],
+    "returns": "Result<NotesImportCommandResponse>",
+    "doc": ""
+  },
+  {
+    "name": "notes_import_markdown",
+    "params": [
+      "request: NotesImportMarkdownRequest",
+      "state: State<'_, AppState>",
+      "window: Window"
+    ],
+    "returns": "Result<crate::dstu::types::DstuNode>",
+    "doc": ""
+  },
+  {
+    "name": "notes_import_markdown_batch",
+    "params": [
+      "request: NotesImportMarkdownBatchRequest",
+      "state: State<'_, AppState>",
+      "window: Window"
+    ],
+    "returns": "Result<NotesImportMarkdownBatchResponse>",
+    "doc": ""
+  },
+  {
+    "name": "notes_list",
+    "params": [
+      "_subject: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<crate::notes_manager::NoteItem>>",
+    "doc": ""
+  },
+  {
+    "name": "notes_list_advanced",
+    "params": [
+      "_subject: String",
+      "options: NotesListAdvancedOptions",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<NotesListAdvancedResponse>",
+    "doc": ""
+  },
+  {
+    "name": "notes_list_assets",
+    "params": [
+      "subject: String",
+      "noteId: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<serde_json::Value>>",
+    "doc": ""
+  },
+  {
+    "name": "notes_list_deleted",
+    "params": [
+      "_subject: Option<String>",
+      "page: Option<i64>",
+      "page_size: Option<i64>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<NotesListAdvancedResponse>",
+    "doc": "快捷回收站列表（分页），等价于 notes_list_advanced + only_deleted"
+  },
+  {
+    "name": "notes_list_meta",
+    "params": [
+      "_subject: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<crate::notes_manager::NoteItem>>",
+    "doc": "轻量列表：不返回 content_md，用于初次渲染降低载荷"
+  },
+  {
+    "name": "notes_list_tags",
+    "params": [
+      "_subject: Option<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<String>>",
+    "doc": ""
+  },
+  {
+    "name": "notes_mentions_search",
+    "params": [
+      "mut subject: Option<String>",
+      "keyword: String",
+      "limit: Option<u32>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<NotesMentionSearchResponse>",
+    "doc": ""
+  },
+  {
+    "name": "notes_rag_rebuild_fts_index",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<usize>",
+    "doc": "重建笔记库（notes.db）的 RAG 文档块 FTS 索引"
+  },
+  {
+    "name": "notes_resolve_asset_path",
+    "params": [
+      "relative_path: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "解析相对资源路径为绝对路径（限定在 app_data_dir 子树内）"
+  },
+  {
+    "name": "notes_restore",
+    "params": [
+      "subject: Option<String>",
+      "id: String",
+      "state: State<'_, AppState>",
+      "_window: Window"
+    ],
+    "returns": "Result<bool>",
+    "doc": ""
+  },
+  {
+    "name": "notes_save_asset",
+    "params": [
+      "subject: String",
+      "note_id: String",
+      "base64_data: String",
+      "default_ext: Option<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": ""
+  },
+  {
+    "name": "notes_search",
+    "params": [
+      "_subject: String",
+      "keyword: String",
+      "limit: Option<i64>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<NotesSearchHit>>",
+    "doc": ""
+  },
+  {
+    "name": "notes_set_favorite",
+    "params": [
+      "subject: String",
+      "id: String",
+      "favorite: bool",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::notes_manager::NoteItem>",
+    "doc": ""
+  },
+  {
+    "name": "notes_set_pref",
+    "params": [
+      "key: String",
+      "value: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": ""
+  },
+  {
+    "name": "notes_update",
+    "params": [
+      "_subject: String",
+      "note: UpdateNotePayload",
+      "state: State<'_, AppState>",
+      "_window: Window"
+    ],
+    "returns": "Result<crate::notes_manager::NoteItem>",
+    "doc": ""
+  },
+  {
+    "name": "notes_update_subject_rag_config",
+    "params": [
+      "subject: String",
+      "cfg: NotesSubjectRagConfig",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": ""
+  },
+  {
+    "name": "rag_rebuild_fts_index",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<usize>",
+    "doc": "重建主库（mistakes.db）的 RAG 文档块 FTS 索引"
+  }
+]

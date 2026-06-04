@@ -1,0 +1,28 @@
+[
+  {
+    "name": "secure_delete_cloud_credentials",
+    "params": [],
+    "returns": "Result<(), AppError>",
+    "doc": "删除云存储凭据"
+  },
+  {
+    "name": "secure_get_cloud_credentials",
+    "params": [],
+    "returns": "Result<Option<CloudStorageCredentials>, AppError>",
+    "doc": "获取云存储凭据"
+  },
+  {
+    "name": "secure_save_cloud_credentials",
+    "params": [
+      "credentials: CloudStorageCredentials"
+    ],
+    "returns": "Result<(), AppError>",
+    "doc": "保存云存储凭据到安全存储"
+  },
+  {
+    "name": "secure_store_is_available",
+    "params": [],
+    "returns": "bool",
+    "doc": "检查安全存储是否可用"
+  }
+]

@@ -1,0 +1,311 @@
+[
+  {
+    "name": "memory_add_relation",
+    "params": [
+      "note_id_a: String",
+      "note_id_b: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "添加记忆关联（双向）"
+  },
+  {
+    "name": "memory_batch_delete",
+    "params": [
+      "note_ids: Vec<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<BatchOperationResult, String>",
+    "doc": "批量删除记忆"
+  },
+  {
+    "name": "memory_batch_move",
+    "params": [
+      "note_ids: Vec<String>",
+      "target_folder_path: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<BatchOperationResult, String>",
+    "doc": "批量移动记忆到指定文件夹"
+  },
+  {
+    "name": "memory_create_root_folder",
+    "params": [
+      "title: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<String, String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_delete",
+    "params": [
+      "note_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_export_all",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<Vec<MemoryExportItem>, String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_get_audit_logs",
+    "params": [
+      "limit: Option<u32>",
+      "offset: Option<u32>",
+      "source_filter: Option<String>",
+      "operation_filter: Option<String>",
+      "success_filter: Option<bool>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<MemoryAuditLogItem>, String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_get_config",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<MemoryConfigOutput, String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_get_or_create_root_folder",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<String, String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_get_profile",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<Vec<MemoryProfileSection>, String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_get_related",
+    "params": [
+      "note_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<Vec<String>, String>",
+    "doc": "获取关联记忆 ID 列表"
+  },
+  {
+    "name": "memory_get_tags",
+    "params": [
+      "note_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<Vec<String>, String>",
+    "doc": "获取记忆标签"
+  },
+  {
+    "name": "memory_get_tree",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<Option<crate::vfs::types::FolderTreeNode>, String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_list",
+    "params": [
+      "folder_path: Option<String>",
+      "limit: Option<u32>",
+      "offset: Option<u32>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<Vec<MemoryListItem>, String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_move_to_folder",
+    "params": [
+      "note_id: String",
+      "target_folder_path: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "移动记忆到指定文件夹路径"
+  },
+  {
+    "name": "memory_read",
+    "params": [
+      "note_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<Option<MemoryReadOutput>, String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_remove_relation",
+    "params": [
+      "note_id_a: String",
+      "note_id_b: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "移除记忆关联（双向）"
+  },
+  {
+    "name": "memory_search",
+    "params": [
+      "query: String",
+      "top_k: Option<usize>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<Vec<MemorySearchResult>, String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_set_auto_create_subfolders",
+    "params": [
+      "enabled: bool",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_set_auto_extract_frequency",
+    "params": [
+      "frequency: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_set_default_category",
+    "params": [
+      "category: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_set_privacy_mode",
+    "params": [
+      "enabled: bool",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_set_root_folder",
+    "params": [
+      "folder_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_to_anki_document",
+    "params": [
+      "folder_path: Option<String>",
+      "purpose_filter: Option<String>",
+      "limit: Option<u32>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<MemoryAnkiDocument, String>",
+    "doc": "将记忆导出为 ChatAnki 卡片格式的文档内容  筛选记忆后，格式化为结构化文本，返回给前端。 前端可将此文本传入 chatanki_run 工具触发制卡。"
+  },
+  {
+    "name": "memory_update_by_id",
+    "params": [
+      "note_id: String",
+      "title: Option<String>",
+      "content: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<MemoryWriteOutput, String>",
+    "doc": ""
+  },
+  {
+    "name": "memory_update_tags",
+    "params": [
+      "note_id: String",
+      "tags: Vec<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "更新记忆标签"
+  },
+  {
+    "name": "memory_write_batch",
+    "params": [
+      "items: Vec<MemoryBatchWriteItemInput>",
+      "default_folder_path: Option<String>",
+      "default_memory_type: Option<String>",
+      "default_memory_purpose: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "llm_manager: State<'_, Arc<LLMManager>>"
+    ],
+    "returns": "Result<MemoryBatchWriteOutput, String>",
+    "doc": ""
+  }
+]

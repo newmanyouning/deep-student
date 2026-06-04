@@ -1,0 +1,8 @@
+[
+  {
+    "name": "test_pdfium_status",
+    "params": [],
+    "returns": "Result<std::collections::HashMap<String, String>, String>",
+    "doc": "Tauri 命令：测试 pdfium 加载状态，返回诊断信息"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "name": "check_api_config_status",
+    "params": [
+      "llm_manager: tauri::State<'_, std::sync::Arc<LLMManager>>"
+    ],
+    "returns": "Result<serde_json::Value, String>",
+    "doc": "检查API配置状态"
+  },
+  {
+    "name": "restore_default_api_configs",
+    "params": [
+      "llm_manager: tauri::State<'_, std::sync::Arc<LLMManager>>"
+    ],
+    "returns": "Result<String, String>",
+    "doc": "恢复API配置的Tauri命令"
+  }
+]

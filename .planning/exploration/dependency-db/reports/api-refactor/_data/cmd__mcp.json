@@ -1,0 +1,129 @@
+[
+  {
+    "name": "get_mcp_status",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": ""
+  },
+  {
+    "name": "get_mcp_tools",
+    "params": [
+      "_state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<serde_json::Value>>",
+    "doc": ""
+  },
+  {
+    "name": "mcp_stdio_close",
+    "params": [
+      "session_id: String"
+    ],
+    "returns": "Result<()>",
+    "doc": ""
+  },
+  {
+    "name": "mcp_stdio_send",
+    "params": [
+      "session_id: String",
+      "payload: String"
+    ],
+    "returns": "Result<()>",
+    "doc": ""
+  },
+  {
+    "name": "mcp_stdio_start",
+    "params": [
+      "window: Window",
+      "command: String",
+      "args: Vec<String>",
+      "env: Option<HashMap<String, String>>",
+      "framing: Option<String>",
+      "cwd: Option<String>"
+    ],
+    "returns": "Result<String>",
+    "doc": ""
+  },
+  {
+    "name": "preheat_mcp_tools",
+    "params": [
+      "window: Window",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "预热前端 MCP 工具清单缓存（降低首条消息不广告的概率）"
+  },
+  {
+    "name": "reload_mcp_client",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": ""
+  },
+  {
+    "name": "save_mcp_config",
+    "params": [
+      "config: serde_json::Value",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": ""
+  },
+  {
+    "name": "test_mcp_connection",
+    "params": [
+      "app_handle: AppHandle",
+      "command: String",
+      "args: Vec<String>",
+      "env: Option<HashMap<String, String>>",
+      "cwd: Option<String>",
+      "framing: Option<String>",
+      "_state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": ""
+  },
+  {
+    "name": "test_mcp_http",
+    "params": [
+      "endpoint: String",
+      "api_key: String",
+      "env: Option<HashMap<String, String>>",
+      "_state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": ""
+  },
+  {
+    "name": "test_mcp_sse",
+    "params": [
+      "endpoint: String",
+      "api_key: String",
+      "env: Option<HashMap<String, String>>",
+      "_state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": ""
+  },
+  {
+    "name": "test_mcp_websocket",
+    "params": [
+      "url: String",
+      "env: Option<HashMap<String, String>>",
+      "_state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": ""
+  },
+  {
+    "name": "test_rmcp_streamable_http",
+    "params": [
+      "url: String",
+      "api_key: Option<String>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": ""
+  }
+]

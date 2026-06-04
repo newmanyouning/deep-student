@@ -1,0 +1,25 @@
+[
+  {
+    "name": "tts_check_available",
+    "params": [],
+    "returns": "Result<bool, AppError>",
+    "doc": "检查 TTS 是否可用"
+  },
+  {
+    "name": "tts_speak",
+    "params": [
+      "text: String",
+      "lang: Option<String>",
+      "rate: Option<f32>",
+      "volume: Option<f32>"
+    ],
+    "returns": "Result<(), AppError>",
+    "doc": "朗读文本"
+  },
+  {
+    "name": "tts_stop",
+    "params": [],
+    "returns": "Result<(), AppError>",
+    "doc": "停止朗读"
+  }
+]

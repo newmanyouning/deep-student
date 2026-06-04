@@ -1,0 +1,12 @@
+[
+  {
+    "name": "ocr_extract_text",
+    "params": [
+      "image_path: Option<String>",
+      "image_base64: Option<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "OCR提取文本（单页图片识别）"
+  }
+]

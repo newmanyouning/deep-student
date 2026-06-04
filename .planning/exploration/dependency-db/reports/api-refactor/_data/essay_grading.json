@@ -1,0 +1,186 @@
+[
+  {
+    "name": "essay_grading_create_custom_mode",
+    "params": [
+      "input: custom_modes::CreateModeInput",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<types::GradingMode, AppError>",
+    "doc": "创建自定义批阅模式"
+  },
+  {
+    "name": "essay_grading_create_session",
+    "params": [
+      "title: String",
+      "essay_type: String",
+      "grade_level: String",
+      "custom_prompt: Option<String>",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<VfsEssaySession, AppError>",
+    "doc": "创建新会话"
+  },
+  {
+    "name": "essay_grading_delete_custom_mode",
+    "params": [
+      "mode_id: String",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<(), AppError>",
+    "doc": "删除自定义批阅模式"
+  },
+  {
+    "name": "essay_grading_delete_session",
+    "params": [
+      "session_id: String",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<usize, AppError>",
+    "doc": "永久删除会话  ★ 2025-12-11: 统一命名规范，使用 purge 表示永久删除"
+  },
+  {
+    "name": "essay_grading_get_latest_round_number",
+    "params": [
+      "session_id: String",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<i32, AppError>",
+    "doc": "获取最新轮次号"
+  },
+  {
+    "name": "essay_grading_get_mode",
+    "params": [
+      "mode_id: String",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<Option<types::GradingMode>, AppError>",
+    "doc": "获取指定批阅模式（自定义覆盖优先）"
+  },
+  {
+    "name": "essay_grading_get_models",
+    "params": [
+      "state: tauri::State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<Vec<ModelInfo>, AppError>",
+    "doc": "获取可用于作文批改的模型列表  过滤逻辑与 Chat V2 保持一致： - 排除嵌入模型 (is_embedding) - 排除重排序模型 (is_reranker) - 排除未启用的模型 (enabled = false，包括没有 API Key 的模型)"
+  },
+  {
+    "name": "essay_grading_get_modes",
+    "params": [
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<Vec<types::GradingMode>, AppError>",
+    "doc": "获取所有批阅模式（内置 + 自定义，自定义覆盖优先）"
+  },
+  {
+    "name": "essay_grading_get_round",
+    "params": [
+      "session_id: String",
+      "round_number: i32",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<Option<GradingRoundResponse>, AppError>",
+    "doc": "获取指定轮次（含内容）  ★ 2025-01-01: 返回完整的轮次数据"
+  },
+  {
+    "name": "essay_grading_get_rounds",
+    "params": [
+      "session_id: String",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<Vec<GradingRoundResponse>, AppError>",
+    "doc": "获取会话的所有轮次（含内容）  ★ 2025-01-01: 返回完整的轮次数据，包含 input_text 和解析后的 grading_result"
+  },
+  {
+    "name": "essay_grading_get_session",
+    "params": [
+      "session_id: String",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<Option<VfsEssaySession>, AppError>",
+    "doc": "获取会话详情"
+  },
+  {
+    "name": "essay_grading_has_builtin_override",
+    "params": [
+      "builtin_id: String",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<bool, AppError>",
+    "doc": "检查预置模式是否有自定义覆盖"
+  },
+  {
+    "name": "essay_grading_list_custom_modes",
+    "params": [
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<Vec<types::GradingMode>, AppError>",
+    "doc": "获取所有自定义批阅模式"
+  },
+  {
+    "name": "essay_grading_list_sessions",
+    "params": [
+      "offset: Option<u32>",
+      "limit: Option<u32>",
+      "_query: Option<String>",
+      "// TODO: 添加搜索支持 state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<Vec<VfsEssaySession>, AppError>",
+    "doc": "获取会话列表"
+  },
+  {
+    "name": "essay_grading_reset_builtin_mode",
+    "params": [
+      "builtin_id: String",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<types::GradingMode, AppError>",
+    "doc": "重置预置模式为默认配置"
+  },
+  {
+    "name": "essay_grading_save_builtin_override",
+    "params": [
+      "input: custom_modes::SaveBuiltinOverrideInput",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<types::GradingMode, AppError>",
+    "doc": "保存预置模式的自定义覆盖"
+  },
+  {
+    "name": "essay_grading_stream",
+    "params": [
+      "request: GradingRequest",
+      "window: Window",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<Option<GradingResponse>, AppError>",
+    "doc": "流式批改命令"
+  },
+  {
+    "name": "essay_grading_toggle_favorite",
+    "params": [
+      "session_id: String",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<bool, AppError>",
+    "doc": "切换收藏状态"
+  },
+  {
+    "name": "essay_grading_update_custom_mode",
+    "params": [
+      "input: custom_modes::UpdateModeInput",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<types::GradingMode, AppError>",
+    "doc": "更新自定义批阅模式"
+  },
+  {
+    "name": "essay_grading_update_session",
+    "params": [
+      "session: VfsUpdateEssaySessionParams",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<(), AppError>",
+    "doc": "更新会话  ★ M-061 修复：接收 VfsUpdateEssaySessionParams（仅可变字段）， 而非完整 VfsEssaySession，确保前后端参数契约一致。"
+  }
+]

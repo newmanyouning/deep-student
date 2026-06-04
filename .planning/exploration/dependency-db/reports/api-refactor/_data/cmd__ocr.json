@@ -1,0 +1,124 @@
+[
+  {
+    "name": "add_ocr_engine",
+    "params": [
+      "config_id: String",
+      "model: String",
+      "name: String",
+      "engine_type: Option<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "添加一个多模态模型作为 OCR 引擎"
+  },
+  {
+    "name": "get_available_ocr_models",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<AvailableOcrModelResponse>>",
+    "doc": "获取已配置的 OCR 模型列表  返回通过一键分配或手动配置的所有 OCR 模型 包含自动迁移逻辑：将旧版本 PaddleOCR-VL 模型名称自动更新为 1.5 版本"
+  },
+  {
+    "name": "get_ocr_engine_type",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "获取当前配置的 OCR 引擎类型"
+  },
+  {
+    "name": "get_ocr_engines",
+    "params": [],
+    "returns": "Result<Vec<OcrEngineInfoResponse>>",
+    "doc": "获取所有可用的 OCR 引擎列表"
+  },
+  {
+    "name": "get_ocr_prompt_template",
+    "params": [
+      "engine_type: String",
+      "mode: String"
+    ],
+    "returns": "Result<String>",
+    "doc": "获取 OCR 引擎的 prompt 模板"
+  },
+  {
+    "name": "get_ocr_thinking_enabled",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "获取 OCR/题目集任务是否启用 VLM 推理"
+  },
+  {
+    "name": "infer_ocr_engine_from_model",
+    "params": [
+      "model: String"
+    ],
+    "returns": "Result<String>",
+    "doc": "根据模型名称推断 OCR 引擎类型"
+  },
+  {
+    "name": "remove_ocr_engine",
+    "params": [
+      "config_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "移除一个 OCR 引擎"
+  },
+  {
+    "name": "save_available_ocr_models",
+    "params": [
+      "models: Vec<SaveOcrModelRequest>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "保存 OCR 模型配置列表"
+  },
+  {
+    "name": "set_ocr_engine_type",
+    "params": [
+      "engine_type: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "设置 OCR 引擎类型"
+  },
+  {
+    "name": "set_ocr_thinking_enabled",
+    "params": [
+      "enabled: bool",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "设置 OCR/题目集任务是否启用 VLM 推理"
+  },
+  {
+    "name": "test_ocr_engine",
+    "params": [
+      "request: OcrTestRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<OcrTestResponse>",
+    "doc": "测试指定引擎的 OCR 能力  用于对比不同 OCR 引擎的速度和质量"
+  },
+  {
+    "name": "update_ocr_engine_priority",
+    "params": [
+      "engine_list: Vec<UpdateOcrPriorityItem>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "更新 OCR 引擎优先级列表（前端拖拽排序后调用）  接收完整的有序列表，按数组顺序重新编号 priority"
+  },
+  {
+    "name": "validate_ocr_model",
+    "params": [
+      "model: String",
+      "engine_type: String"
+    ],
+    "returns": "Result<ValidateOcrModelResponse>",
+    "doc": "验证模型是否适合指定的 OCR 引擎"
+  }
+]

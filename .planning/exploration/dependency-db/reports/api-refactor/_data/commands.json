@@ -1,0 +1,1238 @@
+[
+  {
+    "name": "analyze_query_performance",
+    "params": [
+      "query: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "Analyze query performance"
+  },
+  {
+    "name": "auto_install_package_manager",
+    "params": [
+      "manager_type: String"
+    ],
+    "returns": "serde_json::Value",
+    "doc": ""
+  },
+  {
+    "name": "call_llm_for_boundary",
+    "params": [
+      "prompt: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "CardForge 2.0 - LLM 定界命令  用于智能分段引擎，让 LLM 在硬分割点附近找到最佳语义边界"
+  },
+  {
+    "name": "cancel_pdf_ocr_session",
+    "params": [
+      "session_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "取消 PDF OCR 会话（基于 session_id / temp_id）"
+  },
+  {
+    "name": "cancel_stream",
+    "params": [
+      "streamEventName: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "硬停止：取消指定流事件（例如 chat_stream_{id}）"
+  },
+  {
+    "name": "check_all_package_managers",
+    "params": [],
+    "returns": "serde_json::Value",
+    "doc": ""
+  },
+  {
+    "name": "check_package_manager",
+    "params": [
+      "command: String"
+    ],
+    "returns": "serde_json::Value",
+    "doc": ""
+  },
+  {
+    "name": "check_test_dependencies",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "检查测试依赖服务健康状态（使用独立模块）"
+  },
+  {
+    "name": "cleanup_old_debug_logs",
+    "params": [
+      "state: State<'_, AppState>",
+      "max_age_days: u32"
+    ],
+    "returns": "Result<usize>",
+    "doc": "清理超过指定天数的旧调试日志"
+  },
+  {
+    "name": "clear_debug_logs",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<usize>",
+    "doc": "清除所有调试日志文件"
+  },
+  {
+    "name": "clear_message_embeddings",
+    "params": [
+      "message_ids: Vec<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "清空指定消息的向量（用于编辑重发场景）"
+  },
+  {
+    "name": "copy_file",
+    "params": [
+      "window: Window",
+      "source_path: String",
+      "dest_path: String"
+    ],
+    "returns": "Result<()>",
+    "doc": "复制文件到指定位置"
+  },
+  {
+    "name": "create_custom_template",
+    "params": [
+      "request: CreateTemplateRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "创建自定义模板"
+  },
+  {
+    "name": "create_performance_indexes",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "Create performance indexes for better query speed"
+  },
+  {
+    "name": "delete_custom_template",
+    "params": [
+      "template_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "删除自定义模板"
+  },
+  {
+    "name": "ensure_debug_log_dir",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "确保 debug-logs 目录存在并返回绝对路径"
+  },
+  {
+    "name": "estimate_tokens",
+    "params": [
+      "request: EstimateTokensRequest"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": ""
+  },
+  {
+    "name": "export_mcp_config",
+    "params": [
+      "_config: McpConfig",
+      "_format: String",
+      "_state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": ""
+  },
+  {
+    "name": "export_questions_csv",
+    "params": [
+      "request: CsvExportCommandRequest",
+      "state: State<'_, AppState>",
+      "window: Window"
+    ],
+    "returns": "Result<crate::question_export_service::CsvExportResult>",
+    "doc": "导出题目集为 CSV 文件  支持选择导出字段、筛选条件、编码格式"
+  },
+  {
+    "name": "export_template",
+    "params": [
+      "template_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<TemplateExportResponse>",
+    "doc": "导出模板"
+  },
+  {
+    "name": "export_unified_backup_data",
+    "params": [
+      "options: serde_json::Value",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": ""
+  },
+  {
+    "name": "generate_anki_cards_from_document",
+    "params": [
+      "request: AnkiDocumentGenerationRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<AnkiDocumentGenerationResponse>",
+    "doc": "生成 Anki 卡片"
+  },
+  {
+    "name": "generate_anki_cards_from_document_base64",
+    "params": [
+      "file_name: String",
+      "base64_content: String",
+      "options: Option<AnkiGenerationOptions>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<AnkiDocumentGenerationResponse>",
+    "doc": "从Base64编码的DOCX/PDF文档生成ANKI卡片"
+  },
+  {
+    "name": "generate_anki_cards_from_document_file",
+    "params": [
+      "file_path: String",
+      "options: Option<AnkiGenerationOptions>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<AnkiDocumentGenerationResponse>",
+    "doc": "从DOCX/PDF文档文件生成ANKI卡片"
+  },
+  {
+    "name": "get_all_custom_templates",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<CustomAnkiTemplate>>",
+    "doc": "获取所有自定义模板"
+  },
+  {
+    "name": "get_all_recent_cards",
+    "params": [
+      "limit: Option<u32>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<crate::models::AnkiCard>>",
+    "doc": "恢复用：获取最近生成的卡片（按创建时间倒序）"
+  },
+  {
+    "name": "get_api_configurations",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<ApiConfig>>",
+    "doc": ""
+  },
+  {
+    "name": "get_app_data_dir",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "获取应用数据目录的绝对路径"
+  },
+  {
+    "name": "get_app_version",
+    "params": [],
+    "returns": "String",
+    "doc": "轻量版本查询：获取应用完整版本号（无依赖，避免阻塞）  返回格式：`0.9.2 (Build 11792, abc12345)`"
+  },
+  {
+    "name": "get_csv_exportable_fields",
+    "params": [],
+    "returns": "Vec<(String, String)>",
+    "doc": "获取可导出的字段列表"
+  },
+  {
+    "name": "get_csv_preview",
+    "params": [
+      "file_path: String",
+      "rows: Option<usize>",
+      "window: Window"
+    ],
+    "returns": "Result<crate::question_import_service::CsvPreviewResult>",
+    "doc": "预览 CSV 文件前 N 行（用于字段映射）  返回表头和预览数据，支持自动编码检测"
+  },
+  {
+    "name": "get_custom_template_by_id",
+    "params": [
+      "template_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Option<CustomAnkiTemplate>>",
+    "doc": "获取指定ID的自定义模板"
+  },
+  {
+    "name": "get_database_info",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "获取当前数据库路径信息"
+  },
+  {
+    "name": "get_debug_logs_info",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::debug_log_service::DebugLogsInfo>",
+    "doc": "获取调试日志统计信息（文件数量 + 总大小）"
+  },
+  {
+    "name": "get_default_template_id",
+    "params": [
+      "state: tauri::State<'_, AppState>"
+    ],
+    "returns": "Result<Option<String>>",
+    "doc": "获取默认模板ID"
+  },
+  {
+    "name": "get_enhanced_statistics",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "获取增强统计信息（包含所有模块）"
+  },
+  {
+    "name": "get_exam_sheet_session_detail",
+    "params": [
+      "request: ExamSheetSessionDetailRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<ExamSheetSessionDetailResponse>",
+    "doc": ""
+  },
+  {
+    "name": "get_file_size",
+    "params": [
+      "window: Window",
+      "path: String"
+    ],
+    "returns": "Result<u64>",
+    "doc": "获取文件大小（字节）"
+  },
+  {
+    "name": "get_image_as_base64",
+    "params": [
+      "relative_path: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "M-013: 读取图片为 base64 data URL（供前端 proxyDomURL 使用）"
+  },
+  {
+    "name": "get_injection_budget_config",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "获取注入预算配置"
+  },
+  {
+    "name": "get_learning_heatmap",
+    "params": [
+      "start_date: String",
+      "end_date: String",
+      "app_handle: AppHandle"
+    ],
+    "returns": "Result<Vec<LearningActivity>>",
+    "doc": "获取学习热力图数据 聚合 Chat V2、VFS、Anki 等多个数据源的学习活动"
+  },
+  {
+    "name": "get_mcp_config",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<McpConfig>",
+    "doc": ""
+  },
+  {
+    "name": "get_model_assignments",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<ModelAssignments>",
+    "doc": ""
+  },
+  {
+    "name": "get_model_profiles",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<ModelProfile>>",
+    "doc": ""
+  },
+  {
+    "name": "get_pdf_ocr_temp_dir",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "获取应用临时目录路径（供前端保存 PDF 文件后获取路径）"
+  },
+  {
+    "name": "get_recent_document_tasks",
+    "params": [
+      "limit: Option<u32>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<crate::models::DocumentTask>>",
+    "doc": "恢复用：获取最近的文档任务（按更新时间倒序）"
+  },
+  {
+    "name": "get_test_logs",
+    "params": [
+      "log_type: String",
+      "state: tauri::State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<String>>",
+    "doc": "获取测试日志列表"
+  },
+  {
+    "name": "get_vendor_configs",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<VendorConfig>>",
+    "doc": "供应商配置管理"
+  },
+  {
+    "name": "hash_file",
+    "params": [
+      "window: Window",
+      "path: String"
+    ],
+    "returns": "Result<String>",
+    "doc": "计算文件 SHA-256（十六进制）"
+  },
+  {
+    "name": "import_builtin_templates",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "导入内置模板"
+  },
+  {
+    "name": "import_custom_templates_bulk",
+    "params": [
+      "request: TemplateBulkImportRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "批量导入模板"
+  },
+  {
+    "name": "import_mcp_config",
+    "params": [
+      "_path: String",
+      "_state: State<'_, AppState>"
+    ],
+    "returns": "Result<McpConfig>",
+    "doc": ""
+  },
+  {
+    "name": "import_question_bank",
+    "params": [
+      "request: ImportQuestionBankRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<ExamSheetSessionDetail>",
+    "doc": "导入题目集 - 使用统一的 QuestionImportService  支持格式：json, txt, md, docx 超长文档自动分块处理"
+  },
+  {
+    "name": "import_question_bank_stream",
+    "params": [
+      "request: ImportQuestionBankRequest",
+      "state: State<'_, AppState>",
+      "app_handle: AppHandle"
+    ],
+    "returns": "Result<ExamSheetSessionDetail>",
+    "doc": ""
+  },
+  {
+    "name": "import_questions_csv",
+    "params": [
+      "request: CsvImportCommandRequest",
+      "state: State<'_, AppState>",
+      "app_handle: AppHandle",
+      "window: Window"
+    ],
+    "returns": "Result<crate::question_import_service::CsvImportResult>",
+    "doc": "导入 CSV 文件到题目集  支持字段映射、去重策略（skip/overwrite/merge） 支持 UTF-8 和 GBK 编码自动检测"
+  },
+  {
+    "name": "import_template",
+    "params": [
+      "request: TemplateImportRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "导入模板"
+  },
+  {
+    "name": "init_pdf_ocr_session",
+    "params": [
+      "pdf_name: Option<String>",
+      "pdf_base64: String",
+      "total_pages: usize",
+      "state: State<'_, AppState>",
+      "app_handle: AppHandle"
+    ],
+    "returns": "Result<String>",
+    "doc": ""
+  },
+  {
+    "name": "inspect_pdf_text_for_qbank",
+    "params": [
+      "request: InspectPdfTextRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::question_import_service::PdfTextInspection>",
+    "doc": ""
+  },
+  {
+    "name": "list_exam_sheet_sessions",
+    "params": [
+      "request: ExamSheetSessionListRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<ExamSheetSessionListResponse>",
+    "doc": ""
+  },
+  {
+    "name": "list_importing_sessions",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<crate::vfs::repos::ImportingSession>>",
+    "doc": "查询可恢复的中断导入会话"
+  },
+  {
+    "name": "load_webview_settings",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "加载 WebView localStorage 数据从文件系统 在备份恢复后调用此命令，将 UI 偏好设置恢复到前端"
+  },
+  {
+    "name": "open_log_file",
+    "params": [
+      "log_path: String",
+      "state: tauri::State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "打开指定的日志文件"
+  },
+  {
+    "name": "open_logs_folder",
+    "params": [
+      "log_type: String",
+      "state: tauri::State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "打开日志文件夹"
+  },
+  {
+    "name": "optimize_chat_embeddings_table",
+    "params": [
+      "older_than_days: Option<u64>",
+      "delete_unverified: Option<bool>",
+      "force: Option<bool>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "一键优化/清理聊天向量表（合并小文件、清理旧版本、优化索引）"
+  },
+  {
+    "name": "optimize_lance_database",
+    "params": [
+      "_state: State<'_, AppState>",
+      "_parallelism: Option<usize>",
+      "_force: Option<bool>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "优化 Lance 数据库"
+  },
+  {
+    "name": "parse_document_from_base64",
+    "params": [
+      "file_name: String",
+      "base64_content: String"
+    ],
+    "returns": "std::result::Result<String, String>",
+    "doc": "从Base64编码内容解析文档文本"
+  },
+  {
+    "name": "parse_document_from_path",
+    "params": [
+      "file_path: String"
+    ],
+    "returns": "std::result::Result<String, String>",
+    "doc": "从文件路径解析文档文本"
+  },
+  {
+    "name": "pause_pdf_ocr_session",
+    "params": [
+      "session_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "暂停 PDF OCR 会话"
+  },
+  {
+    "name": "pin_images",
+    "params": [
+      "temp_id: String",
+      "images: Vec<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "B4: 将图片固定为会话 Pin（base64 数组）"
+  },
+  {
+    "name": "process_pdf_ocr",
+    "params": [
+      "request: PdfOcrRequest",
+      "state: State<'_, AppState>",
+      "app_handle: AppHandle"
+    ],
+    "returns": "Result<PdfOcrResult>",
+    "doc": ""
+  },
+  {
+    "name": "qbank_batch_create_questions",
+    "params": [
+      "params_list: Vec<CreateQuestionParams>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<Question>>",
+    "doc": "批量创建题目"
+  },
+  {
+    "name": "qbank_batch_delete_questions",
+    "params": [
+      "question_ids: Vec<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<BatchResult>",
+    "doc": "批量删除题目"
+  },
+  {
+    "name": "qbank_batch_update_questions",
+    "params": [
+      "request: BatchUpdateQuestionsRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<BatchResult>",
+    "doc": ""
+  },
+  {
+    "name": "qbank_create_question",
+    "params": [
+      "params: CreateQuestionParams",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Question>",
+    "doc": "创建题目"
+  },
+  {
+    "name": "qbank_crop_source_image",
+    "params": [
+      "request: CropSourceImageRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::vfs::repos::QuestionImage>",
+    "doc": "从原始图片裁剪一个区域，保存为新 blob，添加到题目的 images"
+  },
+  {
+    "name": "qbank_delete_question",
+    "params": [
+      "question_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "删除题目"
+  },
+  {
+    "name": "qbank_generate_mock_exam",
+    "params": [
+      "request: GenerateMockExamRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::question_bank_service::MockExamSession>",
+    "doc": "生成模拟考试"
+  },
+  {
+    "name": "qbank_generate_paper",
+    "params": [
+      "request: GeneratePaperRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::question_bank_service::GeneratedPaper>",
+    "doc": "生成试卷"
+  },
+  {
+    "name": "qbank_get_activity_heatmap",
+    "params": [
+      "request: GetActivityHeatmapRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<ActivityHeatmapPoint>>",
+    "doc": "获取活跃度热力图数据  返回指定年份的每日学习活跃度数据"
+  },
+  {
+    "name": "qbank_get_check_in_calendar",
+    "params": [
+      "request: GetCheckInCalendarRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::question_bank_service::CheckInCalendar>",
+    "doc": "获取打卡日历"
+  },
+  {
+    "name": "qbank_get_daily_practice",
+    "params": [
+      "request: GetDailyPracticeRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::question_bank_service::DailyPracticeResult>",
+    "doc": "获取每日一练"
+  },
+  {
+    "name": "qbank_get_history",
+    "params": [
+      "question_id: String",
+      "limit: Option<u32>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<QuestionHistory>>",
+    "doc": "获取历史记录"
+  },
+  {
+    "name": "qbank_get_knowledge_stats",
+    "params": [
+      "request: GetKnowledgeStatsRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<KnowledgePoint>>",
+    "doc": "获取知识点统计  返回各知识点的掌握度统计"
+  },
+  {
+    "name": "qbank_get_knowledge_stats_with_comparison",
+    "params": [
+      "request: GetKnowledgeStatsRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<KnowledgeStatsComparison>",
+    "doc": "获取知识点统计（带历史对比）"
+  },
+  {
+    "name": "qbank_get_learning_trend",
+    "params": [
+      "request: GetLearningTrendRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<LearningTrendPoint>>",
+    "doc": "获取学习趋势数据  返回指定日期范围内的每日做题数和正确率"
+  },
+  {
+    "name": "qbank_get_question",
+    "params": [
+      "question_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Option<Question>>",
+    "doc": "获取单题详情"
+  },
+  {
+    "name": "qbank_get_question_by_card_id",
+    "params": [
+      "exam_id: String",
+      "card_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Option<Question>>",
+    "doc": "根据 card_id 获取题目（兼容旧数据）"
+  },
+  {
+    "name": "qbank_get_source_images",
+    "params": [
+      "examId: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<SourceImageInfo>>",
+    "doc": "获取题目集的原始导入图片列表（base64 data URL）"
+  },
+  {
+    "name": "qbank_get_stats",
+    "params": [
+      "exam_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Option<QuestionBankStats>>",
+    "doc": "获取统计"
+  },
+  {
+    "name": "qbank_get_submissions",
+    "params": [
+      "question_id: String",
+      "limit: Option<u32>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<AnswerSubmission>>",
+    "doc": "获取作答历史"
+  },
+  {
+    "name": "qbank_list_questions",
+    "params": [
+      "request: ListQuestionsRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<QuestionListResult>",
+    "doc": ""
+  },
+  {
+    "name": "qbank_rebuild_fts_index",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<u64>",
+    "doc": "重建 FTS5 索引  用于数据修复，重建全文搜索索引"
+  },
+  {
+    "name": "qbank_refresh_stats",
+    "params": [
+      "exam_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<QuestionBankStats>",
+    "doc": "刷新统计"
+  },
+  {
+    "name": "qbank_remove_question_image",
+    "params": [
+      "questionId: String",
+      "imageId: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "删除题目的某张配图"
+  },
+  {
+    "name": "qbank_reset_progress",
+    "params": [
+      "exam_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<QuestionBankStats>",
+    "doc": "重置学习进度"
+  },
+  {
+    "name": "qbank_reset_questions_progress",
+    "params": [
+      "question_ids: Vec<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<BatchResult>",
+    "doc": "按题目 ID 批量重置学习进度"
+  },
+  {
+    "name": "qbank_search_questions",
+    "params": [
+      "request: SearchQuestionsRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<QuestionSearchListResult>",
+    "doc": "全文搜索题目  使用 FTS5 全文检索，支持： - 中英文混合搜索 - 搜索高亮（返回匹配片段） - 相关性排序（BM25 算法） - 多字段搜索（content, answer, explanation, tags）"
+  },
+  {
+    "name": "qbank_start_timed_practice",
+    "params": [
+      "request: StartTimedPracticeRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::question_bank_service::TimedPracticeSession>",
+    "doc": "开始限时练习"
+  },
+  {
+    "name": "qbank_submit_answer",
+    "params": [
+      "request: SubmitAnswerRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<SubmitAnswerResult>",
+    "doc": ""
+  },
+  {
+    "name": "qbank_submit_mock_exam",
+    "params": [
+      "request: SubmitMockExamRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::question_bank_service::MockExamScoreCard>",
+    "doc": "提交模拟考试"
+  },
+  {
+    "name": "qbank_toggle_favorite",
+    "params": [
+      "question_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Question>",
+    "doc": "切换收藏状态"
+  },
+  {
+    "name": "qbank_update_question",
+    "params": [
+      "request: UpdateQuestionRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Question>",
+    "doc": ""
+  },
+  {
+    "name": "read_debug_log_file",
+    "params": [
+      "path: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "读取指定调试日志文件的完整内容（用于\"完整\"过滤级别的复制）"
+  },
+  {
+    "name": "read_file_bytes",
+    "params": [
+      "window: Window",
+      "path: String"
+    ],
+    "returns": "Result<Vec<u8>>",
+    "doc": "读取文件二进制内容（支持 content://、ph:// 等移动端安全URI）"
+  },
+  {
+    "name": "read_file_text",
+    "params": [
+      "window: Window",
+      "path: String"
+    ],
+    "returns": "Result<String>",
+    "doc": "读取文件文本内容"
+  },
+  {
+    "name": "rename_exam_sheet_session",
+    "params": [
+      "request: RenameExamSheetSessionRequest",
+      "state: State<'_, AppState>",
+      "app_handle: AppHandle"
+    ],
+    "returns": "Result<RenameExamSheetSessionResponse>",
+    "doc": ""
+  },
+  {
+    "name": "report_frontend_log",
+    "params": [
+      "payload: FrontendLogPayload"
+    ],
+    "returns": "Result<()>",
+    "doc": "记录前端错误日志"
+  },
+  {
+    "name": "research_delete_report",
+    "params": [
+      "id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": ""
+  },
+  {
+    "name": "research_export_all_reports_zip",
+    "params": [
+      "request: ResearchExportZipRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": ""
+  },
+  {
+    "name": "research_get_report",
+    "params": [
+      "id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::models::ResearchReport>",
+    "doc": ""
+  },
+  {
+    "name": "research_list_reports",
+    "params": [
+      "request: ResearchListRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<crate::models::ResearchReportSummary>>",
+    "doc": ""
+  },
+  {
+    "name": "reset_test_database",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "重置测试数据库（删除并重新创建）"
+  },
+  {
+    "name": "resume_pdf_ocr_session",
+    "params": [
+      "session_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "继续 PDF OCR 会话"
+  },
+  {
+    "name": "resume_question_import",
+    "params": [
+      "session_id: String",
+      "state: State<'_, AppState>",
+      "app_handle: AppHandle"
+    ],
+    "returns": "Result<ExamSheetSessionDetail>",
+    "doc": "恢复中断的题目集导入  从 import_state_json 中读取已保存的 OCR 文本和 chunk 进度， 跳过已完成的 chunks，从断点处继续解析。"
+  },
+  {
+    "name": "save_api_configurations",
+    "params": [
+      "configs: Vec<ApiConfig>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": ""
+  },
+  {
+    "name": "save_model_assignments",
+    "params": [
+      "assignments: ModelAssignments",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": ""
+  },
+  {
+    "name": "save_model_profiles",
+    "params": [
+      "profiles: Vec<ModelProfile>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": ""
+  },
+  {
+    "name": "save_pdf_to_temp",
+    "params": [
+      "pdf_base64: String",
+      "file_name: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "将前端上传的 PDF 文件保存到临时目录"
+  },
+  {
+    "name": "save_template_debug_data",
+    "params": [
+      "debug_data: serde_json::Value",
+      "state: tauri::State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "保存模板调试数据"
+  },
+  {
+    "name": "save_test_log",
+    "params": [
+      "file_name: String",
+      "content: String",
+      "log_type: String",
+      "state: tauri::State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "保存测试日志到文件"
+  },
+  {
+    "name": "save_text_to_file",
+    "params": [
+      "window: Window",
+      "path: String",
+      "content: String"
+    ],
+    "returns": "Result<()>",
+    "doc": "将文本内容保存到指定文件"
+  },
+  {
+    "name": "save_vendor_configs",
+    "params": [
+      "configs: Vec<VendorConfig>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": ""
+  },
+  {
+    "name": "save_webview_settings",
+    "params": [
+      "settings: serde_json::Value",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "保存 WebView localStorage 数据到文件系统 在备份导出前调用此命令，确保 UI 偏好设置被包含在备份中"
+  },
+  {
+    "name": "seed_test_database",
+    "params": [
+      "config: Option<serde_json::Value>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "播种测试数据库（使用独立模块）"
+  },
+  {
+    "name": "set_default_template",
+    "params": [
+      "template_id: String",
+      "state: tauri::State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "设置默认模板"
+  },
+  {
+    "name": "set_test_run_id",
+    "params": [
+      "test_run_id: String"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "记录测试运行ID到后端（用于日志关联）"
+  },
+  {
+    "name": "simulate_budget_allocation",
+    "params": [
+      "state: State<'_, AppState>",
+      "test_items: Vec<serde_json::Value>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "更新注入预算配置"
+  },
+  {
+    "name": "skip_pdf_ocr_page",
+    "params": [
+      "session_id: String",
+      "page_index: usize",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "跳过指定页面"
+  },
+  {
+    "name": "start_pdf_ocr_backend",
+    "params": [
+      "pdf_path: String",
+      "pdf_name: Option<String>",
+      "render_dpi: Option<u32>",
+      "state: State<'_, AppState>",
+      "app_handle: AppHandle"
+    ],
+    "returns": "Result<String>",
+    "doc": "后端驱动的 PDF OCR（完全在后端渲染 PDF，无需前端传输图片）  这是新的高性能 PDF OCR 入口，前端只需传入 PDF 文件路径， 所有的 PDF 渲染和 OCR 处理都在后端完成，大幅减少 IPC 开销。"
+  },
+  {
+    "name": "switch_to_production_database",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "切换回生产数据库"
+  },
+  {
+    "name": "switch_to_test_database",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "切换到测试数据库 将当前数据库连接切换到独立的测试数据库文件"
+  },
+  {
+    "name": "test_api_connection",
+    "params": [
+      "api_key: String",
+      "api_base: String",
+      "api_protocol: Option<String>",
+      "supports_openai_responses: Option<bool>",
+      "model: Option<String>",
+      "vendor_id: Option<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": ""
+  },
+  {
+    "name": "unpin_images",
+    "params": [
+      "temp_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "B4: 取消会话 Pin 图片"
+  },
+  {
+    "name": "update_custom_template",
+    "params": [
+      "template_id: String",
+      "request: UpdateTemplateRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "更新自定义模板"
+  },
+  {
+    "name": "update_exam_sheet_cards",
+    "params": [
+      "request: UpdateExamSheetCardsRequest",
+      "state: State<'_, AppState>",
+      "app_handle: AppHandle"
+    ],
+    "returns": "Result<UpdateExamSheetCardsResponse>",
+    "doc": ""
+  },
+  {
+    "name": "upload_pdf_ocr_page",
+    "params": [
+      "session_id: String",
+      "page: crate::models::PdfOcrPageInput",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": ""
+  },
+  {
+    "name": "write_test_report",
+    "params": [
+      "filename: String",
+      "content: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "写入测试报告到文件系统"
+  }
+]

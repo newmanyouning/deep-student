@@ -1,0 +1,167 @@
+[
+  {
+    "name": "review_plan_batch_create",
+    "params": [
+      "question_ids: Vec<String>",
+      "exam_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<BatchCreateResult, String>",
+    "doc": "批量为题目创建复习计划"
+  },
+  {
+    "name": "review_plan_create",
+    "params": [
+      "question_id: String",
+      "exam_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<ReviewPlan, String>",
+    "doc": "创建复习计划"
+  },
+  {
+    "name": "review_plan_create_for_exam",
+    "params": [
+      "exam_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<BatchCreateResult, String>",
+    "doc": "为题目集的所有题目创建复习计划"
+  },
+  {
+    "name": "review_plan_delete",
+    "params": [
+      "plan_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "删除复习计划"
+  },
+  {
+    "name": "review_plan_get",
+    "params": [
+      "plan_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<ReviewPlan>, String>",
+    "doc": "获取复习计划"
+  },
+  {
+    "name": "review_plan_get_by_question",
+    "params": [
+      "question_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<ReviewPlan>, String>",
+    "doc": "根据题目 ID 获取复习计划"
+  },
+  {
+    "name": "review_plan_get_calendar_data",
+    "params": [
+      "start_date: Option<String>",
+      "end_date: Option<String>",
+      "exam_id: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<CalendarHeatmapData>, String>",
+    "doc": "获取日历热力图数据"
+  },
+  {
+    "name": "review_plan_get_due",
+    "params": [
+      "exam_id: Option<String>",
+      "until_date: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<DueReviewsResult, String>",
+    "doc": "获取到期复习"
+  },
+  {
+    "name": "review_plan_get_due_with_filter",
+    "params": [
+      "filter: DueReviewsFilter",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<DueReviewsResult, String>",
+    "doc": "获取到期复习（带完整筛选）"
+  },
+  {
+    "name": "review_plan_get_history",
+    "params": [
+      "plan_id: String",
+      "limit: Option<u32>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<ReviewHistory>, String>",
+    "doc": "获取复习历史"
+  },
+  {
+    "name": "review_plan_get_or_create",
+    "params": [
+      "question_id: String",
+      "exam_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<ReviewPlan, String>",
+    "doc": "获取或创建复习计划"
+  },
+  {
+    "name": "review_plan_get_stats",
+    "params": [
+      "exam_id: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<ReviewStats, String>",
+    "doc": "获取复习统计"
+  },
+  {
+    "name": "review_plan_list_by_exam",
+    "params": [
+      "exam_id: String",
+      "limit: Option<u32>",
+      "offset: Option<u32>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<DueReviewsResult, String>",
+    "doc": "列出题目集的所有复习计划"
+  },
+  {
+    "name": "review_plan_process",
+    "params": [
+      "plan_id: String",
+      "quality: u8",
+      "user_answer: Option<String>",
+      "time_spent_seconds: Option<u32>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<ProcessReviewResult, String>",
+    "doc": "处理复习结果"
+  },
+  {
+    "name": "review_plan_refresh_stats",
+    "params": [
+      "exam_id: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<ReviewStats, String>",
+    "doc": "刷新复习统计"
+  },
+  {
+    "name": "review_plan_resume",
+    "params": [
+      "plan_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<ReviewPlan, String>",
+    "doc": "恢复复习计划"
+  },
+  {
+    "name": "review_plan_suspend",
+    "params": [
+      "plan_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<ReviewPlan, String>",
+    "doc": "暂停复习计划"
+  }
+]

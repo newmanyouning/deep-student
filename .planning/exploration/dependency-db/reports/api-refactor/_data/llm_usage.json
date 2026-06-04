@@ -1,0 +1,21 @@
+[
+  {
+    "name": "llm_usage_get_trends",
+    "params": [
+      "db: State<'_, Arc<LlmUsageDatabase>>",
+      "days: u32",
+      "granularity: String"
+    ],
+    "returns": "Result<Vec<UsageTrendPoint>, String>",
+    "doc": ""
+  },
+  {
+    "name": "llm_usage_recent",
+    "params": [
+      "db: State<'_, Arc<LlmUsageDatabase>>",
+      "limit: Option<u32>"
+    ],
+    "returns": "Result<Vec<UsageRecord>, String>",
+    "doc": ""
+  }
+]

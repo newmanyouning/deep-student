@@ -1,0 +1,61 @@
+[
+  {
+    "name": "debug_get_database_stats",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<DebugDatabaseStats, AppError>",
+    "doc": "调试专用：获取数据库统计信息"
+  },
+  {
+    "name": "debug_get_raw_mistake",
+    "params": [
+      "id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Option<DebugRawMistakeRecord>, AppError>",
+    "doc": "调试专用：获取错题的原始数据库记录（绕过业务逻辑）  与 `get_mistake_details` 的区别： - 不经过任何业务逻辑处理或数据转换 - 直接返回数据库中的 JSON 原文 - 包含原始的 chat_history JSON 字符串 - 用于验证数据库存储是否正确"
+  },
+  {
+    "name": "debug_get_raw_mistakes_batch",
+    "params": [
+      "ids: Vec<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<DebugRawMistakeRecord>, AppError>",
+    "doc": "调试专用：批量获取多个错题的原始记录 P1 修复：使用 IN 子句优化性能，避免 N+1 查询问题"
+  },
+  {
+    "name": "debug_verify_mistake_integrity",
+    "params": [
+      "id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<DebugIntegrityReport, AppError>",
+    "doc": "调试专用：验证特定错题的数据完整性"
+  },
+  {
+    "name": "debug_vfs_migration_status",
+    "params": [
+      "vfs_db: State<'_, std::sync::Arc<crate::vfs::database::VfsDatabase>>"
+    ],
+    "returns": "Result<VfsMigrationDiagnostic, String>",
+    "doc": "诊断 VFS 迁移状态"
+  },
+  {
+    "name": "debug_vfs_textbook_pages",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<DebugTextbookPageInfo>, AppError>",
+    "doc": ""
+  },
+  {
+    "name": "log_debug_message",
+    "params": [
+      "message: String"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "记录前端调试消息"
+  }
+]

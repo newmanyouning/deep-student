@@ -265,7 +265,7 @@ public/images/*
 .github/workflows/backup.yml
 
 # GSD planning workflow artifacts
-.planning/
+#.planning/
 study-ui/.planning/
 
 # Design assets

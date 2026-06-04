@@ -1,0 +1,32 @@
+[
+  {
+    "name": "stream_chat_translation_aligned",
+    "params": [
+      "request: ChatTranslationRequest",
+      "window: Window",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<(), AppError>",
+    "doc": "命令：流式短语对照翻译（NDJSON 输出）  前端事件订阅：`chat_translation_${request_id}` 取消：调用通用命令 `cancel_stream` 传入相同事件名"
+  },
+  {
+    "name": "stream_chat_translation_plain",
+    "params": [
+      "request: ChatTranslationRequest",
+      "window: Window",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<(), AppError>",
+    "doc": "命令：流式纯译文翻译（单栏渐进显示）"
+  },
+  {
+    "name": "translate_text_stream",
+    "params": [
+      "request: TranslationRequest",
+      "window: Window",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<Option<TranslationResponse>, AppError>",
+    "doc": "流式翻译命令  # 参数 - `request`: 翻译请求（包含源文本、语言对、提示词等） - `window`: Tauri 窗口句柄（用于发送 SSE 事件） - `state`: 应用状态（访问 LLMManager、Database 等）  # 事件流 1. `translation_stream_data`: 增量译文片段 2. `translation_stream_complete`: 翻译完成（含完整译文和 ID） 3. `translation_stream_error`: 错误信息"
+  }
+]

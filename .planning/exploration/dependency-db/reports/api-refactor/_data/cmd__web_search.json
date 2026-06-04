@@ -1,0 +1,152 @@
+[
+  {
+    "name": "delete_setting",
+    "params": [
+      "key: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "删除设置"
+  },
+  {
+    "name": "delete_settings_by_prefix",
+    "params": [
+      "prefix: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<usize>",
+    "doc": "按前缀批量删除设置"
+  },
+  {
+    "name": "detect_tool_conflicts",
+    "params": [
+      "_state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<ToolConflict>>",
+    "doc": "检测工具名冲突"
+  },
+  {
+    "name": "get_cn_whitelist_config",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "获取中文可信站点白名单配置"
+  },
+  {
+    "name": "get_feature_flags",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "获取功能开关配置"
+  },
+  {
+    "name": "get_provider_strategies_config",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "获取Provider策略配置"
+  },
+  {
+    "name": "get_security_status",
+    "params": [
+      "_state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "检查安全存储状态（缓存版本，避免频繁的钥匙串访问）"
+  },
+  {
+    "name": "get_setting",
+    "params": [
+      "key: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Option<String>>",
+    "doc": "读取设置（敏感键自动从安全存储读取）"
+  },
+  {
+    "name": "get_settings_by_prefix",
+    "params": [
+      "prefix: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<(String, String, String)>>",
+    "doc": "按前缀查询设置列表（用于工具权限管理等）"
+  },
+  {
+    "name": "get_tools_namespace_config",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "获取工具命名空间配置"
+  },
+  {
+    "name": "is_feature_enabled",
+    "params": [
+      "state: State<'_, AppState>",
+      "feature_name: String",
+      "user_id: Option<String>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "检查功能是否启用"
+  },
+  {
+    "name": "save_provider_strategies_config",
+    "params": [
+      "strategies: crate::tools::web_search::ProviderStrategies",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "保存Provider策略配置"
+  },
+  {
+    "name": "save_setting",
+    "params": [
+      "key: String",
+      "value: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "保存设置（敏感键自动使用安全存储）"
+  },
+  {
+    "name": "test_all_search_engines",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "一键体检所有搜索引擎连通性"
+  },
+  {
+    "name": "test_search_engine",
+    "params": [
+      "state: State<'_, AppState>",
+      "engine: String"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "测试搜索引擎连接"
+  },
+  {
+    "name": "test_web_search_connectivity",
+    "params": [
+      "engine: Option<String>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": ""
+  },
+  {
+    "name": "update_feature_flag",
+    "params": [
+      "state: State<'_, AppState>",
+      "feature_name: String",
+      "action: String",
+      "value: Option<serde_json::Value>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "更新功能开关状态"
+  }
+]

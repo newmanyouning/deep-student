@@ -1,0 +1,27 @@
+[
+  {
+    "name": "get_model_adapter_options",
+    "params": [
+      "_state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<serde_json::Value>>",
+    "doc": "获取模型适配器选项  直接从 ADAPTER_REGISTRY 动态获取，不使用数据库缓存"
+  },
+  {
+    "name": "reset_model_adapter_options",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<serde_json::Value>>",
+    "doc": "重置模型适配器选项为默认值"
+  },
+  {
+    "name": "save_model_adapter_options",
+    "params": [
+      "state: State<'_, AppState>",
+      "options: Vec<serde_json::Value>"
+    ],
+    "returns": "Result<()>",
+    "doc": "保存自定义模型适配器选项"
+  }
+]

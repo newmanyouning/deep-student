@@ -1,0 +1,115 @@
+[
+  {
+    "name": "textbooks_add",
+    "params": [
+      "window: Window",
+      "state: State<'_, AppState>",
+      "pdf_processing_service: State<'_, Arc<PdfProcessingService>>",
+      "sources: Vec<String>",
+      "folder_id: Option<String>"
+    ],
+    "returns": "Result<Vec<TextbookDto>>",
+    "doc": ""
+  },
+  {
+    "name": "textbooks_adopt",
+    "params": [
+      "window: Window",
+      "state: State<'_, AppState>",
+      "pdf_processing_service: State<'_, Arc<PdfProcessingService>>",
+      "paths: Vec<String>",
+      "folder_id: Option<String>"
+    ],
+    "returns": "Result<Vec<TextbookDto>>",
+    "doc": "采用已有文件（不复制），直接计算哈希并入库"
+  },
+  {
+    "name": "textbooks_delete_permanent",
+    "params": [
+      "_window: Window",
+      "state: State<'_, AppState>",
+      "id: String",
+      "delete_file: Option<bool>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "永久删除单个教材（可选物理删除）"
+  },
+  {
+    "name": "textbooks_list",
+    "params": [
+      "state: State<'_, AppState>",
+      "query: Option<TextbooksListQuery>"
+    ],
+    "returns": "Result<Vec<TextbookDto>>",
+    "doc": ""
+  },
+  {
+    "name": "textbooks_purge_trash",
+    "params": [
+      "_window: Window",
+      "state: State<'_, AppState>",
+      "options: Option<PurgeTrashOptions>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "清空回收站（可选物理删除文件）"
+  },
+  {
+    "name": "textbooks_recover",
+    "params": [
+      "state: State<'_, AppState>",
+      "id: String"
+    ],
+    "returns": "Result<bool>",
+    "doc": "恢复回收站中的教材"
+  },
+  {
+    "name": "textbooks_remove",
+    "params": [
+      "window: Window",
+      "state: State<'_, AppState>",
+      "id: String"
+    ],
+    "returns": "Result<bool>",
+    "doc": ""
+  },
+  {
+    "name": "textbooks_set_favorite",
+    "params": [
+      "state: State<'_, AppState>",
+      "id: String",
+      "favorite: bool"
+    ],
+    "returns": "Result<bool>",
+    "doc": "设置教材收藏状态"
+  },
+  {
+    "name": "textbooks_update_bookmarks",
+    "params": [
+      "state: State<'_, AppState>",
+      "id: String",
+      "bookmarks: Vec<serde_json::Value>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "更新教材书签"
+  },
+  {
+    "name": "textbooks_update_page_count",
+    "params": [
+      "state: State<'_, AppState>",
+      "id: String",
+      "page_count: i64"
+    ],
+    "returns": "Result<bool>",
+    "doc": "更新教材页数"
+  },
+  {
+    "name": "textbooks_update_reading_progress",
+    "params": [
+      "state: State<'_, AppState>",
+      "id: String",
+      "last_page: Option<i64>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "更新教材阅读进度（打开时间和页码）"
+  }
+]

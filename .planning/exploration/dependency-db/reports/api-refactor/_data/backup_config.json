@@ -1,0 +1,43 @@
+[
+  {
+    "name": "clear_backup_directory",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "清除自定义备份目录（恢复使用默认目录）"
+  },
+  {
+    "name": "get_backup_config",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<BackupConfig>",
+    "doc": "获取备份配置"
+  },
+  {
+    "name": "get_default_backup_directory",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "获取默认备份目录路径（用于 UI 显示）"
+  },
+  {
+    "name": "pick_backup_directory",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Option<String>>",
+    "doc": "选择备份目录"
+  },
+  {
+    "name": "set_backup_config",
+    "params": [
+      "config: BackupConfig",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "保存备份配置"
+  }
+]

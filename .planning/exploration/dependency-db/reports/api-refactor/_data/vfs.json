@@ -1,0 +1,1110 @@
+[
+  {
+    "name": "pomodoro_create_record",
+    "params": [
+      "app: AppHandle",
+      "input: CreatePomodoroInput"
+    ],
+    "returns": "Result<PomodoroRecord, String>",
+    "doc": ""
+  },
+  {
+    "name": "pomodoro_get_record",
+    "params": [
+      "app: AppHandle",
+      "record_id: String"
+    ],
+    "returns": "Result<Option<PomodoroRecord>, String>",
+    "doc": ""
+  },
+  {
+    "name": "pomodoro_list_by_todo",
+    "params": [
+      "app: AppHandle",
+      "todo_item_id: String"
+    ],
+    "returns": "Result<Vec<PomodoroRecord>, String>",
+    "doc": ""
+  },
+  {
+    "name": "pomodoro_list_today",
+    "params": [
+      "app: AppHandle"
+    ],
+    "returns": "Result<Vec<PomodoroRecord>, String>",
+    "doc": ""
+  },
+  {
+    "name": "pomodoro_today_stats",
+    "params": [
+      "app: AppHandle"
+    ],
+    "returns": "Result<PomodoroTodayStats, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_create_item",
+    "params": [
+      "app: AppHandle",
+      "input: CreateTodoItemInput"
+    ],
+    "returns": "Result<VfsTodoItem, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_create_list",
+    "params": [
+      "app: AppHandle",
+      "input: CreateTodoListInput"
+    ],
+    "returns": "Result<VfsTodoList, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_delete_item",
+    "params": [
+      "app: AppHandle",
+      "item_id: String"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_delete_list",
+    "params": [
+      "app: AppHandle",
+      "list_id: String"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_ensure_inbox",
+    "params": [
+      "app: AppHandle"
+    ],
+    "returns": "Result<VfsTodoList, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_get_active_summary",
+    "params": [
+      "app: AppHandle"
+    ],
+    "returns": "Result<Option<TodoActiveSummary>, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_get_item",
+    "params": [
+      "app: AppHandle",
+      "item_id: String"
+    ],
+    "returns": "Result<Option<VfsTodoItem>, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_get_list",
+    "params": [
+      "app: AppHandle",
+      "list_id: String"
+    ],
+    "returns": "Result<Option<VfsTodoList>, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_list_completed",
+    "params": [
+      "app: AppHandle",
+      "list_id: Option<String>"
+    ],
+    "returns": "Result<Vec<VfsTodoItem>, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_list_items",
+    "params": [
+      "app: AppHandle",
+      "list_id: String",
+      "include_completed: bool"
+    ],
+    "returns": "Result<Vec<VfsTodoItem>, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_list_lists",
+    "params": [
+      "app: AppHandle"
+    ],
+    "returns": "Result<Vec<VfsTodoList>, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_list_overdue",
+    "params": [
+      "app: AppHandle",
+      "include_completed: bool"
+    ],
+    "returns": "Result<Vec<VfsTodoItem>, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_list_today",
+    "params": [
+      "app: AppHandle",
+      "include_completed: bool"
+    ],
+    "returns": "Result<Vec<VfsTodoItem>, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_list_upcoming",
+    "params": [
+      "app: AppHandle",
+      "days: i64",
+      "include_completed: bool"
+    ],
+    "returns": "Result<Vec<VfsTodoItem>, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_reorder_items",
+    "params": [
+      "app: AppHandle",
+      "input: ReorderItemsInput"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_search",
+    "params": [
+      "app: AppHandle",
+      "query: String"
+    ],
+    "returns": "Result<Vec<VfsTodoItem>, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_toggle_item",
+    "params": [
+      "app: AppHandle",
+      "item_id: String"
+    ],
+    "returns": "Result<VfsTodoItem, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_toggle_list_favorite",
+    "params": [
+      "app: AppHandle",
+      "list_id: String"
+    ],
+    "returns": "Result<VfsTodoList, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_update_item",
+    "params": [
+      "app: AppHandle",
+      "input: UpdateTodoItemInput"
+    ],
+    "returns": "Result<VfsTodoItem, String>",
+    "doc": ""
+  },
+  {
+    "name": "todo_update_list",
+    "params": [
+      "app: AppHandle",
+      "input: UpdateTodoListInput"
+    ],
+    "returns": "Result<VfsTodoList, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_assign_dimension_model",
+    "params": [
+      "dimension: i32",
+      "modality: String",
+      "model_config_id: String",
+      "model_name: String",
+      "database: State<'_, Arc<crate::database::Database>>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<bool, String>",
+    "doc": "为维度分配模型（用于跨维度检索）  模型分配是配置项，不是数据绑定。用户可以随时更改维度使用的模型。 更改后，跨维度检索时会使用新分配的模型生成查询向量。  如果该维度是当前的默认嵌入维度，会同步更新 settings 中的模型配置ID"
+  },
+  {
+    "name": "vfs_batch_index_pending",
+    "params": [
+      "batch_size: Option<u32>",
+      "app_handle: AppHandle",
+      "llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<BatchIndexResult, String>",
+    "doc": "批量索引待处理资源（带进度事件）"
+  },
+  {
+    "name": "vfs_cancel_pdf_processing",
+    "params": [
+      "file_id: String",
+      "pdf_processing_service: State< '_, Arc<crate::vfs::pdf_processing_service::PdfProcessingService>, >"
+    ],
+    "returns": "Result<bool, String>",
+    "doc": "取消 PDF 处理  ## 参数 - `file_id`: 文件 ID  ## 返回 - `bool`: 是否成功取消（false 表示没有正在运行的任务）"
+  },
+  {
+    "name": "vfs_clear_default_embedding_dimension",
+    "params": [
+      "modality: String",
+      "database: State<'_, Arc<crate::database::Database>>"
+    ],
+    "returns": "Result<bool, String>",
+    "doc": "清除默认嵌入维度设置"
+  },
+  {
+    "name": "vfs_clear_media_cache",
+    "params": [
+      "params: ClearMediaCacheParams",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<ClearMediaCacheResult, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_clear_resource_ocr",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<bool, String>",
+    "doc": "清除资源的 OCR 数据（用于强制重新 OCR）  清除 resources.ocr_text 和 files.ocr_pages_json， 然后重置索引状态为 pending，下次索引时会重新触发 OCR"
+  },
+  {
+    "name": "vfs_create_attachment_root_folder",
+    "params": [
+      "title: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<String, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_create_dimension",
+    "params": [
+      "dimension: i32",
+      "modality: String",
+      "model_config_id: Option<String>",
+      "model_name: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<crate::vfs::repos::embedding_dim_repo::VfsEmbeddingDim, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_create_mindmap",
+    "params": [
+      "params: CreateMindMapInput",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<VfsMindMap, String>",
+    "doc": "创建知识导图"
+  },
+  {
+    "name": "vfs_create_note",
+    "params": [
+      "params: CreateNoteInput",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<VfsNote, String>",
+    "doc": "创建笔记  自动创建 resource 存储内容。  ## 参数 - `params`: 创建笔记的参数  ## 返回 - `Ok(VfsNote)`: 创建的笔记 - `Err(String)`: 数据库错误"
+  },
+  {
+    "name": "vfs_create_or_reuse",
+    "params": [
+      "params: CreateResourceInput",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<VfsCreateResourceResult, String>",
+    "doc": "创建或复用资源  基于内容哈希自动去重： - 如果相同哈希的资源已存在，返回已有资源的 ID - 如果不存在，创建新资源  ## 参数 - `params`: 创建资源的参数  ## 返回 - `Ok(VfsCreateResourceResult)`: 资源 ID、哈希和是否新创建 - `Err(String)`: 验证失败或数据库错误"
+  },
+  {
+    "name": "vfs_debug_index_status",
+    "params": [
+      "resource_id: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<IndexDiagnosticInfo, String>",
+    "doc": "获取索引诊断信息  返回数据库各表的真实状态，用于调试索引问题"
+  },
+  {
+    "name": "vfs_decrement_ref",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "减少资源引用计数  消息删除时调用，表示该资源不再被消息引用。  ## 参数 - `resource_id`: 资源 ID  ## 返回 - `Ok(())`: 成功 - `Err(String)`: 资源不存在或数据库错误"
+  },
+  {
+    "name": "vfs_delete_attachment",
+    "params": [
+      "attachment_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "软删除附件  将附件标记为已删除（可恢复），同时清理相关索引。 用于清理测试产生的废弃附件等场景。"
+  },
+  {
+    "name": "vfs_delete_dimension",
+    "params": [
+      "dimension: i32",
+      "modality: String",
+      "database: State<'_, Arc<crate::database::Database>>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<DeleteDimensionResult, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_delete_file",
+    "params": [
+      "file_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "★ M-12 修复：软删除文件时同步清理向量索引  确保被删除的文件不会在 RAG 检索中被错误返回。"
+  },
+  {
+    "name": "vfs_delete_mindmap",
+    "params": [
+      "mindmap_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "删除知识导图（软删除）"
+  },
+  {
+    "name": "vfs_delete_note",
+    "params": [
+      "id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "删除笔记  软删除：设置 deleted_at 字段。  ## 参数 - `id`: 笔记 ID  ## 返回 - `Ok(())`: 成功 - `Err(String)`: 笔记不存在或数据库错误"
+  },
+  {
+    "name": "vfs_delete_resource_index",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "resource_id: String"
+    ],
+    "returns": "Result<DeleteIndexResult, String>",
+    "doc": "删除资源索引  ★ C-3 修复：同步删除 SQLite 记录和 LanceDB 向量数据（text + multimodal） ★ P1-2 修复：返回结构化的部分失败结果，而非简单的 bool"
+  },
+  {
+    "name": "vfs_diagnose_lance_schema",
+    "params": [
+      "modality: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<Vec<crate::vfs::lance_store::LanceTableDiagnostic>, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_download_paper",
+    "params": [
+      "params: VfsDownloadPaperParams",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "pdf_processing_service: State<'_, Arc<PdfProcessingService>>"
+    ],
+    "returns": "Result<VfsDownloadPaperResult, String>",
+    "doc": "独立下载论文 PDF 并保存到 VFS（用于前端重试）  不依赖 chat pipeline，直接下载 + 保存。"
+  },
+  {
+    "name": "vfs_get_all_index_status",
+    "params": [
+      "folder_id: Option<String>",
+      "resource_type: Option<String>",
+      "state_filter: Option<String>",
+      "limit: Option<u32>",
+      "offset: Option<u32>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<IndexStatusSummary, String>",
+    "doc": "获取所有资源的向量化状态"
+  },
+  {
+    "name": "vfs_get_attachment",
+    "params": [
+      "attachment_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<VfsAttachment>, String>",
+    "doc": "获取附件元数据  ## 参数 - `attachment_id`: 附件 ID（att_xxx 或 file_xxx）  ## 返回 - `Ok(Some(VfsAttachment))`: 附件元数据 - `Ok(None)`: 附件不存在 - `Err(String)`: 查询失败"
+  },
+  {
+    "name": "vfs_get_attachment_config",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<AttachmentConfigOutput, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_get_attachment_content",
+    "params": [
+      "attachment_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<VfsAttachmentContentResult, String>",
+    "doc": "获取附件内容（Base64 编码）  ## 参数 - `attachment_id`: 附件/文件/教材 ID（att_xxx / file_xxx / tb_xxx）  ## 返回 - `Ok(VfsAttachmentContentResult)`: 包含 content/found（以及可选 error）字段 - `Err(String)`: 读取失败  ★ 2025-12-10 修复：返回结构体匹配前端 ImageContentView 期望的格式"
+  },
+  {
+    "name": "vfs_get_blob_base64",
+    "params": [
+      "blob_hash: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<VfsBlobBase64Result, String>",
+    "doc": "★ 根据 blob hash 获取图片的 base64 内容  ## 用途 题目集识别多模态改造后，图片存储在 VFS blobs 表中， 前端需要通过 blob_hash 获取图片的 base64 数据用于： 1. 前端显示（Canvas 裁剪） 2. 上下文注入（多模态请求）  ## 参数 - `blob_hash`: Blob 的 SHA-256 哈希值  ## 返回 - `Ok(VfsBlobBase64Result)`: 包含 base64 数据和 mime_type - `Err(String)`: Blob 不存在或读取失败"
+  },
+  {
+    "name": "vfs_get_default_embedding_dimension",
+    "params": [
+      "modality: String",
+      "database: State<'_, Arc<crate::database::Database>>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<crate::vfs::repos::embedding_dim_repo::VfsEmbeddingDim>, String>",
+    "doc": "获取默认嵌入维度信息  返回指定模态的默认维度完整信息（包括绑定的模型）"
+  },
+  {
+    "name": "vfs_get_dimension_range",
+    "params": [],
+    "returns": "Result<(i32, i32), String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_get_embedding_stats",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<VfsEmbeddingStats, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_get_file",
+    "params": [
+      "file_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<VfsFile>, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_get_file_content",
+    "params": [
+      "file_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<VfsFileContentResult, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_get_index_status",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<crate::vfs::repos::IndexState>, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_get_indexing_config",
+    "params": [
+      "key: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<String>, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_get_lance_stats",
+    "params": [
+      "modality: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<Vec<(String, usize)>, String>",
+    "doc": "VFS 获取 Lance 统计信息命令"
+  },
+  {
+    "name": "vfs_get_media_cache_stats",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<MediaCacheStats, String>",
+    "doc": "获取媒体缓存统计信息  统计 PDF 预览图片、压缩图片、OCR 文本和向量索引的缓存大小。"
+  },
+  {
+    "name": "vfs_get_mindmap",
+    "params": [
+      "mindmap_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<VfsMindMap>, String>",
+    "doc": "获取知识导图元数据"
+  },
+  {
+    "name": "vfs_get_mindmap_content",
+    "params": [
+      "mindmap_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<String>, String>",
+    "doc": "获取知识导图内容"
+  },
+  {
+    "name": "vfs_get_mindmap_version",
+    "params": [
+      "version_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<VfsMindMapVersion>, String>",
+    "doc": "获取指定版本的思维导图元数据"
+  },
+  {
+    "name": "vfs_get_mindmap_version_content",
+    "params": [
+      "version_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<String>, String>",
+    "doc": "获取指定版本的思维导图内容"
+  },
+  {
+    "name": "vfs_get_mindmap_versions",
+    "params": [
+      "mindmap_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsMindMapVersion>, String>",
+    "doc": "获取思维导图的版本历史"
+  },
+  {
+    "name": "vfs_get_note",
+    "params": [
+      "id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<VfsNote>, String>",
+    "doc": "获取笔记  ## 参数 - `id`: 笔记 ID  ## 返回 - `Ok(Some(VfsNote))`: 找到笔记 - `Ok(None)`: 笔记不存在 - `Err(String)`: 数据库错误"
+  },
+  {
+    "name": "vfs_get_note_content",
+    "params": [
+      "id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<String>, String>",
+    "doc": "获取笔记内容  从 resources.data 获取笔记内容。  ## 参数 - `id`: 笔记 ID  ## 返回 - `Ok(Some(String))`: 笔记内容 - `Ok(None)`: 笔记不存在 - `Err(String)`: 数据库错误"
+  },
+  {
+    "name": "vfs_get_or_create_attachment_root_folder",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<String, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_get_pdf_page_image",
+    "params": [
+      "resource_id: String",
+      "page_index: usize",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<VfsBlobBase64Result, String>",
+    "doc": "获取 PDF 指定页面的预渲染图片  根据资源 ID 和页码获取 PDF 页面的预渲染图片。 支持 textbook、attachment 类型的 PDF 资源。  ## 参数 - `resource_id`: 资源 ID（textbooks/attachments 表关联的 resource_id） - `page_index`: 页码（0-indexed）  ## 返回 - `Ok(VfsBlobBase64Result)`: 包含 base64 数据和 mime_type - `Err(String)`: 资源不存在、无预渲染数据、或页码越界  ## 使用场景 - RAG 检索结果中引用 PDF 页面时，前端调用此 API 获取页面图片 - 支持 OCR + 文本索引（有预渲染）和多模态索引两种场景"
+  },
+  {
+    "name": "vfs_get_pdf_processing_status",
+    "params": [
+      "file_id: String",
+      "pdf_processing_service: State< '_, Arc<crate::vfs::pdf_processing_service::PdfProcessingService>, >"
+    ],
+    "returns": "Result<Option<crate::vfs::pdf_processing_service::ProcessingStatus>, String>",
+    "doc": "获取 PDF 处理状态  ## 参数 - `file_id`: 文件 ID  ## 返回 - `ProcessingStatus`: 处理状态信息"
+  },
+  {
+    "name": "vfs_get_pending_resources",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<String>, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_get_preset_dimensions",
+    "params": [],
+    "returns": "Result<Vec<i32>, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_get_resource",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<VfsResource>, String>",
+    "doc": "获取资源  ## 参数 - `resource_id`: 资源 ID  ## 返回 - `Ok(Some(VfsResource))`: 找到资源 - `Ok(None)`: 资源不存在 - `Err(String)`: 数据库错误"
+  },
+  {
+    "name": "vfs_get_resource_ocr_info",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<ResourceOcrInfo, String>",
+    "doc": "获取资源的 OCR 文本和提取文本详情  数据透视：让用户能看到 OCR 识别了什么，与提取文本对比"
+  },
+  {
+    "name": "vfs_get_resource_path",
+    "params": [
+      "source_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<String, String>",
+    "doc": "获取资源的当前路径  优先返回缓存路径（folder_items.cached_path），若未缓存则实时计算并更新缓存。  ## 参数 - `source_id`: 业务 ID（note_xxx, tb_xxx）  ## 返回 - `Ok(String)`: 资源的完整路径，如 \"/高考复习/函数/笔记标题\" - `Err(String)`: 资源不存在或数据库错误  ## 约束 - 路径计算深度限制 10 层（契约 D） - 路径最大长度 1000 字符"
+  },
+  {
+    "name": "vfs_get_resource_ref_count",
+    "params": [
+      "source_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<i32, String>",
+    "doc": "获取资源的引用计数  通过 sourceId（如 note_xxx, exam_xxx, mm_xxx）查询该资源被多少个会话引用。 查询 resources 表的 ref_count 字段。  ## 参数 - `source_id`: 业务 ID（如 note_xxx, exam_xxx, mm_xxx, tb_xxx）  ## 返回 - `Ok(i32)`: 引用计数 - `Err(String)`: 错误信息"
+  },
+  {
+    "name": "vfs_get_resource_refs",
+    "params": [
+      "params: GetResourceRefsInput",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<VfsContextRefData, String>",
+    "doc": "获取资源引用列表  根据 sourceId 列表（note_xxx, tb_xxx, fld_xxx 等）获取对应的资源引用。 如果 sourceId 是文件夹 ID 且 include_folder_contents 为 true， 则递归获取文件夹内所有资源。  ## 参数 - `params.source_ids`: 资源 ID 列表 - `params.include_folder_contents`: 是否展开文件夹内容 - `params.max_items`: 最大返回项数（默认 50）  ## 返回 - `Ok(VfsContextRefData)`: 资源引用列表 - `Err(String)`: 错误信息"
+  },
+  {
+    "name": "vfs_get_resource_text_chunks",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<TextChunkInfo>, String>",
+    "doc": "获取资源的文本块列表（数据透视）  让用户能看到系统把内容切成了哪些块"
+  },
+  {
+    "name": "vfs_get_resource_units",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "resource_id: String"
+    ],
+    "returns": "Result<Vec<UnitIndexStatus>, String>",
+    "doc": "获取资源的 Units 列表"
+  },
+  {
+    "name": "vfs_increment_ref",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "增加资源引用计数  消息保存时调用，表示该资源被消息引用。  ## 参数 - `resource_id`: 资源 ID  ## 返回 - `Ok(())`: 成功 - `Err(String)`: 资源不存在或数据库错误"
+  },
+  {
+    "name": "vfs_list_dimensions",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<crate::vfs::repos::VfsEmbeddingDimension>, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_list_embedding_dims",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<EmbeddingDimInfo>, String>",
+    "doc": "获取已注册的向量维度"
+  },
+  {
+    "name": "vfs_list_essays",
+    "params": [
+      "params: Option<ListInput>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsEssay>, String>",
+    "doc": "列出作文  ## 参数 - `params`: 列表参数  ## 返回 - `Ok(Vec<VfsEssay>)`: 作文列表 - `Err(String)`: 数据库错误"
+  },
+  {
+    "name": "vfs_list_exam_sheets",
+    "params": [
+      "params: Option<ListInput>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsExamSheet>, String>",
+    "doc": "列出题目集识别  ## 参数 - `params`: 列表参数  ## 返回 - `Ok(Vec<VfsExamSheet>)`: 题目集列表 - `Err(String)`: 数据库错误"
+  },
+  {
+    "name": "vfs_list_files",
+    "params": [
+      "file_type: Option<String>",
+      "limit: Option<u32>",
+      "offset: Option<u32>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsFile>, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_list_mindmaps",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsMindMap>, String>",
+    "doc": "列出知识导图"
+  },
+  {
+    "name": "vfs_list_notes",
+    "params": [
+      "params: Option<ListInput>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsNote>, String>",
+    "doc": "列出笔记  ## 参数 - `params`: 列表参数  ## 返回 - `Ok(Vec<VfsNote>)`: 笔记列表 - `Err(String)`: 数据库错误"
+  },
+  {
+    "name": "vfs_list_pending_pdf_processing",
+    "params": [
+      "limit: Option<u32>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsFile>, String>",
+    "doc": "列出待处理的 PDF 文件  ## 参数 - `limit`: 最大返回数量（默认 50）  ## 返回 - `Vec<VfsFile>`: 待处理的 PDF 文件列表"
+  },
+  {
+    "name": "vfs_list_textbooks",
+    "params": [
+      "params: Option<ListInput>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsTextbook>, String>",
+    "doc": "列出教材  ## 参数 - `params`: 列表参数  ## 返回 - `Ok(Vec<VfsTextbook>)`: 教材列表 - `Err(String)`: 数据库错误"
+  },
+  {
+    "name": "vfs_list_translations",
+    "params": [
+      "params: Option<ListInput>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsTranslation>, String>",
+    "doc": "列出翻译  ## 参数 - `params`: 列表参数  ## 返回 - `Ok(Vec<VfsTranslation>)`: 翻译列表 - `Err(String)`: 数据库错误"
+  },
+  {
+    "name": "vfs_multimodal_delete",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "删除资源的多模态索引"
+  },
+  {
+    "name": "vfs_multimodal_index",
+    "params": [
+      "params: VfsMultimodalIndexInput",
+      "app_handle: tauri::AppHandle",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<VfsMultimodalIndexOutput, String>",
+    "doc": "索引资源的多模态页面  ★ 2026-01: VFS 统一多模态索引  ## 参数 - `params`: 多模态索引输入参数  ## 返回 - `Ok(VfsMultimodalIndexOutput)`: 索引结果 - `Err(String)`: 索引失败"
+  },
+  {
+    "name": "vfs_multimodal_search",
+    "params": [
+      "params: VfsMultimodalSearchInput",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<Vec<VfsMultimodalSearchOutput>, String>",
+    "doc": "多模态向量检索  ★ 2026-01: VFS 统一多模态检索  ## 参数 - `params`: 多模态检索输入参数  ## 返回 - `Ok(Vec<VfsMultimodalSearchOutput>)`: 检索结果 - `Err(String)`: 检索失败"
+  },
+  {
+    "name": "vfs_multimodal_stats",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<serde_json::Value, String>",
+    "doc": "获取 VFS 多模态索引统计"
+  },
+  {
+    "name": "vfs_optimize_lance",
+    "params": [
+      "modality: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<usize, String>",
+    "doc": "VFS 优化 Lance 表命令"
+  },
+  {
+    "name": "vfs_rag_search",
+    "params": [
+      "input: VfsRagSearchInput",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<VfsRagSearchOutput, String>",
+    "doc": "VFS RAG 向量检索命令  使用 VFS 统一知识管理架构进行 RAG 检索。  ## 参数 - `input.query`: 查询文本 - `input.folder_ids`: 可选的文件夹 ID 列表 - `input.resource_types`: 可选的资源类型列表 - `input.top_k`: 返回结果数量 - `input.enable_reranking`: 是否启用重排序  ## 返回 检索结果列表、数量和耗时"
+  },
+  {
+    "name": "vfs_reindex_resource",
+    "params": [
+      "resource_id: String",
+      "embedding_dim: Option<i32>",
+      "app_handle: AppHandle",
+      "llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<usize, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_reindex_unit",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "unit_id: String",
+      "mode: String",
+      "// \"text\" | \"mm\" | \"both\""
+    ],
+    "returns": "Result<bool, String>",
+    "doc": "重新索引 Unit"
+  },
+  {
+    "name": "vfs_reset_all_index_state",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<i32, String>",
+    "doc": "重置所有索引状态（用于调试/重新索引）  将所有资源的索引状态重置为 pending，并清空 segments、units、维度统计和 LanceDB 向量数据"
+  },
+  {
+    "name": "vfs_reset_disabled_to_pending",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<i32, String>",
+    "doc": "重置所有 disabled 资源为 pending 状态  用于在修复后重新触发索引"
+  },
+  {
+    "name": "vfs_reset_indexed_without_embeddings",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<i32, String>",
+    "doc": "重置所有 indexed 但无 embeddings 的资源为 pending 状态"
+  },
+  {
+    "name": "vfs_resolve_resource_refs",
+    "params": [
+      "refs: Vec<VfsResourceRef>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<ResolvedResource>, String>",
+    "doc": "解析资源引用列表  将资源引用解析为完整的资源信息，包括路径和内容。 用于发送消息时动态获取最新的资源状态。  ## 参数 - `refs`: 资源引用列表  ## 返回 - `Ok(Vec<ResolvedResource>)`: 解析后的资源列表 - `Err(String)`: 错误信息"
+  },
+  {
+    "name": "vfs_resource_exists",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<bool, String>",
+    "doc": "检查资源是否存在  ## 参数 - `resource_id`: 资源 ID  ## 返回 - `Ok(true)`: 资源存在 - `Ok(false)`: 资源不存在 - `Err(String)`: 数据库错误"
+  },
+  {
+    "name": "vfs_retry_pdf_processing",
+    "params": [
+      "file_id: String",
+      "pdf_processing_service: State< '_, Arc<crate::vfs::pdf_processing_service::PdfProcessingService>, >"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "重试 PDF 处理  ## 参数 - `file_id`: 文件 ID"
+  },
+  {
+    "name": "vfs_search",
+    "params": [
+      "params: VfsSearchParams",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsSearchResult>, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_search_all",
+    "params": [
+      "params: SearchAllInput",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsListItem>, String>",
+    "doc": "搜索所有资源  跨类型全文搜索。  ## 参数 - `params`: 搜索参数  ## 返回 - `Ok(Vec<VfsListItem>)`: 搜索结果 - `Err(String)`: 数据库错误"
+  },
+  {
+    "name": "vfs_set_attachment_root_folder",
+    "params": [
+      "folder_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_set_default_embedding_dimension",
+    "params": [
+      "dimension: i32",
+      "modality: String",
+      "database: State<'_, Arc<crate::database::Database>>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<bool, String>",
+    "doc": "设置默认嵌入维度  将指定维度设为该模态的默认嵌入维度。 - modality: \"text\" | \"multimodal\"  同时保存维度值和绑定的模型配置ID，供 LLMManager 直接读取"
+  },
+  {
+    "name": "vfs_set_indexing_config",
+    "params": [
+      "key: String",
+      "value: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_set_mindmap_favorite",
+    "params": [
+      "mindmap_id: String",
+      "is_favorite: bool",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "设置知识导图收藏状态"
+  },
+  {
+    "name": "vfs_start_pdf_processing",
+    "params": [
+      "file_id: String",
+      "start_from_stage: Option<String>",
+      "pdf_processing_service: State< '_, Arc<crate::vfs::pdf_processing_service::PdfProcessingService>, >"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "启动 PDF 预处理流水线  ## 参数 - `file_id`: 文件 ID - `start_from_stage`: 从哪个阶段开始（可选，默认从 OCR 阶段开始）  ## 说明 此命令异步启动流水线，立即返回。 前端应监听以下事件获取进度： - `pdf-processing-progress`: 进度更新 - `pdf-processing-completed`: 处理完成 - `pdf-processing-error`: 处理错误"
+  },
+  {
+    "name": "vfs_toggle_index_disabled",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<String, String>",
+    "doc": "切换资源的索引禁用状态  - 如果当前是 disabled，则恢复为 pending - 如果当前不是 disabled，则设置为 disabled"
+  },
+  {
+    "name": "vfs_unified_batch_index",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "llm_manager: State<'_, Arc<LLMManager>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>",
+      "mode: String",
+      "// \"text\" | \"mm\" | \"both\" batch_size: Option<i32>"
+    ],
+    "returns": "Result<BatchIndexResult, String>",
+    "doc": "批量索引待处理 Units（返回处理结果）  ★ 2026-01 修复：集成 VfsFullIndexingService 实现真正的批量索引"
+  },
+  {
+    "name": "vfs_unified_index_status",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<IndexStatusSummary, String>",
+    "doc": "获取索引状态总览"
+  },
+  {
+    "name": "vfs_update_mindmap",
+    "params": [
+      "mindmap_id: String",
+      "params: UpdateMindMapInput",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<VfsMindMap, String>",
+    "doc": "更新知识导图"
+  },
+  {
+    "name": "vfs_update_note",
+    "params": [
+      "id: String",
+      "params: UpdateNoteInput",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<VfsNote, String>",
+    "doc": "更新笔记  自动处理资源管理： 1. 计算新内容的哈希 2. 若 hash 不同，创建新 resource 3. 更新 notes.resource_id  ## 参数 - `id`: 笔记 ID - `params`: 更新参数  ## 返回 - `Ok(VfsNote)`: 更新后的笔记 - `Err(String)`: 笔记不存在或数据库错误"
+  },
+  {
+    "name": "vfs_update_path_cache",
+    "params": [
+      "folder_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<u32, String>",
+    "doc": "批量更新路径缓存（文件夹移动后调用）  递归更新指定文件夹及其所有子文件夹下资源的 cached_path。  ## 参数 - `folder_id`: 被移动的文件夹 ID  ## 返回 - `Ok(u32)`: 更新的项数 - `Err(String)`: 数据库错误  ## 约束 - 使用事务保证一致性 - 路径计算深度限制 10 层"
+  },
+  {
+    "name": "vfs_upload_attachment",
+    "params": [
+      "params: VfsUploadAttachmentParamsExt",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "pdf_processing_service: State<'_, Arc<PdfProcessingService>>"
+    ],
+    "returns": "Result<VfsUploadAttachmentResult, String>",
+    "doc": ""
+  },
+  {
+    "name": "vfs_upload_file",
+    "params": [
+      "params: VfsUploadFileParams",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "llm_manager: State<'_, Arc<crate::llm_manager::LLMManager>>",
+      "database: State<'_, crate::database::Database>",
+      "pdf_processing_service: State<'_, Arc<PdfProcessingService>>"
+    ],
+    "returns": "Result<VfsUploadFileResult, String>",
+    "doc": ""
+  }
+]

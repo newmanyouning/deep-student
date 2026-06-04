@@ -1,0 +1,418 @@
+[
+  {
+    "name": "data_governance_auto_verify_latest_backup",
+    "params": [
+      "app: tauri::AppHandle"
+    ],
+    "returns": "Result<AutoVerifyResponse, String>",
+    "doc": "自动验证最新备份的完整性  找到最新的备份，执行完整性验证（PRAGMA integrity_check + SHA256 校验和）， 将验证结果写入审计日志，并返回验证结果。  ## 返回 - `AutoVerifyResponse`: 验证结果，包含备份 ID、验证状态和时间"
+  },
+  {
+    "name": "data_governance_cancel_backup",
+    "params": [
+      "backup_job_state: State<'_, BackupJobManagerState>",
+      "job_id: String"
+    ],
+    "returns": "Result<bool, String>",
+    "doc": "取消备份任务  请求取消指定的备份任务。任务会在下一个安全点停止。  ## 参数 - `app`: Tauri AppHandle - `job_id`: 任务 ID  ## 返回 - `bool`: 是否成功请求取消"
+  },
+  {
+    "name": "data_governance_check_disk_space_for_restore",
+    "params": [
+      "app: tauri::AppHandle",
+      "backup_id: String"
+    ],
+    "returns": "Result<DiskSpaceCheckResponse, String>",
+    "doc": "恢复前磁盘空间检查  读取指定备份的大小，检查应用数据目录所在磁盘是否有足够可用空间执行恢复。 所需空间 = 备份大小 × 2（解压 + 恢复预留）。  ## 参数 - `app`: Tauri AppHandle - `backup_id`: 要恢复的备份 ID  ## 返回 - `DiskSpaceCheckResponse`: 磁盘空间检查结果"
+  },
+  {
+    "name": "data_governance_cleanup_audit_logs",
+    "params": [
+      "app: tauri::AppHandle",
+      "audit_db: State<'_, Arc<super::audit::AuditDatabase>>",
+      "keep_recent: Option<usize>",
+      "before_days: Option<u64>",
+      "confirmation_token: String"
+    ],
+    "returns": "Result<u64, String>",
+    "doc": "清理审计日志  支持两种清理策略： - `keep_recent`: 保留最近 N 条记录，删除其余（最少保留 100 条） - `before_days`: 删除 N 天之前的记录（最少保留 7 天）  两个参数互斥，优先使用 `keep_recent`。 如果都未指定，默认清理 90 天之前的记录。  ## 安全机制  - 最小保留下限：`keep_recent` 不得低于 100 条，`before_days` 不得低于 7 天 - 需要 `confirmation_token` 参数，格式为 `AUDIT_CLEANUP_{unix_timestamp_secs}`， 且时间戳必须在当前时间 60 秒内，防止被恶意脚本静默调用 - 每次清理操作本身也会被记录到审计日志中  ## 返回  被删除的记录数量"
+  },
+  {
+    "name": "data_governance_cleanup_persisted_jobs",
+    "params": [
+      "backup_job_state: State<'_, BackupJobManagerState>"
+    ],
+    "returns": "Result<usize, String>",
+    "doc": "清理所有已完成的持久化任务  删除所有已完成或已取消的任务的持久化文件。  ## 参数 - `app`: Tauri AppHandle  ## 返回 - `usize`: 清理的任务数量"
+  },
+  {
+    "name": "data_governance_count_record_conflicts",
+    "params": [
+      "app: tauri::AppHandle"
+    ],
+    "returns": "Result<HashMap<String, u64>, String>",
+    "doc": "统计每个数据库的待解决冲突数"
+  },
+  {
+    "name": "data_governance_delete_backup",
+    "params": [
+      "app: tauri::AppHandle",
+      "backup_id: String"
+    ],
+    "returns": "Result<bool, String>",
+    "doc": "删除备份  删除指定的备份文件。  ## 参数 - `app`: Tauri AppHandle - `backup_id`: 要删除的备份 ID  ## 返回 - `bool`: 删除是否成功"
+  },
+  {
+    "name": "data_governance_detect_conflicts",
+    "params": [
+      "app: tauri::AppHandle",
+      "cloud_manifest_json: Option<String>",
+      "cloud_config: Option<CloudStorageConfig>"
+    ],
+    "returns": "Result<ConflictDetectionResponse, String>",
+    "doc": "检测同步冲突  比较本地和云端的数据状态，检测可能的冲突。 注意：此命令需要云端清单作为输入，实际使用中应该从云端服务获取。  ## 参数 - `app`: Tauri AppHandle - `cloud_manifest_json`: 云端同步清单的 JSON 字符串（可选，用于测试）  ## 返回 - `ConflictDetectionResponse`: 冲突检测结果"
+  },
+  {
+    "name": "data_governance_detect_prune_gap",
+    "params": [
+      "app: tauri::AppHandle",
+      "cloud_config: CloudStorageConfig"
+    ],
+    "returns": "Result<PruneGapResponse, String>",
+    "doc": ""
+  },
+  {
+    "name": "data_governance_export_sync_data",
+    "params": [
+      "app: tauri::AppHandle",
+      "window: Window",
+      "output_path: Option<String>"
+    ],
+    "returns": "Result<SyncExportResponse, String>",
+    "doc": "导出同步数据到本地文件  将同步清单和变更数据导出为 JSON 文件，用于手动同步或调试。  ## 参数 - `app`: Tauri AppHandle - `output_path`: 输出文件路径（可选，默认为应用数据目录下的 sync_export.json）  ## 返回 - `SyncExportResponse`: 导出结果"
+  },
+  {
+    "name": "data_governance_export_zip",
+    "params": [
+      "app: tauri::AppHandle",
+      "window: tauri::Window",
+      "backup_job_state: State<'_, BackupJobManagerState>",
+      "backup_id: String",
+      "output_path: Option<String>",
+      "compression_level: Option<u32>",
+      "include_checksums: Option<bool>"
+    ],
+    "returns": "Result<BackupJobStartResponse, String>",
+    "doc": "异步导出备份为 ZIP 文件（后台任务模式）  将备份目录异步压缩为 ZIP 文件，支持进度事件和取消操作。  ## 参数 - `app`: Tauri AppHandle - `backup_id`: 备份 ID（备份目录名） - `output_path`: 输出 ZIP 文件路径（可选，默认自动生成） - `compression_level`: 压缩级别 0-9（可选，默认 6） - `include_checksums`: 是否包含校验和文件（可选，默认 true）  ## 返回 - `BackupJobStartResponse`: 包含任务 ID 的响应  ## 事件 - `backup-job-progress`: 进度更新事件"
+  },
+  {
+    "name": "data_governance_get_asset_types",
+    "params": [],
+    "returns": "Vec<AssetTypeInfo>",
+    "doc": "获取支持的资产类型  返回系统支持的所有资产类型及其信息。  ## 返回 - `Vec<AssetTypeInfo>`: 资产类型列表"
+  },
+  {
+    "name": "data_governance_get_audit_logs",
+    "params": [
+      "audit_db: State<'_, Arc<super::audit::AuditDatabase>>",
+      "operation_type: Option<String>",
+      "status: Option<String>",
+      "limit: Option<usize>",
+      "offset: Option<usize>"
+    ],
+    "returns": "Result<AuditLogPagedResponse, String>",
+    "doc": "获取审计日志  支持按操作类型、时间范围、状态过滤，支持分页。"
+  },
+  {
+    "name": "data_governance_get_backup_job",
+    "params": [
+      "backup_job_state: State<'_, BackupJobManagerState>",
+      "job_id: String"
+    ],
+    "returns": "Result<Option<BackupJobSummary>, String>",
+    "doc": "获取备份任务状态  查询指定备份任务的当前状态。  ## 参数 - `app`: Tauri AppHandle - `job_id`: 任务 ID  ## 返回 - `BackupJobSummary`: 任务摘要"
+  },
+  {
+    "name": "data_governance_get_backup_list",
+    "params": [
+      "app: tauri::AppHandle"
+    ],
+    "returns": "Result<Vec<BackupInfoResponse>, String>",
+    "doc": "获取备份列表  返回所有可用的备份文件列表。  ## 参数 - `app`: Tauri AppHandle  ## 返回 - `Vec<BackupInfoResponse>`: 备份列表"
+  },
+  {
+    "name": "data_governance_get_database_status",
+    "params": [
+      "app: AppHandle",
+      "registry: State<'_, Arc<RwLock<SchemaRegistry>>>",
+      "database_id: String"
+    ],
+    "returns": "Result<Option<DatabaseDetailResponse>, String>",
+    "doc": "获取特定数据库的详细状态"
+  },
+  {
+    "name": "data_governance_get_maintenance_status",
+    "params": [
+      "app: AppHandle"
+    ],
+    "returns": "Result<MaintenanceStatusResponse, String>",
+    "doc": "查询当前是否处于维护模式  前端应用启动时调用此命令，将后端维护模式状态同步到前端 store。 用于处理应用在维护模式中崩溃后重启的场景。"
+  },
+  {
+    "name": "data_governance_get_migration_diagnostic_report",
+    "params": [
+      "app_handle: AppHandle",
+      "registry: State<'_, Arc<RwLock<SchemaRegistry>>>"
+    ],
+    "returns": "Result<String, String>",
+    "doc": "生成迁移诊断报告  收集所有数据库的迁移状态、错误信息、迁移历史、磁盘空间等信息， 返回格式化的纯文本报告，用于用户一键复制给开发者。"
+  },
+  {
+    "name": "data_governance_get_migration_status",
+    "params": [
+      "app_handle: AppHandle",
+      "registry: State<'_, Arc<RwLock<SchemaRegistry>>>"
+    ],
+    "returns": "Result<MigrationStatusResponse, String>",
+    "doc": "获取迁移状态摘要  返回各数据库的当前版本信息，包括待执行迁移数量。"
+  },
+  {
+    "name": "data_governance_get_schema_registry",
+    "params": [
+      "app: AppHandle",
+      "registry: State<'_, Arc<RwLock<SchemaRegistry>>>"
+    ],
+    "returns": "Result<SchemaRegistryResponse, String>",
+    "doc": "获取 Schema 注册表  返回所有数据库的版本状态和迁移历史。"
+  },
+  {
+    "name": "data_governance_get_sync_status",
+    "params": [
+      "app: tauri::AppHandle"
+    ],
+    "returns": "Result<SyncStatusResponse, String>",
+    "doc": "获取同步状态  返回当前设备的同步状态信息，包括待同步变更数量等。  ## 参数 - `app`: Tauri AppHandle  ## 返回 - `SyncStatusResponse`: 同步状态信息"
+  },
+  {
+    "name": "data_governance_import_sync_data",
+    "params": [
+      "app: tauri::AppHandle",
+      "window: Window",
+      "input_path: String",
+      "strategy: Option<String>"
+    ],
+    "returns": "Result<SyncImportResponse, String>",
+    "doc": "从本地文件导入同步数据  从 JSON 文件导入同步清单和变更数据，用于手动同步或恢复。  ## 参数 - `app`: Tauri AppHandle - `input_path`: 输入文件路径 - `strategy`: 冲突合并策略  ## 返回 - `SyncImportResponse`: 导入结果"
+  },
+  {
+    "name": "data_governance_import_zip",
+    "params": [
+      "app: tauri::AppHandle",
+      "window: tauri::Window",
+      "backup_job_state: State<'_, BackupJobManagerState>",
+      "zip_path: String",
+      "backup_id: Option<String>"
+    ],
+    "returns": "Result<BackupJobStartResponse, String>",
+    "doc": "异步后台 ZIP 导入（带进度事件）  启动后台 ZIP 导入任务，立即返回任务 ID。导入进度通过 `backup-job-progress` 事件发送。  ## 参数 - `app`: Tauri AppHandle - `zip_path`: ZIP 文件路径 - `backup_id`: 解压后的备份 ID（可选，默认从文件名生成）  ## 返回 - `BackupJobStartResponse`: 包含任务 ID  ## 进度阶段 - Scan (0-5%): 验证 ZIP 文件 - Extract (5-80%): 解压文件（按文件数量更新进度） - Verify (80-90%): 验证解压的文件 - Cleanup (90-100%): 清理临时文件  ## 事件 - `backup-job-progress`: 进度更新事件"
+  },
+  {
+    "name": "data_governance_list_backup_jobs",
+    "params": [
+      "backup_job_state: State<'_, BackupJobManagerState>"
+    ],
+    "returns": "Result<Vec<BackupJobSummary>, String>",
+    "doc": "获取所有备份任务列表  返回所有备份任务的摘要列表。  ## 参数 - `app`: Tauri AppHandle  ## 返回 - `Vec<BackupJobSummary>`: 任务列表"
+  },
+  {
+    "name": "data_governance_list_record_conflicts",
+    "params": [
+      "app: tauri::AppHandle",
+      "limit: Option<u32>",
+      "offset: Option<u32>"
+    ],
+    "returns": "Result<Vec<RecordConflictRow>, String>",
+    "doc": "列出未解决的记录级冲突（跨所有数据库聚合）  从每个业务数据库的 `__sync_conflicts` 表读取 `resolved_at IS NULL` 的行， 打上 `database_name` 标签后返回。前端用这个列表展示\"待解决冲突\"。"
+  },
+  {
+    "name": "data_governance_list_resumable_jobs",
+    "params": [
+      "backup_job_state: State<'_, BackupJobManagerState>"
+    ],
+    "returns": "Result<Vec<PersistedJob>, String>",
+    "doc": "获取可恢复的备份任务列表  返回所有可以恢复的失败备份任务列表。  ## 参数 - `app`: Tauri AppHandle  ## 返回 - `Vec<PersistedJob>`: 可恢复的任务列表"
+  },
+  {
+    "name": "data_governance_mark_asset_deleted",
+    "params": [
+      "app: tauri::AppHandle",
+      "key: String",
+      "size: Option<u64>",
+      "cloud_config: CloudStorageConfig"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "标记一个资产文件已被本地删除。  ## 参数 - `key`: 资产在 assets 云端路径里的 key，形如 `\"active/images/foo.png\"` 或 `\"app_data/pdf_ocr_sessions/xxx.json\"` - `size`: 文件大小（字节），可选 - `cloud_config`: 云存储配置"
+  },
+  {
+    "name": "data_governance_mark_blob_deleted",
+    "params": [
+      "app: tauri::AppHandle",
+      "hash: String",
+      "relative_path: Option<String>",
+      "size: Option<u64>",
+      "cloud_config: CloudStorageConfig"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "标记一个 blob 已被本地删除。  后续同步时 `sync_vfs_blobs_with_tombstones` 会把这条删除记录传播到云端和其他设备。 调用场景：VFS 的 `blobs` 表里一条记录被物理删除（引用计数归零）时。  ## 参数 - `hash`: blob 的内容哈希（SHA-256） - `relative_path`: 相对于 `vfs_blobs/` 的路径，如 `\"ab/abc123.pdf\"` - `size`: blob 大小（字节），可选 - `cloud_config`: 云存储配置"
+  },
+  {
+    "name": "data_governance_purge_resolved_conflicts",
+    "params": [
+      "app: tauri::AppHandle",
+      "older_than_days: Option<u32>"
+    ],
+    "returns": "Result<u64, String>",
+    "doc": "清理历史已解决的冲突记录（older than N 天）"
+  },
+  {
+    "name": "data_governance_resolve_conflicts",
+    "params": [
+      "app: tauri::AppHandle",
+      "strategy: String",
+      "cloud_manifest_json: String"
+    ],
+    "returns": "Result<SyncResultResponse, String>",
+    "doc": "应用合并策略解决冲突  根据指定的合并策略处理所有检测到的冲突。  ## 参数 - `app`: Tauri AppHandle - `strategy`: 合并策略 (\"keep_local\", \"use_cloud\", \"keep_latest\") - `cloud_manifest_json`: 云端同步清单的 JSON 字符串  ## 返回 - `SyncResultResponse`: 同步结果"
+  },
+  {
+    "name": "data_governance_resolve_record_conflict",
+    "params": [
+      "app: tauri::AppHandle",
+      "database_name: String",
+      "table_name: String",
+      "record_id: String",
+      "resolution: String",
+      "merged_data_json: Option<String>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "解决一条冲突：按用户选择把某一端的数据写回业务表，并把冲突表里相关条目标记为已解决  ## 参数 - `database_name`: 数据库标识（`chat_v2` / `vfs` / `mistakes` / `llm_usage`） - `table_name`: 业务表名 - `record_id`: 记录主键 - `resolution`: `\"keep_local\"` | `\"keep_cloud\"` | `\"merged\"` - `merged_data_json`: 当 resolution = \"merged\" 时，用户手动合并后的完整行 JSON"
+  },
+  {
+    "name": "data_governance_restore_backup",
+    "params": [
+      "app: tauri::AppHandle",
+      "backup_job_state: State<'_, BackupJobManagerState>",
+      "backup_id: String",
+      "restore_assets: Option<bool>"
+    ],
+    "returns": "Result<BackupJobStartResponse, String>",
+    "doc": "异步后台恢复（带进度事件）  启动后台恢复任务，立即返回任务 ID。恢复进度通过 `backup-job-progress` 事件发送。  ## 参数 - `app`: Tauri AppHandle - `backup_id`: 要恢复的备份 ID  ## 返回 - `BackupJobStartResponse`: 包含任务 ID  ## 事件 - `backup-job-progress`: 进度更新事件  ## 进度阶段 - Scan (5%): 验证备份清单 - Verify (5-15%): 验证备份文件校验和 - Replace (15-90%): 恢复数据库（每个数据库更新一次进度） - Cleanup (90-100%): 清理和验证"
+  },
+  {
+    "name": "data_governance_restore_with_assets",
+    "params": [
+      "app: tauri::AppHandle",
+      "backup_id: String",
+      "restore_assets: Option<bool>"
+    ],
+    "returns": "Result<RestoreResultResponse, String>",
+    "doc": "执行包含资产的恢复  从备份恢复数据库和资产文件。  ## 参数 - `app`: Tauri AppHandle - `backup_id`: 要恢复的备份 ID - `restore_assets`: 是否恢复资产文件  ## 返回 - `RestoreResultResponse`: 恢复结果"
+  },
+  {
+    "name": "data_governance_resume_backup_job",
+    "params": [
+      "app: tauri::AppHandle",
+      "backup_job_state: State<'_, BackupJobManagerState>",
+      "job_id: String"
+    ],
+    "returns": "Result<BackupJobStartResponse, String>",
+    "doc": "恢复中断的备份任务  根据任务类型采取不同的恢复策略： - **导出（Export）**：由于备份操作是原子的，恢复 = 使用相同参数重新执行完整备份 - **导入（Import/ZIP）**：真正的断点续传，跳过已解压且大小匹配的文件  ## 参数 - `app`: Tauri AppHandle - `job_id`: 要恢复的任务 ID  ## 返回 - `BackupJobStartResponse`: 包含任务 ID（恢复任务使用原 ID）  ## 事件 - `backup-job-progress`: 进度更新事件  ## 注意 - 只能恢复失败状态且有检查点的任务 - 成功恢复后，原持久化文件会在任务完成时删除"
+  },
+  {
+    "name": "data_governance_run_backup",
+    "params": [
+      "app: tauri::AppHandle",
+      "backup_job_state: State<'_, BackupJobManagerState>",
+      "backup_type: Option<String>",
+      "base_version: Option<String>",
+      "include_assets: Option<bool>",
+      "asset_types: Option<Vec<String>>"
+    ],
+    "returns": "Result<BackupJobStartResponse, String>",
+    "doc": "异步后台备份（带进度事件）  启动后台备份任务，立即返回任务 ID。备份进度通过 `backup-job-progress` 事件发送。  ## 参数 - `app`: Tauri AppHandle - `backup_type`: 备份类型，\"full\"（完整）或 \"incremental\"（增量） - `base_version`: 增量备份的基础版本（仅增量备份需要） - `include_assets`: 是否包含资产文件备份 - `asset_types`: 要备份的资产类型列表（可选，默认全部）  ## 返回 - `BackupJobStartResponse`: 包含任务 ID  ## 事件 - `backup-job-progress`: 进度更新事件"
+  },
+  {
+    "name": "data_governance_run_health_check",
+    "params": [
+      "app: AppHandle",
+      "registry: State<'_, Arc<RwLock<SchemaRegistry>>>"
+    ],
+    "returns": "Result<HealthCheckResponse, String>",
+    "doc": "运行健康检查  检查所有数据库的完整性和依赖关系，包括待执行迁移检测。"
+  },
+  {
+    "name": "data_governance_run_slot_c_empty_db_test",
+    "params": [
+      "app_handle: AppHandle"
+    ],
+    "returns": "Result<SlotMigrationTestResponse, String>",
+    "doc": "运行 Slot C 空库迁移测试（测试插槽，不影响当前数据）"
+  },
+  {
+    "name": "data_governance_run_slot_d_clone_db_test",
+    "params": [
+      "app_handle: AppHandle"
+    ],
+    "returns": "Result<SlotMigrationTestResponse, String>",
+    "doc": "运行 Slot D 克隆库迁移测试（测试插槽，不影响当前数据）"
+  },
+  {
+    "name": "data_governance_run_sync",
+    "params": [
+      "app: tauri::AppHandle",
+      "direction: String",
+      "cloud_config: Option<CloudStorageConfig>",
+      "strategy: Option<String>"
+    ],
+    "returns": "Result<SyncExecutionResponse, String>",
+    "doc": "执行同步  使用云存储执行实际的同步操作。  ## 参数 - `app`: Tauri AppHandle - `direction`: 同步方向 (\"upload\", \"download\", \"bidirectional\") - `cloud_config`: 云存储配置（可选，如果未提供则使用默认配置或返回错误） - `strategy`: 冲突合并策略 (\"keep_local\", \"use_cloud\", \"keep_latest\")，默认为 \"keep_latest\"  ## 返回 - `SyncExecutionResponse`: 同步执行结果"
+  },
+  {
+    "name": "data_governance_run_sync_with_progress",
+    "params": [
+      "app: tauri::AppHandle",
+      "direction: String",
+      "cloud_config: Option<CloudStorageConfig>",
+      "strategy: Option<String>"
+    ],
+    "returns": "Result<SyncExecutionResponse, String>",
+    "doc": "执行带进度回调的同步  与 `data_governance_run_sync` 类似，但会通过事件通道发送进度更新。 前端可以监听 `data-governance-sync-progress` 事件获取实时进度。  ## 参数 - `app`: Tauri AppHandle - `direction`: 同步方向 (\"upload\", \"download\", \"bidirectional\") - `cloud_config`: 云存储配置（可选，如果未提供则使用默认配置或返回错误） - `strategy`: 冲突合并策略 (\"keep_local\", \"use_cloud\", \"keep_latest\")，默认为 \"keep_latest\"  ## 进度事件 前端可以通过以下方式监听进度： ```javascript import { listen } from '@tauri-apps/api/event';  const unlisten = await listen('data-governance-sync-progress', (event) => { const progress = event.payload; console.log(`Phase: ${progress.phase}, Progress: ${progress.percent}%`); }); ```  ## 返回 - `SyncExecutionResponse`: 同步执行结果"
+  },
+  {
+    "name": "data_governance_scan_assets",
+    "params": [
+      "app: tauri::AppHandle",
+      "asset_types: Option<Vec<String>>"
+    ],
+    "returns": "Result<AssetScanResponse, String>",
+    "doc": "扫描资产目录  获取各资产类型的统计信息，用于备份前预览。  ## 参数 - `app`: Tauri AppHandle - `asset_types`: 要扫描的资产类型（可选，为空表示全部）  ## 返回 - `AssetScanResponse`: 扫描结果"
+  },
+  {
+    "name": "data_governance_verify_backup",
+    "params": [
+      "app: tauri::AppHandle",
+      "backup_id: String"
+    ],
+    "returns": "Result<BackupVerifyResponse, String>",
+    "doc": "验证备份  验证备份文件的完整性。  ## 参数 - `app`: Tauri AppHandle - `backup_id`: 要验证的备份 ID  ## 返回 - `BackupVerifyResponse`: 验证结果"
+  },
+  {
+    "name": "data_governance_verify_backup_with_assets",
+    "params": [
+      "app: tauri::AppHandle",
+      "backup_id: String"
+    ],
+    "returns": "Result<BackupVerifyWithAssetsResponse, String>",
+    "doc": "验证备份完整性（含资产）  验证备份文件和资产文件的完整性。  ## 参数 - `app`: Tauri AppHandle - `backup_id`: 要验证的备份 ID  ## 返回 - `BackupVerifyWithAssetsResponse`: 验证结果"
+  }
+]

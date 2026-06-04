@@ -1,0 +1,546 @@
+[
+  {
+    "name": "dstu_batch_move",
+    "params": [
+      "request: BatchMoveRequest",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<BatchMoveResult, String>",
+    "doc": "批量移动资源（逐项处理，结构化结果）  逐项处理移动操作，成功项提交、失败项记录并跳过： - 返回结构化结果，包含成功列表和失败列表 - 事务内逐项处理：单项失败不影响其他项 - 仅对成功项发射移动事件  ## 参数 - `request`: 批量移动请求 - `window`: 窗口实例（用于发射事件） - `vfs_db`: VFS 数据库实例  ## 返回 批量移动结果，包含成功和失败的详细信息"
+  },
+  {
+    "name": "dstu_build_path",
+    "params": [
+      "folder_id: Option<String>",
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<String, String>",
+    "doc": "构建 DSTU 真实路径  根据文件夹 ID 和资源 ID 构建完整路径。  ## 参数 - `folder_id`: 目标文件夹 ID（None = 根目录） - `resource_id`: 资源 ID - `vfs_db`: VFS 数据库实例  ## 返回 完整路径字符串"
+  },
+  {
+    "name": "dstu_copy",
+    "params": [
+      "src: String",
+      "dst: String",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<DstuNode, String>",
+    "doc": "复制资源  将资源复制到另一个路径。  ## 参数 - `src`: 源路径 - `dst`: 目标路径 - `vfs_db`: VFS 数据库实例  ## 返回 复制后的新资源节点"
+  },
+  {
+    "name": "dstu_create",
+    "params": [
+      "path: String",
+      "options: DstuCreateOptions",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<DstuNode, String>",
+    "doc": "创建资源  在指定路径下创建新资源。  ## 参数 - `path`: 父目录路径（如 `/数学/notes`） - `options`: 创建选项（类型、名称、内容等） - `vfs_db`: VFS 数据库实例  ## 返回 新创建的资源节点"
+  },
+  {
+    "name": "dstu_delete",
+    "params": [
+      "path: String",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "删除资源  删除指定路径的资源（软删除）。  ## 参数 - `path`: 资源路径（支持完整路径如 `/数学/notes/note_xxx` 或 ID 如 `note_xxx`） - `vfs_db`: VFS 数据库实例"
+  },
+  {
+    "name": "dstu_delete_many",
+    "params": [
+      "paths: Vec<String>",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<usize, String>",
+    "doc": "批量删除资源（软删除，移到回收站）  ★ CONC-08 修复：添加事务保护，确保批量删除的原子性 所有删除操作在同一事务中执行，部分失败会回滚全部  ## 参数 - `paths`: 资源路径列表 - `window`: 窗口实例（用于发射事件） - `vfs_db`: VFS 数据库实例  ## 返回 成功删除的数量"
+  },
+  {
+    "name": "dstu_empty_trash",
+    "params": [
+      "window: Window",
+      "db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>"
+    ],
+    "returns": "Result<usize, DstuError>",
+    "doc": "清空回收站   永久删除所有已软删除的资源。"
+  },
+  {
+    "name": "dstu_export",
+    "params": [
+      "path: String",
+      "format: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<DstuExportResult, String>",
+    "doc": "执行资源导出"
+  },
+  {
+    "name": "dstu_export_formats",
+    "params": [
+      "path: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<String>, String>",
+    "doc": "查询资源支持的导出格式"
+  },
+  {
+    "name": "dstu_folder_add_item",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "folder_id: Option<String>",
+      "item_type: String",
+      "item_id: String"
+    ],
+    "returns": "Result<VfsFolderItem, String>",
+    "doc": "添加内容到文件夹  将资源（笔记、教材等）添加到指定文件夹。  ## 参数 - `folder_id`: 文件夹 ID（NULL 表示根级） - `item_type`: 资源类型（note|textbook|exam|translation|essay） - `item_id`: 资源 ID  ## 返回 新创建的文件夹内容项  ## 约束 - 同一资源只能存在于一个文件夹中"
+  },
+  {
+    "name": "dstu_folder_create",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "title: String",
+      "parent_id: Option<String>",
+      "icon: Option<String>",
+      "color: Option<String>"
+    ],
+    "returns": "Result<VfsFolder, String>",
+    "doc": "创建文件夹  ## 参数 - `title`: 文件夹标题 - `parent_id`: 父文件夹 ID（可选，NULL 表示根级） - `icon`: 图标标识（可选） - `color`: 颜色标识（可选）  ## 返回 新创建的文件夹  ## 约束 - 标题长度不超过 100 字符 - 深度不超过 10 层 - 文件夹数不超过 500 个"
+  },
+  {
+    "name": "dstu_folder_delete",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "folder_id: String"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "删除文件夹  软删除文件夹（移到回收站）。级联软删除所有子文件夹和内容项。  ## 参数 - `folder_id`: 文件夹 ID"
+  },
+  {
+    "name": "dstu_folder_get",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "folder_id: String"
+    ],
+    "returns": "Result<Option<VfsFolder>, String>",
+    "doc": "获取文件夹详情  ## 参数 - `folder_id`: 文件夹 ID  ## 返回 文件夹详情，不存在时返回 None"
+  },
+  {
+    "name": "dstu_folder_get_all_resources",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "folder_id: String",
+      "include_subfolders: bool",
+      "include_content: bool"
+    ],
+    "returns": "Result<FolderResourcesResult, String>",
+    "doc": "获取文件夹内所有资源（用于 Chat V2 上下文注入）  递归获取文件夹内所有资源，包括子文件夹中的资源。 返回结构化的资源列表，可直接用于创建 ContextRef。  ## 参数 - `folder_id`: 文件夹 ID - `include_subfolders`: 是否包含子文件夹（默认 true） - `include_content`: 是否加载资源内容（默认 false，提高性能）  ## 返回 `FolderResourcesResult` 包含： - `folder_id`: 文件夹 ID - `folder_title`: 文件夹标题 - `path`: 文件夹完整路径（如 \"高考复习/函数\"） - `total_count`: 资源总数 - `resources`: 资源列表（每个包含 item_type, item_id, title, path, content）  ## 约束 - 递归深度最大 10 层（契约 F） - 资源数超过 50 个时会记录警告（契约 F 批量注入限制）  ## 使用场景 1. 用户在 Chat V2 中选择注入文件夹 2. 前端调用此命令获取文件夹内所有资源 3. 根据返回的 resources 列表创建 ContextRef"
+  },
+  {
+    "name": "dstu_folder_get_breadcrumbs",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "folder_id: String"
+    ],
+    "returns": "Result<Vec<BreadcrumbItem>, String>",
+    "doc": "获取文件夹的面包屑路径  P2 改造：从后端获取面包屑，移除前端维护  ## 参数 - `folder_id`: 文件夹 ID  ## 返回 从根到当前文件夹的面包屑列表（不包含科目根）"
+  },
+  {
+    "name": "dstu_folder_get_items",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "folder_id: Option<String>"
+    ],
+    "returns": "Result<Vec<VfsFolderItem>, String>",
+    "doc": "获取文件夹下所有内容项  ## 参数 - `folder_id`: 文件夹 ID（NULL 表示根级内容）  ## 返回 内容项列表"
+  },
+  {
+    "name": "dstu_folder_get_tree",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<FolderTreeNode>, String>",
+    "doc": "获取文件夹树结构  ## 返回 文件夹树（递归结构，包含子文件夹和内容项）"
+  },
+  {
+    "name": "dstu_folder_list",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<VfsFolder>, String>",
+    "doc": "列出所有文件夹  ## 返回 文件夹列表（扁平结构）"
+  },
+  {
+    "name": "dstu_folder_move",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "folder_id: String",
+      "new_parent_id: Option<String>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "移动文件夹  将文件夹移动到另一个父文件夹下。  ## 参数 - `folder_id`: 文件夹 ID - `new_parent_id`: 新父文件夹 ID（NULL 表示移动到根级）  ## 约束 - 不能移动到自己的子文件夹下（循环引用检查） - 移动后深度不能超过 10 层"
+  },
+  {
+    "name": "dstu_folder_move_item",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "item_type: String",
+      "item_id: String",
+      "new_folder_id: Option<String>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "移动内容到另一文件夹  ## 参数 - `item_type`: 资源类型 - `item_id`: 资源 ID - `new_folder_id`: 新文件夹 ID（NULL 表示移动到根级）"
+  },
+  {
+    "name": "dstu_folder_remove_item",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "item_type: String",
+      "item_id: String"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "从文件夹移除内容  将资源从所有文件夹中移除（实际上是删除 folder_items 记录）。  ## 参数 - `item_type`: 资源类型 - `item_id`: 资源 ID"
+  },
+  {
+    "name": "dstu_folder_rename",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "folder_id: String",
+      "title: String"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "重命名文件夹  ## 参数 - `folder_id`: 文件夹 ID - `title`: 新标题"
+  },
+  {
+    "name": "dstu_folder_reorder",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "folder_ids: Vec<String>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "重新排序文件夹  按给定顺序更新文件夹的 sort_order。  ## 参数 - `folder_ids`: 文件夹 ID 列表（按期望顺序排列）"
+  },
+  {
+    "name": "dstu_folder_reorder_items",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "folder_id: Option<String>",
+      "item_ids: Vec<String>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "重新排序文件夹内容项  按给定顺序更新内容项的 sort_order。  ## 参数 - `folder_id`: 文件夹 ID（NULL 表示根级） - `item_ids`: 内容项 ID 列表（按期望顺序排列）"
+  },
+  {
+    "name": "dstu_folder_set_expanded",
+    "params": [
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "folder_id: String",
+      "is_expanded: bool"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "设置文件夹展开状态  ## 参数 - `folder_id`: 文件夹 ID - `is_expanded`: 是否展开"
+  },
+  {
+    "name": "dstu_get",
+    "params": [
+      "path: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<DstuNode>, String>",
+    "doc": "获取资源详情  获取指定路径的资源节点详情。  ## 参数 - `path`: DSTU 路径（支持完整路径如 `/数学/notes/note_xxx` 或简化路径如 `/note_xxx` 或 `note_xxx`） - `vfs_db`: VFS 数据库实例  ## 返回 资源节点，不存在时返回 None"
+  },
+  {
+    "name": "dstu_get_content",
+    "params": [
+      "path: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<String, String>",
+    "doc": "获取资源内容"
+  },
+  {
+    "name": "dstu_get_exam_content",
+    "params": [
+      "exam_id: String",
+      "is_multimodal: bool",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<crate::chat_v2::resource_types::ContentBlock>, String>",
+    "doc": "获取题目集识别内容（支持多模态模式）  用于上下文注入时获取题目集识别的格式化内容。  ## 参数 - `exam_id`: 题目集识别 ID（不需要完整路径，直接传 ID） - `is_multimodal`: 是否为多模态模式 - `true`: 返回图片 + 文本交替的 ContentBlock[] - `false`: 返回纯 XML 格式文本  ## 返回 - `Vec<ContentBlock>`: 格式化后的内容块列表"
+  },
+  {
+    "name": "dstu_get_path_by_id",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<String, String>",
+    "doc": "根据资源 ID 获取路径  ## 参数 - `resource_id`: 资源 ID - `vfs_db`: VFS 数据库实例  ## 返回 资源的完整路径"
+  },
+  {
+    "name": "dstu_get_resource_by_path",
+    "params": [
+      "path: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Option<DstuNode>, String>",
+    "doc": "根据路径获取资源  解析路径并获取对应的资源节点。  ## 参数 - `path`: DSTU 路径 - `vfs_db`: VFS 数据库实例  ## 返回 资源节点，不存在时返回 None"
+  },
+  {
+    "name": "dstu_get_resource_location",
+    "params": [
+      "resource_id: String",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<ResourceLocation, String>",
+    "doc": "获取资源定位信息  根据资源 ID 获取其完整的定位信息，包括所在文件夹和路径。  ## 参数 - `resource_id`: 资源 ID - `vfs_db`: VFS 数据库实例  ## 返回 资源定位信息"
+  },
+  {
+    "name": "dstu_list",
+    "params": [
+      "path: String",
+      "options: Option<DstuListOptions>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<DstuNode>, String>",
+    "doc": "列出目录内容"
+  },
+  {
+    "name": "dstu_list_deleted",
+    "params": [
+      "resource_type: String",
+      "limit: Option<u32>",
+      "offset: Option<u32>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<DstuNode>, String>",
+    "doc": "列出已删除的资源（回收站）  ## 参数 - `resource_type`: 资源类型（\"notes\" | \"textbooks\" | \"exams\" | \"translations\" | \"essays\"） - `subject`: 科目过滤（可选，translations 不支持科目过滤） - `limit`: 返回数量限制 - `offset`: 分页偏移 - `vfs_db`: VFS 数据库实例  ## 返回 已删除的资源列表"
+  },
+  {
+    "name": "dstu_list_trash",
+    "params": [
+      "limit: Option<u32>",
+      "offset: Option<u32>",
+      "db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<DstuNode>, DstuError>",
+    "doc": "列出回收站内容  从所有资源类型中获取已软删除的项目，按删除时间（updated_at）全局降序排序， 然后应用统一的分页参数（offset + limit）。"
+  },
+  {
+    "name": "dstu_move",
+    "params": [
+      "src: String",
+      "dst: String",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<DstuNode, String>",
+    "doc": "移动/重命名资源  将资源从一个路径移动到另一个路径。可用于： - 跨科目移动（更新 subject 字段） - 重命名  ## 参数 - `src`: 源路径 - `dst`: 目标路径 - `vfs_db`: VFS 数据库实例  ## 返回 移动后的资源节点"
+  },
+  {
+    "name": "dstu_move_many",
+    "params": [
+      "paths: Vec<String>",
+      "dest_folder: String",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<usize, String>",
+    "doc": "批量移动资源到指定目录  ## 参数 - `paths`: 源路径列表 - `dest_folder`: 目标文件夹路径（如 /数学/notes） - `window`: 窗口实例 - `vfs_db`: VFS 数据库实例  ## 返回 成功移动的数量"
+  },
+  {
+    "name": "dstu_move_to_folder",
+    "params": [
+      "resource_id: String",
+      "target_folder_id: Option<String>",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<ResourceLocation, String>",
+    "doc": "移动资源到指定文件夹  只更新 folder_items.folder_id，不修改资源表的 subject 字段。  ## 参数 - `resource_id`: 资源 ID - `target_folder_id`: 目标文件夹 ID（None = 根目录） - `window`: 窗口实例（用于发射事件） - `vfs_db`: VFS 数据库实例  ## 返回 更新后的资源定位信息"
+  },
+  {
+    "name": "dstu_parse_path",
+    "params": [
+      "path: String"
+    ],
+    "returns": "Result<DstuParsedPath, String>",
+    "doc": "解析 DSTU 真实路径  将路径字符串解析为结构化的 `DstuParsedPath`。 支持新路径格式（文件夹层级路径）和旧路径格式（类型路径）。  ## 新路径格式 - `/{folder_path}/{resource_id}` - 例如：`/高考复习/函数/note_abc123`  ## 特殊路径 - `/` - 根目录 - `/@trash` - 回收站 - `/@recent` - 最近使用  ## 参数 - `path`: DSTU 路径字符串  ## 返回 解析后的路径结构"
+  },
+  {
+    "name": "dstu_permanently_delete",
+    "params": [
+      "id: String",
+      "item_type: String",
+      "window: Window",
+      "db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>"
+    ],
+    "returns": "Result<(), DstuError>",
+    "doc": "永久删除单个资源"
+  },
+  {
+    "name": "dstu_purge",
+    "params": [
+      "path: String",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "永久删除资源  永久删除资源，不可恢复。  ## 参数 - `path`: 资源路径 - `vfs_db`: VFS 数据库实例"
+  },
+  {
+    "name": "dstu_purge_all",
+    "params": [
+      "resource_type: String",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>"
+    ],
+    "returns": "Result<usize, String>",
+    "doc": "清空指定类型的回收站（永久删除所有已删除的资源）  ## 参数 - `resource_type`: 资源类型（\"notes\" | \"textbooks\"） - `subject`: 科目过滤（可选，仅对 notes 有效） - `vfs_db`: VFS 数据库实例  ## 返回 删除的资源数量"
+  },
+  {
+    "name": "dstu_refresh_path_cache",
+    "params": [
+      "resource_id: Option<String>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<usize, String>",
+    "doc": "刷新路径缓存  更新 folder_items 表中的 cached_path 字段。  ## 参数 - `resource_id`: 资源 ID（None = 全量刷新） - `vfs_db`: VFS 数据库实例  ## 返回 更新的条目数"
+  },
+  {
+    "name": "dstu_rename",
+    "params": [
+      "path: String",
+      "new_name: String",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<DstuNode, String>",
+    "doc": "重命名资源  更新资源的显示名称/标题。  ## 参数 - `path`: 资源路径（如 `/数学/notes/note_xxx`） - `new_name`: 新名称 - `vfs_db`: VFS 数据库实例  ## 返回 重命名后的资源节点"
+  },
+  {
+    "name": "dstu_restore",
+    "params": [
+      "path: String",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<DstuNode, String>",
+    "doc": "恢复已删除的资源  将软删除的资源恢复为活动状态。  ## 参数 - `path`: 资源路径 - `vfs_db`: VFS 数据库实例"
+  },
+  {
+    "name": "dstu_restore_many",
+    "params": [
+      "paths: Vec<String>",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<usize, String>",
+    "doc": "批量恢复已删除的资源（原子性事务）  ★ CONC-09 修复：所有恢复操作在单个事务中执行，保证原子性： - 要么全部成功，要么全部失败回滚 - 事务成功后才发射恢复事件  ## 参数 - `paths`: 资源路径列表 - `window`: 窗口实例（用于发射事件） - `vfs_db`: VFS 数据库实例  ## 返回 成功恢复的数量"
+  },
+  {
+    "name": "dstu_search",
+    "params": [
+      "query: String",
+      "options: Option<DstuListOptions>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<DstuNode>, String>",
+    "doc": "搜索资源  全文搜索资源。  ## 参数 - `query`: 搜索关键词 - `options`: 搜索选项（类型过滤、分页等） - `vfs_db`: VFS 数据库实例  ## 返回 匹配的资源列表"
+  },
+  {
+    "name": "dstu_search_in_folder",
+    "params": [
+      "folder_id: Option<String>",
+      "query: String",
+      "options: Option<DstuListOptions>",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<Vec<DstuNode>, String>",
+    "doc": "在指定文件夹内搜索资源  ## 参数 - `folder_id`: VFS 文件夹 ID（可选，null 表示根目录） - `query`: 搜索关键词 - `options`: 搜索选项 - `vfs_db`: VFS 数据库实例  ## 返回 匹配的资源列表"
+  },
+  {
+    "name": "dstu_set_favorite",
+    "params": [
+      "path: String",
+      "favorite: bool",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "设置资源的收藏状态  ## 参数 - `path`: 资源路径（如 `/数学/notes/note_xxx`） - `favorite`: 是否收藏 - `vfs_db`: VFS 数据库实例  ## 支持的资源类型 - notes: 笔记 - textbooks: 教材 - exams: 题目集 - folders: 文件夹 - images: 图片附件 - files: 文档附件"
+  },
+  {
+    "name": "dstu_set_metadata",
+    "params": [
+      "path: String",
+      "metadata: Value",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "设置资源元数据  更新资源的元数据字段。  ## 参数 - `path`: 资源路径 - `metadata`: 元数据（JSON 格式） - `vfs_db`: VFS 数据库实例"
+  },
+  {
+    "name": "dstu_soft_delete",
+    "params": [
+      "id: String",
+      "item_type: String",
+      "window: Window",
+      "db: State<'_, Arc<VfsDatabase>>",
+      "lance_store: State<'_, Arc<VfsLanceStore>>"
+    ],
+    "returns": "Result<(), DstuError>",
+    "doc": "软删除资源或文件夹  根据类型调用对应的软删除函数。"
+  },
+  {
+    "name": "dstu_trash_restore",
+    "params": [
+      "id: String",
+      "item_type: String",
+      "window: Window",
+      "db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<(), DstuError>",
+    "doc": "恢复软删除的资源或文件夹"
+  },
+  {
+    "name": "dstu_unwatch",
+    "params": [
+      "path: String"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "取消资源变化监听（当前实现为前端事件通道占位）"
+  },
+  {
+    "name": "dstu_update",
+    "params": [
+      "path: String",
+      "content: String",
+      "resource_type: String",
+      "window: Window",
+      "vfs_db: State<'_, Arc<VfsDatabase>>"
+    ],
+    "returns": "Result<DstuNode, String>",
+    "doc": "更新资源内容  更新指定资源的内容。对于笔记等资源，会自动触发版本管理。  ## 参数 - `path`: 资源路径 - `content`: 新内容 - `vfs_db`: VFS 数据库实例  ## 返回 更新后的资源节点"
+  },
+  {
+    "name": "dstu_watch",
+    "params": [
+      "path: String"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "注册资源变化监听（当前实现为前端事件通道占位）"
+  }
+]

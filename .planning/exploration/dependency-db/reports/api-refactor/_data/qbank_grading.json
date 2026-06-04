@@ -1,0 +1,21 @@
+[
+  {
+    "name": "qbank_ai_grade",
+    "params": [
+      "request: QbankGradingRequest",
+      "window: Window",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<Option<QbankGradingResponse>, AppError>",
+    "doc": "流式 AI 评判命令"
+  },
+  {
+    "name": "qbank_cancel_grading",
+    "params": [
+      "stream_event_name: String",
+      "state: State<'_, crate::commands::AppState>"
+    ],
+    "returns": "Result<(), AppError>",
+    "doc": "取消 AI 评判"
+  }
+]

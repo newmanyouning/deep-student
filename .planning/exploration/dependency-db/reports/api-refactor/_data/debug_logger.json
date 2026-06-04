@@ -1,0 +1,11 @@
+[
+  {
+    "name": "write_debug_logs",
+    "params": [
+      "app: tauri::AppHandle",
+      "logs: Vec<LogEntry>"
+    ],
+    "returns": "Result<(), String>",
+    "doc": ""
+  }
+]

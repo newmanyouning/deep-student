@@ -1,0 +1,60 @@
+[
+  {
+    "name": "qbank_batch_resolve_conflicts",
+    "params": [
+      "state: State<'_, AppState>",
+      "exam_id: String",
+      "strategy: String"
+    ],
+    "returns": "Result<Vec<crate::vfs::repos::question_repo::Question>, String>",
+    "doc": "批量解决冲突"
+  },
+  {
+    "name": "qbank_get_sync_conflicts",
+    "params": [
+      "state: State<'_, AppState>",
+      "exam_id: String"
+    ],
+    "returns": "Result<Vec<SyncConflict>, String>",
+    "doc": "获取冲突列表"
+  },
+  {
+    "name": "qbank_resolve_sync_conflict",
+    "params": [
+      "state: State<'_, AppState>",
+      "conflict_id: String",
+      "strategy: String"
+    ],
+    "returns": "Result<crate::vfs::repos::question_repo::Question, String>",
+    "doc": "解决单个冲突"
+  },
+  {
+    "name": "qbank_set_sync_enabled",
+    "params": [
+      "state: State<'_, AppState>",
+      "exam_id: String",
+      "enabled: bool"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "启用/禁用同步"
+  },
+  {
+    "name": "qbank_sync_check",
+    "params": [
+      "state: State<'_, AppState>",
+      "exam_id: String"
+    ],
+    "returns": "Result<SyncStatusResult, String>",
+    "doc": "检查同步状态"
+  },
+  {
+    "name": "qbank_update_sync_config",
+    "params": [
+      "state: State<'_, AppState>",
+      "exam_id: String",
+      "config: SyncConfig"
+    ],
+    "returns": "Result<(), String>",
+    "doc": "更新同步配置"
+  }
+]

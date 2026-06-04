@@ -1,0 +1,207 @@
+[
+  {
+    "name": "delete_anki_card",
+    "params": [
+      "card_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "删除ANKI卡片"
+  },
+  {
+    "name": "delete_document_session",
+    "params": [
+      "documentId: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "删除整个文档会话（所有任务和卡片）"
+  },
+  {
+    "name": "delete_document_task",
+    "params": [
+      "task_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "删除文档任务及其所有卡片"
+  },
+  {
+    "name": "dismiss_pending_memory_candidates",
+    "params": [
+      "conversation_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<u32>",
+    "doc": "清除/忽略待处理的记忆候选"
+  },
+  {
+    "name": "export_anki_cards",
+    "params": [
+      "request: crate::models::ExportAnkiCardsRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::models::ExportAnkiCardsResponse>",
+    "doc": "导出/下载卡片库"
+  },
+  {
+    "name": "export_apkg_for_selection",
+    "params": [
+      "documentId: Option<String>",
+      "taskIds: Option<Vec<String>>",
+      "cardIds: Option<Vec<String>>",
+      "options: AnkiGenerationOptions",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "导出选定内容为APKG文件"
+  },
+  {
+    "name": "get_anki_stats",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<serde_json::Value>",
+    "doc": "🔧 Phase 2: 卡片统计数据"
+  },
+  {
+    "name": "get_document_cards",
+    "params": [
+      "documentId: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<crate::models::AnkiCard>>",
+    "doc": "获取文档的所有卡片（用于导出预览）"
+  },
+  {
+    "name": "get_document_processing_state",
+    "params": [
+      "documentId: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::enhanced_anki_service::DocumentStateDto>",
+    "doc": "获取文档处理状态（调试/前端校验用）"
+  },
+  {
+    "name": "get_document_task_counts",
+    "params": [
+      "documentId: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::enhanced_anki_service::DocumentTaskCountsDto>",
+    "doc": "获取文档任务计数（冒烟测试/调试用途）"
+  },
+  {
+    "name": "get_document_tasks",
+    "params": [
+      "documentId: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<crate::models::DocumentTask>>",
+    "doc": "获取文档的所有任务"
+  },
+  {
+    "name": "get_pending_memory_candidates",
+    "params": [
+      "conversation_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Option<PendingMemoryCandidatesResponse>>",
+    "doc": "查询待处理的记忆候选"
+  },
+  {
+    "name": "get_task_cards",
+    "params": [
+      "task_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<crate::models::AnkiCard>>",
+    "doc": "获取任务的所有卡片"
+  },
+  {
+    "name": "list_anki_library_cards",
+    "params": [
+      "request: crate::models::ListAnkiCardsRequest",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<crate::models::AnkiCardListResponse>",
+    "doc": "分页查询卡片库（Prompt C）"
+  },
+  {
+    "name": "list_document_sessions",
+    "params": [
+      "limit: Option<u32>",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<Vec<serde_json::Value>>",
+    "doc": "🔧 Phase 1: 按 document_id 汇总任务列表（任务管理页面）"
+  },
+  {
+    "name": "mark_pending_memory_candidates_saved",
+    "params": [
+      "conversation_id: String",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<u32>",
+    "doc": "标记待处理记忆候选为已保存"
+  },
+  {
+    "name": "pause_document_processing",
+    "params": [
+      "documentId: String",
+      "window: Window",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "暂停文档处理（硬暂停）"
+  },
+  {
+    "name": "recover_stuck_document_tasks",
+    "params": [
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<u32>",
+    "doc": "🔧 Phase 1: 恢复卡住的制卡任务（崩溃恢复）"
+  },
+  {
+    "name": "resume_document_processing",
+    "params": [
+      "documentId: String",
+      "window: Window",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<bool>",
+    "doc": "恢复文档处理"
+  },
+  {
+    "name": "start_enhanced_document_processing",
+    "params": [
+      "document_content: String",
+      "original_document_name: String",
+      "options: AnkiGenerationOptions",
+      "window: Window",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<String>",
+    "doc": "开始文档处理 - 增强版 Anki 制卡"
+  },
+  {
+    "name": "trigger_task_processing",
+    "params": [
+      "task_id: String",
+      "window: Window",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "手动触发任务处理"
+  },
+  {
+    "name": "update_anki_card",
+    "params": [
+      "card: crate::models::AnkiCard",
+      "state: State<'_, AppState>"
+    ],
+    "returns": "Result<()>",
+    "doc": "更新ANKI卡片"
+  }
+]

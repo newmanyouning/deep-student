@@ -1,0 +1,70 @@
+[
+  {
+    "name": "check_switch_disk_space",
+    "params": [],
+    "returns": "Result<String, AppError>",
+    "doc": "检查是否有足够磁盘空间进行插槽切换"
+  },
+  {
+    "name": "clear_test_slots",
+    "params": [],
+    "returns": "Result<String, AppError>",
+    "doc": "清空测试插槽（测试前准备）"
+  },
+  {
+    "name": "get_data_space_info",
+    "params": [],
+    "returns": "Result<DataSpaceInfo, AppError>",
+    "doc": ""
+  },
+  {
+    "name": "get_slot_directory",
+    "params": [
+      "slot_name: String"
+    ],
+    "returns": "Result<String, AppError>",
+    "doc": "获取指定插槽的目录路径"
+  },
+  {
+    "name": "get_slot_size",
+    "params": [
+      "slot_name: String"
+    ],
+    "returns": "Result<SlotSizeInfo, AppError>",
+    "doc": "获取指定插槽的占用空间大小"
+  },
+  {
+    "name": "get_test_slot_info",
+    "params": [],
+    "returns": "Result<TestSlotInfo, AppError>",
+    "doc": "获取测试插槽信息"
+  },
+  {
+    "name": "mark_data_space_pending_switch_to_inactive",
+    "params": [],
+    "returns": "Result<String, AppError>",
+    "doc": ""
+  },
+  {
+    "name": "restart_app",
+    "params": [
+      "app: tauri::AppHandle"
+    ],
+    "returns": "()",
+    "doc": "重启应用"
+  },
+  {
+    "name": "verify_all_slots_integrity",
+    "params": [],
+    "returns": "Result<Vec<SlotIntegrityReport>, AppError>",
+    "doc": "验证所有生产插槽的完整性"
+  },
+  {
+    "name": "verify_slot_integrity",
+    "params": [
+      "slot_name: String"
+    ],
+    "returns": "Result<SlotIntegrityReport, AppError>",
+    "doc": "验证指定插槽的完整性"
+  }
+]

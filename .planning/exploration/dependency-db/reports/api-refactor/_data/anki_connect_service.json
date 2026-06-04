@@ -1,0 +1,8 @@
+[
+  {
+    "name": "check_anki_connect_availability",
+    "params": [],
+    "returns": "Result<bool, String>",
+    "doc": "检查AnkiConnect是否可用"
+  }
+]
