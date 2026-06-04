@@ -149,6 +149,8 @@ export function useSettingsVendorState(deps: UseSettingsVendorStateDeps) {
           model: api.model, // 传递用户指定的模型名称
           vendor_id: vendorId, // 传递供应商 ID 以便后端获取真实密钥
           vendorId: vendorId,
+          is_embedding: api.isEmbedding,
+          is_reranker: api.isReranker,
         });
         
         if (result) {

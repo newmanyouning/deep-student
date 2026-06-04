@@ -1623,6 +1623,8 @@ pub async fn test_api_connection(
     supports_openai_responses: Option<bool>,
     model: Option<String>,
     vendor_id: Option<String>,
+    is_embedding: Option<bool>,
+    is_reranker: Option<bool>,
     state: State<'_, AppState>,
 ) -> Result<bool> {
     use reqwest::Client;
@@ -1700,41 +1702,70 @@ pub async fn test_api_connection(
         }
     };
 
-    let protocol = resolve_test_api_protocol(
-        &api_base,
-        api_protocol.as_deref(),
-        model.as_deref(),
-        supports_openai_responses,
-    );
+    // 根据模型类型选择测试端点
+    let embedding = is_embedding.unwrap_or(false);
+    let reranker = is_reranker.unwrap_or(false);
 
-    // 构建请求 URL
-    let url = match protocol {
-        "openai_responses" => format!("{}/responses", api_base.trim_end_matches('/')),
-        _ => format!("{}/chat/completions", api_base.trim_end_matches('/')),
-    };
-
-    // 构建最小化请求体
-    let model_id = model.unwrap_or_else(|| {
-        if protocol == "openai_responses" {
-            "gpt-4o-mini".to_string()
-        } else {
-            "gpt-4o-mini".to_string()
-        }
-    });
-    let request_body = if protocol == "openai_responses" {
-        serde_json::json!({
-            "model": model_id,
-            "input": "Hi",
-            "max_output_tokens": 1,
-            "stream": false
-        })
+    let (url, request_body) = if embedding {
+        // 嵌入模型: POST /v1/embeddings
+        let url = format!("{}/embeddings", api_base.trim_end_matches('/'));
+        let body = serde_json::json!({
+            "model": model.unwrap_or_else(|| "text-embedding-ada-002".to_string()),
+            "input": "test"
+        });
+        (url, body)
+    } else if reranker {
+        // 重排序模型: POST /v1/rerank (硅基流动兼容格式)
+        let url = format!("{}/rerank", api_base.trim_end_matches('/'));
+        let body = serde_json::json!({
+            "model": model.unwrap_or_else(|| "BAAI/bge-reranker-v2-m3".to_string()),
+            "query": "test",
+            "documents": ["test"]
+        });
+        (url, body)
+    } else if api_base.to_lowercase().contains("paddleocr.aistudio-app.com") {
+        // PaddleOCR: 使用 check_connectivity() 轻量检测，不使用 Chat Completions
+        use crate::paddleocr_api::PaddleOcrApiClient;
+        let client = PaddleOcrApiClient::new(effective_api_key.clone());
+        return match client.check_connectivity().await {
+            Ok(()) => {
+                info!("[API测试] PaddleOCR 连接成功");
+                Ok(true)
+            }
+            Err(e) => {
+                error!("[API测试] PaddleOCR 连接失败: {}", e);
+                Err(AppError::network(format!("PaddleOCR 连接测试失败: {}", e)))
+            }
+        };
     } else {
-        serde_json::json!({
-            "model": model_id,
-            "messages": [{"role": "user", "content": "Hi"}],
-            "max_tokens": 1,
-            "stream": false
-        })
+        // Chat / Responses 模型: 保持原有协议逻辑
+        let protocol = resolve_test_api_protocol(
+            &api_base,
+            api_protocol.as_deref(),
+            model.as_deref(),
+            supports_openai_responses,
+        );
+        let url = match protocol {
+            "openai_responses" => format!("{}/responses", api_base.trim_end_matches('/')),
+            _ => format!("{}/chat/completions", api_base.trim_end_matches('/')),
+        };
+        let model_id = model.unwrap_or_else(|| "gpt-4o-mini".to_string());
+        let body = if protocol == "openai_responses" {
+            serde_json::json!({
+                "model": model_id,
+                "input": "Hi",
+                "max_output_tokens": 1,
+                "stream": false
+            })
+        } else {
+            serde_json::json!({
+                "model": model_id,
+                "messages": [{"role": "user", "content": "Hi"}],
+                "max_tokens": 1,
+                "stream": false
+            })
+        };
+        (url, body)
     };
 
     // 创建 HTTP 客户端（10 秒超时）
