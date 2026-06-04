@@ -182,6 +182,38 @@ pub async fn get_ocr_prompt_template(engine_type: String, mode: String) -> Resul
     Ok(prompt)
 }
 
+/// 检查 OCR 模型是否已配置
+///
+/// 返回 OCR 配置状态和当前启用的 OCR 模型名称。
+/// 前端用于判断是否显示 OCR 相关功能按钮。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OcrAvailabilityResponse {
+    /// 是否已配置并启用至少一个 OCR 模型
+    pub configured: bool,
+    /// 当前启用的 OCR 模型名称（若有）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_name: Option<String>,
+}
+
+#[tauri::command]
+pub async fn check_ocr_availability(state: State<'_, AppState>) -> Result<OcrAvailabilityResponse> {
+    let db = &state.database;
+    let models_json = db
+        .get_setting("ocr.available_models")
+        .map_err(|e| AppError::database(format!("读取 OCR 模型配置失败: {}", e)))?
+        .unwrap_or_else(|| "[]".to_string());
+    let all_models: Vec<OcrModelConfig> = serde_json::from_str(&models_json)
+        .map_err(|e| AppError::database(format!("解析 OCR 模型配置失败: {}", e)))?;
+    let enabled_models: Vec<&OcrModelConfig> = all_models.iter().filter(|m| m.enabled).collect();
+    let configured = !enabled_models.is_empty();
+    let model_name = enabled_models.first().map(|m| m.name.clone());
+    Ok(OcrAvailabilityResponse {
+        configured,
+        model_name,
+    })
+}
+
 /// 获取已配置的 OCR 模型列表
 ///
 /// 返回通过一键分配或手动配置的所有 OCR 模型

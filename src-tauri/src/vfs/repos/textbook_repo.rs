@@ -86,6 +86,8 @@ impl VfsTextbookRepo {
             None,
             None,
             None,
+            None,
+            None,
         )
     }
 
@@ -105,6 +107,8 @@ impl VfsTextbookRepo {
         preview_json: Option<&str>,
         extracted_text: Option<&str>,
         page_count: Option<i32>,
+        is_scanned: Option<bool>,
+        needs_ocr: Option<bool>,
     ) -> VfsResult<VfsTextbook> {
         // 检查是否已存在相同 sha256
         if let Some(existing) = Self::get_by_sha256_with_conn(conn, sha256)? {
@@ -223,8 +227,9 @@ impl VfsTextbookRepo {
             conn.execute(
                 r#"
                 INSERT INTO files (id, resource_id, blob_hash, sha256, file_name, original_path, size, "type", mime_type, page_count, tags_json, is_favorite, status, created_at, updated_at, preview_json, extracted_text,
-                                  processing_status, processing_progress, processing_started_at)
-                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, '[]', 0, 'active', ?11, ?12, ?13, ?14, ?15, ?16, ?17)
+                                  processing_status, processing_progress, processing_started_at,
+                                  is_scanned, needs_ocr)
+                VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, '[]', 0, 'active', ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)
                 "#,
                 params![
                     textbook_id,
@@ -244,6 +249,8 @@ impl VfsTextbookRepo {
                     processing_status,
                     processing_progress,
                     processing_started_at,
+                    is_scanned.map(|v| v as i32),
+                    needs_ocr.map(|v| v as i32),
                 ],
             )?;
 
@@ -270,6 +277,8 @@ impl VfsTextbookRepo {
                 status: "active".to_string(),
                 created_at: now.clone(),
                 updated_at: now,
+                is_scanned,
+                needs_ocr,
             })
         })();
 
@@ -313,7 +322,8 @@ impl VfsTextbookRepo {
             r#"
             SELECT id, resource_id, blob_hash, sha256, file_name, original_path, size, page_count,
                    tags_json, is_favorite, last_opened_at, last_page, bookmarks_json,
-                   cover_key, status, created_at, updated_at
+                   cover_key, status, created_at, updated_at,
+                   is_scanned, needs_ocr
             FROM files
             WHERE id = ?1
             "#,
@@ -341,7 +351,8 @@ impl VfsTextbookRepo {
             r#"
             SELECT id, resource_id, blob_hash, sha256, file_name, original_path, size, page_count,
                    tags_json, is_favorite, last_opened_at, last_page, bookmarks_json,
-                   cover_key, status, created_at, updated_at
+                   cover_key, status, created_at, updated_at,
+                   is_scanned, needs_ocr
             FROM files
             WHERE sha256 = ?1
             "#,
@@ -378,7 +389,8 @@ impl VfsTextbookRepo {
             r#"
             SELECT id, resource_id, blob_hash, sha256, file_name, original_path, size, page_count,
                    tags_json, is_favorite, last_opened_at, last_page, bookmarks_json,
-                   cover_key, status, created_at, updated_at
+                   cover_key, status, created_at, updated_at,
+                   is_scanned, needs_ocr
             FROM files
             WHERE status = 'active'
             ORDER BY updated_at DESC
@@ -414,7 +426,8 @@ impl VfsTextbookRepo {
             r#"
             SELECT id, resource_id, blob_hash, sha256, file_name, original_path, size, page_count,
                    tags_json, is_favorite, last_opened_at, last_page, bookmarks_json,
-                   cover_key, status, created_at, updated_at
+                   cover_key, status, created_at, updated_at,
+                   is_scanned, needs_ocr
             FROM files
             WHERE status = 'active'
               AND (file_name LIKE ?1 OR COALESCE(original_path, '') LIKE ?1)
@@ -859,7 +872,8 @@ impl VfsTextbookRepo {
         let sql = r#"
             SELECT id, resource_id, blob_hash, sha256, file_name, original_path, size, page_count,
                    tags_json, is_favorite, last_opened_at, last_page, bookmarks_json,
-                   cover_key, status, created_at, updated_at
+                   cover_key, status, created_at, updated_at,
+                   is_scanned, needs_ocr
             FROM files
             WHERE status = 'deleted'
             ORDER BY updated_at DESC
@@ -938,6 +952,8 @@ impl VfsTextbookRepo {
             status: row.get(14)?,
             created_at: row.get(15)?,
             updated_at: row.get(16)?,
+            is_scanned: row.get::<_, Option<i32>>(17)?.map(|v| v != 0),
+            needs_ocr: row.get::<_, Option<i32>>(18)?.map(|v| v != 0),
         })
     }
 
@@ -1119,7 +1135,8 @@ impl VfsTextbookRepo {
         let sql = r#"
             SELECT t.id, t.resource_id, t.blob_hash, t.sha256, t.file_name, t.original_path, t.size, t.page_count,
                    t.tags_json, t.is_favorite, t.last_opened_at, t.last_page, t.bookmarks_json,
-                   t.cover_key, t.status, t.created_at, t.updated_at
+                   t.cover_key, t.status, t.created_at, t.updated_at,
+                   t.is_scanned, t.needs_ocr
             FROM files t
             JOIN folder_items fi ON fi.item_type = 'file' AND fi.item_id = t.id
             WHERE fi.folder_id IS ?1 AND t.status = 'active'

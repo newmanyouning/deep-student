@@ -410,6 +410,21 @@ pub async fn textbooks_add(
             }
         };
 
+        // ★ 扫描版 PDF 检测：提取文本过少（每页 < 50 字符）则标记为扫描版
+        let (is_scanned, needs_ocr) = if extension == "pdf" {
+            match (extracted_text.as_deref(), page_count) {
+                (Some(text), Some(pages)) if pages > 0 => {
+                    let per_page = text.len() as f64 / pages as f64;
+                    let scanned = per_page < 50.0;
+                    (Some(scanned), Some(scanned))
+                }
+                (None, _) => (Some(true), Some(true)), // 无提取文本 → 扫描版
+                _ => (None, None),
+            }
+        } else {
+            (None, None)
+        };
+
         // 阶段4：入库
         emit_progress(&window, &file_name, "saving", None, None, 90, None);
         let tb = crate::vfs::VfsTextbookRepo::create_textbook_with_preview(
@@ -422,6 +437,8 @@ pub async fn textbooks_add(
             preview_json_str.as_deref(),
             extracted_text.as_deref(),
             page_count,
+            is_scanned,
+            needs_ocr,
         )
         .map_err(|e| {
             emit_progress(
@@ -665,6 +682,21 @@ pub async fn textbooks_adopt(
             }
         };
 
+        // ★ 扫描版 PDF 检测：提取文本过少（每页 < 50 字符）则标记为扫描版
+        let (is_scanned, needs_ocr) = if extension == "pdf" {
+            match (extracted_text.as_deref(), page_count) {
+                (Some(text), Some(pages)) if pages > 0 => {
+                    let per_page = text.len() as f64 / pages as f64;
+                    let scanned = per_page < 50.0;
+                    (Some(scanned), Some(scanned))
+                }
+                (None, _) => (Some(true), Some(true)),
+                _ => (None, None),
+            }
+        } else {
+            (None, None)
+        };
+
         let tb = crate::vfs::VfsTextbookRepo::create_textbook_with_preview(
             &conn,
             &sha256,
@@ -675,6 +707,8 @@ pub async fn textbooks_adopt(
             preview_json_str.as_deref(),
             extracted_text.as_deref(),
             page_count,
+            is_scanned,
+            needs_ocr,
         )
         .map_err(|e| AppError::database(format!("VFS 创建教材失败: {}", e)))?;
 

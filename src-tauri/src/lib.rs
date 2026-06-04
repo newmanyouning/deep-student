@@ -927,6 +927,7 @@ pub fn run() {
             crate::commands::reset_model_adapter_options,
             crate::commands::estimate_tokens,
             // OCR 引擎配置命令
+            crate::commands::check_ocr_availability,
             crate::commands::get_ocr_engines,
             crate::commands::get_ocr_engine_type,
             crate::commands::set_ocr_engine_type,

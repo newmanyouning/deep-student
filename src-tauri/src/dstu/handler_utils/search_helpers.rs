@@ -251,7 +251,8 @@ pub fn search_textbooks(
             r#"
         SELECT id, resource_id, blob_hash, sha256, file_name, original_path, size, page_count,
                tags_json, is_favorite, last_opened_at, last_page, bookmarks_json,
-               cover_key, status, created_at, updated_at
+               cover_key, status, created_at, updated_at,
+               is_scanned, needs_ocr
         FROM files
         WHERE status = 'active'
           AND file_name LIKE ?1 ESCAPE '\'
@@ -289,6 +290,8 @@ pub fn search_textbooks(
                 status: row.get(14)?,
                 created_at: row.get(15)?,
                 updated_at: row.get(16)?,
+                is_scanned: row.get::<_, Option<i32>>(17)?.map(|v| v != 0),
+                needs_ocr: row.get::<_, Option<i32>>(18)?.map(|v| v != 0),
             })
         })
         .map_err(|e| e.to_string())?;

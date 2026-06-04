@@ -30,6 +30,12 @@ pub struct Textbook {
     pub status: String,
     pub created_at: String,
     pub updated_at: String,
+    /// 是否为扫描版 PDF（提取文本过少）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_scanned: Option<bool>,
+    /// 是否需要 OCR 处理
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub needs_ocr: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -349,6 +355,8 @@ impl TextbooksDb {
             status: row.get(13)?,
             created_at: row.get(14)?,
             updated_at: row.get(15)?,
+            is_scanned: None,
+            needs_ocr: None,
         })
     }
 
@@ -484,6 +492,8 @@ impl Textbook {
             status: self.status.clone(),
             created_at: self.created_at.clone(),
             updated_at: self.updated_at.clone(),
+            is_scanned: None,
+            needs_ocr: None,
         }
     }
 }
@@ -514,6 +524,8 @@ impl VfsTextbook {
             status: self.status.clone(),
             created_at: self.created_at.clone(),
             updated_at: self.updated_at.clone(),
+            is_scanned: self.is_scanned,
+            needs_ocr: self.needs_ocr,
         }
     }
 }
