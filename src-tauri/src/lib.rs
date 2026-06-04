@@ -1526,6 +1526,7 @@ pub fn run() {
             // =================================================
             ,crate::cmd::textbooks::textbooks_add
             ,crate::cmd::textbooks::textbooks_update_bookmarks
+            ,crate::cmd::textbooks::vfs_ensure_ocr_pipeline
             // =================================================
             // 智能题目集命令（Question Bank V2）
             // =================================================

@@ -477,29 +477,29 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     }
   }, [node.resourceId, node.sourceId]);
 
-  /** 检测 OCR 配置并启动处理流水线 */
+  /** 检查 OCR 配置状态（仅用于 UI 状态栏展示） */
+  useEffect(() => {
+    if (!isPdf) return;
+    let cancelled = false;
+    invoke<{ configured: boolean; modelName?: string }>('check_ocr_availability')
+      .then((avail) => { if (!cancelled) setOcrAvailability(avail); })
+      .catch(() => { if (!cancelled) setOcrAvailability({ configured: false }); });
+    return () => { cancelled = true; };
+  }, [isPdf]);
+
+  /** 简化后的 OCR 处理：由后端全权处理 OCR 流水线 */
   useEffect(() => {
     if (!isPdf || !node.sourceId || !node.sourceId.startsWith('tb_')) return;
 
     let cancelled = false;
 
-    const initOcr = async () => {
-      // 1. 检查 OCR 是否已配置
-      let configured = false;
+    const ensureOcr = async () => {
       try {
-        const avail = await invoke<{ configured: boolean; modelName?: string }>('check_ocr_availability');
+        // 后端全权处理：检查配置、启动流水线、等待完成
+        await invoke('vfs_ensure_ocr_pipeline', { resourceId: node.resourceId || node.sourceId });
         if (cancelled) return;
-        setOcrAvailability(avail);
-        configured = avail.configured;
-      } catch {
-        if (!cancelled) setOcrAvailability({ configured: false });
-        return;
-      }
 
-      if (!configured) return;
-
-      // 2. 先查询是否已有 OCR 文本（之前已完成处理）
-      try {
+        // 获取 OCR 文本
         const ocrInfo = await invoke<{ hasOcr: boolean; ocrText: string | null }>(
           'vfs_get_resource_ocr_info',
           { resourceId: node.resourceId || node.sourceId },
@@ -507,39 +507,15 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
         if (cancelled) return;
         if (ocrInfo.hasOcr && ocrInfo.ocrText) {
           setOcrTextContent(ocrInfo.ocrText);
-          return; // 已有 OCR 文本，无需启动流水线
         }
-      } catch {
-        // 资源不存在或其他错误，继续启动流水线
-      }
-
-      // 3. 检查当前处理状态（可能正在后台处理中）
-      try {
-        const status = await invoke<{
-          stage: string;
-          progress: { readyModes: string[] };
-        } | null>('vfs_get_pdf_processing_status', { fileId: node.sourceId });
-        if (cancelled) return;
-
-        // 已完成且包含 OCR 模式则跳过
-        if (status && (status.stage === 'completed' || status.stage === 'completed_with_issues')
-          && status.progress.readyModes.includes('ocr')) {
-          return;
+      } catch (err: unknown) {
+        if (!cancelled) {
+          console.warn('[TextbookContentView] OCR pipeline failed:', err);
         }
-
-        // 未完成或出错 — 启动流水线（从 OCR 阶段开始）
-        if (!status || status.stage === 'error' || status.stage === 'pending') {
-          await invoke('vfs_start_pdf_processing', { fileId: node.sourceId });
-        }
-      } catch {
-        // 状态检查失败，尝试直接启动
-        try {
-          await invoke('vfs_start_pdf_processing', { fileId: node.sourceId });
-        } catch { /* 可能已在运行中，忽略 */ }
       }
     };
 
-    void initOcr();
+    void ensureOcr();
     return () => { cancelled = true; };
   }, [isPdf, node.sourceId, node.resourceId]);
 

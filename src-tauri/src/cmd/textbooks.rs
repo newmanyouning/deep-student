@@ -900,3 +900,81 @@ pub async fn textbooks_update_bookmarks(
     TextbooksDb::update_vfs(vfs_db, &id, params)?;
     Ok(true)
 }
+
+/// 确保教材的 OCR 流水线已启动
+///
+/// 对已有但尚未完成 OCR 的扫描版 PDF 教材，自动触发 OCR 流水线。
+/// 1. 检查文件是否已有 ocr_pages_json → 已完成则跳过
+/// 2. 检测是否为扫描版（每页提取文本 < 100 字符）→ 触发 OCR 流水线
+/// 3. 返回处理状态供前端判断
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VfsEnsureOcrPipelineResponse {
+    /// 状态: "ocr_completed" | "ocr_started" | "text_sufficient" | "not_applicable"
+    pub status: String,
+    /// 描述信息
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub message: Option<String>,
+}
+
+#[tauri::command]
+pub async fn vfs_ensure_ocr_pipeline(
+    state: State<'_, AppState>,
+    pdf_processing_service: State<'_, Arc<PdfProcessingService>>,
+    file_id: String,
+) -> Result<VfsEnsureOcrPipelineResponse> {
+    let vfs_db = state
+        .vfs_db
+        .as_ref()
+        .ok_or_else(|| AppError::configuration("VFS database not configured"))?;
+
+    let conn = vfs_db
+        .get_conn_safe()
+        .map_err(|e| AppError::database(format!("获取 VFS 连接失败: {}", e)))?;
+
+    // 1. 查询文件
+    let file = crate::vfs::VfsFileRepo::get_file_with_conn(&conn, &file_id)
+        .map_err(|e| AppError::database(format!("查询文件失败: {}", e)))?
+        .ok_or_else(|| AppError::not_found(format!("文件不存在: {}", file_id)))?;
+
+    // 2. 检查 OCR 是否已完成
+    if file.ocr_pages_json.is_some() {
+        return Ok(VfsEnsureOcrPipelineResponse {
+            status: "ocr_completed".to_string(),
+            message: Some("OCR 已完成".to_string()),
+        });
+    }
+
+    // 3. 检查是否为扫描版（提取文本过少）
+    let is_scanned = match (&file.extracted_text, file.page_count) {
+        (Some(text), Some(pages)) if pages > 0 => {
+            let per_page = text.len() as f64 / pages as f64;
+            per_page < 100.0
+        }
+        (None, _) => true,  // 无提取文本 → 扫描版
+        _ => false,
+    };
+
+    if is_scanned {
+        // 触发 OCR 流水线
+        pdf_processing_service
+            .start_pipeline(&file_id, Some(ProcessingStage::OcrProcessing))
+            .await
+            .map_err(|e| AppError::database(format!("启动 OCR 流水线失败: {}", e)))?;
+
+        info!(
+            "[Textbooks] OCR pipeline started for scanned file: {} (file: {})",
+            file.file_name, file_id
+        );
+
+        Ok(VfsEnsureOcrPipelineResponse {
+            status: "ocr_started".to_string(),
+            message: Some("OCR 流水线已启动".to_string()),
+        })
+    } else {
+        Ok(VfsEnsureOcrPipelineResponse {
+            status: "text_sufficient".to_string(),
+            message: Some("文本提取已足够，无需 OCR".to_string()),
+        })
+    }
+}

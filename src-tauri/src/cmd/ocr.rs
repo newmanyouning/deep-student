@@ -206,8 +206,30 @@ pub async fn check_ocr_availability(state: State<'_, AppState>) -> Result<OcrAva
     let all_models: Vec<OcrModelConfig> = serde_json::from_str(&models_json)
         .map_err(|e| AppError::database(format!("解析 OCR 模型配置失败: {}", e)))?;
     let enabled_models: Vec<&OcrModelConfig> = all_models.iter().filter(|m| m.enabled).collect();
-    let configured = !enabled_models.is_empty();
-    let model_name = enabled_models.first().map(|m| m.name.clone());
+    let mut configured = !enabled_models.is_empty();
+    let mut model_name = enabled_models.first().map(|m| m.name.clone());
+
+    if !configured {
+        // 回退检测：通过 LLM model profiles 查找 PaddleOCR 模型
+        if let Ok(profiles) = state.llm_manager.get_model_profiles().await {
+            for p in &profiles {
+                if p.model.contains("PaddleOCR") || p.model.contains("PP-OCR") || p.model.contains("PP-Structure") {
+                    configured = true;
+                    model_name = Some(p.label.clone());
+                    break;
+                }
+            }
+        }
+    }
+
+    if !configured {
+        // 通用回退：尝试通过 OCR 模型配置检测（含 model assignments 回退）
+        if let Ok(config) = state.llm_manager.get_ocr_model_config().await {
+            configured = true;
+            model_name = Some(config.model);
+        }
+    }
+
     Ok(OcrAvailabilityResponse {
         configured,
         model_name,
