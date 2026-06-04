@@ -300,3 +300,4 @@ scripts/*.PDF
 scripts/test_ocr_pdfs.py
 scripts/ocr_output/
 scripts/save_ocr_results.py
+scripts/open-ai.txt
