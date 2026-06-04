@@ -144,6 +144,37 @@ impl ImageGenerationExecutor {
         })
     }
 
+    /// Pre-check whether any image generation model is configured (assigned or auto-detectable).
+    /// This is called before `resolve_model` to prevent JSON EOF errors from the API.
+    async fn has_image_generation_model(ctx: &ExecutionContext) -> bool {
+        let llm_manager = match ctx.llm_manager.as_ref() {
+            Some(m) => m,
+            None => return false,
+        };
+        let assignments = match llm_manager.get_model_assignments().await {
+            Ok(a) => a,
+            Err(_) => return false,
+        };
+
+        // If explicitly assigned, assume configured (resolve_model validates further)
+        if assignments
+            .image_generation_model_config_id
+            .as_deref()
+            .filter(|id| !id.trim().is_empty())
+            .is_some()
+        {
+            return true;
+        }
+
+        // Check if any config can be auto-detected as an image generation model
+        let configs = match llm_manager.get_api_configs().await {
+            Ok(c) => c,
+            Err(_) => return false,
+        };
+
+        configs.iter().any(|cfg| cfg.enabled && is_image_generation_config(cfg))
+    }
+
     fn validate_model_config(config: &ApiConfig) -> ToolResult<()> {
         if config.base_url.trim().is_empty() {
             return Err(ToolError::InvalidArgs("生图模型缺少 Base URL".to_string()));
@@ -434,6 +465,23 @@ impl ToolExecutor for ImageGenerationExecutor {
                 return Ok(result);
             }
         };
+
+        // PRE-CHECK: ensure an image generation model is configured before proceeding.
+        // This prevents JSON EOF errors from calling the API with no valid model.
+        if !Self::has_image_generation_model(ctx).await {
+            let msg = "Image generation model not configured. Please add an image generation model in Settings → Models.";
+            Self::emit_error(ctx, msg);
+            let result = ToolResultInfo::failure(
+                Some(call.id.clone()),
+                Some(ctx.block_id.clone()),
+                call.name.clone(),
+                call.arguments.clone(),
+                msg.to_string(),
+                start_time.elapsed().as_millis() as u64,
+            );
+            let _ = ctx.save_tool_block(&result);
+            return Ok(result);
+        }
 
         let model = match Self::resolve_model(ctx).await {
             Ok(model) => model,

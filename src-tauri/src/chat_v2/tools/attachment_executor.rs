@@ -50,7 +50,7 @@ impl AttachmentToolExecutor {
 
     /// 执行附件列表
     async fn execute_list(&self, call: &ToolCall, ctx: &ExecutionContext) -> ToolResult<Value> {
-        let main_db = ctx.main_db.as_ref().ok_or(ToolError::Internal("Main database not available".to_string()))?;
+        let chat_v2_db = ctx.chat_v2_db.as_ref().ok_or(ToolError::Internal("ChatV2 database not available".to_string()))?;
 
         // P0-01 安全修复：验证 session_id 参数，防止跨会话访问
         if let Some(param_session_id) = call.arguments.get("session_id").and_then(|v| v.as_str()) {
@@ -85,8 +85,8 @@ impl AttachmentToolExecutor {
 
         let start_time = Instant::now();
 
-        // 查询会话中的消息
-        let messages = ChatV2Repo::get_session_messages(main_db, &session_id)
+        // 查询会话中的消息（使用 ChatV2 数据库，chat_v2_messages 表在此数据库中）
+        let messages = ChatV2Repo::get_session_messages_v2(chat_v2_db, &session_id)
             .map_err(|e| ToolError::Execution(format!("Failed to get messages: {}", e)))?;
 
         // 收集所有附件（兼容 legacy attachments + context_snapshot.user_refs）
@@ -182,7 +182,7 @@ impl AttachmentToolExecutor {
 
     /// 执行附件读取
     async fn execute_read(&self, call: &ToolCall, ctx: &ExecutionContext) -> ToolResult<Value> {
-        let main_db = ctx.main_db.as_ref().ok_or(ToolError::Internal("Main database not available".to_string()))?;
+        let chat_v2_db = ctx.chat_v2_db.as_ref().ok_or(ToolError::Internal("ChatV2 database not available".to_string()))?;
 
         // 解析参数
         let message_id = call
@@ -208,8 +208,8 @@ impl AttachmentToolExecutor {
 
         let start_time = Instant::now();
 
-        // 获取消息
-        let message = ChatV2Repo::get_message(main_db, message_id)
+        // 获取消息（使用 ChatV2 数据库）
+        let message = ChatV2Repo::get_message_v2(chat_v2_db, message_id)
             .map_err(|e| ToolError::Execution(format!("Failed to get message: {}", e)))?
             .ok_or_else(|| ToolError::NotFound(format!("Message not found: {}", message_id)))?;
 

@@ -850,11 +850,53 @@ impl NotesManager {
         limit: usize,
         tokens_lower: &[String],
     ) -> Result<Vec<(String, String, Option<String>)>> {
+        let pattern = format!("%{}%", keyword);
+
+        // 优先使用 VFS 数据库（notes 表仅存在于 VFS 数据库中）
+        if let Some(vfs_db) = self.vfs_db.as_ref() {
+            let conn = vfs_db
+                .get_conn_safe()
+                .map_err(|e| AppError::database(format!("Failed to get VFS connection: {}", e)))?;
+            let mut stmt = conn
+                .prepare(
+                    "SELECT n.id, n.title, COALESCE(r.data, '')
+                       FROM notes n
+                       LEFT JOIN resources r ON r.id = n.resource_id
+                      WHERE n.deleted_at IS NULL
+                        AND (n.title LIKE ?1 OR r.data LIKE ?2)
+                      ORDER BY datetime(n.updated_at) DESC
+                      LIMIT ?3",
+                )
+                .map_err(|e| {
+                    AppError::database(format!("Failed to prepare VFS note LIKE search: {}", e))
+                })?;
+            let rows = stmt
+                .query_map(params![pattern, pattern, limit as i64], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                    ))
+                })
+                .map_err(|e| {
+                    AppError::database(format!("Failed to execute VFS note LIKE search: {}", e))
+                })?;
+            let mut out = Vec::new();
+            for row in rows {
+                let (id, title, content) = row.map_err(|e| {
+                    AppError::database(format!("Failed to parse VFS note LIKE result: {}", e))
+                })?;
+                let snippet = self.build_note_snippet(&content, tokens_lower);
+                out.push((id, title, snippet));
+            }
+            return Ok(out);
+        }
+
+        // 回退到遗留主数据库（兼容旧版数据库，其中可能存在 notes 表）
         let conn = self
             .db
             .get_conn_safe()
             .map_err(|e| AppError::database(format!("Failed to get db connection: {}", e)))?;
-        let pattern = format!("%{}%", keyword);
         let mut stmt = conn
             .prepare(
                 "SELECT id, title, content_md

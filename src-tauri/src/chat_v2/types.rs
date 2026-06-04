@@ -1351,8 +1351,8 @@ impl Default for MessageSources {
 }
 
 /// 工具调用请求（LLM 返回的工具调用）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 pub struct ToolCall {
     /// 工具调用 ID（由 LLM 生成，用于关联结果）
     pub id: String,
@@ -1376,8 +1376,8 @@ impl ToolCall {
 }
 
 /// 工具调用结果（与前端 ToolResult 对齐）
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
 pub struct ToolResultInfo {
     /// 工具调用 ID（关联 ToolCall.id）
     #[serde(skip_serializing_if = "Option::is_none")]

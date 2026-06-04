@@ -1357,15 +1357,48 @@ impl ChatV2Repo {
 
         let tool_input: Option<Value> = tool_input_json
             .as_ref()
-            .and_then(|s| serde_json::from_str(s).ok());
+            .and_then(|s| {
+                serde_json::from_str(s)
+                    .map_err(|e| {
+                        log::warn!(
+                            "[ChatV2::Repo] tool_input_json 解析失败 (block_id={}): {}",
+                            id,
+                            e
+                        );
+                        e
+                    })
+                    .ok()
+            });
 
         let tool_output: Option<Value> = tool_output_json
             .as_ref()
-            .and_then(|s| serde_json::from_str(s).ok());
+            .and_then(|s| {
+                serde_json::from_str(s)
+                    .map_err(|e| {
+                        log::warn!(
+                            "[ChatV2::Repo] tool_output_json 解析失败 (block_id={}): {}",
+                            id,
+                            e
+                        );
+                        e
+                    })
+                    .ok()
+            });
 
         let citations = citations_json
             .as_ref()
-            .and_then(|s| serde_json::from_str(s).ok());
+            .and_then(|s| {
+                serde_json::from_str(s)
+                    .map_err(|e| {
+                        log::warn!(
+                            "[ChatV2::Repo] citations_json 解析失败 (block_id={}): {}",
+                            id,
+                            e
+                        );
+                        e
+                    })
+                    .ok()
+            });
 
         Ok(MessageBlock {
             id,
