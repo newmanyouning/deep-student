@@ -12,6 +12,11 @@
 //! - VL 系列 (1.5/1.6): layoutParsingResults → markdown.text + images
 //! - PP-OCRv5:            ocrResults → ocrImage (文字叠加到图片)
 //! - PP-StructureV3:      layoutParsingResults → markdown.text + images
+//!
+//! ## 认证头大小写
+//! PaddleOCR API 要求 Authorization header 使用小写 "bearer"（而非 RFC 6750 推荐的 "Bearer"）。
+//! 当前 `reqwest::Client::bearer_auth()` 使用大写 "Bearer"，如果 API 返回 401 请确认此问题。
+//! 若需要，可改用 `header("Authorization", "bearer <token>")` 手动设置。
 
 use serde::{Deserialize, Serialize};
 

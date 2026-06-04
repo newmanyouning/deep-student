@@ -1197,16 +1197,20 @@ impl super::LLMManager {
         use serde_json::json;
 
         // ── 特殊路径: PaddleOCR REST API (job-based, 非 VLM prompt/response) ──
-        if engine_type == crate::ocr_adapters::OcrEngineType::PaddleOcrApi {
+        // 全部 PaddleOCR 引擎 (PaddleOcrApi/PaddleOcrVl/PaddleOcrVlV1) 共享同一 AI Studio
+        // job-based API (POST /api/v2/ocr/jobs)，不支持 /v1/chat/completions 格式
+        if matches!(
+            engine_type,
+            crate::ocr_adapters::OcrEngineType::PaddleOcrApi
+                | crate::ocr_adapters::OcrEngineType::PaddleOcrVl
+                | crate::ocr_adapters::OcrEngineType::PaddleOcrVlV1
+        ) {
             return self
                 .test_paddle_ocr_api_engine(&image_path, config_id)
                 .await;
         }
 
-        let adapter = OcrAdapterFactory::create(engine_type);
-        let engine_name = adapter.display_name();
-        let ocr_mode = OcrMode::Grounding;
-
+        // 获取配置，用于 base_url 检查和后续 VLM 路径
         let config = if let Some(cid) = config_id {
             let configs = self.get_api_configs().await?;
             configs
@@ -1216,6 +1220,24 @@ impl super::LLMManager {
         } else {
             self.get_ocr_model_config_for_engine(engine_type).await?
         };
+
+        // ── 补充检查: base_url 指向 PaddleOCR API 但 engine_type 未命中 → 路由到 job-based 路径 ──
+        // 当用户配置的引擎类型未标记为 PaddleOCR（如泛型 vl_model）但 base_url
+        // 指向 https://paddleocr.aistudio-app.com 时，此检查可防止请求被发送到不存在的
+        // /v1/chat/completions 端点（导致 404）。
+        if config.base_url.contains("paddleocr.aistudio-app.com") {
+            log::info!(
+                "[OCR Test] base_url 指向 PaddleOCR API (engine={:?})，路由到 job-based 路径",
+                engine_type
+            );
+            return self
+                .test_paddle_ocr_api_engine(&image_path, config_id)
+                .await;
+        }
+
+        let adapter = OcrAdapterFactory::create(engine_type);
+        let engine_name = adapter.display_name();
+        let ocr_mode = OcrMode::Grounding;
 
         log::debug!(
             "[OCR Test] 使用引擎 {} 测试，模型: {}",
