@@ -298,3 +298,5 @@ scripts/connectivity_test_results.json
 scripts/*.pdf
 scripts/*.PDF
 scripts/test_ocr_pdfs.py
+scripts/ocr_output/
+scripts/save_ocr_results.py
