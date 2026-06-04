@@ -13,6 +13,9 @@ use crate::models::{
     QuestionBankStats, QuestionStatus as ModelsQuestionStatus, QuestionType, SourceType,
 };
 use crate::question_bank_service::QuestionBankService;
+use crate::qbank_grading::events::QbankGradingEmitter;
+use crate::qbank_grading::pipeline::{run_qbank_grading, QbankGradingDeps};
+use crate::qbank_grading::types::{QbankGradingMode, QbankGradingRequest};
 use crate::vfs::repos::{
     CreateQuestionParams, Difficulty, Question, QuestionFilters, QuestionImage, QuestionOption,
     QuestionStatus, SourceType as RepoSourceType, UpdateQuestionParams, VfsExamRepo,
@@ -1521,12 +1524,19 @@ impl QBankExecutor {
             .ok_or_else(|| ToolError::Execution("LLM Manager not available".to_string()))?;
         let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| ToolError::Execution("VFS database not available".to_string()))?;
 
+        // ----- 内容格式自动检测 -----
+        // LLM 可能传入纯文本（JSON/markdown/TXT）而非 base64，导致下游 decode 失败。
+        // 此处自动检测实际内容类型并做相应转换，确保最终传给 import 服务的 content
+        // 是 base64 编码（符合其内部 decode_text_content 的预期）。
+        let (detected_content, detected_format) =
+            Self::detect_import_content_format(content, format);
+
         // 使用统一的 QuestionImportService
         let import_service = QuestionImportService::new_without_file_manager(llm_manager.clone());
 
         let import_request = ImportRequest {
-            content: content.to_string(),
-            format: format.to_string(),
+            content: detected_content,
+            format: detected_format,
             name: name.map(String::from),
             session_id: session_id.map(String::from),
             folder_id: folder_id.map(String::from),
@@ -1856,6 +1866,143 @@ impl QBankExecutor {
             "message": format!("成功导入 {} 道题目", imported_count)
         }))
     }
+    /// Content format auto-detection for document imports.
+    ///
+    /// The LLM may pass plain text (JSON, markdown, or raw TXT) instead of
+    /// base64-encoded content, causing `decode_base64_content` /
+    /// `decode_text_content` failures in `QuestionImportService`.
+    ///
+    /// This method detects and normalises the content:
+    /// 1. `format == "base64"` override -- try decode; if it fails, treat as raw text
+    /// 2. JSON content (starts with `{` or `[`) -- mark format as `"json"`, pass directly
+    /// 3. base64-encoded content -- decode to plain text
+    /// 4. Plain text / markdown -- base64-encode (import service will decode back)
+    fn detect_import_content_format(content: &str, format: &str) -> (String, String) {
+        use base64::Engine;
+        let trimmed = content.trim();
+
+        // --- Format override: LLM said "base64" ---
+        if format == "base64" {
+            match base64::engine::general_purpose::STANDARD.decode(trimmed) {
+                Ok(bytes) => {
+                    if let Ok(text) = String::from_utf8(bytes) {
+                        return (text, "txt".to_string());
+                    }
+                }
+                Err(_) => {}
+            }
+            // Decode failed; fall back to raw text
+            return (content.to_string(), "txt".to_string());
+        }
+
+        // --- JSON auto-detection ---
+        if (trimmed.starts_with('{') || trimmed.starts_with('['))
+            && serde_json::from_str::<serde_json::Value>(trimmed).is_ok()
+        {
+            return (content.to_string(), "json".to_string());
+        }
+
+        // --- Only apply base64 detection for text-based formats ---
+        let is_text_format = matches!(
+            format,
+            "txt" | "md" | "markdown" | "json" | ""
+        );
+
+        if is_text_format {
+            // Does the content look like base64? (only valid base64 chars)
+            let looks_like_base64 = trimmed.len() >= 4
+                && trimmed
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '=');
+
+            if looks_like_base64 {
+                // Attempt decode; if it succeeds the content was base64
+                if let Ok(bytes) = base64::engine::general_purpose::STANDARD.decode(trimmed) {
+                    if let Ok(text) = String::from_utf8(bytes) {
+                        return (text, format.to_string());
+                    }
+                }
+            }
+
+            // Plain text / markdown: base64-encode so downstream decode succeeds
+            let encoded = base64::engine::general_purpose::STANDARD.encode(content.as_bytes());
+            return (encoded, "txt".to_string());
+        }
+
+        // --- Binary formats (docx, pdf, images): pass through unchanged ---
+        (content.to_string(), format.to_string())
+    }
+
+    async fn execute_ai_grade(
+        &self,
+        call: &ToolCall,
+        ctx: &ExecutionContext,
+    ) -> ToolResult<Value> {
+        let question_id = call
+            .arguments
+            .get("question_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                ToolError::InvalidArgs("Missing 'question_id' parameter".to_string())
+            })?;
+        let submission_id = call
+            .arguments
+            .get("submission_id")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| {
+                ToolError::InvalidArgs("Missing 'submission_id' parameter".to_string())
+            })?;
+        let mode_str = call
+            .arguments
+            .get("mode")
+            .and_then(|v| v.as_str())
+            .unwrap_or("grade");
+        let mode = match mode_str {
+            "grade" => QbankGradingMode::Grade,
+            "analyze" => QbankGradingMode::Analyze,
+            _ => {
+                return Err(ToolError::InvalidArgs(format!(
+                    "Invalid mode '{}': expected 'grade' or 'analyze'",
+                    mode_str
+                )))
+            }
+        };
+        let model_config_id = call
+            .arguments
+            .get("model_config_id")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let vfs_db = ctx.vfs_db.as_ref().ok_or_else(|| {
+            ToolError::Execution("VFS 数据库未初始化".to_string())
+        })?;
+        let llm_manager = ctx.llm_manager.as_ref().ok_or_else(|| {
+            ToolError::Execution("LLM 管理器未初始化".to_string())
+        })?;
+
+        let stream_session_id = format!("tool_{}", uuid::Uuid::new_v4());
+        let request = QbankGradingRequest {
+            question_id: question_id.to_string(),
+            submission_id: submission_id.to_string(),
+            stream_session_id: stream_session_id.clone(),
+            mode,
+            model_config_id,
+        };
+        let deps = QbankGradingDeps {
+            llm: llm_manager.clone(),
+            vfs_db: vfs_db.clone(),
+            emitter: QbankGradingEmitter::new(ctx.window.clone()),
+        };
+
+        match run_qbank_grading(request, deps).await {
+            Ok(Some(response)) => Ok(json!(response)),
+            Ok(None) => Ok(json!({
+                "message": "AI 评判已被取消",
+                "cancelled": true
+            })),
+            Err(e) => Err(ToolError::Execution(format!("AI 评判失败: {}", e))),
+        }
+    }
 }
 
 impl Default for QBankExecutor {
@@ -1911,14 +2058,7 @@ impl ToolExecutor for QBankExecutor {
             "qbank_generate_variant" => self.execute_generate_variant(call, ctx).await,
             "qbank_batch_import" => self.execute_batch_import(call, ctx).await,
             "qbank_import_document" => self.execute_import_document(call, ctx).await,
-            "qbank_ai_grade" => {
-                // AI 评判通过独立的 Tauri command 处理（流式管线），
-                // 此处仅返回提示信息，不在 Chat 工具链中直接执行流式操作。
-                Ok(json!({
-                    "message": "AI 评判需要通过流式管线执行，请在题目集练习界面中使用此功能。",
-                    "hint": "在对话中，你可以使用 qbank_submit_answer 提交答案，主观题会自动触发 AI 评判。"
-                }))
-            }
+            "qbank_ai_grade" => self.execute_ai_grade(call, ctx).await,
             _ => Err(ToolError::InvalidArgs(format!("Unknown qbank tool: {}", tool_name))),
         };
 

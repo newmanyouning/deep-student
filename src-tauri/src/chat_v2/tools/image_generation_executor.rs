@@ -268,8 +268,33 @@ impl ImageGenerationExecutor {
             .text()
             .await
             .map_err(|e| ToolError::Execution(format!("读取生图响应失败: {}", e)))?;
-        let value: Value = serde_json::from_str(&body)
-            .map_err(|e| ToolError::Execution(format!("生图响应不是有效 JSON: {},body={}", e, shorten(&body, 280))))?;
+        // 非 JSON 响应防护 (empty/HTML/纯文本)
+        if body.trim().is_empty() {
+            return Err(ToolError::Execution(format!(
+                "生图 API 返回空响应 (HTTP {})",
+                status
+            )));
+        }
+        if body.trim_start().starts_with("<") {
+            return Err(ToolError::Execution(format!(
+                "生图 API 返回 HTML 错误页 (HTTP {})",
+                status
+            )));
+        }
+        if !body.trim_start().starts_with("{") && !body.trim_start().starts_with("[") {
+            return Err(ToolError::Execution(format!(
+                "生图 API 返回非 JSON 内容 (HTTP {}, Content-Type 非 application/json)",
+                status
+            )));
+        }
+
+        let value: Value = serde_json::from_str(&body).map_err(|e| {
+            ToolError::Execution(format!(
+                "生图响应 JSON 解析失败 (HTTP {}): {}",
+                status,
+                e
+            ))
+        })?;
 
         if !status.is_success() {
             return Err(ToolError::Execution(extract_image_api_error(&value)
