@@ -30,6 +30,16 @@ export const SecurePasswordInput: React.FC<SecurePasswordInputProps> = ({
   const copyBlockedBySensitivity = isSensitive && !showPassword;
   const copyDisabled = disabled || copyBlockedBySensitivity || !value;
 
+  // React controlled <input type="password"> sometimes does NOT fire onChange
+  // when the user pastes (Ctrl+V) in certain browsers / WebViews (e.g. Tauri
+  // WebView2 on Windows).  Force the onChange callback after the paste completes.
+  const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    setTimeout(() => {
+      const newValue = e.currentTarget.value;
+      if (newValue !== value) onChange(newValue);
+    }, 0);
+  }, [onChange, value]);
+
   const handleCopy = useCallback(async () => {
     if (copyDisabled) return;
     try {
@@ -70,6 +80,7 @@ export const SecurePasswordInput: React.FC<SecurePasswordInputProps> = ({
       <ApiKeyField
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onPaste={handlePaste}
         placeholder={placeholder}
         disabled={disabled}
         revealed={showPassword}

@@ -31,10 +31,19 @@ export const ApiKeyField = React.forwardRef<HTMLInputElement, ApiKeyFieldProps>(
   inputClassName,
   className,
   extraActions,
+  onPaste: onPasteProp,
   ...props
 }, ref) => {
   const label = revealed ? hideLabel : showLabel;
   const inputType = canReveal && revealed ? 'text' : 'password';
+
+  // React controlled <input type="password"> sometimes does NOT fire onChange
+  // when the user pastes (Ctrl+V) in certain browsers / WebViews (e.g. Tauri
+  // WebView2 on Windows).  Forward the event to the parent's onPaste handler
+  // which reads the updated value after the browser applies the paste.
+  const handlePaste = React.useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
+    onPasteProp?.(e);
+  }, [onPasteProp]);
 
   return (
     <div
@@ -53,6 +62,7 @@ export const ApiKeyField = React.forwardRef<HTMLInputElement, ApiKeyFieldProps>(
           'api-key-field__input',
           inputClassName
         )}
+        onPaste={handlePaste}
         {...props}
       />
       {extraActions}

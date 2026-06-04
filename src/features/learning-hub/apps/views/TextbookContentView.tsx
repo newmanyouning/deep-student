@@ -194,8 +194,10 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     };
   }, [filePath]);
 
-  const effectiveFilePath = filePathStat?.available ? filePath : undefined;
-  const effectiveFileSize = filePathStat?.available ? filePathStat.size : undefined;
+  // ★ PDF-403 修复：教材 PDF 不传 filePath，避免触发 pdfstream:// 协议的目录白名单限制导致 403。
+  // 改为始终通过 usePdfLoader → vfs_get_attachment_content 从 VFS blob/DB 加载。
+  const effectiveFilePath = isPdf ? undefined : (filePathStat?.available ? filePath : undefined);
+  const effectiveFileSize = isPdf ? undefined : (filePathStat?.available ? filePathStat.size : undefined);
 
   // 使用统一的 PDF 加载 Hook（支持缓存、去重、大文件检测）
   const {
@@ -618,12 +620,14 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
   }
 
   // PDF 预览
-  // 优先使用 filePath（本地文件），否则使用从数据库加载的 pdfFile
   return (
     <div className="flex flex-col h-full bg-background">
       <TextbookPdfViewer
         file={pdfFile}
-        filePath={effectiveFilePath || ''}
+        // ★ PDF-403 修复：不传 filePath 给教材 PDF，避免触发 pdfstream:// 协议导致 403
+        // file 优先于 filePath（TextbookPdfViewer 内部逻辑：file 存在时使用 Blob URL，
+        // 仅 file 为 null 时才回退到 filePath 的 pdfstream://）
+        filePath={''}
         fileName={node.name}
         selectedPages={selectedPages}
         onPageSelectionChange={handlePageSelectionChange}

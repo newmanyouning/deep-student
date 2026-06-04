@@ -55,7 +55,9 @@ pub fn cors_origin_for_request(request: &tauri::http::Request<Vec<u8>>) -> Strin
 /// 从 Tauri AppHandle 解析允许的 PDF 访问目录白名单。
 /// 仅包含用户数据和文档相关目录，排除系统敏感路径。
 pub fn resolve_allowed_dirs(app: &tauri::AppHandle) -> Vec<PathBuf> {
+    use std::sync::Arc;
     use tauri::Manager;
+    use crate::vfs::database::VfsDatabase;
 
     let mut resolvers: Vec<Box<dyn Fn() -> Result<PathBuf, tauri::Error>>> = vec![
         Box::new(|| app.path().app_data_dir()),
@@ -74,10 +76,20 @@ pub fn resolve_allowed_dirs(app: &tauri::AppHandle) -> Vec<PathBuf> {
         resolvers.push(Box::new(|| app.path().picture_dir()));
     }
 
-    resolvers
+    let mut dirs: Vec<PathBuf> = resolvers
         .into_iter()
         .filter_map(|f| f().ok().and_then(|p| std::fs::canonicalize(&p).ok()))
-        .collect()
+        .collect();
+
+    // ★ PDF-403 修复：将 VFS blob 存储目录也纳入 pdfstream 白名单，
+    //   确保通过 blob hash 存储的 PDF（教材导入、附件等）能够正常加载。
+    if let Some(vfs_db) = app.try_state::<Arc<VfsDatabase>>() {
+        if let Ok(canonical) = std::fs::canonicalize(vfs_db.blobs_dir()) {
+            dirs.push(canonical);
+        }
+    }
+
+    dirs
 }
 
 /// 处理 pdfstream:// 协议请求

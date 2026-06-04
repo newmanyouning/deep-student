@@ -6,6 +6,7 @@ use crate::document_parser::DocumentParser;
 use crate::models::AppError;
 use crate::textbooks_db::{ListQuery as TextbooksListQuery, Textbook as TextbookDto, TextbooksDb};
 use crate::unified_file_manager;
+use crate::vfs::repos::blob_repo::VfsBlobRepo;
 use crate::vfs::repos::pdf_preview::{render_pdf_preview_with_progress, PdfPreviewConfig};
 // ★ 2026-02 移除：VfsIndexService 和 UnitBuildInput 不再需要
 // sync_resource_units 调用已移除，由 Pipeline 统一处理
@@ -280,7 +281,7 @@ pub async fn textbooks_add(
 
         let blobs_dir = vfs_db.blobs_dir();
 
-        let (preview_json_str, extracted_text, page_count) = if extension == "pdf" {
+        let (preview_json_str, extracted_text, page_count, blob_hash) = if extension == "pdf" {
             // PDF 文件：使用 PDF 预渲染流程
             emit_progress(&window, &file_name, "rendering", Some(0), None, 15, None);
             let pdf_bytes = read_file_bytes(window.clone(), src.to_string())
@@ -297,6 +298,30 @@ pub async fn textbooks_add(
                     );
                     AppError::file_system(format!("读取 PDF 文件失败: {}", e))
                 })?;
+
+            // ★ PDF-403 修复：将 PDF 二进制内容存储为 VFS blob，确保即使 original_path
+            // 在 pdfstream 协议目录白名单之外也能通过 vfs_get_attachment_content 正常读取
+            let pdf_blob_hash: Option<String> = match VfsBlobRepo::store_blob_with_conn(
+                &conn,
+                &blobs_dir,
+                &pdf_bytes,
+                Some("application/pdf"),
+                Some("pdf"),
+            ) {
+                Ok(blob) => {
+                    info!(
+                        "[Textbooks] Stored PDF blob: hash={}, path={:?}",
+                        blob.hash,
+                        VfsBlobRepo::get_blob_path_with_conn(&conn, &blobs_dir, &blob.hash)
+                            .ok().flatten()
+                    );
+                    Some(blob.hash)
+                }
+                Err(e) => {
+                    warn!("[Textbooks] Failed to store PDF blob, will rely on original_path: {}", e);
+                    None
+                }
+            };
 
             let window_clone = window.clone();
             let file_name_clone = file_name.clone();
@@ -319,7 +344,7 @@ pub async fn textbooks_add(
                 }
             };
 
-            match render_pdf_preview_with_progress(
+            let (preview, text, pages) = match render_pdf_preview_with_progress(
                 &conn,
                 &blobs_dir,
                 &pdf_bytes,
@@ -350,7 +375,8 @@ pub async fn textbooks_add(
                     );
                     (None, None, None)
                 }
-            }
+            };
+            (preview, text, pages, pdf_blob_hash)
         } else {
             // 非 PDF 文件：使用 DocumentParser 提取文本
             emit_progress(&window, &file_name, "parsing", None, None, 15, None);
@@ -362,7 +388,7 @@ pub async fn textbooks_add(
                         text.len(),
                         file_name
                     );
-                    (None, Some(text), Some(1))
+                    (None, Some(text), Some(1), None)
                 }
                 Err(e) => {
                     warn!(
@@ -391,7 +417,7 @@ pub async fn textbooks_add(
             &sha256,
             &file_name,
             size as i64,
-            None,      // blob_hash
+            blob_hash.as_deref(), // blob_hash (PDF-403: stored VFS blob, may be None on error)
             Some(src), // original_path
             preview_json_str.as_deref(),
             extracted_text.as_deref(),
@@ -573,12 +599,35 @@ pub async fn textbooks_adopt(
             .map_err(|e| AppError::database(format!("获取 VFS 连接失败: {}", e)))?;
         let blobs_dir = vfs_db.blobs_dir();
 
-        let (preview_json_str, extracted_text, page_count) = if extension == "pdf" {
+        let (preview_json_str, extracted_text, page_count, blob_hash) = if extension == "pdf" {
             let pdf_bytes = read_file_bytes(window.clone(), p.clone())
                 .await
                 .map_err(|e| AppError::file_system(format!("读取 PDF 文件失败: {}", e)))?;
 
-            match render_pdf_preview_with_progress(
+            // ★ PDF-403 修复：将 PDF 二进制内容存储为 VFS blob
+            let pdf_blob_hash: Option<String> = match VfsBlobRepo::store_blob_with_conn(
+                &conn,
+                &blobs_dir,
+                &pdf_bytes,
+                Some("application/pdf"),
+                Some("pdf"),
+            ) {
+                Ok(blob) => {
+                    info!(
+                        "[Textbooks] adopt: Stored PDF blob: hash={}, path={:?}",
+                        blob.hash,
+                        VfsBlobRepo::get_blob_path_with_conn(&conn, &blobs_dir, &blob.hash)
+                            .ok().flatten()
+                    );
+                    Some(blob.hash)
+                }
+                Err(e) => {
+                    warn!("[Textbooks] adopt: Failed to store PDF blob, will rely on original_path: {}", e);
+                    None
+                }
+            };
+
+            let (preview, text, pages) = match render_pdf_preview_with_progress(
                 &conn,
                 &blobs_dir,
                 &pdf_bytes,
@@ -600,17 +649,18 @@ pub async fn textbooks_adopt(
                     );
                     (None, None, None)
                 }
-            }
+            };
+            (preview, text, pages, pdf_blob_hash)
         } else {
             let parser = DocumentParser::new();
             match parser.extract_text_from_path(&p) {
-                Ok(text) => (None, Some(text), Some(1)),
+                Ok(text) => (None, Some(text), Some(1), None),
                 Err(e) => {
                     warn!(
                         "[Textbooks] Document parsing failed during adopt for {}: {}",
                         file_name, e
                     );
-                    (None, None, None)
+                    (None, None, None, None)
                 }
             }
         };
@@ -620,7 +670,7 @@ pub async fn textbooks_adopt(
             &sha256,
             &file_name,
             size as i64,
-            None,     // blob_hash
+            blob_hash.as_deref(), // blob_hash (PDF-403: stored VFS blob)
             Some(&p), // original_path
             preview_json_str.as_deref(),
             extracted_text.as_deref(),

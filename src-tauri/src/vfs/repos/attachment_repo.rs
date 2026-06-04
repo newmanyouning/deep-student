@@ -313,6 +313,12 @@ impl VfsAttachmentRepo {
                     }
                 }
             }
+
+            // ★ PDF-403 修复：允许用户主目录下的路径（Documents, Downloads, Desktop 等）
+            // 使 existing textbooks without blob_hash 的 original_path 能通过 vfs_get_attachment_content 读取
+            if Self::is_under_user_home(&canonical_path) {
+                return true;
+            }
         }
 
         // 文件可能尚不存在（如恢复后资产还未就位），改用父目录判断
@@ -333,10 +339,33 @@ impl VfsAttachmentRepo {
                         }
                     }
                 }
+
+                // ★ PDF-403 修复：父目录也检查用户主目录
+                if Self::is_under_user_home(&canonical_parent) {
+                    return true;
+                }
             }
         }
 
         false
+    }
+
+    /// 检查路径是否位于当前用户的主目录下（用于 PDF-403 修复，放宽 original_path 读取限制）
+    fn is_under_user_home(path: &std::path::Path) -> bool {
+        let home = Self::get_user_home_dir();
+        home.as_ref().map_or(false, |h| path.starts_with(h))
+    }
+
+    /// 跨平台获取用户主目录路径
+    fn get_user_home_dir() -> Option<std::path::PathBuf> {
+        #[cfg(windows)]
+        {
+            std::env::var("USERPROFILE").ok().map(std::path::PathBuf::from)
+        }
+        #[cfg(not(windows))]
+        {
+            std::env::var("HOME").ok().map(std::path::PathBuf::from)
+        }
     }
 
     fn build_original_path_candidates(blobs_dir: &Path, raw_path: &str) -> Vec<PathBuf> {
