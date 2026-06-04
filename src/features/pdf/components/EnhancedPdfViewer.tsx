@@ -914,8 +914,14 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   const handleDocumentLoadError = useCallback((error: Error) => {
     console.error('PDF load error:', error);
     setIsLoading(false);
-    setLoadError(error.message || 'PDF 加载失败');
-  }, []);
+    const errMsg = error.message || '';
+    // Check for HTTP 403 / Forbidden errors and show a user-friendly message
+    if (errMsg.includes('403') || errMsg.toLowerCase().includes('forbidden') || errMsg.includes('Unexpected server response') && errMsg.includes('403')) {
+      setLoadError(t('pdf:errors.load_failed_403', 'PDF 加载失败: 服务器返回 403 禁止访问。该文件可能需要认证或权限，请检查链接是否有效或尝试重新下载。'));
+    } else {
+      setLoadError(error.message || t('pdf:errors.load_failed', 'PDF 加载失败，请重试'));
+    }
+  }, [t]);
 
   const handlePrevPage = useCallback(() => goToPage(currentPage - 1), [currentPage, goToPage]);
   const handleNextPage = useCallback(() => goToPage(currentPage + 1), [currentPage, goToPage]);

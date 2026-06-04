@@ -104,7 +104,7 @@ export const ExternalSearchTab: React.FC<ExternalSearchTabProps> = ({
       >
         {/* 1. 搜索引擎配置 */}
         <div className="mt-2">
-          <EngineSettingsSection config={config} setConfig={setConfig} />
+          <EngineSettingsSection config={config} setConfig={setConfig} onSave={onSave} saving={saving} />
         </div>
 
         {/* 2. 高级搜索配置 */}

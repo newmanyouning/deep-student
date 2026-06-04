@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowSquareOut } from '@phosphor-icons/react';
+import { ArrowSquareOut, FloppyDisk, Spinner } from '@phosphor-icons/react';
 import { cn } from '@/lib/utils';
 import { NotionButton } from '@/components/ui/NotionButton';
 import { Input } from '@/components/ui/shad/Input';
@@ -81,13 +81,18 @@ const SettingRow = ({
 export const EngineSettingsSection: React.FC<{
   config: WebSearchConfig;
   setConfig: React.Dispatch<React.SetStateAction<WebSearchConfig>>;
-}> = ({ config, setConfig }) => {
+  onSave?: (silent?: boolean) => Promise<void>;
+  saving?: boolean;
+}> = ({ config, setConfig, onSave, saving }) => {
   const { t } = useTranslation('settings');
   const [providerStrategies, setProviderStrategies] = React.useState<ProviderStrategiesMap | null>(null);
   const [engineTesting, setEngineTesting] = React.useState<string | null>(null);
   const [engineResults, setEngineResults] = React.useState<Record<string, { ok: boolean; msg: string; ms?: number }>>({});
   const [providerSaving, setProviderSaving] = React.useState(false);
   const [activeEngine, setActiveEngine] = React.useState<string>('google_cse');
+  // Per-engine save state tracking
+  const [engineSaveSaving, setEngineSaveSaving] = React.useState<Record<string, boolean>>({});
+  const [engineSavedStatus, setEngineSavedStatus] = React.useState<Record<string, 'idle' | 'saved' | 'error'>>({});
 
   React.useEffect(() => {
     const loadData = async () => {
@@ -166,7 +171,38 @@ export const EngineSettingsSection: React.FC<{
       });
     };
 
-  const handleSaveProviderStrategies = async () => {
+  const handleSaveEngineApiKey = async (engineId: string) => {
+    if (!onSave) return;
+    setEngineSaveSaving(prev => ({ ...prev, [engineId]: true }));
+    try {
+      await onSave(false);
+      setEngineSavedStatus(prev => ({ ...prev, [engineId]: 'saved' }));
+      setTimeout(() => {
+        setEngineSavedStatus(prev => ({ ...prev, [engineId]: 'idle' }));
+      }, 2000);
+    } catch (error: unknown) {
+      console.error(`Failed to save engine key for ${engineId}:`, error);
+      setEngineSavedStatus(prev => ({ ...prev, [engineId]: 'error' }));
+      setTimeout(() => {
+        setEngineSavedStatus(prev => ({ ...prev, [engineId]: 'idle' }));
+      }, 3200);
+    } finally {
+      setEngineSaveSaving(prev => ({ ...prev, [engineId]: false }));
+    }
+  };
+
+  const getEngineKeyConfigured = (engineId: string): boolean => {
+    const keyMap: Record<string, string | undefined> = {
+      google_cse: config.webSearchGoogleKey && config.webSearchGoogleCx ? 'configured' : undefined,
+      serpapi: config.webSearchSerpApiKey,
+      tavily: config.webSearchTavilyKey,
+      brave: config.webSearchBraveKey,
+      searxng: config.webSearchSearxngEndpoint,
+      zhipu: config.webSearchZhipuKey,
+      bocha: config.webSearchBochaKey,
+    };
+    return !!keyMap[engineId];
+  };
     if (!invoke || !providerStrategies) return;
     try {
       setProviderSaving(true);
@@ -257,6 +293,35 @@ export const EngineSettingsSection: React.FC<{
     );
   };
 
+  const renderEngineSaveButton = (engineId: string) => {
+    const isSaving = engineSaveSaving[engineId];
+    const savedStatus = engineSavedStatus[engineId];
+    return onSave ? (
+      <div className="flex items-center gap-2 pt-1 pb-2">
+        <NotionButton
+          variant="primary"
+          size="sm"
+          onClick={() => void handleSaveEngineApiKey(engineId)}
+          disabled={isSaving}
+          title={savedStatus === 'saved' ? t('settings:vendor_panel.api_key_saved', '已保存') : t('common:actions.save')}
+        >
+          {isSaving ? <Spinner className="h-3.5 w-3.5 animate-spin" /> : <FloppyDisk className="h-3.5 w-3.5" />}
+          {t('common:actions.save', '保存')}
+        </NotionButton>
+        {savedStatus === 'saved' && (
+          <span className="text-[11px] text-green-600 dark:text-green-400">
+            {t('settings:vendor_panel.api_key_saved', '已保存')}
+          </span>
+        )}
+        {savedStatus === 'error' && (
+          <span className="text-[11px] text-destructive">
+            {t('settings:vendor_panel.api_key_save_failed', '保存失败')}
+          </span>
+        )}
+      </div>
+    ) : null;
+  };
+
   const renderEngineFooter = (id: string, enabled: boolean) => (
     <div className="w-full pt-8 border-t border-border/40 mt-8">
       <div className="flex flex-col gap-6">
@@ -283,6 +348,17 @@ export const EngineSettingsSection: React.FC<{
           </div>
         </div>
         <div>
+          {/* Per-engine save status indicator */}
+          {engineSavedStatus[id] === 'saved' && (
+            <div className="text-[11px] text-green-600 dark:text-green-400 mb-2">
+              {t('settings:vendor_panel.api_key_saved', 'API密钥已保存')}
+            </div>
+          )}
+          {engineSavedStatus[id] === 'error' && (
+            <div className="text-[11px] text-destructive mb-2">
+              {t('settings:vendor_panel.api_key_save_failed', 'API密钥保存失败')}
+            </div>
+          )}
           <StrategySummary id={id} />
           {providerStrategies && <StrategyEditor id={id} />}
         </div>
@@ -384,6 +460,7 @@ export const EngineSettingsSection: React.FC<{
                   <p className="text-[11px] text-muted-foreground/70">{t('settings:external_search.google_cse_cx_desc')}</p>
                 </div>
               </div>
+              {renderEngineSaveButton('google_cse')}
               {renderEngineFooter('google_cse', !!(config.webSearchGoogleKey && config.webSearchGoogleCx))}
             </div>
           )}
@@ -410,6 +487,7 @@ export const EngineSettingsSection: React.FC<{
                   <p className="text-[11px] text-muted-foreground/70">{t('settings:external_search.serpapi_key_desc')}</p>
                 </div>
               </div>
+              {renderEngineSaveButton('serpapi')}
               {renderEngineFooter('serpapi', !!config.webSearchSerpApiKey)}
             </div>
           )}
@@ -436,6 +514,7 @@ export const EngineSettingsSection: React.FC<{
                   <p className="text-[11px] text-muted-foreground/70">{t('settings:external_search.tavily_key_desc')}</p>
                 </div>
               </div>
+              {renderEngineSaveButton('tavily')}
               {renderEngineFooter('tavily', !!config.webSearchTavilyKey)}
             </div>
           )}
@@ -462,6 +541,7 @@ export const EngineSettingsSection: React.FC<{
                   <p className="text-[11px] text-muted-foreground/70">{t('settings:external_search.brave_key_desc')}</p>
                 </div>
               </div>
+              {renderEngineSaveButton('brave')}
               {renderEngineFooter('brave', !!config.webSearchBraveKey)}
             </div>
           )}
@@ -499,6 +579,7 @@ export const EngineSettingsSection: React.FC<{
                   <p className="text-[11px] text-muted-foreground/70">{t('settings:external_search.searxng_key_desc')}</p>
                 </div>
               </div>
+              {renderEngineSaveButton('searxng')}
               {renderEngineFooter('searxng', !!config.webSearchSearxngEndpoint)}
             </div>
           )}
@@ -525,6 +606,7 @@ export const EngineSettingsSection: React.FC<{
                   <p className="text-[11px] text-muted-foreground/70">{t('settings:external_search.zhipu_key_desc')}</p>
                 </div>
               </div>
+              {renderEngineSaveButton('zhipu')}
               {renderEngineFooter('zhipu', !!config.webSearchZhipuKey)}
             </div>
           )}
@@ -551,6 +633,7 @@ export const EngineSettingsSection: React.FC<{
                   <p className="text-[11px] text-muted-foreground/70">{t('settings:external_search.bocha_key_desc')}</p>
                 </div>
               </div>
+              {renderEngineSaveButton('bocha')}
               {renderEngineFooter('bocha', !!config.webSearchBochaKey)}
             </div>
           )}

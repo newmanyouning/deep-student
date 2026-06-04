@@ -177,7 +177,7 @@ export const VendorApiKeySection: React.FC<VendorApiKeySectionProps> = ({
 
   const canRevealApiKey = apiKey.trim().length > 0;
   const canSave = apiKey.trim().length > 0 && apiKey.trim() !== lastSavedKeyRef.current && !saving;
-  const canClearStoredKey = saving || maskedConfigured || lastSavedKeyRef.current.length > 0;
+  const canClearStoredKey = !saving && (maskedConfigured || lastSavedKeyRef.current.length > 0);
   const statusText =
     saveStatus === 'saving'
       ? t('settings:vendor_panel.api_key_saving', { defaultValue: '正在保存…' })

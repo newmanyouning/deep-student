@@ -14,6 +14,7 @@ import {
   CaretDown,
   CaretRight,
   CheckCircle,
+  CircleNotch,
   WarningCircle,
   Scan,
   ArrowClockwise,
@@ -59,11 +60,61 @@ export const OcrResultHeader: React.FC<OcrResultHeaderProps> = ({ store }) => {
     return null;
   }
 
-  const { ocrStatus, ocrMeta, ocrError } = modeState;
+  const { ocrStatus, ocrProgress, ocrMeta, ocrError } = modeState;
 
-  // 只在 success 或 error 状态时显示结果
-  if (ocrStatus !== 'success' && ocrStatus !== 'error') {
+  // 只在 success 或 error 状态时显示结果；pending/running 时显示进度条
+  if (ocrStatus !== 'success' && ocrStatus !== 'error' && ocrStatus !== 'pending' && ocrStatus !== 'running') {
     return null;
+  }
+
+  // Show progress bar when OCR is in progress
+  if (ocrStatus === 'pending' || ocrStatus === 'running') {
+    const progressPercent = Math.min(Math.max(ocrProgress || 0, 0), 100);
+    return (
+      <div
+        className={cn(
+          'rounded-lg border p-3',
+          'bg-muted/30 border-border/50',
+          'dark:bg-muted/20 dark:border-border/30',
+          'transition-colors'
+        )}
+      >
+        <div className="flex items-center gap-3 mb-2">
+          <div
+            className={cn(
+              'flex items-center justify-center',
+              'w-8 h-8 rounded-full',
+              'bg-primary/10 text-primary'
+            )}
+          >
+            {ocrStatus === 'running' ? (
+              <CircleNotch size={16} className="animate-spin" />
+            ) : (
+              <Scan size={16} />
+            )}
+          </div>
+          <div className="flex-1">
+            <div className="text-sm font-medium text-foreground">
+              {ocrStatus === 'pending'
+                ? t('analysis.ocr.pending', '准备 OCR 识别...')
+                : t('analysis.ocr.running', 'OCR 识别中...')}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {t('analysis.ocr.progressText', '{{progress}}%', { progress: progressPercent })}
+            </div>
+          </div>
+        </div>
+        <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+          <div
+            className={cn(
+              'h-full rounded-full transition-all duration-300',
+              'bg-primary'
+            )}
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+    );
   }
 
   const toggleExpanded = useCallback(() => {
