@@ -729,10 +729,21 @@ impl super::LLMManager {
             .ok_or_else(|| AppError::configuration("Anki制卡模型未配置"))?;
 
         let configs = self.get_api_configs().await?;
+        let config_count = configs.len();
+        let found_disabled = configs
+            .iter()
+            .any(|c| c.id == anki_model_id && !c.enabled);
         let config = configs
             .into_iter()
-            .find(|c| c.id == anki_model_id)
-            .ok_or_else(|| AppError::configuration("找不到有效的Anki制卡模型配置"))?;
+            .find(|c| c.id == anki_model_id && c.enabled)
+            .ok_or_else(|| {
+                let hint = if found_disabled {
+                    format!("Anki制卡模型配置(ID: {})已存在但被禁用，请在设置中启用", anki_model_id)
+                } else {
+                    format!("找不到有效的Anki制卡模型配置. Tried to find ID: {} in {} available configs.", anki_model_id, config_count)
+                };
+                AppError::configuration(hint)
+            })?;
 
         log::debug!(
             "找到 Anki 制卡模型配置: 模型={}, API地址={}",
@@ -753,11 +764,20 @@ impl super::LLMManager {
     ) -> Result<(ApiConfig, bool)> {
         if let Some(ref override_id) = override_id {
             let configs = self.get_api_configs().await?;
+            let config_count = configs.len();
+            let found_disabled = configs
+                .iter()
+                .any(|c| c.id == *override_id && !c.enabled);
             let mut config = configs
                 .into_iter()
-                .find(|c| c.id == *override_id)
+                .find(|c| c.id == *override_id && c.enabled)
                 .ok_or_else(|| {
-                    AppError::configuration(format!("找不到可用的模型配置: {}", override_id))
+                    let hint = if found_disabled {
+                        format!("模型配置(ID: {})已存在但被禁用，请在设置中启用", override_id)
+                    } else {
+                        format!("找不到可用的模型配置. Tried to find ID: {} in {} available configs.", override_id, config_count)
+                    };
+                    AppError::configuration(hint)
                 })?;
 
             if let Some(temp) = temperature {
@@ -805,11 +825,20 @@ impl super::LLMManager {
             }
         };
 
+        let config_count = configs.len();
+        let found_disabled = configs
+            .iter()
+            .any(|c| c.id == model_id && !c.enabled);
         let mut config = configs
             .into_iter()
-            .find(|c| c.id == model_id)
+            .find(|c| c.id == model_id && c.enabled)
             .ok_or_else(|| {
-                AppError::configuration(format!("找不到可用的模型配置: {}", model_id))
+                let hint = if found_disabled {
+                    format!("模型配置(ID: {})已存在但被禁用，请在设置中启用", model_id)
+                } else {
+                    format!("找不到可用的模型配置. Tried to find ID: {} in {} available configs.", model_id, config_count)
+                };
+                AppError::configuration(hint)
             })?;
 
         if let Some(temp) = temperature {

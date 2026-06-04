@@ -1,8 +1,8 @@
 use crate::database::Database;
 use crate::llm_manager::{build_provider_adapter, ApiConfig, LLMManager};
 use crate::models::{
-    AnkiCard, AnkiGenerationOptions, AppError, DocumentTask, FieldExtractionRule, FieldType,
-    StreamedCardPayload, TaskStatus, TemplateDescription,
+    AnkiCard, AnkiGenerationOptions, AppError, AppErrorType, DocumentTask, FieldExtractionRule,
+    FieldType, StreamedCardPayload, TaskStatus, TemplateDescription,
 };
 use crate::providers::ProviderAdapter;
 use chrono::Utc;
@@ -367,14 +367,27 @@ impl StreamingAnkiService {
             .map_err(|e| AppError::configuration(format!("获取API配置失败: {}", e)))?;
 
         let config_count = api_configs.len();
+        // Separate the enabled check to provide a better error message.
+        let found_disabled = api_configs
+            .iter()
+            .any(|config| config.id == anki_model_id && !config.enabled);
         let api_config = api_configs
             .into_iter()
             .find(|config| config.id == anki_model_id && config.enabled)
             .ok_or_else(|| {
-                AppError::configuration(format!(
-                    "找不到有效的Anki制卡模型配置. Tried to find ID: {} in {} available configs.",
-                    anki_model_id, config_count
-                ))
+                let hint = if found_disabled {
+                    format!(
+                        "Anki制卡模型配置(ID: {})已存在但被禁用，请在设置中启用",
+                        anki_model_id
+                    )
+                } else {
+                    format!(
+                        "找不到有效的Anki制卡模型配置. Tried to find ID: {} in {} available configs.",
+                        anki_model_id, config_count
+                    )
+                };
+                error!("[ANKI_CONFIG_ERROR] {}", hint);
+                AppError::configuration(hint)
             })?;
 
         // debug removed
@@ -709,45 +722,89 @@ impl StreamingAnkiService {
         );
         debug!("[ANKI_REQUEST_DEBUG] ==> 完整请求体结束 <==");
 
-        let mut req_builder = self.client
-            .post(&request_url)
-            .header("Accept", "text/event-stream, application/json, text/plain, */*")
-            .header("Accept-Encoding", "identity")
-            .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
-            .header("Connection", "keep-alive")
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
-        for (k, v) in preq.headers {
-            req_builder = req_builder.header(k, v);
-        }
+        // Retry transient errors (rate limit 429, server 5xx, network) with exponential backoff.
+        const MAX_RETRIES: u32 = 3;
+        let mut retry_count = 0u32;
+        let response = loop {
+            let mut req_builder = self.client
+                .post(&request_url)
+                .header("Accept", "text/event-stream, application/json, text/plain, */*")
+                .header("Accept-Encoding", "identity")
+                .header("Accept-Language", "zh-CN,zh;q=0.9,en;q=0.8")
+                .header("Connection", "keep-alive")
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
+            for (k, v) in &preq.headers {
+                req_builder = req_builder.header(k, v);
+            }
 
-        let response = req_builder
-            .json(&preq.body)
-            .send()
-            .await
-            .map_err(|e| AppError::network(format!("AI请求失败: {}", e)))?;
+            let resp_result = req_builder
+                .json(&preq.body)
+                .send()
+                .await;
 
-        if !response.status().is_success() {
-            let status_code = response.status().as_u16();
-            let error_text = response.text().await.unwrap_or_default();
-            // 🔧 三轮修复 #9: 记录完整错误到日志，但返回给前端的消息不包含敏感信息
-            error!(
-                "[ANKI_API_ERROR] HTTP {} - 详细错误: {}",
-                status_code, error_text
-            );
+            match resp_result {
+                Ok(resp) if resp.status().is_success() => {
+                    break resp;
+                }
+                Ok(resp) => {
+                    let status_code = resp.status().as_u16();
+                    let error_text = resp.text().await.unwrap_or_default();
+                    let retryable = matches!(status_code, 429 | 500..=599);
 
-            // 根据状态码返回用户友好的错误消息
-            let user_message = match status_code {
-                401 => "API 认证失败，请检查 API 密钥配置",
-                403 => "API 访问被拒绝，请检查账户权限",
-                429 => "API 请求过于频繁，请稍后重试",
-                500..=599 => "AI 服务暂时不可用，请稍后重试",
-                _ => "AI API 请求失败，请检查网络连接或 API 配置",
-            };
-            return Err(AppError::llm(format!(
-                "{} (HTTP {})",
-                user_message, status_code
-            )));
-        }
+                    if retryable && retry_count < MAX_RETRIES {
+                        let delay_secs = 1u64 << retry_count; // 1s, 2s, 4s
+                        warn!(
+                            "[ANKI_RETRY] HTTP {} on attempt {}, retrying in {}s — {}",
+                            status_code,
+                            retry_count + 1,
+                            delay_secs,
+                            error_text.lines().next().unwrap_or("")
+                        );
+                        tokio::time::sleep(Duration::from_secs(delay_secs)).await;
+                        retry_count += 1;
+                        continue;
+                    }
+
+                    // Non-retryable status or max retries exhausted — report final error.
+                    error!(
+                        "[ANKI_API_ERROR] HTTP {} — 详细错误: {}",
+                        status_code, error_text
+                    );
+                    let user_message = match status_code {
+                        401 => "API 认证失败，请检查 API 密钥配置",
+                        403 => "API 访问被拒绝，请检查账户权限",
+                        429 => "API 请求过于频繁，请稍后重试",
+                        500..=599 => "AI 服务暂时不可用，请稍后重试",
+                        _ => "AI API 请求失败，请检查网络连接或 API 配置",
+                    };
+                    return Err(AppError::llm(format!(
+                        "{} (HTTP {} — {} retr{} exhausted)",
+                        user_message,
+                        status_code,
+                        MAX_RETRIES,
+                        if MAX_RETRIES == 1 { "y" } else { "ies" },
+                    )));
+                }
+                Err(e) => {
+                    if retry_count < MAX_RETRIES {
+                        let delay_secs = 1u64 << retry_count;
+                        warn!(
+                            "[ANKI_RETRY] Network error on attempt {}, retrying in {}s: {}",
+                            retry_count + 1,
+                            delay_secs,
+                            e
+                        );
+                        tokio::time::sleep(Duration::from_secs(delay_secs)).await;
+                        retry_count += 1;
+                        continue;
+                    }
+                    return Err(AppError::network(format!(
+                        "AI请求失败 ({} retries exhausted): {}",
+                        MAX_RETRIES, e
+                    )));
+                }
+            }
+        };
 
         let mut stream = response.bytes_stream();
         let mut buffer = String::new();
@@ -2117,10 +2174,25 @@ impl StreamingAnkiService {
         document_id: Option<&str>,
     ) -> Result<(), AppError> {
         let error_message = error.message.clone();
-        let final_status = if error_message.contains("超时") || error_message.contains("截断") {
-            TaskStatus::Truncated
-        } else {
-            TaskStatus::Failed
+        // Use AppErrorType for robust classification instead of fragile string matching.
+        // Network errors (timeout, connection reset) suggest the response is incomplete → Truncated.
+        // Everything else (LLM API errors, config errors, validation) → Failed.
+        let final_status = match error.error_type {
+            AppErrorType::Network => TaskStatus::Truncated,
+            AppErrorType::LLM => {
+                // LLM errors that indicate truncation: the model stopped mid-output.
+                if error_message.contains("超时") || error_message.contains("截断") {
+                    TaskStatus::Truncated
+                } else {
+                    TaskStatus::Failed
+                }
+            }
+            // Configuration errors (missing model assignment, disabled config) are permanent failures.
+            AppErrorType::Configuration => TaskStatus::Failed,
+            // Validation errors (bad options, parse failures) are also permanent.
+            AppErrorType::Validation => TaskStatus::Failed,
+            // Database and other errors: assume permanent unless evidence suggests otherwise.
+            _ => TaskStatus::Failed,
         };
 
         self.update_task_status(

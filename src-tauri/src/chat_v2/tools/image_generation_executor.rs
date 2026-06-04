@@ -120,11 +120,22 @@ impl ImageGenerationExecutor {
             .as_deref()
             .filter(|id| !id.trim().is_empty())
         {
+            let config_count = configs.len();
+            let found_disabled = configs
+                .iter()
+                .any(|cfg| cfg.id == config_id && !cfg.enabled);
             let cfg = configs
                 .iter()
-                .find(|cfg| cfg.id == config_id)
+                .find(|cfg| cfg.id == config_id && cfg.enabled)
                 .cloned()
-                .ok_or_else(|| ToolError::NotFound(format!("已选择的生图模型不存在: {}", config_id)))?;
+                .ok_or_else(|| {
+                    let msg = if found_disabled {
+                        format!("生图模型配置(ID: {})已存在但被禁用，请在设置中启用", config_id)
+                    } else {
+                        format!("已选择的生图模型不存在: {} (共 {} 个配置)", config_id, config_count)
+                    };
+                    ToolError::NotFound(msg)
+                })?;
             Self::validate_model_config(&cfg)?;
             return Ok(ImageGenerationModel {
                 provider: provider_label(&cfg),
