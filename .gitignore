@@ -301,3 +301,4 @@ scripts/test_ocr_pdfs.py
 scripts/ocr_output/
 scripts/save_ocr_results.py
 scripts/open-ai.txt
+scripts/test_paddleocr_flow.mjs
