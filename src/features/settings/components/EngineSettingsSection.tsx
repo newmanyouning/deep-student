@@ -203,6 +203,7 @@ export const EngineSettingsSection: React.FC<{
     };
     return !!keyMap[engineId];
   };
+  const handleSaveProviderStrategies = async () => {
     if (!invoke || !providerStrategies) return;
     try {
       setProviderSaving(true);
