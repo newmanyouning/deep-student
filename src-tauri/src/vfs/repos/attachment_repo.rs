@@ -318,6 +318,18 @@ impl VfsAttachmentRepo {
 
         // 尝试 canonicalize 完整路径（文件存在时）
         if let Ok(canonical_path) = path_obj.canonicalize() {
+            if canonical_path.is_file() {
+                // ★ 黑名单模式：文件存在时，非系统保护目录一律允许
+                // 此策略使外部驱动器（D:\, E:\）、网络共享等用户导入的文件可被读取
+                if Self::is_system_protected_dir(&canonical_path) {
+                    return false;
+                }
+                // 非系统保护目录且文件存在 → 允许
+                // （向后兼容：白名单路径同样通过此检查）
+                return true;
+            }
+
+            // 文件不存在（或为目录）→ 使用白名单模式（保持向后兼容）
             if let Ok(canonical_blobs_dir) = blobs_dir.canonicalize() {
                 if canonical_path.starts_with(&canonical_blobs_dir) {
                     return true;
@@ -381,6 +393,89 @@ impl VfsAttachmentRepo {
         #[cfg(not(windows))]
         {
             std::env::var("HOME").ok().map(std::path::PathBuf::from)
+        }
+    }
+
+    /// 检查路径是否位于系统保护目录中（黑名单模式）
+    ///
+    /// 系统保护目录包含操作系统关键文件所在路径，这些路径下的文件不应被
+    /// 附件读取逻辑信任，即使文件是用户显式导入的。
+    fn is_system_protected_dir(path: &std::path::Path) -> bool {
+        #[cfg(windows)]
+        {
+            // Windows 系统保护目录（使用环境变量避免硬编码系统盘符）
+            let system_root = std::env::var("SystemRoot")
+                .ok()
+                .map(std::path::PathBuf::from);
+            let program_files = std::env::var("ProgramFiles")
+                .ok()
+                .map(std::path::PathBuf::from);
+            let program_files_x86 = std::env::var("ProgramFiles(x86)")
+                .ok()
+                .map(std::path::PathBuf::from);
+            let program_data = std::env::var("ProgramData")
+                .ok()
+                .map(std::path::PathBuf::from);
+
+            if let Some(ref root) = system_root {
+                if path.starts_with(root) {
+                    return true;
+                }
+            }
+            if let Some(ref pf) = program_files {
+                if path.starts_with(pf) {
+                    return true;
+                }
+            }
+            if let Some(ref pf86) = program_files_x86 {
+                if path.starts_with(pf86) {
+                    return true;
+                }
+            }
+            if let Some(ref pd) = program_data {
+                if path.starts_with(pd) {
+                    return true;
+                }
+            }
+            false
+        }
+        #[cfg(target_os = "macos")]
+        {
+            let system_dir = std::path::Path::new("/System");
+            let usr_dir = std::path::Path::new("/usr");
+            let usr_local_dir = std::path::Path::new("/usr/local");
+
+            if path.starts_with(system_dir) {
+                return true;
+            }
+            // /usr 受保护但 /usr/local 不受保护（用户本地安装的可执行文件）
+            if path.starts_with(usr_dir) && !path.starts_with(usr_local_dir) {
+                return true;
+            }
+            false
+        }
+        #[cfg(target_os = "linux")]
+        {
+            let usr_dir = std::path::Path::new("/usr");
+            let usr_local_dir = std::path::Path::new("/usr/local");
+            let protected_dirs = ["/etc", "/boot", "/dev", "/proc", "/sys", "/root"];
+
+            // /usr 受保护但 /usr/local 不受保护（用户本地安装的可执行文件）
+            if path.starts_with(usr_dir) && !path.starts_with(usr_local_dir) {
+                return true;
+            }
+            for dir_str in &protected_dirs {
+                let dir = std::path::Path::new(dir_str);
+                if path.starts_with(dir) {
+                    return true;
+                }
+            }
+            false
+        }
+        #[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
+        {
+            // 未知平台，保守地允许（以非系统目录处理）
+            false
         }
     }
 
@@ -2702,7 +2797,7 @@ mod tests {
     }
 
     #[test]
-    fn test_is_safe_original_path_rejects_external_path() {
+    fn test_is_safe_original_path_allows_external_path() {
         let uniq = format!(
             "vfs_attachment_repo_test_{}_{}",
             std::process::id(),
@@ -2717,11 +2812,12 @@ mod tests {
         let external_file = external_root.join("outside.docx");
         std::fs::write(&external_file, b"outside").unwrap();
 
+        // ★ 黑名单模式：已存在的非系统目录文件允许读取
         let safe = VfsAttachmentRepo::is_safe_original_path(
             &blobs_dir,
             external_file.to_string_lossy().as_ref(),
         );
-        assert!(!safe);
+        assert!(safe);
 
         std::fs::remove_dir_all(slot_root).ok();
         std::fs::remove_dir_all(external_root).ok();
