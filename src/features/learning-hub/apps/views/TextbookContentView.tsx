@@ -42,7 +42,8 @@ import type { ToolbarPreviewType } from './UnifiedPreviewToolbar';
 import { resolveTextbookPreviewType } from './textbookPreviewResolver';
 import { RichDocumentPreview } from './RichDocumentPreview';
 import { usePdfFocusListener } from './usePdfFocusListener';
-import { usePdfProcessingStore, getProcessingHint } from '@/features/pdf/stores/pdfProcessingStore';
+import { usePdfProcessingStore, getProcessingHint, TERMINAL_STAGES } from '@/features/pdf/stores/pdfProcessingStore';
+import { getPdfProcessingStatus } from '@/api/vfsPdfProcessingApi';
 
 
 const toToolbarPreviewType = (type: string | null): ToolbarPreviewType => {
@@ -178,6 +179,41 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
       [isPdf, node.sourceId],
     ),
   );
+
+  // ★ Poll for live processing status on mount (fixes stale progress when user reopens PDF during OCR)
+  useEffect(() => {
+    if (!isPdf || !node.sourceId) return;
+
+    // Skip polling if we already have terminal status
+    if (processingStatus && TERMINAL_STAGES.has(processingStatus.stage)) return;
+
+    let cancelled = false;
+
+    const pollStatus = async () => {
+      try {
+        const status = await getPdfProcessingStatus(node.sourceId);
+        if (cancelled || !status) return;
+
+        usePdfProcessingStore.getState().setFullStatus(node.sourceId, {
+          stage: status.stage,
+          percent: status.percent,
+          readyModes: (status.readyModes ?? []) as Array<'text' | 'ocr' | 'image'>,
+          currentPage: status.currentPage,
+          totalPages: status.totalPages,
+          error: status.error,
+          mediaType: 'pdf',
+        });
+      } catch (err) {
+        if (!cancelled) {
+          console.debug('[TextbookContentView] Poll processing status failed (may not be processing):', err);
+        }
+      }
+    };
+
+    void pollStatus();
+
+    return () => { cancelled = true; };
+  }, [isPdf, node.sourceId, processingStatus?.stage]);
 
   // ★ 使用共享 Hook 监听 PDF 页码跳转事件
   const [focusRequest, handleFocusHandled] = usePdfFocusListener({

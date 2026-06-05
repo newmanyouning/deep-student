@@ -153,7 +153,7 @@ export function estimateBase64Size(base64: string): number {
 /**
  * 大文件阈值（100MB）
  */
-export const LARGE_FILE_THRESHOLD = 100 * 1024 * 1024;
+export const LARGE_FILE_THRESHOLD = 500 * 1024 * 1024;
 
 /**
  * 判断是否为大文件

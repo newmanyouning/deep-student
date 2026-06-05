@@ -87,6 +87,8 @@ export interface UsePdfLoaderOptions {
   enabled?: boolean;
   /** 原始文件路径（用于第二次重试时触发处理流水线） */
   originalPath?: string;
+  /** 大文件熔断时回调：通知父组件切换为 pdfstream:// 协议加载 */
+  onNeedStreamFallback?: (originalPath: string) => void;
 }
 
 /**
@@ -101,6 +103,7 @@ export function usePdfLoader({
   cacheKey,
   enabled = true,
   originalPath,
+  onNeedStreamFallback,
 }: UsePdfLoaderOptions): PdfLoaderState {
   const [file, setFile] = useState<File | null>(null);
   const [retryAttempt, setRetryAttempt] = useState(0);
@@ -190,6 +193,13 @@ export function usePdfLoader({
 
         // 在 base64->Uint8Array 转换前熔断，避免大文件解码导致内存峰值过高
         if (estimatedSize > LARGE_FILE_THRESHOLD) {
+          // 有 originalPath 且定义了流式回调节时，切换为 pdfstream:// 协议加载
+          if (originalPath && onNeedStreamFallback) {
+            debugLog.warn('[usePdfLoader] File exceeds base64 threshold, falling back to pdfstream:', originalPath);
+            onNeedStreamFallback(originalPath);
+            setLoading(false);
+            return;
+          }
           setError(
             `${i18n.t('learningHub:file.previewTooLarge', { defaultValue: 'File is too large to preview' })} (${formatBytes(estimatedSize)})`
           );

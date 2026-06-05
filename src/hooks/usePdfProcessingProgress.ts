@@ -202,8 +202,56 @@ export function usePdfProcessingProgress(): void {
     void registerListener<PdfProcessingErrorPayload>('pdf-processing-error', (event) => {
       handleError({ ...event.payload, mediaType: 'pdf' }, 'legacy');
     });
-    
-    console.log('[MediaProcessing] Hook 初始化完成，已注册 6 个事件监听器');
+
+    // legacy pdf_ocr_service.rs: map pdf_ocr_progress events to store updates
+    void registerListener<LegacyOcrProgressPayload>('pdf_ocr_progress', (event) => {
+      const payload = event.payload;
+      const fileId = ocrSessionToFileId.get(payload.session_id);
+      if (!fileId) {
+        console.debug('[MediaProcessing] pdf_ocr_progress for unknown session, ignoring:', payload.session_id);
+        return;
+      }
+      const logCtx = { sessionId: payload.session_id, fileId, type: payload.type };
+
+      switch (payload.type) {
+        case 'PageRendered':
+        case 'Started':
+        case 'RenderStarted':
+        case 'PageCompleted': {
+          const total = payload.total ?? payload.total_pages;
+          const completed = payload.completed ?? payload.rendered;
+          const percent = total ? Math.min(100, Math.round(((completed ?? 0) / total) * 100)) : 0;
+          console.log('[MediaProcessing] pdf_ocr_progress:', logCtx, { percent, completed, total });
+          usePdfProcessingStore.getState().update(fileId, {
+            stage: 'ocr_processing',
+            percent,
+            currentPage: payload.page_index ?? 0,
+            totalPages: total,
+            mediaType: 'pdf',
+          });
+          break;
+        }
+        case 'Completed': {
+          console.log('[MediaProcessing] pdf_ocr_progress completed:', logCtx, payload);
+          const stage = payload.has_failures ? 'completed_with_issues' : 'completed';
+          usePdfProcessingStore.getState().setCompleted(fileId, ['ocr'], stage);
+          break;
+        }
+        case 'PageFailed':
+        case 'PageRenderFailed': {
+          console.warn('[MediaProcessing] pdf_ocr_progress error:', logCtx, payload.error);
+          usePdfProcessingStore.getState().setError(fileId, payload.error ?? 'OCR page failed', 'ocr_processing');
+          break;
+        }
+        case 'Retrying':
+          console.log('[MediaProcessing] pdf_ocr_progress retrying:', logCtx);
+          break;
+        default:
+          console.debug('[MediaProcessing] pdf_ocr_progress unhandled type:', logCtx);
+      }
+    });
+
+    console.log('[MediaProcessing] Hook 初始化完成，已注册 7 个事件监听器');
     
     // 清理
     return () => {
@@ -214,12 +262,48 @@ export function usePdfProcessingProgress(): void {
   }, []);
 }
 
+// ========================================================================
+// 旧版 OCR 服务 (pdf_ocr_service.rs) 事件 session_id → fileId 映射
+// ========================================================================
+
+/** 旧版 OCR 服务使用 session_id 而非 fileId，此映射将两者关联 */
+const ocrSessionToFileId = new Map<string, string>();
+
+/**
+ * 注册 OCR 会话映射（由调用 start_pdf_ocr_backend 的代码在获取 session_id 后调用）
+ * @param fileId 文件 ID (sourceId)
+ * @param sessionId 后端返回的 OCR 会话 ID
+ */
+export function registerOcrSession(fileId: string, sessionId: string): void {
+  ocrSessionToFileId.set(sessionId, fileId);
+}
+
+/**
+ * 旧版 pdf_ocr_progress 事件 payload（非严格类型，仅取需要的字段）
+ */
+interface LegacyOcrProgressPayload {
+  type: string;
+  session_id: string;
+  page_index?: number;
+  rendered?: number;
+  completed?: number;
+  total?: number;
+  total_pages?: number;
+  error?: string;
+  has_failures?: boolean;
+  cancelled?: boolean;
+  [key: string]: unknown;
+}
+
+// ========================================================================
 // 兼容旧 Hook 名称
+// ========================================================================
+
 export const useMediaProcessingProgress = usePdfProcessingProgress;
 
 /**
  * 获取指定文件的处理状态（非响应式）
  */
-export function getPdfProcessingStatus(fileId: string) {
+export function getPdfProcessingStatusFromStore(fileId: string) {
   return usePdfProcessingStore.getState().get(fileId);
 }

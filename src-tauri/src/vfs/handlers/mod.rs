@@ -110,6 +110,7 @@ pub use multimodal_handlers::{
 // pdf_handlers
 pub use pdf_handlers::{
     vfs_cancel_pdf_processing, vfs_download_paper, vfs_get_blob_base64,
+    vfs_get_blob_pdfstream_url,
     vfs_get_batch_pdf_processing_status, vfs_get_pdf_page_image, vfs_get_pdf_processing_status,
     vfs_list_pending_pdf_processing, vfs_retry_pdf_processing, vfs_start_pdf_processing,
     VfsBlobBase64Result, VfsDownloadPaperParams, VfsDownloadPaperResult,

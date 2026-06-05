@@ -1323,6 +1323,8 @@ pub fn run() {
             ,crate::vfs::handlers::file_handlers::vfs_get_file_content
             // Blob 操作命令（整卷识别多模态改造 - 2025-12-09）
             ,crate::vfs::handlers::pdf_handlers::vfs_get_blob_base64
+            // Blob pdfstream URL 获取（前端直接通过 pdfstream:// 协议加载 - 2026-06）
+            ,crate::vfs::handlers::pdf_handlers::vfs_get_blob_pdfstream_url
             // PDF 页面图片获取（支持 RAG 引用渲染 - 2026-01）
             ,crate::vfs::handlers::pdf_handlers::vfs_get_pdf_page_image
             // PDF 预处理流水线命令（2026-02）

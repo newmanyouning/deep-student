@@ -12,6 +12,7 @@
 //! - `vfs_list_pending_pdf_processing`: 列出待处理的 PDF 文件
 //! - `vfs_download_paper`: 独立下载论文 PDF
 //! - `vfs_get_blob_base64`: 根据 blob hash 获取图片的 base64 内容
+//! - `vfs_get_blob_pdfstream_url`: 根据文件 ID 获取 blob 的绝对路径（供 pdfstream:// 协议使用）
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -186,6 +187,94 @@ pub async fn vfs_get_blob_base64(
         mime_type: blob.mime_type.unwrap_or_else(|| "image/jpeg".to_string()),
         size: blob.size,
     })
+}
+
+/// 获取文件 blob 的绝对文件系统路径（供前端通过 pdfstream:// 协议加载）
+///
+/// ## 用途
+/// 前端需要直接通过 pdfstream:// 协议访问 VFS blob 存储中的文件（如教材 PDF），
+/// 而不是通过 base64 传输。此命令返回文件的绝对路径，前端调用
+/// `convertFileSrc(path, 'pdfstream')` 将其转换为可用的 URL。
+///
+/// ## 参数
+/// - `file_id`: 文件 ID（支持 `file_`、`tb_`、`att_`、`img_` 前缀）
+///
+/// ## 返回
+/// - `Ok(Some(path))`: 文件的绝对路径
+/// - `Ok(None)`: 文件未找到或没有 blob 存储
+/// - `Err(String)`: 查询失败
+#[tauri::command]
+pub async fn vfs_get_blob_pdfstream_url(
+    file_id: String,
+    vfs_db: State<'_, Arc<VfsDatabase>>,
+) -> VfsResult<Option<String>> {
+    log::debug!(
+        "[VFS::handlers] vfs_get_blob_pdfstream_url: file_id={}",
+        file_id
+    );
+
+    // 获取数据库连接和 blobs 目录
+    let conn = vfs_db
+        .get_conn_safe()
+        .map_err(|e| VfsError::Database(format!("获取数据库连接失败: {}", e)))?;
+    let blobs_dir = vfs_db.blobs_dir().to_path_buf();
+
+    // 1. 从 files 表查询 blob_hash
+    // 支持 file_, tb_, att_, img_ 前缀的 ID
+    let blob_hash: Option<String> = conn
+        .query_row(
+            "SELECT blob_hash FROM files WHERE id = ?1",
+            rusqlite::params![&file_id],
+            |row| row.get::<_, Option<String>>(0),
+        )
+        .optional()
+        .map_err(|e| VfsError::Database(format!("查询文件 blob_hash 失败: {}", e)))?
+        .flatten();
+
+    let blob_hash = match blob_hash {
+        Some(h) if !h.trim().is_empty() => h,
+        _ => {
+            log::warn!(
+                "[VFS::handlers] vfs_get_blob_pdfstream_url: no blob_hash for file_id={}",
+                file_id
+            );
+            return Ok(None);
+        }
+    };
+
+    // 2. 从 blobs 表查询 relative_path
+    let relative_path: Option<String> = conn
+        .query_row(
+            "SELECT relative_path FROM blobs WHERE hash = ?1",
+            rusqlite::params![&blob_hash],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| VfsError::Database(format!("查询 blob relative_path 失败: {}", e)))?
+        .flatten();
+
+    let relative_path = match relative_path {
+        Some(p) if !p.trim().is_empty() => p,
+        _ => {
+            log::warn!(
+                "[VFS::handlers] vfs_get_blob_pdfstream_url: blob record not found for hash={}",
+                blob_hash
+            );
+            return Ok(None);
+        }
+    };
+
+    // 3. 拼接绝对路径
+    let abs_path = blobs_dir.join(&relative_path);
+
+    log::info!(
+        "[VFS::handlers] vfs_get_blob_pdfstream_url: file_id={}, blob_hash={}, path={:?}",
+        file_id,
+        &blob_hash[..16.min(blob_hash.len())],
+        abs_path
+    );
+
+    Ok(Some(abs_path.to_string_lossy().to_string()))
 }
 
 // ============================================================================

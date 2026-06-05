@@ -966,6 +966,7 @@ impl PdfProcessingService {
                         .stage_ocr_processing(
                             file_id,
                             pj,
+                            total_pages,
                             &mut ready_modes,
                             &cancel_token,
                             generation,
@@ -2838,6 +2839,7 @@ impl PdfProcessingService {
         &self,
         file_id: &str,
         preview_json: &str,
+        total_pages: usize,
         ready_modes: &mut Vec<String>,
         cancel_token: &CancellationToken,
         generation: u64,
@@ -2861,8 +2863,8 @@ impl PdfProcessingService {
             VfsError::Serialization(format!("Failed to parse preview_json: {}", e))
         })?;
 
-        let total_pages = preview.pages.len();
-        if total_pages == 0 {
+        let preview_page_count = preview.pages.len();
+        if preview_page_count == 0 {
             warn!(
                 "[PdfProcessingService] No pages in preview_json for file: {}",
                 file_id
@@ -2889,7 +2891,7 @@ impl PdfProcessingService {
 
         info!(
             "[PdfProcessingService] Using OCR model: {} for {} pages",
-            config.model, total_pages
+            config.model, preview_page_count
         );
 
         // 4. 并发处理 OCR
@@ -3007,7 +3009,7 @@ impl PdfProcessingService {
 
                             // 发送进度更新（50% - 90% 之间，基于 OCR 完成比例）
                             // ★ P1-1 修复：OCR 进度范围 20%-75%，保证单调递增
-                            let ocr_progress = 20.0 + (completed as f64 / total_pages as f64) * 55.0;
+                            let ocr_progress = 20.0 + (completed as f64 / preview_page_count as f64) * 55.0;
                             let progress = ProcessingProgress {
                                 stage: "ocr_processing".to_string(),
                                 current_page: Some(completed),
@@ -3028,7 +3030,7 @@ impl PdfProcessingService {
 
                             debug!(
                                 "[PdfProcessingService] OCR completed for page {}/{} of file {} ({}%)",
-                                completed, total_pages, file_id, ocr_progress as i32
+                                completed, preview_page_count, file_id, ocr_progress as i32
                             );
                         }
                         Err(e) => {
@@ -3064,7 +3066,7 @@ impl PdfProcessingService {
 
         // 7. 构建 ocr_pages_json
         let ocr_json = OcrPagesJson {
-            total_pages,
+            total_pages: preview_page_count,
             pages: results.clone(),
             completed_at: chrono::Utc::now().to_rfc3339(),
         };
@@ -3076,8 +3078,8 @@ impl PdfProcessingService {
         // 8. 更新数据库
         // ★ P1-3 修复：部分成功也标记 OCR 可用（成功率 >= 50%）
         // 原策略要求 100% 成功才标记 ocr ready，导致 99/100 页成功也不可用
-        let success_rate = if total_pages > 0 {
-            success_count as f64 / total_pages as f64
+        let success_rate = if preview_page_count > 0 {
+            success_count as f64 / preview_page_count as f64
         } else {
             0.0
         };
@@ -3093,13 +3095,13 @@ impl PdfProcessingService {
             if failed_count > 0 {
                 info!(
                     "[PdfProcessingService] OCR partially succeeded for file {}: {}/{} pages OK ({:.0}%), marking ocr as ready",
-                    file_id, success_count, total_pages, success_rate * 100.0
+                    file_id, success_count, preview_page_count, success_rate * 100.0
                 );
             }
         } else {
             warn!(
                 "[PdfProcessingService] OCR mostly failed for file {}: {}/{} pages failed ({:.0}% success), not marking ocr as ready",
-                file_id, failed_count, total_pages, success_rate * 100.0
+                file_id, failed_count, preview_page_count, success_rate * 100.0
             );
         }
 

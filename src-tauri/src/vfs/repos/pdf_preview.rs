@@ -36,7 +36,7 @@ impl Default for PdfPreviewConfig {
     fn default() -> Self {
         Self {
             render_dpi: 150,
-            max_pages: 50,
+            max_pages: 0, // 0 = 无限制，渲染全部页面
             target_width: 1200,
             max_height: 1600,
             jpeg_quality: 75, // 平衡质量与大小
@@ -180,11 +180,20 @@ where
         .map_err(|e| VfsError::Other(format!("加载 PDF 文档失败: {:?}", e)))?;
 
     let total_pages = document.pages().len() as usize;
-    let render_pages = total_pages.min(config.max_pages);
+    let render_pages = if config.max_pages == 0 {
+        total_pages
+    } else {
+        total_pages.min(config.max_pages)
+    };
 
     info!(
-        "[PDF-Preview] Rendering PDF: {} pages (max: {})",
-        total_pages, config.max_pages
+        "[PDF-Preview] Rendering PDF: {} pages{}",
+        total_pages,
+        if config.max_pages == 0 {
+            " (no limit)".to_string()
+        } else {
+            format!(" (max: {})", config.max_pages)
+        }
     );
 
     // 3. 配置渲染参数
@@ -218,7 +227,8 @@ where
     }
 
     // S-028 修复：记录截断信息，前端可据此显示 "仅渲染前 N 页" 提示
-    let is_truncated = total_pages > config.max_pages;
+    // ★ 2026-06 修复：max_pages == 0 表示无限制，is_truncated 始终为 false
+    let is_truncated = config.max_pages > 0 && total_pages > config.max_pages;
     if is_truncated {
         warn!(
             "[PDF-Preview] PDF truncated: total {} pages, only rendered first {} pages",
@@ -342,7 +352,7 @@ mod tests {
     fn test_pdf_preview_config_default() {
         let config = PdfPreviewConfig::default();
         assert_eq!(config.render_dpi, 150);
-        assert_eq!(config.max_pages, 50);
+        assert_eq!(config.max_pages, 0); // 0 = 无限制
         assert_eq!(config.target_width, 1200);
         assert_eq!(config.max_height, 1600);
         assert_eq!(config.jpeg_quality, 75);

@@ -78,11 +78,20 @@ interface PdfProcessingStoreActions {
   setError: (fileId: string, error: string, stage?: string) => void;
   
   /**
+   * Set full status from polling (overwrites any existing status for this fileId)
+   * Unlike `update` which merges partial incremental updates, this method
+   * sets the entire status at once, used when polling for current live progress.
+   * @param fileId 文件 ID
+   * @param status 完整状态对象
+   */
+  setFullStatus: (fileId: string, status: PdfProcessingStatus) => void;
+
+  /**
    * 移除文件的处理状态
    * @param fileId 文件 ID
    */
   remove: (fileId: string) => void;
-  
+
   /**
    * 清空所有状态
    */
@@ -103,7 +112,8 @@ const MAX_ENTRIES = 100;
 /** Delay (ms) before auto-removing completed/error entries */
 const AUTO_CLEANUP_DELAY = 60_000;
 
-const TERMINAL_STAGES: ReadonlySet<ProcessingStage> = new Set(['completed', 'completed_with_issues', 'error']);
+/** Terminal stages — files in these stages no longer need progress updates */
+export const TERMINAL_STAGES: ReadonlySet<ProcessingStage> = new Set(['completed', 'completed_with_issues', 'error']);
 
 const STAGE_ORDER: Record<ProcessingStage, number> = {
   pending: 0,
@@ -236,6 +246,15 @@ export const usePdfProcessingStore = create<PdfProcessingStore>((set, get) => ({
     }, AUTO_CLEANUP_DELAY);
   },
   
+  setFullStatus: (fileId, status) => {
+    set(state => {
+      const newMap = new Map(state.statusMap);
+      newMap.set(fileId, status);
+      enforceMaxEntries(newMap);
+      return { statusMap: newMap };
+    });
+  },
+
   remove: (fileId) => {
     set(state => {
       const newMap = new Map(state.statusMap);
