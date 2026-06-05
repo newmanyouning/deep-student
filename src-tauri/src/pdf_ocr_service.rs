@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
-use image::ImageFormat;
+
 use pdfium_render::prelude::*;
 use serde_json::json;
 use sha2::{Digest, Sha256};

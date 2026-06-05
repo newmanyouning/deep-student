@@ -1633,10 +1633,10 @@ impl VfsAttachmentRepo {
                 });
             }
 
-            Ok(AttachmentContentResult {
+            return Ok(AttachmentContentResult {
                 content: data,
                 error_code: None,
-            })
+            });
         } else if let Some(blob_hash) = &attachment.blob_hash {
             // External 模式：从 blobs 读取文件
             if let Some(blob_path) =
