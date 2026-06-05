@@ -1644,56 +1644,52 @@ impl VfsAttachmentRepo {
             {
                 let data = std::fs::read(&blob_path)
                     .map_err(|e| VfsError::Io(format!("Failed to read blob file: {}", e)))?;
-                Ok(AttachmentContentResult {
+                return Ok(AttachmentContentResult {
                     content: Some(STANDARD.encode(data)),
                     error_code: None,
-                })
+                });
             } else {
                 warn!(
-                    "[VFS::AttachmentRepo] Blob not found for attachment {}: {}",
+                    "[VFS::AttachmentRepo] Blob not found for attachment {}: {}, trying original_path fallback",
                     id, blob_hash
                 );
-                Ok(AttachmentContentResult {
-                    content: None,
-                    error_code: Some("BLOB_MISSING".to_string()),
-                })
             }
-        } else {
-            // ★ 回退：尝试从 original_path 读取文件（支持 textbooks 迁移的文件）
-            let original_path: Option<String> = conn
-                .query_row(
-                    "SELECT original_path FROM files WHERE id = ?1",
-                    params![id],
-                    |row| row.get(0),
-                )
-                .optional()?
-                .flatten();
-
-            if let Some(path) = original_path {
-                let (data, was_blocked) = Self::try_read_original_path(blobs_dir, id, &path);
-                if let Some(d) = data {
-                    return Ok(AttachmentContentResult {
-                        content: Some(STANDARD.encode(d)),
-                        error_code: None,
-                    });
-                }
-                if was_blocked {
-                    return Ok(AttachmentContentResult {
-                        content: None,
-                        error_code: Some("PATH_BLOCKED".to_string()),
-                    });
-                }
-            }
-
-            warn!(
-                "[VFS::AttachmentRepo] Attachment {} has no resource_id, blob_hash, or valid original_path",
-                id
-            );
-            Ok(AttachmentContentResult {
-                content: None,
-                error_code: Some("ALL_FALLBACKS_EXHAUSTED".to_string()),
-            })
         }
+
+        // ★ 回退：尝试从 original_path 读取文件（支持 textbooks 迁移的文件）
+        let original_path: Option<String> = conn
+            .query_row(
+                "SELECT original_path FROM files WHERE id = ?1",
+                params![id],
+                |row| row.get(0),
+            )
+            .optional()?
+            .flatten();
+
+        if let Some(path) = original_path {
+            let (data, was_blocked) = Self::try_read_original_path(blobs_dir, id, &path);
+            if let Some(d) = data {
+                return Ok(AttachmentContentResult {
+                    content: Some(STANDARD.encode(d)),
+                    error_code: None,
+                });
+            }
+            if was_blocked {
+                return Ok(AttachmentContentResult {
+                    content: None,
+                    error_code: Some("PATH_BLOCKED".to_string()),
+                });
+            }
+        }
+
+        warn!(
+            "[VFS::AttachmentRepo] Attachment {} has no resource_id, blob_hash, or valid original_path",
+            id
+        );
+        Ok(AttachmentContentResult {
+            content: None,
+            error_code: Some("ALL_FALLBACKS_EXHAUSTED".to_string()),
+        })
     }
 
     // ========================================================================

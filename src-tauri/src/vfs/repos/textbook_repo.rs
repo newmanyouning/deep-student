@@ -116,15 +116,49 @@ impl VfsTextbookRepo {
                 "[VFS::TextbookRepo] Textbook with same sha256 already exists: {} (status: {:?})",
                 existing.id, existing.status
             );
-            // ★ 修复：如果已存在的记录不是 active 状态，恢复它
+
+            // ★ BLOB_HASH 修复：如果提供了新 blob_hash 且与现有记录不同，更新 files 表
+            // 这修复了 PDF-403 之前导入的教材 blob_hash = NULL 无法加载的问题，
+            // 以及重新导入后新存储的 blob 成为孤儿的问题。
+            // store_blob_with_conn 已在之前递增了 ref_count，因此新 blob 的引用计数正确，
+            // 但旧 blob 的引用计数需要递减（若存在且不同）。
+            let now = chrono::Utc::now()
+                .format("%Y-%m-%dT%H:%M:%S%.3fZ")
+                .to_string();
+            if let Some(new_blob_hash) = blob_hash {
+                let old_blob_hash = existing.blob_hash.as_deref();
+                if old_blob_hash != Some(new_blob_hash) {
+                    info!(
+                        "[VFS::TextbookRepo] Updating blob_hash for existing textbook {}: {:?} -> {}",
+                        existing.id, old_blob_hash, new_blob_hash
+                    );
+                    conn.execute(
+                        "UPDATE files SET blob_hash = ?1, updated_at = ?2 WHERE id = ?3",
+                        params![new_blob_hash, now, existing.id],
+                    )?;
+                    // 递减旧 blob 引用计数（若旧 blob_hash 存在且不同）
+                    if let Some(old) = old_blob_hash {
+                        conn.execute(
+                            "UPDATE blobs SET ref_count = MAX(0, ref_count - 1) WHERE hash = ?1",
+                            params![old],
+                        )?;
+                    }
+                } else if old_blob_hash.is_some() {
+                    // 相同 blob_hash：store_blob_with_conn 已递增引用计数，但未创建新行
+                    // 需要递减以纠正因重复导入导致的 ref_count 溢出
+                    conn.execute(
+                        "UPDATE blobs SET ref_count = MAX(0, ref_count - 1) WHERE hash = ?1",
+                        params![new_blob_hash],
+                    )?;
+                }
+            }
+
+            // 恢复软删除状态
             if existing.status != "active" {
                 info!(
                     "[VFS::TextbookRepo] Restoring soft-deleted textbook: {} from status {:?} to active",
                     existing.id, existing.status
                 );
-                let now = chrono::Utc::now()
-                    .format("%Y-%m-%dT%H:%M:%S%.3fZ")
-                    .to_string();
                 conn.execute(
                     "UPDATE files SET status = 'active', deleted_at = NULL, updated_at = ?1 WHERE id = ?2",
                     params![now, existing.id],
@@ -134,7 +168,10 @@ impl VfsTextbookRepo {
                     VfsError::Database(format!("Textbook {} not found after restore", existing.id))
                 });
             }
-            return Ok(existing);
+            // 返回更新后的记录（blob_hash 可能已修复）
+            return Self::get_textbook_with_conn(conn, &existing.id)?.ok_or_else(|| {
+                VfsError::Database(format!("Textbook {} not found after blob_hash repair", existing.id))
+            });
         }
 
         // ★ 文档28/Migration032：使用 file_ 前缀保持与迁移后数据一致

@@ -901,6 +901,420 @@ pub async fn textbooks_update_bookmarks(
     Ok(true)
 }
 
+// ==================== Blob 修复命令 ====================
+
+/// 单个教材 Blob 修复结果
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RepairTextbookBlobResult {
+    /// 教材 ID
+    pub textbook_id: String,
+    /// 是否修复成功
+    pub success: bool,
+    /// 描述信息
+    pub message: String,
+    /// 原始路径
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub original_path: Option<String>,
+    /// 旧的 blob_hash（修复前）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub old_blob_hash: Option<String>,
+    /// 新的 blob_hash（修复后）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub new_blob_hash: Option<String>,
+}
+
+/// 批量修复结果
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RepairAllTextbookBlobsResult {
+    /// 扫描的教材总数
+    pub total: usize,
+    /// 成功修复数
+    pub repaired: usize,
+    /// 跳过数（引用正常或无需修复）
+    pub skipped: usize,
+    /// 失败数
+    pub failed: usize,
+    /// 错误详情
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<String>,
+    /// 每项的修复详情
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub details: Vec<RepairTextbookBlobResult>,
+}
+
+/// 修复单个教材的 Blob 引用
+///
+/// 如果 textbook 的 blob_hash 为 NULL 或指向不存在的 blob，
+/// 则尝试从 original_path 重新读取文件内容并存储为新的 VFS blob。
+#[tauri::command]
+pub async fn vfs_repair_textbook_blob(
+    window: Window,
+    state: State<'_, AppState>,
+    textbook_id: String,
+) -> Result<RepairTextbookBlobResult> {
+    let vfs_db = state
+        .vfs_db
+        .as_ref()
+        .ok_or_else(|| AppError::configuration("VFS database not configured"))?;
+
+    let conn = vfs_db
+        .get_conn_safe()
+        .map_err(|e| AppError::database(format!("获取 VFS 连接失败: {}", e)))?;
+
+    let blobs_dir = vfs_db.blobs_dir();
+
+    // 1. 查询教材
+    let textbook = match crate::vfs::VfsTextbookRepo::get_textbook_with_conn(&conn, &textbook_id) {
+        Ok(Some(tb)) => tb,
+        Ok(None) => {
+            return Ok(RepairTextbookBlobResult {
+                textbook_id,
+                success: false,
+                message: "教材不存在".to_string(),
+                original_path: None,
+                old_blob_hash: None,
+                new_blob_hash: None,
+            });
+        }
+        Err(e) => {
+            return Ok(RepairTextbookBlobResult {
+                textbook_id,
+                success: false,
+                message: format!("查询教材失败: {}", e),
+                original_path: None,
+                old_blob_hash: None,
+                new_blob_hash: None,
+            });
+        }
+    };
+
+    let old_blob_hash = textbook.blob_hash.clone();
+    let original_path = textbook.original_path.clone();
+
+    // 2. 检查 blob_hash 是否有效
+    let blob_valid = match &old_blob_hash {
+        Some(hash) => match crate::vfs::repos::blob_repo::VfsBlobRepo::blob_exists_with_conn(
+            &conn, hash,
+        ) {
+            Ok(exists) => exists,
+            Err(_) => false,
+        },
+        None => false,
+    };
+
+    if blob_valid {
+        return Ok(RepairTextbookBlobResult {
+            textbook_id,
+            success: true,
+            message: "Blob 引用有效，无需修复".to_string(),
+            original_path,
+            old_blob_hash,
+            new_blob_hash: None,
+        });
+    }
+
+    // 3. 检查 original_path
+    let orig_path = match &original_path {
+        Some(p) if !p.trim().is_empty() => p.clone(),
+        _ => {
+            return Ok(RepairTextbookBlobResult {
+                textbook_id,
+                success: false,
+                message: "教材无 original_path，无法修复".to_string(),
+                original_path,
+                old_blob_hash,
+                new_blob_hash: None,
+            });
+        }
+    };
+
+    // 4. 读取文件内容
+    let file_bytes = match unified_file_manager::read_all_bytes(&window, &orig_path) {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            return Ok(RepairTextbookBlobResult {
+                textbook_id,
+                success: false,
+                message: format!("读取原始文件失败: {}", e),
+                original_path,
+                old_blob_hash,
+                new_blob_hash: None,
+            });
+        }
+    };
+
+    // 5. 存储为新的 VFS blob
+    // 从文件名推断扩展名和 MIME 类型
+    let ext = std::path::Path::new(&textbook.file_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.to_lowercase());
+
+    let mime = ext.as_deref().and_then(|e| match e {
+        "pdf" => Some("application/pdf"),
+        "png" => Some("image/png"),
+        "jpg" | "jpeg" => Some("image/jpeg"),
+        "gif" => Some("image/gif"),
+        "webp" => Some("image/webp"),
+        "mp4" => Some("video/mp4"),
+        "mp3" => Some("audio/mpeg"),
+        "docx" => Some("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        _ => None,
+    });
+
+    let blob = match crate::vfs::repos::blob_repo::VfsBlobRepo::store_blob_with_conn(
+        &conn,
+        blobs_dir,
+        &file_bytes,
+        mime,
+        ext.as_deref(),
+    ) {
+        Ok(b) => b,
+        Err(e) => {
+            return Ok(RepairTextbookBlobResult {
+                textbook_id,
+                success: false,
+                message: format!("存储 Blob 失败: {}", e),
+                original_path,
+                old_blob_hash,
+                new_blob_hash: None,
+            });
+        }
+    };
+
+    let new_hash = blob.hash;
+
+    // 6. 更新 files 表中的 blob_hash
+    let now = chrono::Utc::now()
+        .format("%Y-%m-%dT%H:%M:%S%.3fZ")
+        .to_string();
+
+    if let Err(e) = conn.execute(
+        "UPDATE files SET blob_hash = ?1, updated_at = ?2 WHERE id = ?3",
+        rusqlite::params![&new_hash, &now, &textbook_id],
+    ) {
+        return Ok(RepairTextbookBlobResult {
+            textbook_id,
+            success: false,
+            message: format!("更新 blob_hash 失败: {}", e),
+            original_path,
+            old_blob_hash,
+            new_blob_hash: Some(new_hash),
+        });
+    }
+
+    info!(
+        "[Textbooks] Repaired blob reference for textbook {}: {:?} -> {}",
+        textbook_id, old_blob_hash, new_hash
+    );
+
+    Ok(RepairTextbookBlobResult {
+        textbook_id,
+        success: true,
+        message: "Blob 引用已修复".to_string(),
+        original_path,
+        old_blob_hash,
+        new_blob_hash: Some(new_hash),
+    })
+}
+
+/// 修复所有教材中损坏的 Blob 引用
+///
+/// 遍历所有 active 状态的教材，逐一检查 blob_hash 的有效性，
+/// 对有问题的教材尝试从 original_path 重建 blob 引用。
+#[tauri::command]
+pub async fn vfs_repair_all_textbook_blobs(
+    window: Window,
+    state: State<'_, AppState>,
+) -> Result<RepairAllTextbookBlobsResult> {
+    let vfs_db = state
+        .vfs_db
+        .as_ref()
+        .ok_or_else(|| AppError::configuration("VFS database not configured"))?;
+
+    let conn = vfs_db
+        .get_conn_safe()
+        .map_err(|e| AppError::database(format!("获取 VFS 连接失败: {}", e)))?;
+
+    // 1. 列出所有 active 教材
+    let textbooks = crate::vfs::VfsTextbookRepo::list_all_textbooks_with_conn(&conn, 10000, 0)
+        .map_err(|e| AppError::database(format!("列出教材失败: {}", e)))?;
+
+    let total = textbooks.len();
+    let mut repaired: usize = 0;
+    let mut skipped: usize = 0;
+    let mut failed: usize = 0;
+    let mut errors: Vec<String> = Vec::new();
+    let mut details: Vec<RepairTextbookBlobResult> = Vec::new();
+
+    for tb in &textbooks {
+        // 对每个教材检查并修复 blob 引用
+        let blob_hash = tb.blob_hash.clone();
+        let orig_path = tb.original_path.clone();
+
+        // 检查 blob 有效性
+        let blob_valid = match &blob_hash {
+            Some(hash) => {
+                match crate::vfs::repos::blob_repo::VfsBlobRepo::blob_exists_with_conn(
+                    &conn, hash,
+                ) {
+                    Ok(exists) => exists,
+                    Err(_) => false,
+                }
+            }
+            None => false,
+        };
+
+        if blob_valid {
+            skipped += 1;
+            details.push(RepairTextbookBlobResult {
+                textbook_id: tb.id.clone(),
+                success: true,
+                message: "Blob 引用有效，无需修复".to_string(),
+                original_path: orig_path,
+                old_blob_hash: blob_hash,
+                new_blob_hash: None,
+            });
+            continue;
+        }
+
+        // original_path 检查
+        let orig_path_str = match &orig_path {
+            Some(p) if !p.trim().is_empty() => p.clone(),
+            _ => {
+                failed += 1;
+                errors.push(format!("{}: 无 original_path", tb.id));
+                details.push(RepairTextbookBlobResult {
+                    textbook_id: tb.id.clone(),
+                    success: false,
+                    message: "教材无 original_path".to_string(),
+                    original_path: None,
+                    old_blob_hash: blob_hash,
+                    new_blob_hash: None,
+                });
+                continue;
+            }
+        };
+
+        // 读取文件
+        let file_bytes = match unified_file_manager::read_all_bytes(&window, &orig_path_str) {
+            Ok(bytes) => bytes,
+            Err(e) => {
+                failed += 1;
+                errors.push(format!("{}: 读取文件失败 - {}", tb.id, e));
+                details.push(RepairTextbookBlobResult {
+                    textbook_id: tb.id.clone(),
+                    success: false,
+                    message: format!("读取原始文件失败: {}", e),
+                    original_path: Some(orig_path_str),
+                    old_blob_hash: blob_hash,
+                    new_blob_hash: None,
+                });
+                continue;
+            }
+        };
+
+        // 存储 blob
+        let ext = std::path::Path::new(&tb.file_name)
+            .extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_lowercase());
+
+        let mime = ext.as_deref().and_then(|e| match e {
+            "pdf" => Some("application/pdf"),
+            "png" => Some("image/png"),
+            "jpg" | "jpeg" => Some("image/jpeg"),
+            "gif" => Some("image/gif"),
+            "webp" => Some("image/webp"),
+            "mp4" => Some("video/mp4"),
+            "mp3" => Some("audio/mpeg"),
+            "docx" => Some(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ),
+            _ => None,
+        });
+
+        let blob = match crate::vfs::repos::blob_repo::VfsBlobRepo::store_blob_with_conn(
+            &conn,
+            vfs_db.blobs_dir(),
+            &file_bytes,
+            mime,
+            ext.as_deref(),
+        ) {
+            Ok(b) => b,
+            Err(e) => {
+                failed += 1;
+                errors.push(format!("{}: 存储 blob 失败 - {}", tb.id, e));
+                details.push(RepairTextbookBlobResult {
+                    textbook_id: tb.id.clone(),
+                    success: false,
+                    message: format!("存储 Blob 失败: {}", e),
+                    original_path: Some(orig_path_str),
+                    old_blob_hash: blob_hash,
+                    new_blob_hash: None,
+                });
+                continue;
+            }
+        };
+
+        let new_hash = blob.hash;
+
+        // 更新 files 表
+        let now = chrono::Utc::now()
+            .format("%Y-%m-%dT%H:%M:%S%.3fZ")
+            .to_string();
+
+        match conn.execute(
+            "UPDATE files SET blob_hash = ?1, updated_at = ?2 WHERE id = ?3",
+            rusqlite::params![&new_hash, &now, &tb.id],
+        ) {
+            Ok(_) => {
+                repaired += 1;
+                info!(
+                    "[Textbooks] Batch repair: fixed blob for textbook {}: {:?} -> {}",
+                    tb.id, blob_hash, new_hash
+                );
+                details.push(RepairTextbookBlobResult {
+                    textbook_id: tb.id.clone(),
+                    success: true,
+                    message: "Blob 引用已修复".to_string(),
+                    original_path: Some(orig_path_str),
+                    old_blob_hash: blob_hash,
+                    new_blob_hash: Some(new_hash),
+                });
+            }
+            Err(e) => {
+                failed += 1;
+                errors.push(format!("{}: 更新 blob_hash 失败 - {}", tb.id, e));
+                details.push(RepairTextbookBlobResult {
+                    textbook_id: tb.id.clone(),
+                    success: false,
+                    message: format!("更新 blob_hash 失败: {}", e),
+                    original_path: Some(orig_path_str),
+                    old_blob_hash: blob_hash,
+                    new_blob_hash: Some(new_hash),
+                });
+            }
+        }
+    }
+
+    info!(
+        "[Textbooks] Batch blob repair complete: total={}, repaired={}, skipped={}, failed={}",
+        total, repaired, skipped, failed
+    );
+
+    Ok(RepairAllTextbookBlobsResult {
+        total,
+        repaired,
+        skipped,
+        failed,
+        errors,
+        details,
+    })
+}
+
 /// 确保教材的 OCR 流水线已启动
 ///
 /// 对已有但尚未完成 OCR 的扫描版 PDF 教材，自动触发 OCR 流水线。

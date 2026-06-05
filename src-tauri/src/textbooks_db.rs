@@ -477,7 +477,7 @@ impl Textbook {
         VfsTextbook {
             id: self.id.clone(),
             resource_id: None,
-            blob_hash: Some(self.sha256.clone()),
+            blob_hash: None, // 旧教材从未存储为 VFS blob，依赖 original_path 回退
             sha256: self.sha256.clone(),
             file_name: self.file_name.clone(),
             original_path: Some(self.file_path.clone()),
