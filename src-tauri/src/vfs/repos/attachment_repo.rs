@@ -202,6 +202,22 @@ const SUPPORTED_MIME_TYPES: &[&str] = &[
     "video/x-flv",
 ];
 
+/// 附件内容查询结果（含错误代码）
+///
+/// 用于向前端传递详细的失败原因，支持诊断和用户提示。
+#[derive(Debug, Clone)]
+pub struct AttachmentContentResult {
+    /// Base64 编码的附件内容（成功时）
+    pub content: Option<String>,
+    /// 错误代码枚举：
+    /// - `NOT_FOUND`: 附件 ID 不在数据库中
+    /// - `DATA_CORRUPTED`: resources.data 存在但不是有效 base64 或路径内容
+    /// - `BLOB_MISSING`: blob 文件不在磁盘上
+    /// - `PATH_BLOCKED`: original_path 被目录白名单拦截
+    /// - `ALL_FALLBACKS_EXHAUSTED`: 所有回退方法均失败
+    pub error_code: Option<String>,
+}
+
 /// VFS 附件 Repo
 pub struct VfsAttachmentRepo;
 
@@ -443,7 +459,8 @@ impl VfsAttachmentRepo {
         }
     }
 
-    fn try_read_original_path(blobs_dir: &Path, id: &str, raw_path: &str) -> Option<Vec<u8>> {
+    fn try_read_original_path(blobs_dir: &Path, id: &str, raw_path: &str) -> (Option<Vec<u8>>, bool) {
+        let mut was_any_blocked = false;
         for candidate in Self::build_original_path_candidates(blobs_dir, raw_path) {
             let candidate_str = candidate.to_string_lossy().to_string();
             if !Self::is_safe_original_path(blobs_dir, &candidate_str) {
@@ -451,6 +468,7 @@ impl VfsAttachmentRepo {
                     "[VFS::AttachmentRepo] Blocked unsafe original_path for {}: {}",
                     id, candidate_str
                 );
+                was_any_blocked = true;
                 continue;
             }
 
@@ -471,7 +489,7 @@ impl VfsAttachmentRepo {
                         candidate.display(),
                         data.len()
                     );
-                    return Some(data);
+                    return (Some(data), false);
                 }
                 Err(e) => {
                     warn!(
@@ -484,7 +502,7 @@ impl VfsAttachmentRepo {
             }
         }
 
-        None
+        (None, was_any_blocked)
     }
 
     // ========================================================================
@@ -1453,7 +1471,9 @@ impl VfsAttachmentRepo {
     // ========================================================================
 
     /// 获取附件内容（Base64 编码）
-    pub fn get_content(db: &VfsDatabase, id: &str) -> VfsResult<Option<String>> {
+    ///
+    /// 返回 `AttachmentContentResult`，包含 Base64 内容和可选错误代码。
+    pub fn get_content(db: &VfsDatabase, id: &str) -> VfsResult<AttachmentContentResult> {
         let conn = db.get_conn_safe()?;
         Self::get_content_with_conn(&conn, db.blobs_dir(), id)
     }
@@ -1462,14 +1482,27 @@ impl VfsAttachmentRepo {
     ///
     /// ★ 2026-01-25 修复：支持从 original_path 读取文件内容
     /// ★ 2026-02-08 收紧：仅允许读取 VFS blobs 目录内的安全路径
+    ///
+    /// 返回 `AttachmentContentResult`，错误代码说明：
+    /// - `NOT_FOUND`: 附件 ID 不在数据库中
+    /// - `DATA_CORRUPTED`: resources.data 存在但不是有效 base64 或路径内容
+    /// - `BLOB_MISSING`: blob 文件不在磁盘上
+    /// - `PATH_BLOCKED`: original_path 被目录白名单拦截
+    /// - `ALL_FALLBACKS_EXHAUSTED`: 所有回退方法均失败
     pub fn get_content_with_conn(
         conn: &Connection,
         blobs_dir: &Path,
         id: &str,
-    ) -> VfsResult<Option<String>> {
+    ) -> VfsResult<AttachmentContentResult> {
         let attachment = match Self::get_by_id_with_conn(conn, id)? {
             Some(a) => a,
-            None => return Ok(None),
+            None => {
+                warn!("[VFS::AttachmentRepo] Attachment not found in DB: {}", id);
+                return Ok(AttachmentContentResult {
+                    content: None,
+                    error_code: Some("NOT_FOUND".to_string()),
+                });
+            }
         };
 
         if let Some(resource_id) = &attachment.resource_id {
@@ -1491,7 +1524,7 @@ impl VfsAttachmentRepo {
 
             // ★ 2026-01-25 修复：检查 resources.data 是否是有效的文件内容
             // textbooks 迁移的文件，resources.data 可能存储的是文件路径而非 base64 内容
-            let should_fallback = match &data {
+            let (should_fallback, data_error_code) = match &data {
                 Some(d) => {
                     let trimmed = d.trim();
                     if trimmed.is_empty() {
@@ -1499,15 +1532,15 @@ impl VfsAttachmentRepo {
                             "[VFS::AttachmentRepo] resources.data is empty for {}: resource_id={}",
                             id, resource_id
                         );
-                        true
+                        (true, Some("DATA_CORRUPTED"))
                     } else if is_probably_base64(trimmed) {
-                        false
+                        (false, None)
                     } else if looks_like_path(trimmed) {
                         warn!(
                             "[VFS::AttachmentRepo] resources.data looks like path for {}: resource_id={}, len={}",
                             id, resource_id, trimmed.len()
                         );
-                        true
+                        (true, Some("DATA_CORRUPTED"))
                     } else {
                         // ★ 2026-02-06 修复：resources.data 既不是有效 base64 也不是路径
                         // 可能是迁移残留的文本内容或损坏数据，应回退到 original_path / blob_hash
@@ -1516,7 +1549,7 @@ impl VfsAttachmentRepo {
                             id, resource_id, trimmed.len(),
                             trimmed.chars().take(80).collect::<String>()
                         );
-                        true
+                        (true, Some("DATA_CORRUPTED"))
                     }
                 }
                 None => {
@@ -1524,7 +1557,7 @@ impl VfsAttachmentRepo {
                         "[VFS::AttachmentRepo] resources.data is NULL for {}: resource_id={}",
                         id, resource_id
                     );
-                    true
+                    (true, None)
                 }
             };
 
@@ -1540,8 +1573,18 @@ impl VfsAttachmentRepo {
                     .flatten();
 
                 if let Some(path) = original_path {
-                    if let Some(file_data) = Self::try_read_original_path(blobs_dir, id, &path) {
-                        return Ok(Some(STANDARD.encode(file_data)));
+                    let (file_data, was_blocked) = Self::try_read_original_path(blobs_dir, id, &path);
+                    if let Some(fd) = file_data {
+                        return Ok(AttachmentContentResult {
+                            content: Some(STANDARD.encode(fd)),
+                            error_code: None,
+                        });
+                    }
+                    if was_blocked {
+                        return Ok(AttachmentContentResult {
+                            content: None,
+                            error_code: Some("PATH_BLOCKED".to_string()),
+                        });
                     }
                 }
 
@@ -1568,7 +1611,10 @@ impl VfsAttachmentRepo {
                         let blob_data = std::fs::read(&blob_path).map_err(|e| {
                             VfsError::Io(format!("Failed to read blob file: {}", e))
                         })?;
-                        return Ok(Some(STANDARD.encode(blob_data)));
+                        return Ok(AttachmentContentResult {
+                            content: Some(STANDARD.encode(blob_data)),
+                            error_code: None,
+                        });
                     } else {
                         warn!(
                             "[VFS::AttachmentRepo] Blob not found for attachment {}: {}",
@@ -1581,10 +1627,16 @@ impl VfsAttachmentRepo {
                     "[VFS::AttachmentRepo] Fallback exhausted for {} (resource_id={}), returning None",
                     id, resource_id
                 );
-                return Ok(None);
+                return Ok(AttachmentContentResult {
+                    content: None,
+                    error_code: Some(data_error_code.unwrap_or("ALL_FALLBACKS_EXHAUSTED").to_string()),
+                });
             }
 
-            Ok(data)
+            Ok(AttachmentContentResult {
+                content: data,
+                error_code: None,
+            })
         } else if let Some(blob_hash) = &attachment.blob_hash {
             // External 模式：从 blobs 读取文件
             if let Some(blob_path) =
@@ -1592,13 +1644,19 @@ impl VfsAttachmentRepo {
             {
                 let data = std::fs::read(&blob_path)
                     .map_err(|e| VfsError::Io(format!("Failed to read blob file: {}", e)))?;
-                Ok(Some(STANDARD.encode(data)))
+                Ok(AttachmentContentResult {
+                    content: Some(STANDARD.encode(data)),
+                    error_code: None,
+                })
             } else {
                 warn!(
                     "[VFS::AttachmentRepo] Blob not found for attachment {}: {}",
                     id, blob_hash
                 );
-                Ok(None)
+                Ok(AttachmentContentResult {
+                    content: None,
+                    error_code: Some("BLOB_MISSING".to_string()),
+                })
             }
         } else {
             // ★ 回退：尝试从 original_path 读取文件（支持 textbooks 迁移的文件）
@@ -1612,8 +1670,18 @@ impl VfsAttachmentRepo {
                 .flatten();
 
             if let Some(path) = original_path {
-                if let Some(data) = Self::try_read_original_path(blobs_dir, id, &path) {
-                    return Ok(Some(STANDARD.encode(data)));
+                let (data, was_blocked) = Self::try_read_original_path(blobs_dir, id, &path);
+                if let Some(d) = data {
+                    return Ok(AttachmentContentResult {
+                        content: Some(STANDARD.encode(d)),
+                        error_code: None,
+                    });
+                }
+                if was_blocked {
+                    return Ok(AttachmentContentResult {
+                        content: None,
+                        error_code: Some("PATH_BLOCKED".to_string()),
+                    });
                 }
             }
 
@@ -1621,7 +1689,10 @@ impl VfsAttachmentRepo {
                 "[VFS::AttachmentRepo] Attachment {} has no resource_id, blob_hash, or valid original_path",
                 id
             );
-            Ok(None)
+            Ok(AttachmentContentResult {
+                content: None,
+                error_code: Some("ALL_FALLBACKS_EXHAUSTED".to_string()),
+            })
         }
     }
 

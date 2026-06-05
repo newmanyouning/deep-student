@@ -16,7 +16,7 @@
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { WarningCircle, FileText, CircleNotch, ArrowClockwise } from '@phosphor-icons/react';
+import { WarningCircle, FileText, CircleNotch, ArrowClockwise, FileX, Bug, Lock, Timer, UploadSimple, ArrowSquareOut, Scan } from '@phosphor-icons/react';
 import { NotionButton } from '@/components/ui/NotionButton';
 import { TextbookPdfViewer, type ReadingProgress, type Bookmark } from '@/features/pdf/components/TextbookPdfViewer';
 import type { ContentViewProps } from '../UnifiedAppPanel';
@@ -24,9 +24,13 @@ import { dstu } from '@/dstu';
 import { reportError } from '@/shared/result';
 import { showGlobalNotification } from '@/components/UnifiedNotification';
 import { invoke } from '@tauri-apps/api/core';
+import { open as dialogOpen } from '@tauri-apps/plugin-dialog';
 import { CustomScrollArea } from '@/components/custom-scroll-area';
 import { vfsFileApi } from '@/api/vfsFileApi';
 import { usePdfLoader } from '@/hooks/usePdfLoader';
+import { debugLog } from '@/debug-panel/debugMasterSwitch';
+import { classifyPdfError, PdfErrorType } from '@/features/pdf/types/pdfErrors';
+import type { PdfLoadError } from '@/features/pdf/types/pdfErrors';
 import {
   decodeBase64ToText,
   estimateBase64Size,
@@ -39,7 +43,7 @@ import { resolveTextbookPreviewType } from './textbookPreviewResolver';
 import { RichDocumentPreview } from './RichDocumentPreview';
 import { usePdfFocusListener } from './usePdfFocusListener';
 import { usePdfProcessingStore, getProcessingHint } from '@/features/pdf/stores/pdfProcessingStore';
-import { Scan } from '@phosphor-icons/react';
+
 
 const toToolbarPreviewType = (type: string | null): ToolbarPreviewType => {
   if (type === 'docx' || type === 'xlsx' || type === 'pptx' || type === 'text') {
@@ -96,6 +100,9 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
 
   // ★ PDF 初始态 spinner 超时检测（防止无限旋转）
   const [pdfInitTimedOut, setPdfInitTimedOut] = useState(false);
+
+  // ★ PDF stream 协议降级加载标志（当 DB 加载失败时尝试直接文件路径加载）
+  const [usePdfStreamFallback, setUsePdfStreamFallback] = useState(false);
 
   // ======== OCR 相关状态 ========
 
@@ -216,7 +223,10 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
 
   // ★ PDF-403 修复：教材 PDF 不传 filePath，避免触发 pdfstream:// 协议的目录白名单限制导致 403。
   // 改为始终通过 usePdfLoader → vfs_get_attachment_content 从 VFS blob/DB 加载。
-  const effectiveFilePath = isPdf ? undefined : (filePathStat?.available ? filePath : undefined);
+  // 当 usePdfStreamFallback 激活时，允许使用 filePath 直接加载（降级方案）。
+  const effectiveFilePath = isPdf && !usePdfStreamFallback
+    ? undefined
+    : (filePathStat?.available ? filePath : undefined);
   const effectiveFileSize = isPdf ? undefined : (filePathStat?.available ? filePathStat.size : undefined);
 
   // 使用统一的 PDF 加载 Hook（支持缓存、去重、大文件检测）
@@ -233,7 +243,38 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     cacheKey: `${node.id}:${node.updatedAt || ''}`,
     enabled: isPdf && !effectiveFilePath, // 只有当是 PDF 且没有可用 filePath 时才从数据库加载
   });
-  
+
+  // ★ 分类后的 PDF 错误（结构化信息，用于丰富错误 UI）
+  const classifiedPdfError = useMemo<PdfLoadError | null>(() => {
+    if (!pdfError) return null;
+    return classifyPdfError(pdfError);
+  }, [pdfError]);
+
+  // ★ 重新导入 PDF 文件（通过文件选择器）
+  const handleReimportPdf = useCallback(async () => {
+    try {
+      const selected = await dialogOpen({
+        multiple: false,
+        filters: [{ name: 'PDF 文件', extensions: ['pdf'] }],
+        title: '重新导入 PDF 文件',
+      });
+      if (!selected) return;
+      const selectedPath = selected as string;
+      debugLog.log('[TextbookContentView] Re-import PDF selected:', selectedPath);
+      // 触发 PDF 处理流水线以重新导入
+      await invoke('vfs_start_pdf_processing', { fileId: node.id });
+      // 清除缓存并触发重新加载
+      retryPdfLoad();
+    } catch (err: unknown) {
+      console.error('[TextbookContentView] Re-import failed:', err);
+    }
+  }, [node.id, retryPdfLoad]);
+
+  // ★ 降级加载：尝试使用 pdfstream:// 协议直接加载文件
+  const handleTryAlternativeLoad = useCallback(() => {
+    setUsePdfStreamFallback(true);
+  }, []);
+
   // 加载非 PDF 文件内容
   useEffect(() => {
     if (!needsFileContent) return;
@@ -567,18 +608,69 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
       );
     }
     if (pdfError) {
+      // ★ 分类错误以提供丰富的 UI 展示
+      const typed = classifiedPdfError ?? classifyPdfError(pdfError);
+      // 错误类型 → 图标映射
+      const ErrorIconMap: Record<PdfErrorType, React.ElementType> = {
+        [PdfErrorType.NotFound]: FileX,
+        [PdfErrorType.Corrupted]: Bug,
+        [PdfErrorType.FormatError]: FileX,
+        [PdfErrorType.LoadTimeout]: Timer,
+        [PdfErrorType.ProcessingError]: WarningCircle,
+        [PdfErrorType.PermissionDenied]: Lock,
+        [PdfErrorType.Unknown]: WarningCircle,
+      };
+      const ErrorIcon = ErrorIconMap[typed.type] ?? WarningCircle;
+      // 错误类型标签
+      const typeLabelKey = `pdf:errors.type_${typed.type}`;
+      const suggestionKey = `pdf:errors.suggestion_${typed.type}`;
+      // 是否显示重新导入按钮
+      const canReimport = typed.type === PdfErrorType.NotFound || typed.type === PdfErrorType.Corrupted;
+      // 是否显示降级加载按钮（仅当有可用 filePath 时）
+      const canTryAlternative = isPdf && !!filePath && !usePdfStreamFallback;
+
       return (
         <div className="flex flex-col items-center justify-center h-full gap-4">
-          <WarningCircle className="w-12 h-12 text-destructive" />
-          <p className="text-destructive text-center">{pdfError}</p>
-          <NotionButton
-            variant="default"
-            size="sm"
-            onClick={retryPdfLoad}
-          >
-            <ArrowClockwise className="h-3.5 w-3.5 mr-1.5" />
-            {t('common:retry', '重试')}
-          </NotionButton>
+          <ErrorIcon className="w-12 h-12 text-destructive" />
+          <p className="text-destructive font-semibold text-lg">
+            {t(typeLabelKey, typed.type)}
+          </p>
+          <p className="text-destructive text-center max-w-md">
+            {typed.detail || pdfError}
+          </p>
+          <p className="text-muted-foreground text-sm text-center max-w-md">
+            {t(suggestionKey, '')}
+          </p>
+          <div className="flex gap-2 flex-wrap justify-center">
+            <NotionButton
+              variant="default"
+              size="sm"
+              onClick={retryPdfLoad}
+            >
+              <ArrowClockwise className="h-3.5 w-3.5 mr-1.5" />
+              {t('common:retry', '重试')}
+            </NotionButton>
+            {canReimport && (
+              <NotionButton
+                variant="outline"
+                size="sm"
+                onClick={handleReimportPdf}
+              >
+                <UploadSimple className="h-3.5 w-3.5 mr-1.5" />
+                {t('pdf:errors.reimport', '重新导入')}
+              </NotionButton>
+            )}
+            {canTryAlternative && (
+              <NotionButton
+                variant="outline"
+                size="sm"
+                onClick={handleTryAlternativeLoad}
+              >
+                <ArrowSquareOut className="h-3.5 w-3.5 mr-1.5" />
+                {t('pdf:errors.try_alternative_load', '尝试其他方式加载')}
+              </NotionButton>
+            )}
+          </div>
         </div>
       );
     }
@@ -818,11 +910,12 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
 
   const renderPdfOnly = () => (
     <TextbookPdfViewer
-      file={pdfFile}
+      file={usePdfStreamFallback ? null : pdfFile}
       // ★ PDF-403 修复：不传 filePath 给教材 PDF，避免触发 pdfstream:// 协议导致 403
       // file 优先于 filePath（TextbookPdfViewer 内部逻辑：file 存在时使用 Blob URL，
       // 仅 file 为 null 时才回退到 filePath 的 pdfstream://）
-      filePath={''}
+      // 当 usePdfStreamFallback 激活时，传 filePath 以尝试降级加载。
+      filePath={usePdfStreamFallback && filePath ? filePath : ''}
       fileName={node.name}
       selectedPages={selectedPages}
       onPageSelectionChange={handlePageSelectionChange}
@@ -853,8 +946,8 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     <div className="flex-1 flex overflow-hidden">
       <div className="w-[60%] overflow-hidden border-r border-border">
         <TextbookPdfViewer
-          file={pdfFile}
-          filePath={''}
+          file={usePdfStreamFallback ? null : pdfFile}
+          filePath={usePdfStreamFallback && filePath ? filePath : ''}
           fileName={node.name}
           selectedPages={selectedPages}
           onPageSelectionChange={handlePageSelectionChange}

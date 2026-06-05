@@ -63,6 +63,10 @@ pub struct VfsAttachmentContentResult {
     /// 可选错误信息（向后兼容：旧前端可忽略此字段）
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// 可选错误代码分类（向后兼容：旧前端可忽略此字段）
+    /// 取值: NOT_FOUND, DATA_CORRUPTED, BLOB_MISSING, PATH_BLOCKED, ALL_FALLBACKS_EXHAUSTED
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error_code: Option<String>,
 }
 
 // ============================================================================
@@ -415,6 +419,7 @@ pub async fn vfs_get_attachment_content(
                                             content: Some(b64),
                                             found: true,
                                             error: None,
+                                            error_code: None,
                                         });
                                     }
                                     Err(e) => {
@@ -441,6 +446,7 @@ pub async fn vfs_get_attachment_content(
             content: None,
             found: false,
             error: None,
+            error_code: None,
         });
     }
 
@@ -465,28 +471,32 @@ pub async fn vfs_get_attachment_content(
     }
 
     match VfsAttachmentRepo::get_content(&vfs_db, &attachment_id) {
-        Ok(Some(content)) => {
-            log::info!(
-                "[VFS::handlers] vfs_get_attachment_content: SUCCESS id={}, content_len={}",
-                attachment_id,
-                content.len()
-            );
-            Ok(VfsAttachmentContentResult {
-                content: Some(content),
-                found: true,
-                error: None,
-            })
-        }
-        Ok(None) => {
-            log::warn!(
-                "[VFS::handlers] vfs_get_attachment_content: NOT FOUND id={}",
-                attachment_id
-            );
-            Ok(VfsAttachmentContentResult {
-                content: None,
-                found: false,
-                error: None,
-            })
+        Ok(repo_result) => {
+            if let Some(content) = repo_result.content {
+                log::info!(
+                    "[VFS::handlers] vfs_get_attachment_content: SUCCESS id={}, content_len={}",
+                    attachment_id,
+                    content.len()
+                );
+                Ok(VfsAttachmentContentResult {
+                    content: Some(content),
+                    found: true,
+                    error: None,
+                    error_code: None,
+                })
+            } else {
+                log::warn!(
+                    "[VFS::handlers] vfs_get_attachment_content: NOT FOUND id={}, error_code={:?}",
+                    attachment_id,
+                    repo_result.error_code
+                );
+                Ok(VfsAttachmentContentResult {
+                    content: None,
+                    found: false,
+                    error: None,
+                    error_code: repo_result.error_code,
+                })
+            }
         }
         Err(e) => {
             let err_msg = e.to_string();
@@ -499,6 +509,7 @@ pub async fn vfs_get_attachment_content(
                 content: None,
                 found: false,
                 error: Some(err_msg),
+                error_code: Some("INTERNAL_ERROR".to_string()),
             })
         }
     }

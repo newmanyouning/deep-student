@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { base64ToFile, estimateBase64Size, LARGE_FILE_THRESHOLD } from '@/utils/base64FileUtils';
 import { debugLog } from '@/debug-panel/debugMasterSwitch';
+import { classifyPdfError } from '@/features/pdf/types/pdfErrors';
 import i18n from '@/i18n';
 
 // 简单的内存缓存，避免重复加载同一文件（真正的 LRU + 内存大小限制）
@@ -64,6 +65,10 @@ export interface PdfLoaderState {
   fileSize: number;
   /** 重试加载 */
   retry: () => void;
+  /** 当前重试次数（0=未重试） */
+  retryAttempt: number;
+  /** 重置重试状态 */
+  resetRetry: () => void;
 }
 
 /**
@@ -80,6 +85,8 @@ export interface UsePdfLoaderOptions {
   cacheKey?: string;
   /** 是否启用（用于条件加载） */
   enabled?: boolean;
+  /** 原始文件路径（用于第二次重试时触发处理流水线） */
+  originalPath?: string;
 }
 
 /**
@@ -93,8 +100,10 @@ export function usePdfLoader({
   filePath,
   cacheKey,
   enabled = true,
+  originalPath,
 }: UsePdfLoaderOptions): PdfLoaderState {
   const [file, setFile] = useState<File | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLargeFile, setIsLargeFile] = useState(false);
@@ -200,6 +209,12 @@ export function usePdfLoader({
           fileRef.current = conversionResult.file;
           setFile(conversionResult.file);
           setLoading(false);
+          setRetryAttempt(0);
+
+          // 成功加载后自动触发 OCR 流水线（扫描文档时后端会处理）
+          invoke('vfs_ensure_ocr_pipeline', { resourceId: nodeId }).catch((ocrErr: unknown) => {
+            debugLog.warn('[usePdfLoader] OCR pipeline trigger failed (non-fatal):', ocrErr);
+          });
         } else {
           setError(conversionResult.error || i18n.t('pdf:errors.conversion_failed', { defaultValue: 'File format conversion failed' }));
           setLoading(false);
@@ -242,12 +257,53 @@ export function usePdfLoader({
     };
   }, [enabled, loadPdf]);
 
-  // 重试：清除上一次缓存 key 以允许重新加载
+  // 重试：多策略降级
   const retry = useCallback(() => {
+    const nextAttempt = retryAttempt + 1;
+    setRetryAttempt(nextAttempt);
+
+    if (nextAttempt === 1) {
+      // 第一次重试：从数据库重新加载（同原来）
+      lastLoadedKeyRef.current = null;
+      fileRef.current = null;
+      void loadPdf();
+    } else if (nextAttempt === 2 && originalPath) {
+      // 第二次重试：触发 PDF 处理流水线，重新生成附件内容
+      debugLog.log('[usePdfLoader] Second retry: triggering PDF processing pipeline for:', nodeId);
+      setLoading(true);
+      setError(null);
+      invoke('vfs_start_pdf_processing', { fileId: nodeId })
+        .then(() => {
+          lastLoadedKeyRef.current = null;
+          fileRef.current = null;
+          void loadPdf();
+        })
+        .catch((pipelineErr: unknown) => {
+          debugLog.error('[usePdfLoader] Pipeline trigger failed:', pipelineErr);
+          setError(pipelineErr instanceof Error ? pipelineErr.message : i18n.t('pdf:errors.pipeline_failed', { defaultValue: 'Failed to trigger PDF processing pipeline' }));
+          setLoading(false);
+        });
+    } else {
+      // 第三次及以上重试：提示用户重新导入
+      debugLog.log('[usePdfLoader] Third+ retry: suggesting re-import for:', nodeId);
+      setError(
+        i18n.t('pdf:errors.reimport_suggested', {
+          defaultValue: 'Unable to load PDF after multiple attempts. Please try re-importing the file.',
+          count: nextAttempt,
+        })
+      );
+      setLoading(false);
+    }
+  }, [loadPdf, nodeId, originalPath, retryAttempt]);
+
+  // 重置重试状态，允许从头开始重新加载
+  const resetRetry = useCallback(() => {
+    setRetryAttempt(0);
     lastLoadedKeyRef.current = null;
     fileRef.current = null;
-    void loadPdf();
-  }, [loadPdf]);
+    setError(null);
+    setLoading(false);
+  }, []);
 
   return {
     file,
@@ -256,6 +312,8 @@ export function usePdfLoader({
     isLargeFile,
     fileSize,
     retry,
+    retryAttempt,
+    resetRetry,
   };
 }
 
