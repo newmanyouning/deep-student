@@ -19,6 +19,7 @@
 //! 若需要，可改用 `header("Authorization", "bearer <token>")` 手动设置。
 
 use serde::{Deserialize, Serialize};
+use tokio::sync::watch;
 
 const PADDLEOCR_API_BASE: &str = "https://paddleocr.aistudio-app.com/api/v2";
 const POLL_INTERVAL_SECS: u64 = 3;
@@ -218,17 +219,26 @@ impl PaddleOcrApiClient {
 
     /// 提交文件进行 OCR 解析（本地文件路径，multipart 上传）
     pub async fn ocr_file(&self, file_path: &str, model: &str) -> Result<PaddleOcrResult, PaddleOcrApiError> {
+        self.ocr_file_cancellable(file_path, model, None).await
+    }
+
+    /// 提交文件进行 OCR 解析（本地文件路径，multipart 上传）— 可取消
+    pub async fn ocr_file_cancellable(
+        &self,
+        file_path: &str,
+        model: &str,
+        cancel_rx: Option<watch::Receiver<bool>>,
+    ) -> Result<PaddleOcrResult, PaddleOcrApiError> {
         let file_bytes = std::fs::read(file_path)?;
         let file_name = std::path::Path::new(file_path)
             .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("document.pdf");
-        self.ocr_bytes(&file_bytes, file_name, model).await
+        self.ocr_bytes_cancellable(&file_bytes, file_name, model, cancel_rx).await
     }
 
     /// 提交在线文件 URL 进行 OCR 解析（URL 模式，JSON 请求）
     pub async fn ocr_url(&self, file_url: &str, model: &str) -> Result<PaddleOcrResult, PaddleOcrApiError> {
-        let is_vl = model.contains("PaddleOCR-VL") || model.contains("PP-StructureV3");
         let is_v5 = model.contains("PP-OCRv5");
 
         let optional_payload = OcrOptionalPayload {
@@ -245,7 +255,7 @@ impl PaddleOcrApiClient {
         let resp = self
             .client
             .post(format!("{}/ocr/jobs", PADDLEOCR_API_BASE))
-            .bearer_auth(&self.token)
+            .header("Authorization", format!("bearer {}", &self.token))
             .json(&request)
             .send()
             .await?;
@@ -266,9 +276,13 @@ impl PaddleOcrApiClient {
 
         let job_id = submit.data.job_id;
         tracing::info!("[PaddleOCR] URL job submitted: {} ({})", job_id, file_url);
+        tracing::info!(
+            "[Pipeline::JobSubmitted] job_id={} model={} file_url={}",
+            job_id, model, file_url
+        );
 
-        let result_url = self.poll_job(&job_id).await?;
-        let pages = self.download_and_parse(&result_url, model, is_vl).await?;
+        let result_url = self.poll_job(&job_id, None).await?;
+        let pages = self.download_and_parse(&result_url, model).await?;
 
         Ok(PaddleOcrResult {
             total_pages: pages.len() as u32,
@@ -284,7 +298,17 @@ impl PaddleOcrApiClient {
         file_name: &str,
         model: &str,
     ) -> Result<PaddleOcrResult, PaddleOcrApiError> {
-        let is_vl = model.contains("PaddleOCR-VL") || model.contains("PP-StructureV3");
+        self.ocr_bytes_cancellable(file_bytes, file_name, model, None).await
+    }
+
+    /// 提交文件字节进行 OCR 解析（multipart 上传）— 可取消
+    pub async fn ocr_bytes_cancellable(
+        &self,
+        file_bytes: &[u8],
+        file_name: &str,
+        model: &str,
+        cancel_rx: Option<watch::Receiver<bool>>,
+    ) -> Result<PaddleOcrResult, PaddleOcrApiError> {
         let is_v5 = model.contains("PP-OCRv5");
 
         let optional_payload = OcrOptionalPayload {
@@ -307,7 +331,7 @@ impl PaddleOcrApiClient {
         let resp = self
             .client
             .post(format!("{}/ocr/jobs", PADDLEOCR_API_BASE))
-            .bearer_auth(&self.token)
+            .header("Authorization", format!("bearer {}", &self.token))
             .multipart(form)
             .send()
             .await?;
@@ -328,12 +352,16 @@ impl PaddleOcrApiClient {
 
         let job_id = submit.data.job_id;
         tracing::info!("[PaddleOCR] Job submitted: {}", job_id);
+        tracing::info!(
+            "[Pipeline::JobSubmitted] job_id={} model={} file_size={} file_name={}",
+            job_id, model, file_bytes.len(), file_name
+        );
 
         // Poll until completion
-        let result_url = self.poll_job(&job_id).await?;
+        let result_url = self.poll_job(&job_id, cancel_rx).await?;
 
         // Download and parse results
-        let pages = self.download_and_parse(&result_url, model, is_vl).await?;
+        let pages = self.download_and_parse(&result_url, model).await?;
 
         Ok(PaddleOcrResult {
             total_pages: pages.len() as u32,
@@ -342,14 +370,15 @@ impl PaddleOcrApiClient {
         })
     }
 
-    async fn poll_job(&self, job_id: &str) -> Result<String, PaddleOcrApiError> {
+    async fn poll_job(&self, job_id: &str, cancel_rx: Option<watch::Receiver<bool>>) -> Result<String, PaddleOcrApiError> {
         let url = format!("{}/ocr/jobs/{}", PADDLEOCR_API_BASE, job_id);
+        let _poll_timer = std::time::Instant::now();
 
         for attempt in 0..MAX_POLL_ATTEMPTS {
             let resp = self
                 .client
                 .get(&url)
-                .bearer_auth(&self.token)
+                .header("Authorization", format!("bearer {}", &self.token))
                 .send()
                 .await?;
 
@@ -372,10 +401,15 @@ impl PaddleOcrApiClient {
                         .result_url
                         .ok_or_else(|| PaddleOcrApiError::Api("结果 URL 缺失".to_string()))?
                         .json_url;
+                    let completed_pages = status.data.extract_progress
+                        .map(|p| p.extracted_pages).unwrap_or(0);
                     tracing::info!(
                         "[PaddleOCR] Job {} completed: {} pages",
-                        job_id,
-                        status.data.extract_progress.map(|p| p.extracted_pages).unwrap_or(0)
+                        job_id, completed_pages,
+                    );
+                    tracing::info!(
+                        "[Pipeline::JobCompleted] job_id={} pages={} elapsed_ms={}",
+                        job_id, completed_pages, _poll_timer.elapsed().as_millis()
                     );
                     return Ok(json_url);
                 }
@@ -385,17 +419,28 @@ impl PaddleOcrApiClient {
                 }
                 "running" => {
                     let progress = status.data.extract_progress;
+                    let extracted = progress.as_ref().map(|p| p.extracted_pages).unwrap_or(0);
+                    let total = progress.map(|p| p.total_pages).unwrap_or(0);
                     tracing::debug!(
                         "[PaddleOCR] Job {} running: {}/{} pages",
-                        job_id,
-                        progress.as_ref().map(|p| p.extracted_pages).unwrap_or(0),
-                        progress.map(|p| p.total_pages).unwrap_or(0)
+                        job_id, extracted, total,
+                    );
+                    tracing::info!(
+                        "[Pipeline::JobPolling] job_id={} state=running pages_done={} pages_total={} attempt={} elapsed_ms={}",
+                        job_id, extracted, total, attempt, _poll_timer.elapsed().as_millis()
                     );
                 }
                 _ => { /* pending */ }
             }
 
             tokio::time::sleep(std::time::Duration::from_secs(POLL_INTERVAL_SECS)).await;
+
+            // Check for cancellation
+            if let Some(ref rx) = cancel_rx {
+                if *rx.borrow() {
+                    return Err(PaddleOcrApiError::Api("Cancelled".into()));
+                }
+            }
 
             // Only count actual wait attempts
             if attempt > 0 && attempt % 20 == 0 {
@@ -413,10 +458,14 @@ impl PaddleOcrApiClient {
         &self,
         jsonl_url: &str,
         model: &str,
-        is_vl: bool,
     ) -> Result<Vec<PaddleOcrPage>, PaddleOcrApiError> {
         let resp = self.client.get(jsonl_url).send().await?;
         let body = resp.text().await?;
+
+        tracing::info!(
+            "[Pipeline::JsonlDownloaded] url={} size_bytes={} lines={}",
+            jsonl_url, body.len(), body.lines().count()
+        );
 
         let mut pages = Vec::new();
 
@@ -430,11 +479,11 @@ impl PaddleOcrApiClient {
                 PaddleOcrApiError::Parse(format!("第 {} 行 JSON 解析失败: {}", line_num + 1, e))
             })?;
 
-            if is_vl {
-                // VL 系列 / StructureV3: layoutParsingResults → markdown
+            if !parsed.result.layout_parsing_results.is_empty() {
+                // layoutParsingResults → markdown (VL 系列 / StructureV3)
                 for result in &parsed.result.layout_parsing_results {
                     pages.push(PaddleOcrPage {
-                        page_index: pages.len() as u32,
+                        page_index: line_num as u32,
                         markdown_text: result.markdown.text.clone(),
                         images: result
                             .markdown
@@ -447,11 +496,11 @@ impl PaddleOcrApiClient {
                             .collect(),
                     });
                 }
-            } else {
-                // PP-OCRv5: ocrResults → ocrImage
+            } else if !parsed.result.ocr_results.is_empty() {
+                // ocrResults → ocrImage (PP-OCRv5)
                 for result in &parsed.result.ocr_results {
                     pages.push(PaddleOcrPage {
-                        page_index: pages.len() as u32,
+                        page_index: line_num as u32,
                         markdown_text: String::new(), // v5 没有文本输出
                         images: vec![PaddleOcrImage {
                             name: format!("ocr_page_{}", pages.len()),
@@ -459,13 +508,23 @@ impl PaddleOcrApiClient {
                         }],
                     });
                 }
+            } else {
+                tracing::warn!(
+                    "[PaddleOCR] 第 {} 行没有可识别的结果字段",
+                    line_num + 1
+                );
             }
         }
 
+        let total_text_chars: usize = pages.iter().map(|p| p.markdown_text.len()).sum();
         tracing::info!(
             "[PaddleOCR] Parsed {} pages from JSONL (model: {})",
             pages.len(),
             model
+        );
+        tracing::info!(
+            "[Pipeline::JsonlParsed] pages={} text_chars={} model={}",
+            pages.len(), total_text_chars, model
         );
         Ok(pages)
     }

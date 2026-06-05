@@ -77,10 +77,16 @@ impl PdfOcrService {
             .save_pdf_from_base64(&pdf_base64, pdf_name.as_deref(), &temp_id)
             .await?;
 
+        let _load_timer = std::time::Instant::now();
         let pdf_bytes = async_fs::read(&pdf_abs_path)
             .await
             .map_err(|e| AppError::file_system(format!("读取PDF失败: {}", e)))?;
         let pdf_hash = Self::hash_bytes(&pdf_bytes);
+        info!(
+            "[Pipeline::PdfLoaded] path={} size_bytes={} hash={} elapsed_ms={}",
+            pdf_abs_path, pdf_bytes.len(), pdf_hash,
+            _load_timer.elapsed().as_millis()
+        );
 
         // Setup cache
         let cache_dir_path = self
@@ -226,10 +232,16 @@ impl PdfOcrService {
         let dpi = render_dpi.unwrap_or(DEFAULT_RENDER_DPI).min(MAX_RENDER_DPI);
 
         // 读取 PDF 并计算哈希用于缓存
+        let _load_timer = std::time::Instant::now();
         let pdf_bytes = async_fs::read(&pdf_path)
             .await
             .map_err(|e| AppError::file_system(format!("读取 PDF 文件失败: {}", e)))?;
         let pdf_hash = Self::hash_bytes(&pdf_bytes);
+        info!(
+            "[Pipeline::PdfLoaded] path={} size_bytes={} hash={} elapsed_ms={}",
+            pdf_path, pdf_bytes.len(), pdf_hash,
+            _load_timer.elapsed().as_millis()
+        );
 
         // 设置缓存目录
         let cache_dir_path = self
@@ -429,9 +441,13 @@ impl PdfOcrService {
                 let rgb_image = image.to_rgb8();
                 let (width, height) = rgb_image.dimensions();
 
-                // 保存为 JPEG
-                if let Err(e) = rgb_image.save_with_format(&image_path, ImageFormat::Jpeg) {
-                    let err_msg = format!("保存图片失败: {:?}", e);
+                // 保存为 JPEG（quality 92 for better OCR accuracy）
+                let mut buf = Vec::new();
+                let mut enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, 92);
+                let result = enc.encode_image(&rgb_image)
+                    .map_err(|e| format!("{:?}", e))
+                    .and_then(|_| std::fs::write(&image_path, &buf).map_err(|e| format!("{:?}", e)));
+                if let Err(err_msg) = result {
                     error!("[PDF-OCR-Backend] 页面 {} {}", page_index, err_msg);
                     // ★ 记录渲染失败的页面（使用 poison-recovery 避免 panic）
                     render_failed_for_thread
@@ -466,6 +482,15 @@ impl PdfOcrService {
                     "[PDF-OCR-Backend] 渲染页面 {}/{} 完成",
                     page_index + 1,
                     total_pages
+                );
+
+                info!(
+                    "[Pipeline::PageRendered] page_index={} width={} height={} dpi={} jpeg_bytes={}",
+                    page_index, width, height, dpi, buf.len()
+                );
+                info!(
+                    "[Pipeline::JpegSaved] page_index={} path={} size_bytes={}",
+                    page_index, image_path.to_string_lossy(), buf.len()
                 );
 
                 // 发送到 channel，立即开始 OCR（使用绝对路径！）
@@ -808,6 +833,11 @@ impl PdfOcrService {
         );
 
         info!(
+            "[Pipeline::EventEmitted] session_id={} type=Completed total_pages={} success_count={} failed_count={} cancelled={}",
+            session_id, total_pages, success_count, total_failed_count, cancelled
+        );
+
+        info!(
             "[PDF-OCR-Backend] Worker finished: {} (Success: {}, OCR Failed: {}, Render Failed: {})",
             session_id, success_count, ocr_failed_count, render_failed_count
         );
@@ -883,9 +913,12 @@ impl PdfOcrService {
         let rgb_image = image.to_rgb8();
         let (width, height) = rgb_image.dimensions();
 
-        // 保存为 JPEG（比 PNG 更小）
-        rgb_image
-            .save_with_format(output_path, ImageFormat::Jpeg)
+        // 保存为 JPEG（quality 92 for better OCR accuracy）
+        let mut buf = Vec::new();
+        let mut enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut buf, 92);
+        enc.encode_image(&rgb_image)
+            .map_err(|e| AppError::file_system(format!("保存图片失败: {:?}", e)))?;
+        std::fs::write(output_path, &buf)
             .map_err(|e| AppError::file_system(format!("保存图片失败: {:?}", e)))?;
 
         Ok((width, height))
@@ -1171,6 +1204,11 @@ impl PdfOcrService {
         );
 
         info!(
+            "[Pipeline::EventEmitted] session_id={} type=Completed total_pages={} success_count={} failed_count={}",
+            temp_id, total_pages, mapped_results.len(), failed.len()
+        );
+
+        info!(
             "[PDF-OCR] Worker finished: {} (Success: {})",
             temp_id,
             mapped_results.len()
@@ -1431,8 +1469,17 @@ impl PdfOcrService {
                 return;
             }
         };
-        if let Err(e) = async_fs::write(&path, payload).await {
-            warn!("[PDF-OCR] 写入缓存失败 ({}): {}", path.display(), e);
+        let cache_size = payload.len();
+        match async_fs::write(&path, payload).await {
+            Ok(_) => {
+                info!(
+                    "[Pipeline::ResultsCached] page_index={} path={} blocks={} size_bytes={}",
+                    page_index, path.display(), blocks.len(), cache_size
+                );
+            }
+            Err(e) => {
+                warn!("[PDF-OCR] 写入缓存失败 ({}): {}", path.display(), e);
+            }
         }
     }
 }

@@ -55,7 +55,7 @@ export const DEFAULT_PDF_SETTINGS: PdfSettings = {
   virtualizerOverscan: 2,
 
   // 文本层
-  enableTextLayerByDefault: false, // 默认关闭以提升性能
+  enableTextLayerByDefault: true, // 默认启用，支持扫描 PDF 文本选择
   textLayerRange: 1,
 
   // 批注层

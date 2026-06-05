@@ -22,6 +22,7 @@ import {
   X,
   CaretUp,
   GridFour,
+  Info,
   Highlighter,
   House,
   CaretDoubleLeft,
@@ -181,6 +182,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   const [currentSearchIndex, setCurrentSearchIndex] = useState<number>(0);
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [isScrolling, setIsScrolling] = useState<boolean>(false);
+  const [isScannedPdf, setIsScannedPdf] = useState<boolean>(false);
   
   const thumbnailsContainerRef = useRef<HTMLDivElement>(null);
   
@@ -343,6 +345,23 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
     }).catch(() => {
       // 忽略目录加载错误
     });
+    // 检测是否为扫描 PDF（无文本层）
+    const samplePages = Math.min(3, pdf.numPages);
+    if (samplePages > 0) {
+      const checks: Promise<boolean>[] = [];
+      for (let i = 1; i <= samplePages; i++) {
+        checks.push(
+          pdf.getPage(i).then(page => page.getTextContent()).then(tc => tc.items.length === 0)
+        );
+      }
+      Promise.all(checks).then(results => {
+        if (results.every(r => r)) {
+          setIsScannedPdf(true);
+        }
+      }).catch(() => {
+        // 忽略扫描检测错误
+      });
+    }
   }, []);
 
   // 旋转页面
@@ -1326,7 +1345,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
           )}
           {searchQuery && searchResults.length === 0 && !isSearching && (
             <span className="ds-search-info ds-search-no-results">
-              {t('pdf:toolbar.no_results', '未找到匹配')}
+              {isScannedPdf ? 'Search is limited - this document has no embedded text layer. OCR processing needed.' : t('pdf:toolbar.no_results', '未找到匹配')}
             </span>
           )}
           <NotionButton variant="ghost" size="icon" iconOnly className="ds-btn ds-btn-sm" onClick={handlePrevSearchResult} disabled={searchResults.length === 0} title={t('pdf:toolbar.prev_match', '上一个')} aria-label="prev match">
@@ -1338,6 +1357,14 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
           <NotionButton variant="ghost" size="icon" iconOnly className="ds-btn ds-btn-sm" onClick={handleCloseSearch} title={t('pdf:toolbar.close_search', '关闭搜索')} aria-label="close search">
             <X size={16} />
           </NotionButton>
+        </div>
+      )}
+
+      {/* 扫描 PDF 提示 */}
+      {isScannedPdf && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#eef2ff', color: '#4338ca', fontSize: 13, borderBottom: '1px solid #c7d2fe' }}>
+          <Info size={16} />
+          <span>This appears to be a scanned PDF without embedded text. OCR processing will make the content searchable.</span>
         </div>
       )}
 

@@ -101,8 +101,9 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
 
   /** OCR 可用性检查结果（null=未检查, {configured:false}=未配置, {configured:true}=已配置） */
   const [ocrAvailability, setOcrAvailability] = useState<{ configured: boolean; modelName?: string } | null>(null);
-  /** 是否显示 OCR 文本视图（true=OCR文本, false=原始PDF图像） */
-  const [showOcrText, setShowOcrText] = useState(false);
+  /** 视图模式: 'pdf'=PDF原图, 'ocr'=OCR文字, 'split'=分屏对比 */
+  type ViewMode = 'pdf' | 'ocr' | 'split';
+  const [viewMode, setViewMode] = useState<ViewMode>('pdf');
   /** OCR 识别文本内容 */
   const [ocrTextContent, setOcrTextContent] = useState<string | null>(null);
 
@@ -775,24 +776,35 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
             <button
               type="button"
               className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
-                !showOcrText
+                viewMode === 'pdf'
                   ? 'bg-background shadow-sm font-medium text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
-              onClick={() => setShowOcrText(false)}
+              onClick={() => setViewMode('pdf')}
             >
-              {t('textbook:ocr.imageView', '图像')}
+              {t('textbook:ocr.pdfView', 'PDF原图')}
             </button>
             <button
               type="button"
               className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
-                showOcrText
+                viewMode === 'ocr'
                   ? 'bg-background shadow-sm font-medium text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
-              onClick={() => setShowOcrText(true)}
+              onClick={() => setViewMode('ocr')}
             >
-              {t('textbook:ocr.textView', 'OCR 文本')}
+              {t('textbook:ocr.textView', 'OCR文字')}
+            </button>
+            <button
+              type="button"
+              className={`px-2.5 py-1 rounded-md text-xs transition-colors ${
+                viewMode === 'split'
+                  ? 'bg-background shadow-sm font-medium text-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+              onClick={() => setViewMode('split')}
+            >
+              {t('textbook:ocr.splitView', '分屏对比')}
             </button>
           </div>
         </div>
@@ -802,26 +814,46 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     return null;
   };
 
-  // PDF 预览
-  return (
-    <div className="flex flex-col h-full bg-background">
-      {isPdf && renderOcrStatusBar()}
-      {showOcrText && ocrTextContent ? (
-        <div className="flex-1 overflow-hidden">
-          <CustomScrollArea className="h-full">
-            <div className="p-4">
-              <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans text-foreground/90">
-                {ocrTextContent}
-              </pre>
-            </div>
-          </CustomScrollArea>
+  // ======== 视图渲染函数 ========
+
+  const renderPdfOnly = () => (
+    <TextbookPdfViewer
+      file={pdfFile}
+      // ★ PDF-403 修复：不传 filePath 给教材 PDF，避免触发 pdfstream:// 协议导致 403
+      // file 优先于 filePath（TextbookPdfViewer 内部逻辑：file 存在时使用 Blob URL，
+      // 仅 file 为 null 时才回退到 filePath 的 pdfstream://）
+      filePath={''}
+      fileName={node.name}
+      selectedPages={selectedPages}
+      onPageSelectionChange={handlePageSelectionChange}
+      onExportSelectedPages={handleExportSelectedPages}
+      focusRequest={focusRequest}
+      onFocusHandled={handleFocusHandled}
+      readingProgress={readingProgress}
+      onProgressChange={handleProgressChange}
+      resourcePath={node.path}
+      bookmarks={bookmarks}
+      onBookmarksChange={handleBookmarksChange}
+    />
+  );
+
+  const renderOcrOnly = () => (
+    <div className="flex-1 overflow-hidden">
+      <CustomScrollArea className="h-full">
+        <div className="p-4">
+          <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans text-foreground/90">
+            {ocrTextContent}
+          </pre>
         </div>
-      ) : (
+      </CustomScrollArea>
+    </div>
+  );
+
+  const renderSplitView = () => (
+    <div className="flex-1 flex overflow-hidden">
+      <div className="w-[60%] overflow-hidden border-r border-border">
         <TextbookPdfViewer
           file={pdfFile}
-          // ★ PDF-403 修复：不传 filePath 给教材 PDF，避免触发 pdfstream:// 协议导致 403
-          // file 优先于 filePath（TextbookPdfViewer 内部逻辑：file 存在时使用 Blob URL，
-          // 仅 file 为 null 时才回退到 filePath 的 pdfstream://）
           filePath={''}
           fileName={node.name}
           selectedPages={selectedPages}
@@ -835,7 +867,28 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
           bookmarks={bookmarks}
           onBookmarksChange={handleBookmarksChange}
         />
-      )}
+      </div>
+      <div className="w-[40%] overflow-hidden">
+        <CustomScrollArea className="h-full">
+          <div className="p-4">
+            <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans text-foreground/90">
+              {ocrTextContent}
+            </pre>
+          </div>
+        </CustomScrollArea>
+      </div>
+    </div>
+  );
+
+  // PDF 预览
+  return (
+    <div className="flex flex-col h-full bg-background">
+      {isPdf && renderOcrStatusBar()}
+      {viewMode === 'split' && ocrTextContent
+        ? renderSplitView()
+        : viewMode === 'ocr' && ocrTextContent
+          ? renderOcrOnly()
+          : renderPdfOnly()}
     </div>
   );
 };

@@ -81,6 +81,7 @@ impl PageRasterizer {
 
     /// 纯 CPU 渲染（不涉及 DB，可安全在 spawn_blocking 中调用）
     fn render_pdf_pages(pdf_bytes: &[u8]) -> Result<Vec<RenderedPage>, AppError> {
+        let _render_timer = std::time::Instant::now();
         let pdfium = crate::pdfium_utils::load_pdfium()
             .map_err(|e| AppError::internal(format!("加载 pdfium 失败: {}", e)))?;
 
@@ -95,6 +96,10 @@ impl PageRasterizer {
 
         info!(
             "[PageRasterizer] PDF 共 {} 页，开始 {}DPI 渲染",
+            total_pages, RENDER_DPI as u32
+        );
+        info!(
+            "[Pipeline::PdfLoaded] pages={} dpi={}",
             total_pages, RENDER_DPI as u32
         );
 
@@ -132,20 +137,26 @@ impl PageRasterizer {
             let rgb_image = dynamic_image.to_rgb8();
             let (width, height) = (rgb_image.width(), rgb_image.height());
 
-            let mut jpeg_buffer = std::io::Cursor::new(Vec::new());
-            rgb_image
-                .write_to(&mut jpeg_buffer, image::ImageFormat::Jpeg)
+            let mut jpeg_buffer = Vec::new();
+            let mut enc = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut jpeg_buffer, 92);
+            enc.encode_image(&rgb_image)
                 .map_err(|e| {
                     AppError::internal(format!("编码页面 {} JPEG 失败: {}", page_idx + 1, e))
                 })?;
 
+            let jpeg_bytes = jpeg_buffer.len();
             rendered.push(RenderedPage {
                 page_index: page_idx,
-                image_bytes: jpeg_buffer.into_inner(),
+                image_bytes: jpeg_buffer,
                 text_hint,
                 width,
                 height,
             });
+            info!(
+                "[Pipeline::PageRendered] page_index={} width={} height={} dpi={} jpeg_bytes={} elapsed_ms={}",
+                page_idx, width, height, RENDER_DPI as u32, jpeg_bytes,
+                _render_timer.elapsed().as_millis()
+            );
         }
 
         Ok(rendered)
