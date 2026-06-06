@@ -124,6 +124,27 @@ function unwrapOutput(toolOutput: unknown): AskUserBlockOutput | undefined {
 // 组件实现
 // ============================================================================
 
+/**
+ * Normalize selected texts from old session data.
+ * Older versions stored 'selected' as a single string instead of string[].
+ * Without this, calling .join() on a string throws "N.join is not a function".
+ */
+function normalizeSelectedTexts(raw: unknown): string[] | null {
+  if (raw === null || raw === undefined) return null;
+  if (Array.isArray(raw)) return raw.map(String);
+  if (typeof raw === 'string') return [raw];
+  // Single number or boolean → wrap
+  if (typeof raw === 'number' || typeof raw === 'boolean') return [String(raw)];
+  // Object with numeric keys (JSON array mis-serialized) → extract values
+  if (typeof raw === 'object' && raw !== null) {
+    const vals = Object.values(raw as Record<string, unknown>).map(String);
+    return vals.length > 0 ? vals : null;
+  }
+  return null;
+}
+
+// ============================================================================
+
 const AskUserBlockComponent: React.FC<BlockComponentProps> = React.memo(({ block }) => {
   const { t } = useTranslation('chatV2');
   const [hasResponded, setHasResponded] = useState(false);
@@ -160,7 +181,7 @@ const AskUserBlockComponent: React.FC<BlockComponentProps> = React.memo(({ block
   const isResolved = Boolean(askOutput) || block.status === 'success' || block.status === 'error';
 
   // 最终显示的选择结果
-  const resolvedTexts: string[] | null = askOutput?.selected ?? localSelectedTexts;
+  const resolvedTexts: string[] | null = normalizeSelectedTexts(askOutput?.selected ?? localSelectedTexts);
   const resolvedCustomText: string | null = askOutput?.custom_text ?? localCustomText;
   const resolvedSource = askOutput?.source ?? localSource;
 
