@@ -1890,23 +1890,30 @@ fn build_app_state(
     }
 
     let pdf_processing_service = Some(pdf_processing_service_raw);
-    // 注册 PdfProcessingService 到 Tauri 状态（供 vfs_get_pdf_processing_status 等命令使用）
-    if let Some(ref pps) = pdf_processing_service {
-        app_handle.manage(pps.clone());
+    // 注册 PdfProcessingService 到 Tauri 状态，并恢复 stuck 任务（收集 OCR 相关文件 ID 用于后续自动重启）
+    let ocr_resume_ids: Vec<String> = {
+        if let Some(ref pps) = pdf_processing_service {
+            app_handle.manage(pps.clone());
 
-        match pps.recover_stuck_tasks() {
-            Ok(count) if count > 0 => {
-                tracing::info!(
-                    "[AppSetup] Recovered {} stuck media processing tasks",
-                    count
-                );
+            match pps.recover_stuck_tasks() {
+                Ok((count, ocr_ids)) if count > 0 => {
+                    tracing::info!(
+                        "[AppSetup] Recovered {} stuck media processing tasks ({} OCR-relevant)",
+                        count,
+                        ocr_ids.len()
+                    );
+                    ocr_ids
+                }
+                Ok(_) => Vec::new(),
+                Err(e) => {
+                    tracing::warn!("[AppSetup] Failed to recover stuck tasks: {}", e);
+                    Vec::new()
+                }
             }
-            Ok(_) => {}
-            Err(e) => {
-                tracing::warn!("[AppSetup] Failed to recover stuck tasks: {}", e);
-            }
+        } else {
+            Vec::new()
         }
-    }
+    };
 
     // ★ 启动时恢复卡在 indexing 状态的索引记录（vfs_index_units + resources）
     match crate::vfs::VfsFullIndexingService::recover_stuck_indexing(&vfs_db) {
@@ -1930,7 +1937,7 @@ fn build_app_state(
         }
     }
 
-    // 设置 AppHandle 到 PdfProcessingService（供事件推送使用）
+    // 设置 AppHandle 到 PdfProcessingService（供事件推送使用），随后自动恢复 OCR 流水线
     if let Some(ref pps) = pdf_processing_service {
         let pdf_service_for_handle = pps.clone();
         let app_handle_clone = app_handle.clone();
@@ -1938,6 +1945,27 @@ fn build_app_state(
             pdf_service_for_handle
                 .set_app_handle(app_handle_clone)
                 .await;
+
+            // 在 AppHandle 就绪后自动恢复因重启中断的 OCR 流水线
+            if !ocr_resume_ids.is_empty() {
+                match pdf_service_for_handle
+                    .auto_resume_ocr_tasks(ocr_resume_ids)
+                    .await
+                {
+                    Ok(n) => {
+                        tracing::info!(
+                            "[AppSetup] Auto-resumed {} OCR tasks after restart",
+                            n
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "[AppSetup] Failed to auto-resume OCR tasks: {}",
+                            e
+                        );
+                    }
+                }
+            }
         });
     }
 

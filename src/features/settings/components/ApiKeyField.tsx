@@ -47,7 +47,10 @@ export const ApiKeyField = React.forwardRef<HTMLInputElement, ApiKeyFieldProps>(
     // after the browser has applied the pasted text.
     const input = e.currentTarget;
     setTimeout(() => {
-      input.dispatchEvent(new Event('input', { bubbles: true }));
+      const ie = typeof InputEvent !== 'undefined'
+        ? new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' })
+        : new Event('input', { bubbles: true });
+      input.dispatchEvent(ie);
     }, 0);
   }, [onPasteProp]);
 

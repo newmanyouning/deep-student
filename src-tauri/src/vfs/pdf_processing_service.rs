@@ -2363,15 +2363,16 @@ impl PdfProcessingService {
     /// 这些文件不会自动恢复，用户也无法通过 retry 修复（retry 仅处理 error 状态）。
     ///
     /// 此方法将所有 stuck 文件重置为 pending 状态，允许后续重新处理。
-    pub fn recover_stuck_tasks(&self) -> VfsResult<usize> {
+    /// 返回 (总恢复数, OCR 相关文件 ID 列表)，供调用方决定是否自动恢复 OCR 流水线。
+    pub fn recover_stuck_tasks(&self) -> VfsResult<(usize, Vec<String>)> {
         let conn = self.db.get_conn_safe()?;
 
-        // 查找所有处于中间处理状态的文件
+        // 查找所有处于中间处理状态的文件 + 它们所处的阶段
         // 排除 pending/completed/error —— 这些是稳定终态
-        let stuck_ids: Vec<String> = {
+        let stuck_entries: Vec<(String, String)> = {
             let mut stmt = conn
                 .prepare(
-                    r#"SELECT id FROM files
+                    r#"SELECT id, processing_status FROM files
                    WHERE processing_status IN (
                        'text_extraction', 'page_rendering', 'page_compression',
                        'image_compression', 'ocr_processing', 'vector_indexing'
@@ -2380,24 +2381,36 @@ impl PdfProcessingService {
                 .map_err(|e| VfsError::Database(format!("Failed to prepare stuck query: {}", e)))?;
 
             let rows = stmt
-                .query_map([], |row| row.get::<_, String>(0))
+                .query_map([], |row| {
+                    let id: String = row.get(0)?;
+                    let status: String = row.get(1)?;
+                    Ok((id, status))
+                })
                 .map_err(|e| VfsError::Database(format!("Failed to query stuck tasks: {}", e)))?;
 
             rows.filter_map(log_and_skip_err).collect()
         };
 
-        if stuck_ids.is_empty() {
+        if stuck_entries.is_empty() {
             debug!("[MediaProcessingService] No stuck tasks found at startup");
-            return Ok(0);
+            return Ok((0, Vec::new()));
         }
 
-        let count = stuck_ids.len();
+        let count = stuck_entries.len();
+        // 筛选 OCR 相关阶段（page_rendering 和 ocr_processing）—— 这些是恢复后值得自动重启的
+        let ocr_relevant_ids: Vec<String> = stuck_entries
+            .iter()
+            .filter(|(_, status)| status == "page_rendering" || status == "ocr_processing")
+            .map(|(id, _)| id.clone())
+            .collect();
+
         info!(
-            "[MediaProcessingService] Found {} stuck tasks at startup, resetting to pending",
-            count
+            "[MediaProcessingService] Found {} stuck tasks at startup ({} OCR-relevant), resetting to pending",
+            count,
+            ocr_relevant_ids.len(),
         );
 
-        for file_id in &stuck_ids {
+        for (file_id, old_status) in &stuck_entries {
             let affected = conn
                 .execute(
                     r#"UPDATE files
@@ -2411,13 +2424,68 @@ impl PdfProcessingService {
 
             if affected > 0 {
                 info!(
-                    "[MediaProcessingService] Reset stuck file {} to pending",
-                    file_id
+                    "[MediaProcessingService] Reset stuck file {} (was {}) to pending",
+                    file_id, old_status
                 );
             }
         }
 
-        Ok(count)
+        Ok((count, ocr_relevant_ids))
+    }
+
+    /// 自动恢复因应用重启而中断的 OCR 流水线。
+    ///
+    /// 对每个传入的文件 ID 调用 start_pipeline(start_stage = OcrProcessing)，
+    /// 但受 MAX_CONCURRENT_OCR_RESUME 限制并发数（当前运行任务数 <= 3）。
+    /// 返回实际已启动恢复的任务数。
+    pub async fn auto_resume_ocr_tasks(
+        self: &Arc<Self>,
+        file_ids: Vec<String>,
+    ) -> VfsResult<usize> {
+        const MAX_CONCURRENT: usize = 3;
+
+        let running = self.running_count();
+        let available = MAX_CONCURRENT.saturating_sub(running);
+        let to_resume = file_ids.len().min(available);
+
+        if to_resume == 0 {
+            info!(
+                "[MediaProcessingService] OCR auto-resume skipped: {} running tasks (max {}), {} pending",
+                running, MAX_CONCURRENT, file_ids.len()
+            );
+            return Ok(0);
+        }
+
+        if to_resume < file_ids.len() {
+            info!(
+                "[MediaProcessingService] OCR auto-resume limited: resuming {}/{} tasks ({} running, max {})",
+                to_resume, file_ids.len(), running, MAX_CONCURRENT
+            );
+        }
+
+        let mut resumed = 0;
+        for file_id in file_ids.into_iter().take(to_resume) {
+            match self
+                .start_pipeline(&file_id, Some(ProcessingStage::OcrProcessing))
+                .await
+            {
+                Ok(()) => {
+                    info!(
+                        "[MediaProcessingService] Auto-resumed OCR pipeline for file: {}",
+                        file_id
+                    );
+                    resumed += 1;
+                }
+                Err(e) => {
+                    warn!(
+                        "[MediaProcessingService] Failed to auto-resume OCR for file {}: {}",
+                        file_id, e
+                    );
+                }
+            }
+        }
+
+        Ok(resumed)
     }
 
     // ========================================================================
