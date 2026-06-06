@@ -24,16 +24,21 @@ import { showOperationLockNotification } from './createChatStore';
  * 会在恢复时自动转换为 'deprecated_tool' 类型，保留完整历史数据。
  *
  * 策略：
- * 1. 精确匹配已知弃用工具名
- * 2. 前缀模式匹配（builtin-*, anki:*, legacy_*, cardforge_*）
- * 3. 命名约定变更检测（任何以 builtin- 或废弃前缀开头的工具名）
+ * 1. 精确匹配 KNOWN_DEPRECATED_TOOL_NAMES（精确已知弃用工具名）
+ * 2. 前缀模式匹配——仅匹配实际已删除的命名空间：
+ *    - anki:* —— 旧 Anki 命名格式（CardForge 2.0 之前）
+ *    - cardforge_* —— 已删除的 CardForge 2.0 工具
+ *    - builtin-anki_* —— CardForge 2.0 重命名前的 Anki 工具（已迁移至 chatanki_*）
+ *
+ * 注意：不要匹配 /^builtin[-:]/，因为 builtin- 和 builtin: 前缀被大量
+ * 活跃工具使用（如 builtin-paper_save, builtin-todo_init, builtin-load_skills,
+ * builtin:load_skills 等）。仅匹配实际已弃用的子集 builtin-anki_*。
  *
  * ★ 分段恢复：每个块独立处理，一个块的转换失败不影响其他块。
  */
 const DEPRECATED_TOOL_PATTERNS: ReadonlyArray<RegExp> = [
-  /^builtin[-:]/,
+  /^builtin-anki_/,
   /^anki:/,
-  /^legacy_/,
   /^cardforge_/,
 ];
 
