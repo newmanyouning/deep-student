@@ -52,7 +52,7 @@ export const DEFAULT_PDF_SETTINGS: PdfSettings = {
   maxDevicePixelRatio: 1.5,
   enableScrollDprDowngrade: true,
   scrollDpr: 1.0,
-  virtualizerOverscan: 2,
+  virtualizerOverscan: 5,
 
   // 文本层
   enableTextLayerByDefault: true, // 默认启用，支持扫描 PDF 文本选择

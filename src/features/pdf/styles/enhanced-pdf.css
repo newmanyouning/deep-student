@@ -875,6 +875,16 @@
   animation: ds-spin 1s linear infinite;
 }
 
+/* 页面加载占位符（虚拟滚动时避免空白） */
+.ds-pdf__page-loading-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsl(var(--muted) / 0.15);
+  border-radius: 4px;
+  min-height: 200px;
+}
+
 @keyframes ds-spin {
   to {
     transform: rotate(360deg);
