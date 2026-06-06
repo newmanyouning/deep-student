@@ -2323,7 +2323,7 @@ fn html_unescape(s: &str) -> String {
 
 // =============================
 // 智谱 AI Web Search Provider
-// API文档: https://docs.bigmodel.cn/api-reference/工具-api/网络搜索
+// API文档: https://docs.z.ai/api-reference/tools/web-search
 // =============================
 
 #[derive(Default)]
@@ -2360,36 +2360,34 @@ impl Provider for ZhipuProvider {
             .timeout(cfg.timeout())
             .build()?;
 
-        let build_body = |search_engine: &str| {
-            let mut body = json!({
-                "search_engine": search_engine,
-                "search_query": input.query,
-                "count": capped_top_k,
-                "content_size": "high"
-            });
+        // 构建请求体
+        let mut body = json!({
+            "search_engine": "search_pro",
+            "search_query": input.query,
+            "count": capped_top_k,
+            "content_size": "high",
+            "query_rewrite": false
+        });
 
-            // 时间范围过滤（智谱使用 oneDay/oneWeek/oneMonth/oneYear/noLimit）
-            if let Some(range) = &input.time_range {
-                let range_lower = range.trim().to_lowercase();
-                let recency = match range_lower.as_str() {
-                    "1d" | "24h" => "oneDay",
-                    "7d" => "oneWeek",
-                    "30d" => "oneMonth",
-                    "365d" | "1y" | "12m" => "oneYear",
-                    _ => "noLimit",
-                };
-                body["search_recency_filter"] = json!(recency);
+        // 时间范围过滤（智谱使用 oneDay/oneWeek/oneMonth/oneYear/noLimit）
+        if let Some(range) = &input.time_range {
+            let range_lower = range.trim().to_lowercase();
+            let recency = match range_lower.as_str() {
+                "1d" | "24h" => "oneDay",
+                "7d" => "oneWeek",
+                "30d" => "oneMonth",
+                "365d" | "1y" | "12m" => "oneYear",
+                _ => "noLimit",
+            };
+            body["search_recency_filter"] = json!(recency);
+        }
+
+        // 域名过滤（API 要求 String[] 数组格式）
+        if let Some(site) = &input.site {
+            if !site.trim().is_empty() {
+                body["search_domain_filter"] = json!([site.trim()]);
             }
-
-            // 域名过滤
-            if let Some(site) = &input.site {
-                if !site.trim().is_empty() {
-                    body["search_domain_filter"] = json!(site.trim());
-                }
-            }
-
-            body
-        };
+        }
 
         let build_provider_error = |status: reqwest::StatusCode, body_text: String| -> ToolError {
             if let Ok(val) = serde_json::from_str::<serde_json::Value>(&body_text) {
@@ -2405,44 +2403,22 @@ impl Provider for ZhipuProvider {
         };
 
         let t0 = Instant::now();
-        let raw: serde_json::Value;
-        let mut resp = client
+        let resp = client
             .post("https://open.bigmodel.cn/api/paas/v4/web_search")
             .header("Authorization", format!("Bearer {}", api_key))
             .header("Content-Type", "application/json")
-            .json(&build_body("search-prime"))
+            .json(&body)
             .send()
             .await?;
-        let mut status = resp.status();
-        let mut latency = t0.elapsed().as_millis();
+        let latency = t0.elapsed().as_millis();
+        let status = resp.status();
 
         if !status.is_success() {
             let body_text = resp.text().await.unwrap_or_default();
-            let lower = body_text.to_lowercase();
-            let should_fallback = status.is_client_error()
-                && (lower.contains("search_engine") || lower.contains("search-prime"));
-            if should_fallback {
-                log::warn!("[web_search][zhipu] search-prime rejected, retrying with search_pro");
-                resp = client
-                    .post("https://open.bigmodel.cn/api/paas/v4/web_search")
-                    .header("Authorization", format!("Bearer {}", api_key))
-                    .header("Content-Type", "application/json")
-                    .json(&build_body("search_pro"))
-                    .send()
-                    .await?;
-                status = resp.status();
-                if !status.is_success() {
-                    let fallback_body = resp.text().await.unwrap_or_default();
-                    return Err(build_provider_error(status, fallback_body));
-                }
-                latency = t0.elapsed().as_millis();
-                raw = resp.json().await?;
-            } else {
-                return Err(build_provider_error(status, body_text));
-            }
-        } else {
-            raw = resp.json().await?;
+            return Err(build_provider_error(status, body_text));
         }
+
+        let raw: serde_json::Value = resp.json().await?;
         let mut items = vec![];
 
         // 解析搜索结果
