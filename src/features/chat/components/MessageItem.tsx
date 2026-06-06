@@ -1230,11 +1230,12 @@ const MessageItemInner: React.FC<MessageItemProps> = ({
                             </div>
                           )}
                           <UserMessageBubble>
-                            {displayBlockIds.map((blockId) => (
+                            {displayBlockIds.map((blockId, idx) => (
                               <BlockRendererWithStore
                                 key={blockId}
                                 store={store}
                                 blockId={blockId}
+                                pending={idx >= 20}
                               />
                             ))}
                           </UserMessageBubble>
@@ -1335,6 +1336,10 @@ const MessageItemInner: React.FC<MessageItemProps> = ({
                       }
                     }
 
+                    // 构建块索引映射，用于骨架屏分页（20 个之后显示骨架）
+                    const blockIndexMap = new Map<string, number>();
+                    displayBlockIds.forEach((id, i) => blockIndexMap.set(id, i));
+
                     // 渲染所有段落
                     return segments.map((segment) => {
                       if (segment.type === 'timeline') {
@@ -1353,6 +1358,7 @@ const MessageItemInner: React.FC<MessageItemProps> = ({
                                 key={blockId}
                                 store={store}
                                 blockId={blockId}
+                                pending={(blockIndexMap.get(blockId) ?? 0) >= 20}
                               />
                             ))}
                           </React.Fragment>
@@ -1364,6 +1370,7 @@ const MessageItemInner: React.FC<MessageItemProps> = ({
                             key={blockId}
                             store={store}
                             blockId={blockId}
+                            pending={(blockIndexMap.get(blockId) ?? 0) >= 20}
                           />
                         ));
                       }

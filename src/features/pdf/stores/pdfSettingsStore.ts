@@ -6,6 +6,7 @@
 
 import { create } from 'zustand';
 import { subscribeWithSelector, persist } from 'zustand/middleware';
+import { createThrottledStorage } from '@/utils/throttledStorage';
 
 /** PDF 阅读器设置接口 */
 export interface PdfSettings {
@@ -154,6 +155,7 @@ export const usePdfSettingsStore = create<PdfSettingsStore>()(
         name: 'pdf-settings',
         version: 1,
         partialize: (state) => ({ settings: state.settings }),
+        storage: createThrottledStorage(),
       }
     )
   )

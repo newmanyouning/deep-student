@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createThrottledStorage } from '@/utils/throttledStorage';
 
 interface UIState {
   leftPanelCollapsed: boolean;
@@ -17,6 +18,7 @@ export const useUIStore = create<UIState>()(
     {
       name: 'dstu-ui-store',
       partialize: (state) => ({ leftPanelCollapsed: state.leftPanelCollapsed }),
+      storage: createThrottledStorage(),
     }
   )
 );
