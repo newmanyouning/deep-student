@@ -1407,8 +1407,8 @@ pub async fn vfs_ensure_ocr_pipeline(
             .map_err(|e| AppError::database(format!("启动 OCR 流水线失败: {}", e)))?;
 
         info!(
-            "[Textbooks] OCR pipeline started for file: {} (scanned={}, has_preview={}, file: {})",
-            is_scanned, has_preview, file_id
+            "[Textbooks] OCR pipeline started for file: {} (scanned={}, has_preview={})",
+            file_id, is_scanned, has_preview
         );
 
         Ok(VfsEnsureOcrPipelineResponse {
