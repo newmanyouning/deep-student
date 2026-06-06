@@ -30,14 +30,33 @@ export const SecurePasswordInput: React.FC<SecurePasswordInputProps> = ({
   const copyBlockedBySensitivity = isSensitive && !showPassword;
   const copyDisabled = disabled || copyBlockedBySensitivity || !value;
 
-  // React controlled <input type="password"> sometimes does NOT fire onChange
-  // when the user pastes (Ctrl+V) in certain browsers / WebViews (e.g. Tauri
-  // WebView2 on Windows).  Force the onChange callback after the paste completes.
+  // ★ WebView2 paste fix: reads pasted text synchronously from clipboardData,
+  // bypasses React's patched value setter, and dispatches 'input' event.
+  // setTimeout(0) is unreliable in Tauri WebView2 — the browser may not have
+  // written the pasted text to input.value by the time the callback fires.
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
-    setTimeout(() => {
-      const newValue = e.currentTarget.value;
+    const pastedText = e.clipboardData?.getData('text/plain') ?? '';
+    if (pastedText) {
+      e.preventDefault();
+      const input = e.currentTarget;
+      const start = input.selectionStart ?? 0;
+      const end = input.selectionEnd ?? 0;
+      const newValue = input.value.slice(0, start) + pastedText + input.value.slice(end);
+
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype, 'value',
+      )?.set;
+      nativeSetter?.call(input, newValue);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
       if (newValue !== value) onChange(newValue);
-    }, 0);
+    } else {
+      // Fallback: clipboardData unavailable
+      setTimeout(() => {
+        const newValue = e.currentTarget.value;
+        if (newValue !== value) onChange(newValue);
+      }, 10);
+    }
   }, [onChange, value]);
 
   const handleCopy = useCallback(async () => {

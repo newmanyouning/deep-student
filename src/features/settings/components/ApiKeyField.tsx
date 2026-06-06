@@ -38,22 +38,51 @@ export const ApiKeyField = React.forwardRef<HTMLInputElement, ApiKeyFieldProps>(
   const label = revealed ? hideLabel : showLabel;
   const inputType = canReveal && revealed ? 'text' : 'password';
 
-  // React controlled <input type="password"> sometimes does NOT fire onChange
-  // when the user pastes (Ctrl+V / right-click paste) in Tauri WebView2.
-  // DispatchEvent(new InputEvent(...)) is unreliable because React ignores
-  // non-trusted (isTrusted:false) events in some WebView2 builds.
-  // Instead, we directly invoke the parent's onChange handler with the DOM
-  // value after the browser has applied the paste — same pattern as
-  // SecurePasswordInput.
+  // ★ WebView2 paste fix: React controlled <input type="password"> sometimes
+  // does NOT fire onChange when pasting (Ctrl+V / right-click paste) in Tauri
+  // WebView2. setTimeout(0) is unreliable because the browser may not have
+  // written the pasted text to input.value by the time it fires.
+  //
+  // Solution: read pasted text synchronously from clipboardData, then use
+  // the native HTMLInputElement value setter (bypassing React's override)
+  // followed by dispatching an 'input' event to trigger React's onChange.
+  // Ref: https://github.com/facebook/react/issues/11488#issuecomment-347775628
   const handlePaste = React.useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
     onPasteProp?.(e);
     const input = e.currentTarget;
-    // setTimeout(0) ensures the browser has written the pasted text to input.value
-    setTimeout(() => {
+    const pastedText = e.clipboardData?.getData('text/plain') ?? '';
+
+    if (pastedText) {
+      // Prevent browser's default paste to avoid double-insert
+      e.preventDefault();
+
+      // Insert pasted text at cursor position (handles partial text selection)
+      const start = input.selectionStart ?? 0;
+      const end = input.selectionEnd ?? 0;
+      const newValue = input.value.slice(0, start) + pastedText + input.value.slice(end);
+
+      // Bypass React's patched value setter by using the native prototype setter
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype, 'value',
+      )?.set;
+      nativeSetter?.call(input, newValue);
+
+      // Dispatch 'input' event so React's synthetic event system picks it up
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+
+      // Also notify parent directly via onChange (belt-and-suspenders)
       if (onChangeProp) {
         onChangeProp({ target: input } as React.ChangeEvent<HTMLInputElement>);
       }
-    }, 0);
+    } else {
+      // Fallback: clipboardData unavailable (rare), rely on browser default +
+      // setTimeout to pick up the value after the browser writes it
+      setTimeout(() => {
+        if (onChangeProp) {
+          onChangeProp({ target: input } as React.ChangeEvent<HTMLInputElement>);
+        }
+      }, 10);
+    }
   }, [onPasteProp, onChangeProp]);
 
   return (
