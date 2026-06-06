@@ -103,6 +103,7 @@ export const ApiKeyField = React.forwardRef<HTMLInputElement, ApiKeyFieldProps>(
           inputClassName
         )}
         onPaste={handlePaste}
+        onInput={onChangeProp as unknown as React.FormEventHandler<HTMLInputElement>}
         onChange={onChangeProp}
         {...props}
       />
