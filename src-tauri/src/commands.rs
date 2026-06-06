@@ -1738,30 +1738,67 @@ pub async fn test_api_connection(
             }
         };
     } else {
-        // Chat / Responses 模型: 保持原有协议逻辑
+        // Chat / Responses 模型: 根据供应商适配请求格式
         let protocol = resolve_test_api_protocol(
             &api_base,
             api_protocol.as_deref(),
             model.as_deref(),
             supports_openai_responses,
         );
-        let url = match protocol {
-            "openai_responses" => format!("{}/responses", api_base.trim_end_matches('/')),
-            _ => format!("{}/chat/completions", api_base.trim_end_matches('/')),
-        };
         let model_id = model.unwrap_or_else(|| "gpt-4o-mini".to_string());
-        let body = if protocol == "openai_responses" {
+        let base_lower = api_base.to_lowercase();
+
+        // 检测特殊供应商
+        let is_mimo = base_lower.contains("xiaomimimo.com");
+        let is_gemini = base_lower.contains("generativelanguage.googleapis.com");
+
+        let url = if is_gemini {
+            format!(
+                "{}/models/{}:generateContent",
+                api_base.trim_end_matches('/'),
+                model_id
+            )
+        } else {
+            match protocol {
+                "openai_responses" => format!("{}/responses", api_base.trim_end_matches('/')),
+                _ => format!("{}/chat/completions", api_base.trim_end_matches('/')),
+            }
+        };
+
+        let body = if is_gemini {
+            // Gemini API: 使用 generateContent 格式
+            serde_json::json!({
+                "contents": [{
+                    "parts": [{"text": "Hi"}]
+                }],
+                "generationConfig": {
+                    "maxOutputTokens": 1,
+                    "temperature": 0.1
+                }
+            })
+        } else if protocol == "openai_responses" {
             serde_json::json!({
                 "model": model_id,
                 "input": "Hi",
-                "max_output_tokens": 1,
+                "max_output_tokens": 10,
                 "stream": false
             })
-        } else {
+        } else if is_mimo {
+            // MiMo: 需要 max_completion_tokens 且必须禁用 thinking
             serde_json::json!({
                 "model": model_id,
                 "messages": [{"role": "user", "content": "Hi"}],
-                "max_tokens": 1,
+                "max_completion_tokens": 10,
+                "temperature": 0.1,
+                "thinking": {"type": "disabled"}
+            })
+        } else {
+            // 标准 OpenAI 兼容格式 (SiliconFlow, DeepSeek, Qwen, Zhipu, Doubao, Moonshot, MiniMax...)
+            serde_json::json!({
+                "model": model_id,
+                "messages": [{"role": "user", "content": "Hi"}],
+                "max_tokens": 10,
+                "temperature": 0.1,
                 "stream": false
             })
         };
@@ -1774,30 +1811,49 @@ pub async fn test_api_connection(
         .build()
         .map_err(|e| AppError::network(format!("创建HTTP客户端失败: {}", e)))?;
 
-    // 发送请求
-    let response = client
-        .post(&url)
-        .header(
-            "Authorization",
-            format!("Bearer {}", effective_api_key.trim()),
-        )
-        .header("Content-Type", "application/json")
-        .json(&request_body)
+    // Gem`ini API 用 query param 认证，其他用 Bearer header
+    let is_gemini = api_base.to_lowercase().contains("generativelanguage.googleapis.com");
+
+    let request = if is_gemini {
+        client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .query(&[("key", effective_api_key.trim())])
+            .json(&request_body)
+    } else {
+        client
+            .post(&url)
+            .header(
+                "Authorization",
+                format!("Bearer {}", effective_api_key.trim()),
+            )
+            .header("Content-Type", "application/json")
+            .json(&request_body)
+    };
+
+    let response = request
         .send()
         .await
-        .map_err(|e| AppError::network(format!("API连接测试失败: {}", e)))?;
+        .map_err(|e| AppError::network(format!(
+            "API连接测试失败 [{} @ {}]: {}",
+            model_id, api_base, e
+        )))?;
 
     let status = response.status();
     if status.is_success() {
-        info!("[API测试] 连接成功");
+        info!(
+            "[API测试] 连接成功: vendor={:?}, model={}, base={}",
+            vendor_id, model_id, api_base
+        );
         Ok(true)
     } else {
         let error_text = response.text().await.unwrap_or_default();
-        error!("[API测试] 连接失败: {} - {}", status, error_text);
-        Err(AppError::network(format!(
-            "API连接测试失败: {} - {}",
-            status, error_text
-        )))
+        let error_msg = format!(
+            "连接测试失败 [{} @ {}]: HTTP {} — {}",
+            model_id, api_base, status, error_text
+        );
+        error!("[API测试] {}", error_msg);
+        Err(AppError::network(error_msg))
     }
 }
 
