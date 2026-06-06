@@ -955,7 +955,7 @@ pub struct CnWhitelistConfig {
 impl Default for ToolConfig {
     fn default() -> Self {
         Self {
-            default_engine: Some("google_cse".into()), // 更改默认引擎为Google CSE，因为Bing API已停用
+            default_engine: Some("zhipu".into()), // 默认使用智谱（国内可用，无需额外配置）
             timeout_ms: Some(15_000),
             retry: Some(RetryConfig {
                 max_attempts: default_max_attempts(),
