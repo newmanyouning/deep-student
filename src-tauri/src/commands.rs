@@ -1705,12 +1705,14 @@ pub async fn test_api_connection(
     // 根据模型类型选择测试端点
     let embedding = is_embedding.unwrap_or(false);
     let reranker = is_reranker.unwrap_or(false);
+    let model_id = model.clone().unwrap_or_else(|| "gpt-4o-mini".to_string());
+    let base_lower = api_base.to_lowercase();
 
     let (url, request_body) = if embedding {
         // 嵌入模型: POST /v1/embeddings
         let url = format!("{}/embeddings", api_base.trim_end_matches('/'));
         let body = serde_json::json!({
-            "model": model.unwrap_or_else(|| "text-embedding-ada-002".to_string()),
+            "model": model_id,
             "input": "test"
         });
         (url, body)
@@ -1718,12 +1720,12 @@ pub async fn test_api_connection(
         // 重排序模型: POST /v1/rerank (硅基流动兼容格式)
         let url = format!("{}/rerank", api_base.trim_end_matches('/'));
         let body = serde_json::json!({
-            "model": model.unwrap_or_else(|| "BAAI/bge-reranker-v2-m3".to_string()),
+            "model": model_id,
             "query": "test",
             "documents": ["test"]
         });
         (url, body)
-    } else if api_base.to_lowercase().contains("paddleocr.aistudio-app.com") {
+    } else if base_lower.contains("paddleocr.aistudio-app.com") {
         // PaddleOCR: 使用 check_connectivity() 轻量检测，不使用 Chat Completions
         use crate::paddleocr_api::PaddleOcrApiClient;
         let client = PaddleOcrApiClient::new(effective_api_key.clone());
@@ -1745,8 +1747,6 @@ pub async fn test_api_connection(
             model.as_deref(),
             supports_openai_responses,
         );
-        let model_id = model.unwrap_or_else(|| "gpt-4o-mini".to_string());
-        let base_lower = api_base.to_lowercase();
 
         // 检测特殊供应商
         let is_mimo = base_lower.contains("xiaomimimo.com");
@@ -1811,10 +1811,10 @@ pub async fn test_api_connection(
         .build()
         .map_err(|e| AppError::network(format!("创建HTTP客户端失败: {}", e)))?;
 
-    // Gem`ini API 用 query param 认证，其他用 Bearer header
-    let is_gemini = api_base.to_lowercase().contains("generativelanguage.googleapis.com");
+    // Gemini API 用 query param 认证，其他用 Bearer header
+    let is_gemini_req = base_lower.contains("generativelanguage.googleapis.com");
 
-    let request = if is_gemini {
+    let request = if is_gemini_req {
         client
             .post(&url)
             .header("Content-Type", "application/json")
