@@ -410,12 +410,12 @@ pub async fn textbooks_add(
             }
         };
 
-        // ★ 扫描版 PDF 检测：提取文本过少（每页 < 50 字符）则标记为扫描版
+        // ★ 扫描版 PDF 检测：提取文本过少（每页 < 100 字符）则标记为扫描版
         let (is_scanned, needs_ocr) = if extension == "pdf" {
             match (extracted_text.as_deref(), page_count) {
                 (Some(text), Some(pages)) if pages > 0 => {
                     let per_page = text.len() as f64 / pages as f64;
-                    let scanned = per_page < 50.0;
+                    let scanned = per_page < 100.0;
                     (Some(scanned), Some(scanned))
                 }
                 (None, _) => (Some(true), Some(true)), // 无提取文本 → 扫描版
@@ -682,12 +682,12 @@ pub async fn textbooks_adopt(
             }
         };
 
-        // ★ 扫描版 PDF 检测：提取文本过少（每页 < 50 字符）则标记为扫描版
+        // ★ 扫描版 PDF 检测：提取文本过少（每页 < 100 字符）则标记为扫描版
         let (is_scanned, needs_ocr) = if extension == "pdf" {
             match (extracted_text.as_deref(), page_count) {
                 (Some(text), Some(pages)) if pages > 0 => {
                     let per_page = text.len() as f64 / pages as f64;
-                    let scanned = per_page < 50.0;
+                    let scanned = per_page < 100.0;
                     (Some(scanned), Some(scanned))
                 }
                 (None, _) => (Some(true), Some(true)),

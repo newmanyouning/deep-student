@@ -574,7 +574,7 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     const ensureOcr = async () => {
       try {
         // 后端全权处理：检查配置、启动流水线、等待完成
-        await invoke('vfs_ensure_ocr_pipeline', { resourceId: node.resourceId || node.sourceId });
+        await invoke('vfs_ensure_ocr_pipeline', { fileId: node.sourceId });
         if (cancelled) return;
 
         // 获取 OCR 文本

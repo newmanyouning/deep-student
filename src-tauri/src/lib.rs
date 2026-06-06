@@ -1890,6 +1890,23 @@ fn build_app_state(
     }
 
     let pdf_processing_service = Some(pdf_processing_service_raw);
+
+    // 启动时补全历史 PDF 的 preview_json（确保旧教科书有 OCR 所需数据）
+    if let Some(ref pps) = pdf_processing_service {
+        match pps.backfill_missing_previews() {
+            Ok(n) if n > 0 => {
+                tracing::info!(
+                    "[AppSetup] Backfilling preview_json for {} historical PDFs",
+                    n
+                );
+            }
+            Ok(_) => {}
+            Err(e) => {
+                tracing::warn!("[AppSetup] Failed to backfill PDF previews: {}", e);
+            }
+        }
+    }
+
     // 注册 PdfProcessingService 到 Tauri 状态，并恢复 stuck 任务（收集 OCR 相关文件 ID 用于后续自动重启）
     let ocr_resume_ids: Vec<String> = {
         if let Some(ref pps) = pdf_processing_service {

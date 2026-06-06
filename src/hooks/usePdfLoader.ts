@@ -222,7 +222,7 @@ export function usePdfLoader({
           setRetryAttempt(0);
 
           // 成功加载后自动触发 OCR 流水线（扫描文档时后端会处理）
-          invoke('vfs_ensure_ocr_pipeline', { resourceId: nodeId }).catch((ocrErr: unknown) => {
+          invoke('vfs_ensure_ocr_pipeline', { fileId: nodeId }).catch((ocrErr: unknown) => {
             debugLog.warn('[usePdfLoader] OCR pipeline trigger failed (non-fatal):', ocrErr);
           });
         } else {

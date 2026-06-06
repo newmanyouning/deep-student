@@ -309,7 +309,7 @@ impl VfsAttachmentRepo {
         Ok(())
     }
 
-    fn is_safe_original_path(blobs_dir: &Path, path: &str) -> bool {
+    pub(crate) fn is_safe_original_path(blobs_dir: &Path, path: &str) -> bool {
         let trimmed = path.trim();
         if trimmed.is_empty() {
             return false;

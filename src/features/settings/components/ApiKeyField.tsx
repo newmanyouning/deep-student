@@ -32,27 +32,29 @@ export const ApiKeyField = React.forwardRef<HTMLInputElement, ApiKeyFieldProps>(
   className,
   extraActions,
   onPaste: onPasteProp,
+  onChange: onChangeProp,
   ...props
 }, ref) => {
   const label = revealed ? hideLabel : showLabel;
   const inputType = canReveal && revealed ? 'text' : 'password';
 
   // React controlled <input type="password"> sometimes does NOT fire onChange
-  // when the user pastes (Ctrl+V) in certain browsers / WebViews (e.g. Tauri
-  // WebView2 on Windows). Force onChange after paste so the parent form
-  // detects the value change and enables save/apply buttons.
+  // when the user pastes (Ctrl+V / right-click paste) in Tauri WebView2.
+  // DispatchEvent(new InputEvent(...)) is unreliable because React ignores
+  // non-trusted (isTrusted:false) events in some WebView2 builds.
+  // Instead, we directly invoke the parent's onChange handler with the DOM
+  // value after the browser has applied the paste — same pattern as
+  // SecurePasswordInput.
   const handlePaste = React.useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
     onPasteProp?.(e);
-    // Force React's onChange to fire by dispatching a native 'input' event
-    // after the browser has applied the pasted text.
     const input = e.currentTarget;
+    // setTimeout(0) ensures the browser has written the pasted text to input.value
     setTimeout(() => {
-      const ie = typeof InputEvent !== 'undefined'
-        ? new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' })
-        : new Event('input', { bubbles: true });
-      input.dispatchEvent(ie);
+      if (onChangeProp) {
+        onChangeProp({ target: input } as React.ChangeEvent<HTMLInputElement>);
+      }
     }, 0);
-  }, [onPasteProp]);
+  }, [onPasteProp, onChangeProp]);
 
   return (
     <div
@@ -72,6 +74,7 @@ export const ApiKeyField = React.forwardRef<HTMLInputElement, ApiKeyFieldProps>(
           inputClassName
         )}
         onPaste={handlePaste}
+        onChange={onChangeProp}
         {...props}
       />
       {extraActions}
