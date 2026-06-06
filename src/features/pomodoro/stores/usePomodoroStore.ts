@@ -208,7 +208,7 @@ export const usePomodoroStore = create<PomodoroState>()(
         completedPomodorosToday: state.completedPomodorosToday,
         lastActiveDate: state.lastActiveDate,
       }),
-      storage: createThrottledStorage(),
+      storage: createThrottledStorage() as any,
     }
   )
 );

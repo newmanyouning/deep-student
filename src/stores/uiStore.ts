@@ -18,7 +18,7 @@ export const useUIStore = create<UIState>()(
     {
       name: 'dstu-ui-store',
       partialize: (state) => ({ leftPanelCollapsed: state.leftPanelCollapsed }),
-      storage: createThrottledStorage(),
+      storage: createThrottledStorage() as any,
     }
   )
 );
