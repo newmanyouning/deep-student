@@ -1057,6 +1057,19 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   // 文本层/批注层渲染范围
   const textLayerRange = pdfSettings.textLayerRange;
   const annotationLayerRange = pdfSettings.annotationLayerRange;
+
+  // ★ 页面加载占位符（显示骨架屏，避免快速滚动时出现空白）
+  const pageLoadingPlaceholder = useMemo(() => (
+    <div
+      className="ds-pdf__page-loading-placeholder"
+      style={{
+        width: pageWidth,
+        height: pageWidth * 1.414,
+      }}
+    >
+      <div className="ds-pdf__loading-spinner" />
+    </div>
+  ), [pageWidth]);
   
   // 阅读进度百分比
   const readingProgress = numPages > 0 ? Math.round((currentPage / numPages) * 100) : 0;
@@ -1216,6 +1229,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
           renderAnnotationLayer={enableAnnotationLayer}
           rotate={0}
           devicePixelRatio={renderDpr}
+          loading={pageLoadingPlaceholder}
         />
 
         {/* 高亮覆盖层 — 坐标已归一化到 scale=1，渲染时乘以当前 scale */}
@@ -1268,6 +1282,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
     getPageHighlights,
     handleTogglePageSelect,
     maxSelections,
+    pageLoadingPlaceholder,
     pageWidth,
     renderDpr,
     rotation,

@@ -17,7 +17,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { File as FileIcon, FileText, FileZip, FileXls, CircleNotch, ArrowClockwise, Download } from '@phosphor-icons/react';
+import { File as FileIcon, FileText, FileZip, FileXls, CircleNotch, ArrowClockwise, Download, Scan } from '@phosphor-icons/react';
 import { NotionButton } from '@/components/ui/NotionButton';
 import type { ContentViewProps } from '../UnifiedAppPanel';
 import { invoke } from '@tauri-apps/api/core';
@@ -29,6 +29,7 @@ import { base64ToBlob, base64ToUint8Array, estimateBase64Size, LARGE_FILE_THRESH
 import { getErrorMessage } from '@/utils/errorUtils';
 import { fileManager } from '@/utils/fileManager';
 import { showGlobalNotification } from '@/components/UnifiedNotification';
+import { usePdfProcessingStore } from '@/features/pdf/stores/pdfProcessingStore';
 
 // PDF 预览组件
 import { TextbookPdfViewer } from '@/features/pdf/components/TextbookPdfViewer';
@@ -151,6 +152,12 @@ const FileContentViewInner: React.FC<ContentViewProps> = ({
     nodePath: node.path,
     nodeName: node.name,
   });
+
+  // ★ OCR 处理状态：从全局 store 读取当前文件的 OCR 进度
+  const ocrStatus = usePdfProcessingStore((s) => s.statusMap.get(node.id));
+  const isOcrProcessing = ocrStatus?.stage === 'ocr_processing' || ocrStatus?.stage === 'page_compression' || ocrStatus?.stage === 'page_rendering';
+  const isOcrCompleted = ocrStatus?.stage === 'completed' || ocrStatus?.stage === 'completed_with_issues';
+  const ocrReady = ocrStatus?.readyModes?.includes('ocr');
 
   // 处理页面选择变化 + 广播给 Chat InputBar
   const handlePageSelectionChange = useCallback((pages: Set<number>) => {
@@ -460,18 +467,44 @@ const FileContentViewInner: React.FC<ContentViewProps> = ({
       }
       if (pdfFile) {
         return (
-          <TextbookPdfViewer
-            file={pdfFile}
-            filePath=""
-            fileName={node.name}
-            selectedPages={selectedPages}
-            onPageSelectionChange={handlePageSelectionChange}
-            onExportSelectedPages={noopExportPages}
-            enableAutoPrepare={false}
-            focusRequest={focusRequest}
-            onFocusHandled={handleFocusHandled}
-            resourcePath={node.path}
-          />
+          <div className="flex flex-col h-full">
+            {/* OCR 进度横幅 */}
+            {isPdf && isOcrProcessing && (
+              <div className="flex items-center gap-2 px-4 py-1.5 text-xs bg-blue-50 dark:bg-blue-950 border-b border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300">
+                <Scan size={14} className="animate-pulse" />
+                <span>
+                  {t('learningHub:file.ocrProcessing', 'OCR 识别中...')}
+                  {ocrStatus?.currentPage !== undefined && ocrStatus?.totalPages !== undefined && (
+                    <span className="ml-1 opacity-75">
+                      {ocrStatus.currentPage}/{ocrStatus.totalPages} {t('learningHub:file.pages', '页')}
+                      {' '}({Math.round(ocrStatus.percent)}%)
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+            {/* OCR 完成横幅（短暂显示后自动消失） */}
+            {isPdf && isOcrCompleted && ocrReady && (
+              <div className="flex items-center gap-2 px-4 py-1.5 text-xs bg-green-50 dark:bg-green-950 border-b border-green-200 dark:border-green-800 text-green-700 dark:text-green-300">
+                <Scan size={14} />
+                <span>{t('learningHub:file.ocrCompleted', 'OCR 识别完成，内容已可搜索')}</span>
+              </div>
+            )}
+            <div className="flex-1 min-h-0">
+              <TextbookPdfViewer
+                file={pdfFile}
+                filePath=""
+                fileName={node.name}
+                selectedPages={selectedPages}
+                onPageSelectionChange={handlePageSelectionChange}
+                onExportSelectedPages={noopExportPages}
+                enableAutoPrepare={false}
+                focusRequest={focusRequest}
+                onFocusHandled={handleFocusHandled}
+                resourcePath={node.path}
+              />
+            </div>
+          </div>
         );
       }
       // 正在等待加载

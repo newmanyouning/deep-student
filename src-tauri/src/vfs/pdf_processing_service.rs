@@ -1866,7 +1866,7 @@ impl PdfProcessingService {
             .map_err(|e| VfsError::Serialization(format!("Failed to parse preview_json: {}", e)))?;
 
         let conn = self.db.get_conn_safe()?;
-        let blobs_dir = self.db.blobs_dir();
+        let blobs_dir = self.db.blobs_dir().to_path_buf();
         let app_handle = self.get_app_handle().await;
         let has_text: bool = conn
             .query_row(
@@ -1880,133 +1880,191 @@ impl PdfProcessingService {
         if has_text {
             ready_modes.push("text".to_string());
         }
+        drop(conn); // Release connection before concurrent processing
 
-        let mut compressed_count = 0usize;
-        let mut skipped_count = 0usize;
+        // Collect pages that need compression
+        let pages_to_compress: Vec<(usize, crate::vfs::types::PdfPagePreview)> = preview
+            .pages
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| p.compressed_blob_hash.is_none())
+            .map(|(i, p)| (i, p.clone()))
+            .collect();
 
-        for (index, page) in preview.pages.iter_mut().enumerate() {
-            if cancel_token.is_cancelled() {
-                info!(
-                    "[PdfProcessingService] Page compression cancelled at page {}/{}",
-                    index, total_pages
-                );
-                break;
-            }
+        let already_compressed = preview.pages.len() - pages_to_compress.len();
+        if pages_to_compress.is_empty() {
+            info!(
+                "[PdfProcessingService] All {} pages already have compressed versions for file: {}",
+                preview.pages.len(), file_id
+            );
+            return Ok(());
+        }
 
-            // 跳过已经有压缩版本的页面
-            if page.compressed_blob_hash.is_some() {
-                skipped_count += 1;
-                continue;
-            }
+        info!(
+            "[PdfProcessingService] Starting concurrent page compression for file {}: {} pages to compress, {} already done",
+            file_id, pages_to_compress.len(), already_compressed
+        );
 
-            // 获取原始页面图片
-            let blob_path =
-                match VfsBlobRepo::get_blob_path_with_conn(&conn, blobs_dir, &page.blob_hash)? {
-                    Some(path) => path,
-                    None => {
-                        warn!(
-                            "[PdfProcessingService] Blob not found for page {}: {}",
-                            index, page.blob_hash
-                        );
-                        continue;
+        // Concurrent compression with semaphore
+        let semaphore = Arc::new(tokio::sync::Semaphore::new(MAX_OCR_CONCURRENCY));
+        let compressed_count = Arc::new(AtomicUsize::new(already_compressed));
+        let skipped_count = Arc::new(AtomicUsize::new(0));
+        // Store results: (page_index, compressed_blob_hash)
+        let page_results: Arc<Mutex<Vec<(usize, Option<String>)>>> = Arc::new(Mutex::new(Vec::new()));
+        let db = self.db.clone();
+        let file_manager = self.file_manager.clone();
+        let file_id_owned = file_id.to_string();
+        let service = self;
+
+        let tasks: Vec<_> = pages_to_compress
+            .iter()
+            .map(|(index, page)| {
+                let page_index = *index;
+                let blob_hash = page.blob_hash.clone();
+                let blobs_dir = blobs_dir.clone();
+                let semaphore = semaphore.clone();
+                let compressed_count = compressed_count.clone();
+                let skipped_count = skipped_count.clone();
+                let page_results = page_results.clone();
+                let cancel_token = cancel_token.clone();
+                let db = db.clone();
+                let file_manager = file_manager.clone();
+                let file_id = file_id_owned.clone();
+                let ready_modes_for_task = ready_modes.clone();
+                let service = service;
+                let generation_for_task = generation;
+                let total_pages = total_pages;
+                let app_handle = app_handle.clone();
+
+                async move {
+                    let _permit = match semaphore.acquire().await {
+                        Ok(p) => p,
+                        Err(e) => {
+                            warn!("[PdfProcessingService] Compression semaphore error: {}", e);
+                            return;
+                        }
+                    };
+
+                    if cancel_token.is_cancelled() {
+                        return;
                     }
-                };
 
-            // 读取原始图片
-            let image_data = match tokio::fs::read(&blob_path).await {
-                Ok(data) => data,
-                Err(e) => {
-                    warn!(
-                        "[PdfProcessingService] Failed to read page {} blob: {}",
-                        index, e
-                    );
-                    continue;
+                    // Get own DB connection
+                    let conn = match db.get_conn_safe() {
+                        Ok(c) => c,
+                        Err(e) => {
+                            warn!("[PdfProcessingService] Failed to get connection for page {}: {}", page_index, e);
+                            return;
+                        }
+                    };
+
+                    // Get blob path
+                    let blob_path = match VfsBlobRepo::get_blob_path_with_conn(&conn, &blobs_dir, &blob_hash) {
+                        Ok(Some(path)) => path,
+                        Ok(None) => {
+                            warn!("[PdfProcessingService] Blob not found for page {}: {}", page_index, blob_hash);
+                            return;
+                        }
+                        Err(e) => {
+                            warn!("[PdfProcessingService] Blob lookup error for page {}: {}", page_index, e);
+                            return;
+                        }
+                    };
+
+                    // Read image data
+                    let image_data = match tokio::fs::read(&blob_path).await {
+                        Ok(data) => data,
+                        Err(e) => {
+                            warn!("[PdfProcessingService] Failed to read page {} blob: {}", page_index, e);
+                            return;
+                        }
+                    };
+
+                    let base64_data = base64::engine::general_purpose::STANDARD.encode(&image_data);
+                    let original_size = base64_data.len();
+                    let compressed_base64 = file_manager.adjust_image_quality_base64(&base64_data, "low");
+                    let compressed_size = compressed_base64.len();
+
+                    let result_hash = if compressed_size >= original_size * 9 / 10 {
+                        // Compression not effective, use original hash
+                        skipped_count.fetch_add(1, Ordering::SeqCst);
+                        debug!("[PdfProcessingService] Page {} compression not effective, using original", page_index);
+                        Some(blob_hash.clone())
+                    } else {
+                        // Store compressed blob
+                        let compressed_data = match base64::engine::general_purpose::STANDARD.decode(&compressed_base64) {
+                            Ok(d) => d,
+                            Err(e) => {
+                                warn!("[PdfProcessingService] Failed to decode compressed page {}: {}", page_index, e);
+                                return;
+                            }
+                        };
+
+                        let mut hasher = Sha256::new();
+                        hasher.update(&compressed_data);
+                        let compressed_hash = format!("{:x}", hasher.finalize());
+
+                        if VfsBlobRepo::get_blob_path_with_conn(&conn, &blobs_dir, &compressed_hash)
+                            .ok()
+                            .flatten()
+                            .is_none()
+                        {
+                            if let Err(e) = VfsBlobRepo::store_blob_with_conn(
+                                &conn, &blobs_dir, &compressed_data,
+                                Some("image/jpeg"), Some("jpg"),
+                            ) {
+                                warn!("[PdfProcessingService] Failed to store compressed blob for page {}: {}", page_index, e);
+                                return;
+                            }
+                        }
+
+                        debug!(
+                            "[PdfProcessingService] Page {} compressed: {} -> {} bytes ({:.1}% reduction)",
+                            page_index, original_size, compressed_size,
+                            (1.0 - compressed_size as f64 / original_size as f64) * 100.0
+                        );
+                        Some(compressed_hash)
+                    };
+
+                    let completed = compressed_count.fetch_add(1, Ordering::SeqCst) + 1;
+                    page_results.lock().await.push((page_index, result_hash));
+
+                    // Emit progress
+                    if app_handle.is_some() {
+                        let progress_percent = if total_pages == 0 {
+                            5.0
+                        } else {
+                            5.0 + (completed as f32 / total_pages as f32) * 15.0
+                        };
+                        let progress = ProcessingProgress {
+                            stage: "page_compression".to_string(),
+                            current_page: Some(completed),
+                            total_pages: Some(total_pages),
+                            percent: progress_percent,
+                            ready_modes: ready_modes_for_task.clone(),
+                            media_type: Some("pdf".to_string()),
+                            failed_stages: None,
+                        };
+                        service.emit_progress(&file_id, progress, MediaType::Pdf, Some(generation_for_task)).await;
+                    }
                 }
-            };
+            })
+            .collect();
 
-            let base64_data = base64::engine::general_purpose::STANDARD.encode(&image_data);
-            let original_size = base64_data.len();
+        stream::iter(tasks)
+            .for_each_concurrent(MAX_OCR_CONCURRENCY, |task| task)
+            .await;
 
-            // 使用 low 质量进行压缩
-            let compressed_base64 = self
-                .file_manager
-                .adjust_image_quality_base64(&base64_data, "low");
-
-            let compressed_size = compressed_base64.len();
-
-            // 检查压缩效果
-            if compressed_size >= original_size * 9 / 10 {
-                // 压缩效果不明显，使用原始 hash
-                page.compressed_blob_hash = Some(page.blob_hash.clone());
-                skipped_count += 1;
-                debug!(
-                    "[PdfProcessingService] Page {} compression not effective, using original",
-                    index
-                );
-            } else {
-                // 解码并存储压缩后的图片
-                let compressed_data = base64::engine::general_purpose::STANDARD
-                    .decode(&compressed_base64)
-                    .map_err(|e| {
-                        VfsError::Other(format!(
-                            "Failed to decode compressed page {}: {}",
-                            index, e
-                        ))
-                    })?;
-
-                // 计算压缩后的哈希
-                let mut hasher = Sha256::new();
-                hasher.update(&compressed_data);
-                let compressed_hash = format!("{:x}", hasher.finalize());
-
-                // 存储压缩后的 blob（如果不存在）
-                if VfsBlobRepo::get_blob_path_with_conn(&conn, blobs_dir, &compressed_hash)?
-                    .is_none()
-                {
-                    VfsBlobRepo::store_blob_with_conn(
-                        &conn,
-                        blobs_dir,
-                        &compressed_data,
-                        Some("image/jpeg"),
-                        Some("jpg"),
-                    )?;
-                }
-
-                page.compressed_blob_hash = Some(compressed_hash.clone());
-                compressed_count += 1;
-
-                debug!(
-                    "[PdfProcessingService] Page {} compressed: {} -> {} bytes ({:.1}% reduction)",
-                    index,
-                    original_size,
-                    compressed_size,
-                    (1.0 - compressed_size as f64 / original_size as f64) * 100.0
-                );
-            }
-
-            // 发送进度事件（统一事件）
-            // ★ P1-1 修复：压缩范围 5%-20%
-            if app_handle.is_some() {
-                let progress_percent = if total_pages == 0 {
-                    5.0
-                } else {
-                    5.0 + (index as f32 / total_pages as f32) * 15.0
-                };
-                let progress = ProcessingProgress {
-                    stage: "page_compression".to_string(),
-                    current_page: Some(index + 1),
-                    total_pages: Some(total_pages),
-                    percent: progress_percent, // 5% - 20%
-                    ready_modes: ready_modes.clone(),
-                    media_type: Some("pdf".to_string()),
-                    failed_stages: None,
-                };
-                self.emit_progress(file_id, progress, MediaType::Pdf, Some(generation))
-                    .await;
+        // Apply results back to preview
+        let results = page_results.lock().await;
+        for (page_index, compressed_hash) in results.iter() {
+            if let Some(page) = preview.pages.get_mut(*page_index) {
+                page.compressed_blob_hash = compressed_hash.clone();
             }
         }
 
-        // 更新 preview_json
+        // Update preview_json in DB
+        let conn = self.db.get_conn_safe()?;
         let updated_preview_json = serde_json::to_string(&preview)
             .map_err(|e| VfsError::Other(format!("Failed to serialize preview_json: {}", e)))?;
 
@@ -2016,8 +2074,8 @@ impl PdfProcessingService {
         )?;
 
         info!(
-            "[PdfProcessingService] Page compression completed for file {}: {} compressed, {} skipped",
-            file_id, compressed_count, skipped_count
+            "[PdfProcessingService] Page compression completed for file {}: {} total pages processed",
+            file_id, preview.pages.len()
         );
 
         Ok(())
@@ -2540,21 +2598,80 @@ impl PdfProcessingService {
             rows.filter_map(log_and_skip_err).collect()
         };
 
-        if stuck_entries.is_empty() {
-            debug!("[MediaProcessingService] No stuck tasks found at startup");
+        // ★ Checkpoint recovery: 查找有 OCR 检查点但未完成的文件
+        // 这些文件的 processing_status 可能是 pending（之前被恢复过），
+        // 但 ocr_pages_json 中有部分结果（completed_at 为空表示进行中）
+        let incomplete_ocr_ids: Vec<String> = {
+            let mut stmt = conn
+                .prepare(
+                    r#"SELECT id FROM files
+                   WHERE ocr_pages_json IS NOT NULL
+                     AND ocr_pages_json != '{}'
+                     AND ocr_pages_json != ''
+                     AND processing_status = 'pending'
+                     AND preview_json IS NOT NULL
+                     AND preview_json != '{}'"#,
+                )
+                .map_err(|e| VfsError::Database(format!("Failed to prepare incomplete OCR query: {}", e)))?;
+
+            let rows = stmt
+                .query_map([], |row| {
+                    let id: String = row.get(0)?;
+                    Ok(id)
+                })
+                .map_err(|e| VfsError::Database(format!("Failed to query incomplete OCR: {}", e)))?;
+
+            let ids: Vec<String> = rows.filter_map(log_and_skip_err).collect();
+
+            // 进一步过滤：只保留 completed_at 为空的（真正未完成的检查点）
+            let mut incomplete = Vec::new();
+            for id in &ids {
+                let completed: Option<String> = conn
+                    .query_row(
+                        "SELECT json_extract(ocr_pages_json, '$.completedAt') FROM files WHERE id = ?1",
+                        params![id],
+                        |row| row.get(0),
+                    )
+                    .ok()
+                    .flatten();
+
+                // completed_at 为空或不存在 → 检查点未完成，需要恢复
+                if completed.is_none() || completed.as_deref() == Some("") {
+                    incomplete.push(id.clone());
+                }
+            }
+            incomplete
+        };
+
+        if !incomplete_ocr_ids.is_empty() {
+            info!(
+                "[MediaProcessingService] Found {} files with incomplete OCR checkpoints to resume",
+                incomplete_ocr_ids.len()
+            );
+        }
+
+        if stuck_entries.is_empty() && incomplete_ocr_ids.is_empty() {
+            debug!("[MediaProcessingService] No stuck tasks or incomplete checkpoints found at startup");
             return Ok((0, Vec::new()));
         }
 
         let count = stuck_entries.len();
         // 筛选 OCR 相关阶段（page_rendering 和 ocr_processing）—— 这些是恢复后值得自动重启的
-        let ocr_relevant_ids: Vec<String> = stuck_entries
+        let mut ocr_relevant_ids: Vec<String> = stuck_entries
             .iter()
             .filter(|(_, status)| status == "page_rendering" || status == "ocr_processing")
             .map(|(id, _)| id.clone())
             .collect();
 
+        // 合并不完整检查点的文件 ID（去重）
+        for id in incomplete_ocr_ids {
+            if !ocr_relevant_ids.contains(&id) {
+                ocr_relevant_ids.push(id);
+            }
+        }
+
         info!(
-            "[MediaProcessingService] Found {} stuck tasks at startup ({} OCR-relevant), resetting to pending",
+            "[MediaProcessingService] Found {} stuck tasks at startup ({} OCR-relevant including checkpoint resumes), resetting to pending",
             count,
             ocr_relevant_ids.len(),
         );
@@ -2579,7 +2696,7 @@ impl PdfProcessingService {
             }
         }
 
-        Ok((count, ocr_relevant_ids))
+        Ok((count + incomplete_ocr_ids.len(), ocr_relevant_ids))
     }
 
     /// 自动恢复因应用重启而中断的 OCR 流水线。
@@ -3111,21 +3228,75 @@ impl PdfProcessingService {
             config.model, preview_page_count
         );
 
-        // 4. 并发处理 OCR
-        let completed_counter = Arc::new(AtomicUsize::new(0));
+        // ★ Checkpoint/Resume: 加载已完成的 OCR 结果，跳过已处理的页面
+        let existing_results: Vec<OcrPageResult> = self
+            .load_existing_ocr_results(file_id)
+            .unwrap_or_default();
+        let already_processed: std::collections::HashSet<usize> = existing_results
+            .iter()
+            .map(|r| r.page_index)
+            .collect();
+
+        let previously_completed = already_processed.len();
+        if previously_completed > 0 {
+            info!(
+                "[PdfProcessingService] Resuming OCR for file {}: {} pages already completed, {} remaining",
+                file_id, previously_completed, preview_page_count.saturating_sub(previously_completed)
+            );
+        }
+
+        // Filter out already-processed pages
+        let pending_pages: Vec<_> = preview
+            .pages
+            .iter()
+            .filter(|p| !already_processed.contains(&p.page_index))
+            .collect();
+
+        let pending_count = pending_pages.len();
+        if pending_count == 0 {
+            info!(
+                "[PdfProcessingService] All {} pages already have OCR results for file: {}",
+                preview_page_count, file_id
+            );
+            // Build final result from existing data
+            let ocr_json = OcrPagesJson {
+                total_pages: preview_page_count,
+                pages: existing_results,
+                completed_at: chrono::Utc::now().to_rfc3339(),
+            };
+            let ocr_json_str = serde_json::to_string(&ocr_json).map_err(|e| {
+                VfsError::Serialization(format!("Failed to serialize OCR result: {}", e))
+            })?;
+            self.update_file_ocr(file_id, &ocr_json_str, true).await?;
+            if !ready_modes.contains(&"ocr".to_string()) {
+                ready_modes.push("ocr".to_string());
+            }
+            return Ok(ocr_json_str);
+        }
+
+        // 4. 并发处理 OCR（仅处理未完成的页面）
+        let completed_counter = Arc::new(AtomicUsize::new(previously_completed));
         let failed_pages = Arc::new(Mutex::new(Vec::<(usize, String)>::new()));
-        let all_results = Arc::new(Mutex::new(Vec::<OcrPageResult>::new()));
+        // Pre-populate with existing results
+        let all_results = Arc::new(Mutex::new(existing_results));
+        // ★ Checkpoint mutex: 序列化增量保存，避免并发写入覆盖
+        let checkpoint_mutex = Arc::new(Mutex::new(()));
         let semaphore = Arc::new(tokio::sync::Semaphore::new(MAX_OCR_CONCURRENCY));
 
         // 发送初始进度
         // ★ P1-1 修复：OCR 范围 20%-75%
+        let initial_percent = if previously_completed > 0 {
+            20.0 + (previously_completed as f64 / preview_page_count as f64) * 55.0
+        } else {
+            20.0
+        };
         self.emit_progress(
             file_id,
             ProcessingProgress {
                 stage: "ocr_processing".to_string(),
-                current_page: Some(0),
+                current_page: Some(previously_completed),
                 total_pages: Some(total_pages),
-                percent: 20.0,
+                percent: initial_percent as f32,
                 ready_modes: ready_modes.clone(),
                 media_type: Some("pdf".to_string()),
                 failed_stages: None,
@@ -3135,18 +3306,16 @@ impl PdfProcessingService {
         )
         .await;
 
-        // 5. 使用 futures::stream 并发处理每一页
+        // 5. 使用 futures::stream 并发处理每一页（仅未完成的）
         let db = self.db.clone();
         let llm_manager = self.llm_manager.clone();
         let file_id_owned = file_id.to_string();
         let ready_modes_clone = ready_modes.clone();
         let service = self;
 
-        let tasks: Vec<_> = preview
-            .pages
+        let tasks: Vec<_> = pending_pages
             .iter()
-            .enumerate()
-            .map(|(_, page)| {
+            .map(|page| {
                 let page_index = page.page_index;
                 let blob_hash = page.blob_hash.clone();
                 let blobs_dir = blobs_dir.clone();
@@ -3162,6 +3331,8 @@ impl PdfProcessingService {
                 let ready_modes_for_task = ready_modes_clone.clone();
                 let service = service;
                 let generation_for_task = generation;
+                let checkpoint_mutex = checkpoint_mutex.clone();
+                let preview_page_count = preview_page_count;
 
                 async move {
                     // ★ P0 修复：正确处理信号量获取错误，避免 panic
@@ -3224,7 +3395,32 @@ impl PdfProcessingService {
                                 blocks,
                             });
 
-                            // 发送进度更新（50% - 90% 之间，基于 OCR 完成比例）
+                            // ★ Checkpoint: 每完成一页，立即持久化到数据库（断点恢复）
+                            {
+                                let _checkpoint_guard = checkpoint_mutex.lock().await;
+                                let current_results = all_results.lock().await.clone();
+                                let checkpoint_json = OcrPagesJson {
+                                    total_pages: preview_page_count,
+                                    pages: current_results,
+                                    // 未完成时使用空字符串标记为进行中
+                                    completed_at: String::new(),
+                                };
+                                if let Ok(json_str) = serde_json::to_string(&checkpoint_json) {
+                                    // 使用非阻塞方式保存检查点（忽略错误，不中断处理）
+                                    if let Ok(conn) = db.get_conn_safe() {
+                                        let _ = conn.execute(
+                                            "UPDATE files SET ocr_pages_json = ?1, updated_at = datetime('now') WHERE id = ?2",
+                                            rusqlite::params![json_str, file_id],
+                                        );
+                                        debug!(
+                                            "[PdfProcessingService] Checkpoint saved: page {}/{} of file {}",
+                                            completed, preview_page_count, file_id
+                                        );
+                                    }
+                                }
+                            }
+
+                            // 发送进度更新
                             // ★ P1-1 修复：OCR 进度范围 20%-75%，保证单调递增
                             let ocr_progress = 20.0 + (completed as f64 / preview_page_count as f64) * 55.0;
                             let progress = ProcessingProgress {
@@ -3281,7 +3477,7 @@ impl PdfProcessingService {
         // 按页码排序
         results.sort_by_key(|r| r.page_index);
 
-        // 7. 构建 ocr_pages_json
+        // 7. 构建 ocr_pages_json（标记为已完成）
         let ocr_json = OcrPagesJson {
             total_pages: preview_page_count,
             pages: results.clone(),
@@ -3323,6 +3519,40 @@ impl PdfProcessingService {
         }
 
         Ok(ocr_json_str)
+    }
+
+    /// 从数据库加载已有的 OCR 结果（用于断点恢复）
+    fn load_existing_ocr_results(&self, file_id: &str) -> Option<Vec<OcrPageResult>> {
+        let conn = self.db.get_conn_safe().ok()?;
+        let ocr_json_str: Option<String> = conn
+            .query_row(
+                "SELECT ocr_pages_json FROM files WHERE id = ?1",
+                rusqlite::params![file_id],
+                |row| row.get(0),
+            )
+            .ok()?;
+
+        let json_str = ocr_json_str?;
+        if json_str.is_empty() || json_str == "{}" {
+            return Some(Vec::new());
+        }
+
+        match serde_json::from_str::<OcrPagesJson>(&json_str) {
+            Ok(ocr_json) => {
+                info!(
+                    "[PdfProcessingService] Loaded {} existing OCR results for file: {}",
+                    ocr_json.pages.len(), file_id
+                );
+                Some(ocr_json.pages)
+            }
+            Err(e) => {
+                warn!(
+                    "[PdfProcessingService] Failed to parse existing OCR results for file {}: {}",
+                    file_id, e
+                );
+                Some(Vec::new())
+            }
+        }
     }
 
     /// 调用 OCR API（带重试机制）

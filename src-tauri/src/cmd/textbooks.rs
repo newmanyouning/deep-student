@@ -1351,15 +1351,41 @@ pub async fn vfs_ensure_ocr_pipeline(
         .map_err(|e| AppError::database(format!("查询文件失败: {}", e)))?
         .ok_or_else(|| AppError::not_found(format!("文件不存在: {}", file_id)))?;
 
-    // 2. 检查 OCR 是否已完成
-    if file.ocr_pages_json.is_some() {
-        return Ok(VfsEnsureOcrPipelineResponse {
-            status: "ocr_completed".to_string(),
-            message: Some("OCR 已完成".to_string()),
-        });
+    // 2. 检查 OCR 是否已完成（解析检查点，区分部分完成和全部完成）
+    if let Some(ref ocr_json_str) = file.ocr_pages_json {
+        if !ocr_json_str.is_empty() && ocr_json_str != "{}" {
+            // 尝试解析 completed_at 字段判断是否真正完成
+            let is_completed = serde_json::from_str::<serde_json::Value>(ocr_json_str)
+                .ok()
+                .and_then(|v| v.get("completedAt").cloned())
+                .and_then(|v| v.as_str().map(|s| !s.is_empty()))
+                .unwrap_or(false);
+
+            if is_completed {
+                return Ok(VfsEnsureOcrPipelineResponse {
+                    status: "ocr_completed".to_string(),
+                    message: Some("OCR 已完成".to_string()),
+                });
+            }
+
+            // OCR 检查点存在但未完成 → 恢复处理
+            info!(
+                "[Textbooks] Found incomplete OCR checkpoint for file {}, resuming pipeline",
+                file_id
+            );
+            pdf_processing_service
+                .start_pipeline(&file_id, Some(ProcessingStage::OcrProcessing))
+                .await
+                .map_err(|e| AppError::database(format!("启动 OCR 流水线失败: {}", e)))?;
+
+            return Ok(VfsEnsureOcrPipelineResponse {
+                status: "ocr_resumed".to_string(),
+                message: Some("OCR 流水线已恢复（从检查点继续）".to_string()),
+            });
+        }
     }
 
-    // 3. 检查是否为扫描版（提取文本过少）
+    // 3. 检查是否为扫描版（提取文本过少）或没有 preview_json
     let is_scanned = match (&file.extracted_text, file.page_count) {
         (Some(text), Some(pages)) if pages > 0 => {
             let per_page = text.len() as f64 / pages as f64;
@@ -1369,7 +1395,11 @@ pub async fn vfs_ensure_ocr_pipeline(
         _ => false,
     };
 
-    if is_scanned {
+    // ★ 增强：即使文本足够，如果 preview_json 存在但没有 OCR，也检查 OCR 设置
+    let has_preview = file.preview_json.as_ref().map(|p| !p.is_empty() && p != "{}").unwrap_or(false);
+    let ocr_wanted = is_scanned || (has_preview && file.ocr_pages_json.is_none());
+
+    if ocr_wanted {
         // 触发 OCR 流水线
         pdf_processing_service
             .start_pipeline(&file_id, Some(ProcessingStage::OcrProcessing))
@@ -1377,8 +1407,8 @@ pub async fn vfs_ensure_ocr_pipeline(
             .map_err(|e| AppError::database(format!("启动 OCR 流水线失败: {}", e)))?;
 
         info!(
-            "[Textbooks] OCR pipeline started for scanned file: {} (file: {})",
-            file.file_name, file_id
+            "[Textbooks] OCR pipeline started for file: {} (scanned={}, has_preview={}, file: {})",
+            is_scanned, has_preview, file_id
         );
 
         Ok(VfsEnsureOcrPipelineResponse {
