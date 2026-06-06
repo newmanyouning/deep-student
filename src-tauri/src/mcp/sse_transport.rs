@@ -286,8 +286,9 @@ impl SSETransport {
                 }
             }
 
-            connected.store(false, Ordering::SeqCst);
-            warn!("SSE receive task terminated");
+            // Note: the outer loop never exits; the task runs until it is cancelled.
+            // connected.store(false, ...) is intentionally omitted here because
+            // cancellation triggers Drop, which handles cleanup.
         });
 
         // 等待连接建立（使用可配置超时，默认与请求超时一致）
