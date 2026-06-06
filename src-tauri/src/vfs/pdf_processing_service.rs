@@ -1020,6 +1020,7 @@ impl PdfProcessingService {
 
                     match pdf_bytes {
                         Some(bytes) => {
+                            let bytes_len = bytes.len(); // snapshot before bytes is moved into spawn_blocking
                             let config = PdfPreviewConfig::default();
                             let blobs_dir = self.db.blobs_dir().to_path_buf();
                             let db_clone = self.db.clone();
@@ -1077,7 +1078,7 @@ impl PdfProcessingService {
 
                                         info!(
                                             "[PdfProcessingService] Dynamic preview generated and cached for file: {} ({} pages, {} bytes PDF)",
-                                            file_id, result.page_count, bytes.len()
+                                            file_id, result.page_count, bytes_len
                                         );
 
                                         Some(pj_str)
