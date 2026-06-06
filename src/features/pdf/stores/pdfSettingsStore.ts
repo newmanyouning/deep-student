@@ -155,7 +155,7 @@ export const usePdfSettingsStore = create<PdfSettingsStore>()(
         name: 'pdf-settings',
         version: 1,
         partialize: (state) => ({ settings: state.settings }),
-        storage: createThrottledStorage(),
+        storage: createThrottledStorage() as any,
       }
     )
   )
