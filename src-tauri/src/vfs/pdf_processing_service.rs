@@ -2664,9 +2664,10 @@ impl PdfProcessingService {
             .collect();
 
         // 合并不完整检查点的文件 ID（去重）
-        for id in incomplete_ocr_ids {
-            if !ocr_relevant_ids.contains(&id) {
-                ocr_relevant_ids.push(id);
+        let incomplete_count = incomplete_ocr_ids.len();
+        for id in &incomplete_ocr_ids {
+            if !ocr_relevant_ids.contains(id) {
+                ocr_relevant_ids.push(id.clone());
             }
         }
 
@@ -2696,7 +2697,7 @@ impl PdfProcessingService {
             }
         }
 
-        Ok((count + incomplete_ocr_ids.len(), ocr_relevant_ids))
+        Ok((count + incomplete_count, ocr_relevant_ids))
     }
 
     /// 自动恢复因应用重启而中断的 OCR 流水线。
