@@ -1,3 +1,15 @@
+/**
+ * ⚠️ DEPRECATED: graphApi.ts — 旧"统一"架构残留
+ *
+ * 本文件中的 19 个 unified_* / graph_* 命令对应的 Rust 后端实现已被移除。
+ * 所有 invoke() 调用会在运行时静默失败（错误被 .catch() 吞没）。
+ *
+ * 经诊断确认：本文件的函数无外部调用者，属于死代码。
+ * 如需清理，删除本文件并从 tauriApi.ts 移除 export。
+ *
+ * @deprecated 请使用 vfsRefApi.ts / dstu/api.ts 等新 API 替代
+ * @see docs/architecture/DIAGNOSTIC_REPORT.md C3
+ */
 import { invoke } from '@tauri-apps/api/core';
 import { getErrorMessage } from './errorUtils';
 import { normalizeHistoryForBackend } from './normalizeHistory';

@@ -911,6 +911,7 @@ pub fn run() {
             crate::commands::get_injection_budget_config,
             crate::commands::simulate_budget_allocation,
             crate::commands::test_search_engine,
+            crate::commands::test_web_search_connectivity,
             crate::commands::get_image_as_base64,
             crate::commands::get_api_configurations,
             crate::commands::save_api_configurations,

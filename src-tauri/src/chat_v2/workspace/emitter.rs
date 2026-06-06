@@ -14,7 +14,7 @@ pub mod workspace_events {
     pub const AGENT_LEFT: &str = "workspace_agent_left";
     pub const AGENT_STATUS_CHANGED: &str = "workspace_agent_status_changed";
     pub const DOCUMENT_UPDATED: &str = "workspace_document_updated";
-    pub const WORKSPACE_CLOSED: &str = "chat_v2_workspace_closed";
+    pub const WORKSPACE_CLOSED: &str = "workspace_closed";
     /// 🆕 主代理被唤醒事件（睡眠块被唤醒后发射，触发管线恢复）
     pub const COORDINATOR_AWAKENED: &str = "workspace_coordinator_awakened";
     /// 🆕 工作区警告事件（容量溢出、重试耗尽等）
