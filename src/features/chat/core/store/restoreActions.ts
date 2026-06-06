@@ -14,16 +14,30 @@ import i18n from 'i18next';
 import { showOperationLockNotification } from './createChatStore';
 
 // ============================================================================
-// 已弃用工具检测
+// 已弃用工具检测 — 模式匹配 + 精确列表
 // ============================================================================
 
 /**
- * 已知已弃用的工具名列表（旧工具重命名/移除后标记为此类型）
+ * 已知已弃用的工具名模式。
  *
- * 当软件更新后工具被重命名或移除，旧会话中包含这些工具名的块
- * 会在恢复时自动转换为 'deprecated_tool' 类型，保留历史数据但不再可执行。
+ * 当工具被重命名或移除后，旧会话中包含匹配这些模式的工具名的块
+ * 会在恢复时自动转换为 'deprecated_tool' 类型，保留完整历史数据。
+ *
+ * 策略：
+ * 1. 精确匹配已知弃用工具名
+ * 2. 前缀模式匹配（builtin-*, anki:*, legacy_*, cardforge_*）
+ * 3. 命名约定变更检测（任何以 builtin- 或废弃前缀开头的工具名）
+ *
+ * ★ 分段恢复：每个块独立处理，一个块的转换失败不影响其他块。
  */
-const DEPRECATED_TOOL_NAMES = new Set<string>([
+const DEPRECATED_TOOL_PATTERNS: ReadonlyArray<RegExp> = [
+  /^builtin[-:]/,
+  /^anki:/,
+  /^legacy_/,
+  /^cardforge_/,
+];
+
+const KNOWN_DEPRECATED_TOOL_NAMES: ReadonlySet<string> = new Set([
   // CardForge 2.0 => ChatAnki 3.0
   'builtin-anki_generate_cards',
   'builtin-anki_control_task',
@@ -41,16 +55,13 @@ const DEPRECATED_TOOL_NAMES = new Set<string>([
 ]);
 
 /**
- * 检测是否为已弃用的工具名
- * 支持前缀变体匹配
+ * 检测是否为已弃用的工具名。
+ * 支持精确匹配 + 前缀模式匹配，自动覆盖新工具重命名/移除场景。
  */
 function isDeprecatedToolName(toolName: string | undefined): boolean {
   if (!toolName) return false;
-  if (DEPRECATED_TOOL_NAMES.has(toolName)) return true;
-  // 匹配 anki_ 前缀的通用模式（所有旧 Anki 工具）
-  const stripped = toolName.replace(/^builtin[-:]/, '');
-  if (stripped.startsWith('anki_')) return true;
-  return false;
+  if (KNOWN_DEPRECATED_TOOL_NAMES.has(toolName)) return true;
+  return DEPRECATED_TOOL_PATTERNS.some(pattern => pattern.test(toolName));
 }
 
 const console = debugLog as Pick<typeof debugLog, 'log' | 'warn' | 'error' | 'info' | 'debug'>;
@@ -152,47 +163,71 @@ export function createRestoreActions(
             ms: tSortEnd - tSortStart,
           });
 
-          // 2. 转换块数据（先处理，后面可能需要添加从 sources 恢复的块）
+          // 2. 转换块数据（分段恢复：每个块独立处理，单个块失败不阻塞整个会话）
           const tBlockMapStart = performance.now();
           const blocksMap = new Map<string, Block>();
+          let skippedBlockCount = 0;
           for (const blk of blocks) {
-            // 🔧 已弃用工具检测：如果块类型为 mcp_tool 且工具名已被弃用，
-            // 自动转换为 deprecated_tool 类型，保留完整历史数据
-            const rawType = blk.type as BlockType;
-            const resolvedType: BlockType =
-              rawType === 'mcp_tool' && isDeprecatedToolName(blk.toolName)
-                ? 'deprecated_tool'
-                : rawType;
-            if (resolvedType !== rawType) {
-              console.log(
-                `[ChatStore] Converted deprecated tool block: id=${blk.id}, toolName=${blk.toolName}, type=${rawType} -> deprecated_tool`
+            try {
+              // 🔧 已弃用工具检测：如果块类型为 mcp_tool 且工具名匹配已弃用模式，
+              // 自动转换为 deprecated_tool 类型，保留完整历史数据
+              const rawType = blk.type as BlockType;
+              const resolvedType: BlockType =
+                rawType === 'mcp_tool' && isDeprecatedToolName(blk.toolName)
+                  ? 'deprecated_tool'
+                  : rawType;
+              if (resolvedType !== rawType) {
+                console.log(
+                  `[ChatStore] Converted deprecated tool block: id=${blk.id}, toolName=${blk.toolName}, type=${rawType} -> deprecated_tool`
+                );
+              }
+
+              const block: Block = {
+                id: blk.id,
+                messageId: blk.messageId,
+                type: resolvedType,
+                status: blk.status as BlockStatus,
+                content: blk.content,
+                toolName: blk.toolName,
+                toolInput: blk.toolInput as Record<string, unknown> | undefined,
+                toolOutput: blk.toolOutput,
+                citations: blk.citations,
+                error: blk.error,
+                startedAt: blk.startedAt,
+                endedAt: blk.endedAt,
+                // 🔧 P3修复：恢复 firstChunkAt 用于排序（保持思维链交替顺序）
+                firstChunkAt: blk.firstChunkAt,
+              };
+              blocksMap.set(blk.id, block);
+            } catch (blockError) {
+              // ★ 分段恢复：单个块转换失败时跳过该块，不阻塞整个会话
+              skippedBlockCount++;
+              console.warn(
+                `[ChatStore] Skipping incompatible block during restore: id=${blk.id}, type=${blk.type}, toolName=${blk.toolName}`,
+                blockError
               );
             }
-
-            const block: Block = {
-              id: blk.id,
-              messageId: blk.messageId,
-              type: resolvedType,
-              status: blk.status as BlockStatus,
-              content: blk.content,
-              toolName: blk.toolName,
-              toolInput: blk.toolInput as Record<string, unknown> | undefined,
-              toolOutput: blk.toolOutput,
-              citations: blk.citations,
-              error: blk.error,
-              startedAt: blk.startedAt,
-              endedAt: blk.endedAt,
-              // 🔧 P3修复：恢复 firstChunkAt 用于排序（保持思维链交替顺序）
-              firstChunkAt: blk.firstChunkAt,
-            };
-            blocksMap.set(blk.id, block);
           }
           const tBlockMapEnd = performance.now();
           sessionSwitchPerf.mark('set_data_end', {
             phase: 'build_blocks_map',
             ms: tBlockMapEnd - tBlockMapStart,
             blockCount: blocksMap.size,
+            skippedCount: skippedBlockCount,
           });
+
+          // ★ 通知用户不兼容的块已被跳过
+          if (skippedBlockCount > 0) {
+            setTimeout(() => {
+              showGlobalNotification(
+                'warning',
+                i18n.t('chatV2:blocks.skippedIncompatible', {
+                  count: skippedBlockCount,
+                  defaultValue: `${skippedBlockCount} 个不兼容的历史块已跳过`,
+                })
+              );
+            }, 1500);
+          }
 
           // 3. 转换消息数据
           // 注意：所有块（包括检索块、工具调用块等）现在都统一存储在 blocks 表中，

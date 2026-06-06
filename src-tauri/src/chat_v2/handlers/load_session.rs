@@ -45,15 +45,12 @@ pub async fn chat_v2_load_session(
         session_id
     );
 
-    // 验证会话 ID 格式
-    // 🔧 2026-01-20: 支持 agent_ 前缀的 Worker 会话 ID
-    // 🔧 2026-01-20: 支持 subagent_ 前缀的子代理会话 ID
-    if !session_id.starts_with("sess_")
-        && !session_id.starts_with("agent_")
-        && !session_id.starts_with("subagent_")
-    {
+    // 验证会话 ID 格式（宽松模式，兼容所有历史版本前缀）
+    // 🔧 2026-06: 放宽验证 — 历史会话可能使用不同的 ID 前缀（如旧版 chat_v2_*），
+    // 不应因 ID 格式不匹配而拒绝加载。只拒绝明显无效的空 ID 或纯空白。
+    if session_id.trim().is_empty() {
         return Err(
-            ChatV2Error::Validation(format!("Invalid session ID format: {}", session_id)).into(),
+            ChatV2Error::Validation(format!("Invalid session ID: empty or whitespace-only")).into(),
         );
     }
 
