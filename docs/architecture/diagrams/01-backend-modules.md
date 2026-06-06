@@ -1,13 +1,13 @@
-# Backend Module Architecture (Rust)
+# 后端模块架构（Rust）
 
-> This document describes the Rust backend module dependency graph and key struct/class diagrams.
-> All relationships are derived from actual `use` imports, module declarations, and struct definitions in `src-tauri/src/`.
+> 本文档描述 Rust 后端的模块依赖图和关键结构体/类图。
+> 所有关系均来自 `src-tauri/src/` 中实际的 `use` 导入、模块声明和结构体定义。
 
 ---
 
-## Module Dependency Graph
+## 模块依赖图
 
-The following flowchart shows the top-level Rust modules and their key dependency relationships. Arrows indicate `use` direction: `A --> B` means module A depends on module B.
+以下流程图展示顶层 Rust 模块及其关键依赖关系。箭头表示 `use` 方向：`A --> B` 表示模块 A 依赖模块 B。
 
 ```mermaid
 flowchart TD
@@ -207,19 +207,19 @@ flowchart TD
   class anki_connect_service,enhanced_anki_service,streaming_anki_service,paddleocr_api,deepseek_ocr_parser external
 ```
 
-### Module Counts (from `lib.rs`)
+### 模块数量（来自 `lib.rs`）
 
-- **Total declared modules**: ~93 (including feature-gated `data_governance` and `mcp`)
-- **Always compiled**: ~91
-- **Conditional**: `data_governance` (feature), `mcp` (feature), `menu` (macOS only)
+- **已声明模块总数**：~93（含 feature 门控的 `data_governance` 和 `mcp`）
+- **始终编译**：~91
+- **条件编译**：`data_governance`（feature）、`mcp`（feature）、`menu`（仅 macOS）
 
 ---
 
-## Class/Struct Diagrams
+## 类/结构体图
 
 ### 1. PdfProcessingService
 
-File: `src-tauri/src/vfs/pdf_processing_service.rs` (line 416)
+文件：`src-tauri/src/vfs/pdf_processing_service.rs`（第 416 行）
 
 ```mermaid
 classDiagram
@@ -281,7 +281,7 @@ classDiagram
 
 ### 2. VfsDatabase
 
-File: `src-tauri/src/vfs/database.rs` (line 45)
+文件：`src-tauri/src/vfs/database.rs`（第 45 行）
 
 ```mermaid
 classDiagram
@@ -348,7 +348,7 @@ classDiagram
 
 ### 3. LLMManager
 
-File: `src-tauri/src/llm_manager/mod.rs` (line 47)
+文件：`src-tauri/src/llm_manager/mod.rs`（第 47 行）
 
 ```mermaid
 classDiagram
@@ -411,7 +411,7 @@ classDiagram
 
 ### 4. ToolError (chat_v2 tools executor)
 
-File: `src-tauri/src/chat_v2/tools/executor.rs` (line 74)
+文件：`src-tauri/src/chat_v2/tools/executor.rs`（第 74 行）
 
 ```mermaid
 classDiagram
@@ -453,27 +453,27 @@ classDiagram
 
 ---
 
-## Legend
+## 图例
 
-| Symbol | Meaning |
+| 符号 | 含义 |
 |--------|---------|
-| `+` | Public method/field |
-| `-` | Private method/field |
-| `-->` | Association (uses/has-a) |
-| `..>` | Dependency (uses temporarily) |
-| `--|>` | Inheritance |
+| `+` | 公开方法/字段 |
+| `-` | 私有方法/字段 |
+| `-->` | 关联（使用/拥有） |
+| `..>` | 依赖（临时使用） |
+| `--|>` | 继承 |
 | `<<trait>>` | Rust trait |
-| `<<enum>>` | Rust enum |
-| `Box~T~` | `Box<T>` (heap-allocated) |
-| `Arc~T~` | `Arc<T>` (atomically ref-counted) |
-| `RwLock~T~` | `RwLock<T>` (read-write lock) |
-| `Mutex~T~` | `Mutex<T>` (mutual exclusion) |
+| `<<enum>>` | Rust 枚举 |
+| `Box~T~` | `Box<T>`（堆分配） |
+| `Arc~T~` | `Arc<T>`（原子引用计数） |
+| `RwLock~T~` | `RwLock<T>`（读写锁） |
+| `Mutex~T~` | `Mutex<T>`（互斥锁） |
 
 ---
 
-## Key Source References
+## 关键源码引用
 
-| Struct/Module | File | Lines |
+| 结构体/模块 | 文件 | 行号 |
 |---------------|------|-------|
 | PdfProcessingService | `src-tauri/src/vfs/pdf_processing_service.rs` | 416-434 |
 | VfsDatabase | `src-tauri/src/vfs/database.rs` | 45-52 |
@@ -481,4 +481,4 @@ classDiagram
 | ToolError | `src-tauri/src/chat_v2/tools/executor.rs` | 74-87 |
 | FileManager | `src-tauri/src/file_manager.rs` | 26-29 |
 | Tool trait | `src-tauri/src/chat_v2/tools/executor.rs` | ~50-70 |
-| lib.rs module decl | `src-tauri/src/lib.rs` | 6-92 |
+| lib.rs 模块声明 | `src-tauri/src/lib.rs` | 6-92 |

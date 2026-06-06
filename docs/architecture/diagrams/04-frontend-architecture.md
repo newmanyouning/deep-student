@@ -1,14 +1,14 @@
-# Frontend Architecture - React/TypeScript Diagrams
+# 前端架构 — React/TypeScript 图
 
-> **Last updated**: 2026-06-06 (derived from source code analysis)
-> **Source files**: `src/App.tsx`, `src/main.tsx`, `src/lazyComponents.tsx`, `src/features/*`
-> **Scope**: Tauri v2 application with React 18 + TypeScript frontend
+> **最后更新**：2026-06-06（从源代码分析推导）
+> **源文件**：`src/App.tsx`、`src/main.tsx`、`src/lazyComponents.tsx`、`src/features/*`
+> **范围**：基于 React 18 + TypeScript 前端的 Tauri v2 应用
 
 ---
 
-## a) Component Tree Diagram
+## a) 组件树图
 
-The following diagram shows the full React component hierarchy, from the application root through layout, feature pages, and shared components.
+以下图示展示完整的 React 组件层级，从应用根节点到布局、功能页面和共享组件。
 
 ```mermaid
 flowchart TB
@@ -158,9 +158,9 @@ flowchart TB
 
 ---
 
-## b) Route Structure Diagram
+## b) 路由结构图
 
-This application uses a **view-based navigation system** (not traditional URL routing). Views are managed through `CurrentView` type and rendered via the `ViewLayerRenderer` component with LRU caching.
+本应用使用**基于视图的导航系统**（非传统 URL 路由）。视图通过 `CurrentView` 类型管理，并通过 `ViewLayerRenderer` 组件配合 LRU 缓存进行渲染。
 
 ```mermaid
 flowchart LR
@@ -241,16 +241,16 @@ flowchart LR
 
 ---
 
-## c) Feature Module Map
+## c) 功能模块地图
 
-### Legend
-- `📁 components/` — UI components directory
-- `📁 stores/` — Zustand state management
-- `📁 hooks/` — Custom React hooks
-- `📁 api/` or service files — Backend communication
-- `⟶` — Cross-feature imports (key relationships only)
+### 图例
+- `📁 components/` — UI 组件目录
+- `📁 stores/` — Zustand 状态管理
+- `📁 hooks/` — 自定义 React 钩子
+- `📁 api/` 或服务文件 — 后端通信
+- `⟶` — 跨功能导入（仅关键关系）
 
-### Feature Modules Overview
+### 功能模块概览
 
 ```mermaid
 flowchart TB
@@ -380,26 +380,26 @@ flowchart LR
 
 ---
 
-## Source File References
+## 源文件参考
 
-| Module | Key Files | Path |
+| 模块 | 关键文件 | 路径 |
 |--------|-----------|------|
-| App Root Shell | `App.tsx` | `src/App.tsx` |
-| Application Entry | `main.tsx` | `src/main.tsx` |
-| Lazy Loaded Pages | `lazyComponents.tsx` | `src/lazyComponents.tsx` |
-| View Types | `navigation.ts` | `src/types/navigation.ts` |
-| View Canonicalization | `canonicalView.ts` | `src/app/navigation/canonicalView.ts` |
-| View Layer Renderer | `ViewLayerRenderer.tsx` | `src/app/components/ViewLayerRenderer.tsx` |
-| Desktop Shell | `desktopShell.ts` | `src/app/shell/desktopShell.ts` |
-| Mobile Shell | `mobileShell.ts` | `src/app/shell/mobileShell.ts` |
-| Navigation | `ModernSidebar.tsx` | `src/components/ModernSidebar.tsx` |
-| Navigation History | `useNavigationHistory.ts` | `src/hooks/useNavigationHistory.ts` |
-| Chat V2 Page | `ChatV2Page.tsx` | `src/features/chat/pages/ChatV2Page.tsx` |
-| Chat V2 Exports | `index.ts` | `src/features/chat/pages/index.ts` |
-| Learning Hub Page | `LearningHubPage.tsx` | `src/features/learning-hub/LearningHubPage.tsx` |
-| Learning Hub Exports | `index.ts` | `src/features/learning-hub/index.ts` |
-| Layout Components | `index.ts` | `src/components/layout/index.ts` |
-| Shared Components | `index.ts` | `src/components/shared/index.ts` |
-| Global Stores | `viewStore.ts`, `uiStore.ts`, etc. | `src/stores/*` |
-| Command Palette | — | `src/command-palette/` |
-| Notification | `UnifiedNotification.tsx` | `src/components/UnifiedNotification.tsx` |
+| 应用根壳 | `App.tsx` | `src/App.tsx` |
+| 应用入口 | `main.tsx` | `src/main.tsx` |
+| 懒加载页面 | `lazyComponents.tsx` | `src/lazyComponents.tsx` |
+| 视图类型 | `navigation.ts` | `src/types/navigation.ts` |
+| 视图规范化 | `canonicalView.ts` | `src/app/navigation/canonicalView.ts` |
+| 视图层渲染器 | `ViewLayerRenderer.tsx` | `src/app/components/ViewLayerRenderer.tsx` |
+| 桌面壳 | `desktopShell.ts` | `src/app/shell/desktopShell.ts` |
+| 移动壳 | `mobileShell.ts` | `src/app/shell/mobileShell.ts` |
+| 导航 | `ModernSidebar.tsx` | `src/components/ModernSidebar.tsx` |
+| 导航历史 | `useNavigationHistory.ts` | `src/hooks/useNavigationHistory.ts` |
+| Chat V2 页面 | `ChatV2Page.tsx` | `src/features/chat/pages/ChatV2Page.tsx` |
+| Chat V2 导出 | `index.ts` | `src/features/chat/pages/index.ts` |
+| Learning Hub 页面 | `LearningHubPage.tsx` | `src/features/learning-hub/LearningHubPage.tsx` |
+| Learning Hub 导出 | `index.ts` | `src/features/learning-hub/index.ts` |
+| 布局组件 | `index.ts` | `src/components/layout/index.ts` |
+| 共享组件 | `index.ts` | `src/components/shared/index.ts` |
+| 全局 Store | `viewStore.ts`, `uiStore.ts`, 等 | `src/stores/*` |
+| 命令面板 | — | `src/command-palette/` |
+| 通知 | `UnifiedNotification.tsx` | `src/components/UnifiedNotification.tsx` |

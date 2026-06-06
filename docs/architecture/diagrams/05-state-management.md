@@ -1,14 +1,14 @@
-# State Management Architecture - Zustand Diagrams
+# 状态管理架构 — Zustand 图
 
-> **Last updated**: 2026-06-06 (derived from source code analysis)
-> **Source files**: `src/stores/*`, `src/features/*/stores/*`
-> **Library**: Zustand (with `persist`, `subscribeWithSelector`, `immer` middleware)
+> **最后更新**: 2026-06-06（基于源码分析）
+> **源文件**: `src/stores/*`、`src/features/*/stores/*`
+> **库**: Zustand（使用 `persist`、`subscribeWithSelector`、`immer` 中间件）
 
 ---
 
-## a) Zustand Store Map
+## a) Zustand Store 总览
 
-This diagram shows all Zustand stores, their data domains, persistence status, and inter-store dependencies.
+本图展示所有 Zustand store、其数据领域、持久化状态以及 store 间依赖关系。
 
 ```mermaid
 flowchart TB
@@ -122,11 +122,11 @@ flowchart TB
 
 ---
 
-## b) Data Flow per Store — Key Stores Detailed Analysis
+## b) 按 Store 的数据流 — 关键 Store 详细分析
 
-### Store 1: `useFinderStore` (Learning Hub — File Browser)
+### Store 1：`useFinderStore`（Learning Hub — 文件浏览器）
 
-**File**: `src/features/learning-hub/stores/finderStore.ts`
+**文件**：`src/features/learning-hub/stores/finderStore.ts`
 
 ```mermaid
 flowchart LR
@@ -184,9 +184,9 @@ flowchart LR
   Actions --> CacheInvalidation
 ```
 
-### Store 2: `usePdfProcessingStore` (Media Processing Progress)
+### Store 2：`usePdfProcessingStore`（媒体处理进度）
 
-**File**: `src/features/pdf/stores/pdfProcessingStore.ts`
+**文件**：`src/features/pdf/stores/pdfProcessingStore.ts`
 
 ```mermaid
 flowchart LR
@@ -233,9 +233,9 @@ flowchart LR
   ProcessingStage -->|"re-render"| COMPS2["Components:<br/>- ProcessingIndicator<br/>- Chat InputBar (readyModes)<br/>- LearningHub items"]
 ```
 
-### Store 3: `usePdfSettingsStore` (PDF Reader Configuration)
+### Store 3：`usePdfSettingsStore`（PDF 阅读器配置）
 
-**File**: `src/features/pdf/stores/pdfSettingsStore.ts`
+**文件**：`src/features/pdf/stores/pdfSettingsStore.ts`
 
 ```mermaid
 flowchart LR
@@ -274,9 +274,9 @@ flowchart LR
   Persist -.->|"hydrate"| Init
 ```
 
-### Store 4: `useAnkiUIStore` (Anki Card Generation — Slice Pattern)
+### Store 4：`useAnkiUIStore`（Anki 制卡 — Slice 模式）
 
-**File**: `src/stores/anki/useAnkiUIStore.ts`
+**文件**：`src/stores/anki/useAnkiUIStore.ts`
 
 ```mermaid
 flowchart TB
@@ -327,9 +327,9 @@ flowchart TB
   SelectorHooks -->|"re-render"| COMPONENTS["Components:<br/>- AnkiPanelHost<br/>- TaskDashboardPage<br/>- TemplatePickerDialog<br/>- CardPreviewModal"]
 ```
 
-### Store 5: Chat V2 Store System (Per-Session Store Architecture)
+### Store 5：Chat V2 Store 系统（按会话的 Store 架构）
 
-**Files**: `src/features/chat/core/store/*`, `src/features/chat/core/session/sessionManager.ts`
+**文件**：`src/features/chat/core/store/*`、`src/features/chat/core/session/sessionManager.ts`
 
 ```mermaid
 flowchart TB
@@ -393,25 +393,25 @@ flowchart TB
   end
 ```
 
-### Cache Invalidation Strategy Summary
+### 缓存失效策略总结
 
-| Store | Strategy | Details |
+| Store | 策略 | 详情 |
 |-------|----------|---------|
-| `useFinderStore` | Request-ID based | `_currentRequestId` counter; stale responses discarded on mismatch. Auto-refresh on sort/nav changes. |
-| `usePdfProcessingStore` | Stage-ordering + TTL | `shouldAcceptUpdate()` checks stage precedence map. Terminal entries auto-removed after 60s. Max 100 entries. |
-| `usePdfSettingsStore` | None (persisted) | No invalidation needed; settings change only on user action. Range-validated at write time. |
-| `useAnkiUIStore` | Explicit refresh | Templates reloaded on mount/explicit action. Cards cleared on new generation. AnkiConnect status re-checked on demand. |
-| `useQuestionBankStore` | Page + filter based | Questions reloaded on page/filter/search change. Stats recomputed on answer submission. |
-| `useReviewPlanStore` | On-submit refresh | Due reviews list refreshed after each review submission. SM-2 algorithm applied client-side then synced. |
-| Chat Store System | Event-driven | Streaming events from backend update store in real-time. Auto-save middleware persists to DB on state changes. Session restore from backend on load. |
-| Notes Tree Store | Snapshot-based | Persistence snapshots created on tree changes. Versioned to handle migration. |
-| Todo Store | Request-vs-based | `itemsRequestVersion` tracks staleness. Refresh on mutation. |
+| `useFinderStore` | 基于请求 ID | `_currentRequestId` 计数器；不匹配时丢弃过期响应。排序/导航变更时自动刷新。 |
+| `usePdfProcessingStore` | 阶段排序 + TTL | `shouldAcceptUpdate()` 检查阶段优先级映射。终结条目 60 秒后自动移除。最大 100 条。 |
+| `usePdfSettingsStore` | 无（持久化） | 无需失效；仅用户操作改变设置。写入时做范围校验。 |
+| `useAnkiUIStore` | 显式刷新 | 模板在挂载/显式操作时重新加载。新生成时清空卡片。AnkiConnect 状态按需重新检查。 |
+| `useQuestionBankStore` | 基于页面 + 筛选 | 页面/筛选/搜索变更时重新加载题目。提交答案时重新计算统计。 |
+| `useReviewPlanStore` | 提交时刷新 | 每次复习提交后刷新到期复习列表。SM-2 算法客户端执行后同步。 |
+| Chat Store 系统 | 事件驱动 | 后端流式事件实时更新 store。自动保存中间件在状态变更时持久化到数据库。从后端恢复会话。 |
+| 笔记树 Store | 基于快照 | 树变更时创建持久化快照。版本化以支持迁移。 |
+| 待办 Store | 基于请求版本 | `itemsRequestVersion` 追踪过时状态。变更时刷新。 |
 
 ---
 
-## Source File References
+## 源文件引用
 
-| Store | File Path | Middleware | Persistence Key |
+| Store | 文件路径 | 中间件 | 持久化 Key |
 |-------|-----------|-----------|-----------------|
 | `useViewStore` | `src/stores/viewStore.ts` | — | — |
 | `useUIStore` | `src/stores/uiStore.ts` | `persist` | `dstu-ui-store` |
@@ -433,6 +433,6 @@ flowchart TB
 | `useTodoStore` | `src/features/todo/stores/useTodoStore.ts` | — | — |
 | `usePomodoroStore` | `src/features/pomodoro/stores/usePomodoroStore.ts` | `persist` | (pomodoro) |
 | `useSandboxWorkbenchStore` | `src/features/sandbox/store/useSandboxWorkbenchStore.ts` | — | — |
-| Chat Store Factory | `src/features/chat/core/store/createChatStore.ts` | — | — |
+| Chat Store 工厂 | `src/features/chat/core/store/createChatStore.ts` | — | — |
 | `sessionManager` | `src/features/chat/core/session/sessionManager.ts` | — | — |
 | `groupCache` | `src/features/chat/core/store/groupCache.ts` | — | — |

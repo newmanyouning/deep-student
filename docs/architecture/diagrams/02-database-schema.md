@@ -1,27 +1,27 @@
-# Database Schema -- Entity Relationship Diagrams
+# 数据库 Schema — 实体关系图
 
-> This document describes all SQLite tables used by Deep Student across its multiple database files.
-> Table definitions and relationships are extracted from `src-tauri/src/database/`, `src-tauri/src/vfs/`, `migrations/`, and `src-tauri/src/chat_v2/`.
+> 本文档描述 Deep Student 在其多个数据库文件中使用的所有 SQLite 表。
+> 表定义和关系提取自 `src-tauri/src/database/`、`src-tauri/src/vfs/`、`migrations/` 和 `src-tauri/src/chat_v2/`。
 
 ---
 
-## Database Architecture Overview
+## 数据库架构概述
 
-Deep Student uses **5 separate SQLite database files** plus OS filesystem storage:
+Deep Student 使用 **5 个独立的 SQLite 数据库文件** 外加操作系统文件系统存储：
 
-| Database File | Module | Purpose | Migrations |
+| 数据库文件 | 模块 | 用途 | 迁移目录 |
 |---------------|--------|---------|------------|
-| `mistakes.db` | `database` | Legacy chat, mistakes, settings, document_tasks, anki_cards | `database/manager.rs` + `migrations/mistakes/` |
-| `vfs.db` | `vfs` | Unified resources, notes, files, folders, questions, exams, review plans | `migrations/vfs/` (Refinery) |
-| `chat_v2.db` | `chat_v2` | Chat sessions, messages, blocks, workspace agents | `migrations/chat_v2/` (Refinery) |
-| `llm_usage.db` | `llm_usage` | Token usage statistics | `migrations/llm_usage/` (Refinery) |
-| `audit.db` | `data_governance` | Data governance audit logs | `data_governance` module |
+| `mistakes.db` | `database` | 历史聊天、错题、设置、文档任务、Anki 卡片 | `database/manager.rs` + `migrations/mistakes/` |
+| `vfs.db` | `vfs` | 统一资源、笔记、文件、文件夹、题目、考试、复习计划 | `migrations/vfs/` (Refinery) |
+| `chat_v2.db` | `chat_v2` | 聊天会话、消息、块、工作区 Agent | `migrations/chat_v2/` (Refinery) |
+| `llm_usage.db` | `llm_usage` | Token 用量统计 | `migrations/llm_usage/` (Refinery) |
+| `audit.db` | `data_governance` | 数据治理审计日志 | `data_governance` 模块 |
 
 ---
 
-## 1. mistakes.db (Main Database)
+## 1. mistakes.db（主数据库）
 
-### Core: mistakes & chat_messages
+### 核心：mistakes 与 chat_messages
 
 ```mermaid
 erDiagram
@@ -82,7 +82,7 @@ erDiagram
   mistakes ||--o{ chat_messages : "mistake_id"
 ```
 
-### Review & Sessions
+### 复习与会话
 
 ```mermaid
 erDiagram
@@ -150,7 +150,7 @@ erDiagram
   mistakes ||--o{ review_session_mistakes : "mistake_id"
 ```
 
-### Document Tasks & Anki Cards
+### 文档任务与 Anki 卡片
 
 ```mermaid
 erDiagram
@@ -196,7 +196,7 @@ erDiagram
   document_tasks ||--o{ anki_cards : "task_id"
 ```
 
-### Settings & Templates
+### 设置与模板
 
 ```mermaid
 erDiagram
@@ -241,7 +241,7 @@ erDiagram
   rag_sub_libraries ||--o{ rag_configurations : "sub_library_id"
 ```
 
-### Supporting Tables
+### 辅助表
 
 ```mermaid
 erDiagram
@@ -322,9 +322,9 @@ erDiagram
 
 ---
 
-## 2. vfs.db (VFS Database -- 27 tables)
+## 2. vfs.db（VFS 数据库 — 27 张表）
 
-### Core Resource Tables
+### 核心资源表
 
 ```mermaid
 erDiagram
@@ -390,7 +390,7 @@ erDiagram
   blobs ||--o{ files : "blob_hash"
 ```
 
-### Notes & Versions
+### 笔记与版本
 
 ```mermaid
 erDiagram
@@ -419,7 +419,7 @@ erDiagram
   resources ||--o{ notes_versions : "resource_id"
 ```
 
-### Folder Hierarchy
+### 文件夹层级
 
 ```mermaid
 erDiagram
@@ -461,7 +461,7 @@ erDiagram
   folders ||--o{ folder_items : "folder_id"
 ```
 
-### Exam Sheets, Questions & Review Plans
+### 考试卷、题目与复习计划
 
 ```mermaid
 erDiagram
@@ -553,7 +553,7 @@ erDiagram
   questions ||--o{ questions : "parent_id (self-ref)"
 ```
 
-### SM-2 Review System
+### SM-2 复习系统
 
 ```mermaid
 erDiagram
@@ -608,7 +608,7 @@ erDiagram
   exam_sheets ||--o{ review_stats : "exam_id"
 ```
 
-### Essays, Translations & Mindmaps
+### 作文、翻译与思维导图
 
 ```mermaid
 erDiagram
@@ -667,7 +667,7 @@ erDiagram
   resources ||--o{ mindmaps : "resource_id"
 ```
 
-### Indexing System
+### 索引系统
 
 ```mermaid
 erDiagram
@@ -717,7 +717,7 @@ erDiagram
   vfs_index_units ||--o{ vfs_index_segments : "unit_id"
 ```
 
-### Todo, Pomodoro & Memory Config
+### 待办、番茄钟与记忆配置
 
 ```mermaid
 erDiagram
@@ -768,9 +768,9 @@ erDiagram
 
 ---
 
-## 3. chat_v2.db (Chat V2 Database)
+## 3. chat_v2.db（Chat V2 数据库）
 
-### Core Chat Tables
+### 核心聊天表
 
 ```mermaid
 erDiagram
@@ -867,7 +867,7 @@ erDiagram
   chat_v2_blocks ||--o{ chat_v2_attachments : "block_id"
 ```
 
-### Resources & Todo Lists
+### 资源与待办列表
 
 ```mermaid
 erDiagram
@@ -895,7 +895,7 @@ erDiagram
   chat_v2_messages ||--o{ chat_v2_todo_lists : "session_id"
 ```
 
-### Workspace & Agent System
+### 工作区与 Agent 系统
 
 ```mermaid
 erDiagram
@@ -981,7 +981,7 @@ erDiagram
 
 ---
 
-## 4. llm_usage.db (LLM Usage Statistics)
+## 4. llm_usage.db（LLM 用量统计）
 
 ```mermaid
 erDiagram
@@ -1015,7 +1015,7 @@ erDiagram
 
 ---
 
-## 5. audit.db (Data Governance Audit)
+## 5. audit.db（数据治理审计）
 
 ```mermaid
 erDiagram
@@ -1040,35 +1040,35 @@ erDiagram
 
 ---
 
-## Legend
+## 图例
 
-| Notation | Meaning |
+| 符号 | 含义 |
 |----------|---------|
-| `PK` | Primary Key |
-| `FK` | Foreign Key |
-| `UK` | Unique Key |
-| `||--o{` | One-to-many relationship |
-| `||--||` | One-to-one relationship |
-| `}o--||` | Many-to-one relationship |
-| `+` in `<>` | See VFS migration line references |
-| `text` | `TEXT` column (SQLite) |
-| `int` | `INTEGER` column (SQLite) |
-| `float` | `REAL` column (SQLite) |
+| `PK` | 主键 |
+| `FK` | 外键 |
+| `UK` | 唯一键 |
+| `||--o{` | 一对多关系 |
+| `||--||` | 一对一关系 |
+| `}o--||` | 多对一关系 |
+| `<>` 中的 `+` | 参见 VFS 迁移行引用 |
+| `text` | `TEXT` 列 (SQLite) |
+| `int` | `INTEGER` 列 (SQLite) |
+| `float` | `REAL` 列 (SQLite) |
 
 ---
 
-## Key Source References
+## 关键源码引用
 
-| Database | Key File | Lines |
+| 数据库 | 关键文件 | 行号 |
 |----------|----------|-------|
-| Main DB schema | `src-tauri/src/database/manager.rs` | 220-425 (init), 640-820 (compat) |
-| Main DB schema (v13+) | `src-tauri/src/database/mod.rs` | 710-845, 4960-5056 |
-| Mistakes migrations | `src-tauri/migrations/mistakes/V20260130__init.sql` | 1-300+ |
-| VFS complete schema | `src-tauri/migrations/vfs/V20260130__init.sql` | 1-800+ |
-| VFS todo/pomodoro | `src-tauri/migrations/vfs/V20260308__add_todo_tables.sql` | 1-50+ |
-| VFS pomodoro | `src-tauri/migrations/vfs/V20260310__add_pomodoro.sql` | 1-30+ |
-| VFS decouple todo | `src-tauri/migrations/vfs/V20260309__decouple_todo_from_vfs.sql` | 1-30+ |
-| Chat V2 schema | `src-tauri/migrations/chat_v2/V20260130__init.sql` | 1-230+ |
-| Workspace schema | `src-tauri/src/chat_v2/workspace/database.rs` | 14-117 |
-| LLM Usage schema | `src-tauri/migrations/llm_usage/V20260130__init.sql` | 1-60+ |
-| Memory intake tables | `src-tauri/src/database/manager.rs` | 383-411 |
+| 主数据库 Schema | `src-tauri/src/database/manager.rs` | 220-425 (init), 640-820 (compat) |
+| 主数据库 Schema (v13+) | `src-tauri/src/database/mod.rs` | 710-845, 4960-5056 |
+| Mistakes 迁移 | `src-tauri/migrations/mistakes/V20260130__init.sql` | 1-300+ |
+| VFS 完整 Schema | `src-tauri/migrations/vfs/V20260130__init.sql` | 1-800+ |
+| VFS 待办/番茄钟 | `src-tauri/migrations/vfs/V20260308__add_todo_tables.sql` | 1-50+ |
+| VFS 番茄钟 | `src-tauri/migrations/vfs/V20260310__add_pomodoro.sql` | 1-30+ |
+| VFS 解耦待办 | `src-tauri/migrations/vfs/V20260309__decouple_todo_from_vfs.sql` | 1-30+ |
+| Chat V2 Schema | `src-tauri/migrations/chat_v2/V20260130__init.sql` | 1-230+ |
+| 工作区 Schema | `src-tauri/src/chat_v2/workspace/database.rs` | 14-117 |
+| LLM 用量 Schema | `src-tauri/migrations/llm_usage/V20260130__init.sql` | 1-60+ |
+| 记忆摄入表 | `src-tauri/src/database/manager.rs` | 383-411 |

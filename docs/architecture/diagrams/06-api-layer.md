@@ -1,14 +1,14 @@
-# API Layer - Tauri Command Invocation Diagrams
+# API 层 — Tauri 命令调用图
 
-> **Last updated**: 2026-06-06 (derived from source code analysis)
-> **Source files**: `src/api/*`, `src/hooks/*`, `src/features/*`
-> **Runtime**: `@tauri-apps/api/core` → `invoke()` → Tauri IPC → Rust handlers
+> **最后更新**: 2026-06-06（基于源码分析）
+> **源文件**: `src/api/*`、`src/hooks/*`、`src/features/*`
+> **运行时**: `@tauri-apps/api/core` → `invoke()` → Tauri IPC → Rust 处理器
 
 ---
 
-## a) API Module Map
+## a) API 模块总览
 
-Each API module under `src/api/` encapsulates calls to one or more Tauri backend commands.
+每个 `src/api/` 下的 API 模块封装对一个或多个 Tauri 后端命令的调用。
 
 ```mermaid
 flowchart LR
@@ -71,9 +71,9 @@ flowchart LR
 
 ---
 
-## b) Request/Response Flow — Typical API Call Sequence
+## b) 请求/响应流程 — 典型 API 调用序列
 
-This sequence diagram traces a complete `sendMessage` lifecycle from user action to database and back.
+本时序图追踪从用户操作到数据库再返回的完整 `sendMessage` 生命周期。
 
 ```mermaid
 sequenceDiagram
@@ -126,14 +126,14 @@ sequenceDiagram
 
 ---
 
-## c) Hook → API → Command Mapping Table
+## c) Hook → API → 命令映射表
 
-The table below maps the top 30+ most-used hooks to their API functions and underlying Tauri commands.
+下表映射了 30+ 个最常用 hook 到其 API 函数和底层 Tauri 命令。
 
-### Legend
-- **Hook**: React custom hook from `src/hooks/` or feature `hooks/` directories
-- **API Function**: Called inside the hook (from `src/api/` or feature-internal API)
-- **Tauri Command**: The Rust backend command invoked via `invoke()`
+### 图例
+- **Hook**: 来自 `src/hooks/` 或功能模块 `hooks/` 目录的 React 自定义 hook
+- **API 函数**: Hook 内部调用的函数（来自 `src/api/` 或模块内部 API）
+- **Tauri 命令**: 通过 `invoke()` 调用的 Rust 后端命令
 
 ```mermaid
 flowchart TB
@@ -226,85 +226,85 @@ flowchart TB
   A10 --> I10
 ```
 
-### Detailed Hook → API → Command Mapping
+### 详细 Hook → API → 命令映射
 
-| # | Hook Name | Source File | API Function(s) | Tauri Command(s) | Parameters | Return Type |
+| # | Hook 名称 | 源文件 | API 函数 | Tauri 命令 | 参数 | 返回类型 |
 |---|-----------|-------------|-----------------|-------------------|------------|-------------|
 | 1 | `useAppInitialization` | `src/hooks/useAppInitialization.ts` | `settingsApi.get()` | `get_setting` | `key: string` | `string \| null` |
 | 2 | `useTheme` | `src/hooks/useTheme.ts` | `settingsApi.get()`, `invoke('get_setting')` | `get_setting` | `key: 'theme'` | `'light' \| 'dark'` |
 | 3 | `useSystemSettings` | `src/hooks/useSystemSettings.ts` | `settingsApi.get()`, `settingsApi.save()` | `get_setting`, `save_setting` | `key, value` | `string \| null` / `void` |
-| 4 | `useNetworkStatus` | `src/hooks/useNetworkStatus.ts` | — (uses `navigator.onLine`) | — | — | `isOnline: boolean` |
-| 5 | `useBreakpoint` | `src/hooks/useBreakpoint.ts` | — (CSS media query) | — | — | `isSmallScreen: boolean` |
-| 6 | `useNavigationHistory` | `src/hooks/useNavigationHistory.ts` | — (local state management) | — | `currentView` | `{ canGoBack, canGoForward, goBack, goForward }` |
-| 7 | `useNavigationShortcuts` | `src/hooks/useNavigationShortcuts.ts` | — (keyboard events) | — | callbacks | — |
+| 4 | `useNetworkStatus` | `src/hooks/useNetworkStatus.ts` | —（使用 `navigator.onLine`） | — | — | `isOnline: boolean` |
+| 5 | `useBreakpoint` | `src/hooks/useBreakpoint.ts` | —（CSS 媒体查询） | — | — | `isSmallScreen: boolean` |
+| 6 | `useNavigationHistory` | `src/hooks/useNavigationHistory.ts` | —（本地状态管理） | — | `currentView` | `{ canGoBack, canGoForward, goBack, goForward }` |
+| 7 | `useNavigationShortcuts` | `src/hooks/useNavigationShortcuts.ts` | —（键盘事件） | — | callbacks | — |
 | 8 | `usePdfLoader` | `src/hooks/usePdfLoader.ts` | `vfsPdfProcessingApi.getStatus()` | `vfs_get_pdf_processing_status` | `fileId: string` | `PdfProcessingStatusResponse` |
 | 9 | `usePdfProcessingProgress` | `src/hooks/usePdfProcessingProgress.ts` | `vfsPdfProcessingApi.getStatus()`, `getBatchStatus()` | `vfs_get_pdf_processing_status`, `vfs_get_batch_pdf_processing_status` | `fileId: string` | `PdfProcessingStatusResponse` |
-| 10 | `useChatV2Stats` | `src/hooks/useChatV2Stats.ts` | `chatV2Api.*()` | `chat_v2_get_stats` | `filter params` | session statistics |
-| 11 | `useQuestionBankSession` | `src/hooks/useQuestionBankSession.ts` | `questionBankApi.*()` | `question_bank_*`, `exam_sheet_*` | `sessionId` | session state |
-| 12 | `useQbankAiGrading` | `src/hooks/useQbankAiGrading.ts` | `questionBankApi.*()` | `question_bank_ai_grade` | `questionId, answer` | AI grading result |
-| 13 | `useLearningHeatmap` | `src/hooks/useLearningHeatmap.ts` | `llmUsageApi.getTrends()` (indirect) | `llm_usage_get_trends` | `days, granularity` | `UsageTrendPoint[]` |
-| 14 | `useStatisticsData` | `src/hooks/useStatisticsData.ts` | `llmUsageApi.getSummary()`, `getByModel()` | `llm_usage_summary`, `llm_usage_by_model` | date range | `UsageSummary` |
-| 15 | `useMultimodalSearch` | `src/hooks/useMultimodalSearch.ts` | `vfsRagApi.vfsRagSearch()` | `vfs_rag_search` | query params | `VfsSearchResult[]` |
-| 16 | `useVendorModels` | `src/hooks/useVendorModels.ts` | `settingsApi.getByPrefix()` | `get_settings_by_prefix` | `prefix: 'models.'` | model config |
-| 17 | `useTauriDragAndDrop` | `src/hooks/useTauriDragAndDrop.ts` | — (Tauri drag-drop event) | Tauri `drag-drop` event | — | file paths |
-| 18 | `useTauriEventListener` | `src/hooks/useTauriEventListener.ts` | — (Tauri event `listen()`) | Various events | event type | event payload |
-| 19 | `useNotification` | `src/hooks/useNotification.ts` | — (local state) | — | — | toast state |
-| 20 | `useUnifiedNotification` | `src/hooks/useUnifiedNotification.ts` | — (global event dispatch) | — | message, type | — |
-| 21 | `useAppUpdater` | `src/hooks/useAppUpdater.ts` | `invoke('get_setting')` | `get_setting`, Tauri updater API | — | updater state |
-| 22 | `useMigrationStatusListener` | `src/hooks/useMigrationStatusListener.ts` | `invoke('get_setting')` | `get_setting` | — | migration state |
-| 23 | `useConflictResolution` | `src/hooks/useConflictResolution.ts` | `settingsApi.*()` / event | sync events | — | conflict state |
-| 24 | `useFocusTrap` | `src/hooks/useFocusTrap.ts` | — (DOM manipulation) | — | ref | — |
-| 25 | `useWindowDrag` | `src/hooks/useWindowDrag.ts` | `getCurrentWindow().startDragging()` | Tauri window API | event | — |
-| 26 | `useCountdown` | `src/hooks/useCountdown.ts` | — (timer logic) | — | duration | remaining time |
-| 27 | `useDebounce` | `src/hooks/useDebounce.ts` | — (utility) | — | value, delay | debounced value |
-| 28 | `useExamSheetProgress` | `src/hooks/useExamSheetProgress.ts` | `questionBankApi.*()` | `exam_sheet_get_progress` | session | progress |
-| 29 | `useDocumentTitle` | `src/hooks/useDocumentTitle.ts` | — (DOM manipulation) | — | title | — |
-| 30 | `useBackupJobListener` | `src/hooks/useBackupJobListener.ts` | `dataGovernance.*()` | `data_governance_*` backup commands | — | backup status |
+| 10 | `useChatV2Stats` | `src/hooks/useChatV2Stats.ts` | `chatV2Api.*()` | `chat_v2_get_stats` | 筛选参数 | 会话统计 |
+| 11 | `useQuestionBankSession` | `src/hooks/useQuestionBankSession.ts` | `questionBankApi.*()` | `question_bank_*`, `exam_sheet_*` | `sessionId` | 会话状态 |
+| 12 | `useQbankAiGrading` | `src/hooks/useQbankAiGrading.ts` | `questionBankApi.*()` | `question_bank_ai_grade` | `questionId, answer` | AI 评分结果 |
+| 13 | `useLearningHeatmap` | `src/hooks/useLearningHeatmap.ts` | `llmUsageApi.getTrends()`（间接） | `llm_usage_get_trends` | `days, granularity` | `UsageTrendPoint[]` |
+| 14 | `useStatisticsData` | `src/hooks/useStatisticsData.ts` | `llmUsageApi.getSummary()`, `getByModel()` | `llm_usage_summary`, `llm_usage_by_model` | 日期范围 | `UsageSummary` |
+| 15 | `useMultimodalSearch` | `src/hooks/useMultimodalSearch.ts` | `vfsRagApi.vfsRagSearch()` | `vfs_rag_search` | 查询参数 | `VfsSearchResult[]` |
+| 16 | `useVendorModels` | `src/hooks/useVendorModels.ts` | `settingsApi.getByPrefix()` | `get_settings_by_prefix` | `prefix: 'models.'` | 模型配置 |
+| 17 | `useTauriDragAndDrop` | `src/hooks/useTauriDragAndDrop.ts` | —（Tauri 拖放事件） | Tauri `drag-drop` 事件 | — | 文件路径 |
+| 18 | `useTauriEventListener` | `src/hooks/useTauriEventListener.ts` | —（Tauri 事件 `listen()`） | 各类事件 | 事件类型 | 事件载荷 |
+| 19 | `useNotification` | `src/hooks/useNotification.ts` | —（本地状态） | — | — | toast 状态 |
+| 20 | `useUnifiedNotification` | `src/hooks/useUnifiedNotification.ts` | —（全局事件分发） | — | 消息、类型 | — |
+| 21 | `useAppUpdater` | `src/hooks/useAppUpdater.ts` | `invoke('get_setting')` | `get_setting`, Tauri 更新 API | — | 更新器状态 |
+| 22 | `useMigrationStatusListener` | `src/hooks/useMigrationStatusListener.ts` | `invoke('get_setting')` | `get_setting` | — | 迁移状态 |
+| 23 | `useConflictResolution` | `src/hooks/useConflictResolution.ts` | `settingsApi.*()` / 事件 | 同步事件 | — | 冲突状态 |
+| 24 | `useFocusTrap` | `src/hooks/useFocusTrap.ts` | —（DOM 操作） | — | ref | — |
+| 25 | `useWindowDrag` | `src/hooks/useWindowDrag.ts` | `getCurrentWindow().startDragging()` | Tauri 窗口 API | event | — |
+| 26 | `useCountdown` | `src/hooks/useCountdown.ts` | —（计时器逻辑） | — | duration | 剩余时间 |
+| 27 | `useDebounce` | `src/hooks/useDebounce.ts` | —（工具函数） | — | value, delay | 防抖值 |
+| 28 | `useExamSheetProgress` | `src/hooks/useExamSheetProgress.ts` | `questionBankApi.*()` | `exam_sheet_get_progress` | session | 进度 |
+| 29 | `useDocumentTitle` | `src/hooks/useDocumentTitle.ts` | —（DOM 操作） | — | title | — |
+| 30 | `useBackupJobListener` | `src/hooks/useBackupJobListener.ts` | `dataGovernance.*()` | `data_governance_*` 备份命令 | — | 备份状态 |
 
-### Feature-Level Hook Mappings
+### 功能模块级 Hook 映射
 
-The following table lists key hooks from feature modules (not in `src/hooks/`):
+下表列出了来自功能模块（不在 `src/hooks/` 中）的关键 hook：
 
-| Hook | Feature Module | Source File | API Function(s) | Tauri Command |
+| Hook | 功能模块 | 源文件 | API 函数 | Tauri 命令 |
 |------|---------------|-------------|-----------------|---------------|
-| `useGroupManagement` | chat | `src/features/chat/hooks/useGroupManagement.ts` | — (local state) | — |
-| `useGroupCollapse` | chat | `src/features/chat/hooks/useGroupCollapse.ts` | — (local state) | — |
-| `useInputBarV2` | chat | `src/features/chat/hooks/useInputBarV2.ts` | — (composition) | — |
-| `usePdfPageRefs` | chat | `src/features/chat/hooks/usePdfPageRefs.ts` | — (local state) | — |
-| `useSessionSidebarIndicators` | chat | `src/features/chat/hooks/useSessionSidebarIndicators.ts` | — (derived state) | — |
+| `useGroupManagement` | chat | `src/features/chat/hooks/useGroupManagement.ts` | —（本地状态） | — |
+| `useGroupCollapse` | chat | `src/features/chat/hooks/useGroupCollapse.ts` | —（本地状态） | — |
+| `useInputBarV2` | chat | `src/features/chat/hooks/useInputBarV2.ts` | —（组合） | — |
+| `usePdfPageRefs` | chat | `src/features/chat/hooks/usePdfPageRefs.ts` | —（本地状态） | — |
+| `useSessionSidebarIndicators` | chat | `src/features/chat/hooks/useSessionSidebarIndicators.ts` | —（派生状态） | — |
 | `useVfsContextInject` | learning-hub | `src/features/learning-hub/hooks/useVfsContextInject.ts` | `dstu.*()` | `dstu_*` |
-| `useLearningHubEvents` | learning-hub | `src/features/learning-hub/hooks/useLearningHubEvents.ts` | — (event listeners) | — |
-| `useNotesOptional` | notes | `src/features/notes/hooks/useNotesOptional.ts` | — (context) | — |
+| `useLearningHubEvents` | learning-hub | `src/features/learning-hub/hooks/useLearningHubEvents.ts` | —（事件监听器） | — |
+| `useNotesOptional` | notes | `src/features/notes/hooks/useNotesOptional.ts` | —（context） | — |
 | `useSettings` | settings | `src/features/settings/hooks/useSettings.ts` | `settingsApi.*()` | `get_setting`, `save_setting` |
 
 ---
 
-## Source File References
+## 源文件引用
 
-| API Module | File Path | Commands Encapsulated |
+| API 模块 | 文件路径 | 封装的命令 |
 |------------|-----------|----------------------|
 | `chatV2Api` | `src/api/chatV2Api.ts` | `chat_v2_delete_session`, `chat_v2_update_session_settings`, `chat_v2_archive_session`, `chat_v2_save_session`, `chat_v2_upsert_streaming_block`, `chat_v2_update_block_tool_output`, `chat_v2_cancel_stream`, `chat_v2_add_tag`, `chat_v2_remove_tag`, `chat_v2_reorder_groups`, `chat_v2_ask_user_respond`, `chat_v2_tool_approval_respond` |
 | `settingsApi` | `src/api/settingsApi.ts` | `get_setting`, `save_setting`, `delete_setting`, `get_settings_by_prefix` |
 | `vfsPdfProcessingApi` | `src/api/vfsPdfProcessingApi.ts` | `vfs_get_pdf_processing_status`, `vfs_get_batch_pdf_processing_status`, `vfs_cancel_pdf_processing`, `vfs_retry_pdf_processing`, `vfs_start_pdf_processing` |
 | `vfsFileApi` | `src/api/vfsFileApi.ts` | `vfs_upload_file`, `vfs_get_file`, `vfs_list_files`, `vfs_delete_file`, `vfs_rename_file`, `vfs_get_ocr_status` |
 | `vfsRagApi` | `src/api/vfsRagApi.ts` | `vfs_rag_search`, `vfs_get_lance_stats`, `vfs_optimize_lance` |
-| `vfsOcrStorageApi` | `src/api/vfsOcrStorageApi.ts` | `vfs_*` OCR storage commands |
+| `vfsOcrStorageApi` | `src/api/vfsOcrStorageApi.ts` | `vfs_*` OCR 存储命令 |
 | `vfsUnifiedIndexApi` | `src/api/vfsUnifiedIndexApi.ts` | `vfs_get_unified_index_status`, `vfs_select_resource_units`, `vfs_reindex_unit`, `vfs_batch_index` |
 | `memoryApi` | `src/api/memoryApi.ts` | `memory_get_config`, `memory_update_config`, `memory_search`, `memory_list`, `memory_read`, `memory_write`, `memory_batch_write`, `memory_smart_write`, `memory_delete`, `memory_add_tag`, `memory_remove_tag` |
-| `dataGovernance` | `src/api/dataGovernance.ts` | `data_governance_*` (schema, migration, health, audit, backup, restore, sync, conflict, zip, cloud_storage, asset_scan) |
+| `dataGovernance` | `src/api/dataGovernance.ts` | `data_governance_*`（schema、migration、health、audit、backup、restore、sync、conflict、zip、cloud_storage、asset_scan） |
 | `questionBankApi` | `src/api/questionBankApi.ts` | `question_bank_*`, `exam_sheet_*` |
 | `llmUsageApi` | `src/api/llmUsageApi.ts` | `llm_usage_get_trends`, `llm_usage_by_model`, `llm_usage_by_caller`, `llm_usage_summary`, `llm_usage_recent`, `llm_usage_daily`, `llm_usage_cleanup` |
 | `debugDatabase` | `src/api/debugDatabase.ts` | `debug_*` |
 | `attachmentConfigApi` | `src/api/attachmentConfigApi.ts` | `vfs_get_attachment_config`, `vfs_set_attachment_root_folder`, `vfs_create_attachment_root_folder` |
 
-### Hook Source Files
+### Hook 源文件
 
-| Hooks File | Path |
+| Hooks 文件 | 路径 |
 |------------|------|
-| General Hooks | `src/hooks/` (34 files) |
-| Chat Feature Hooks | `src/features/chat/hooks/` |
+| 通用 Hooks | `src/hooks/`（34 个文件） |
+| 聊天功能 Hooks | `src/features/chat/hooks/` |
 | Learning Hub Hooks | `src/features/learning-hub/hooks/` |
-| Notes Hooks | `src/features/notes/hooks/` |
-| Settings Hooks | `src/features/settings/hooks/` |
-| Voice Input Hooks | `src/features/voice-input/hooks/` |
-| Command Palette Hooks | `src/command-palette/hooks/` |
+| 笔记 Hooks | `src/features/notes/hooks/` |
+| 设置 Hooks | `src/features/settings/hooks/` |
+| 语音输入 Hooks | `src/features/voice-input/hooks/` |
+| 命令面板 Hooks | `src/command-palette/hooks/` |

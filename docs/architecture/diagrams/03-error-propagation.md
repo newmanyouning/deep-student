@@ -1,10 +1,10 @@
-# Error Type Hierarchy & Propagation
+# 错误类型层级与传播
 
-> This document describes the error type architecture of the Rust backend, including the type hierarchy, `From` conversion relationships, and a typical error propagation flow from database to frontend.
+> 本文档描述 Rust 后端的错误类型架构，包括类型层级、`From` 转换关系，以及从数据库到前端的典型错误传播流程。
 
 ---
 
-## Error Type Hierarchy
+## 错误类型层级
 
 ```mermaid
 classDiagram
@@ -142,9 +142,9 @@ classDiagram
 
 ---
 
-## From<> Conversion Map
+## From<> 转换映射
 
-The following diagram shows all `From` trait implementations that convert one error type to another, establishing the error propagation chains.
+下图展示所有将一个错误类型转换为另一个错误类型的 `From` trait 实现，从而建立错误传播链。
 
 ```mermaid
 flowchart LR
@@ -219,9 +219,9 @@ flowchart LR
   class str_out terminal
 ```
 
-### Conversion Chain Summary
+### 转换链汇总
 
-| Source Type | Target Type | File | Lines |
+| 源类型 | 目标类型 | 文件 | 行号 |
 |-------------|-------------|------|-------|
 | `std::io::Error` | `VfsError` | `src-tauri/src/vfs/error.rs` | 174-178 |
 | `std::io::Error` | `DstuError` | `src-tauri/src/dstu/error.rs` | 125-129 |
@@ -256,9 +256,9 @@ flowchart LR
 
 ---
 
-## Error Propagation Sequence
+## 错误传播时序
 
-The following sequence diagram traces a real error flow: a **database integrity violation** during VFS resource creation propagates through the type system, across the Tauri IPC boundary, and is handled in the frontend.
+以下时序图追踪一个真实的错误流程：在 VFS 资源创建过程中发生的**数据库完整性冲突**，通过类型系统传播，跨越 Tauri IPC 边界，最终在前端被处理。
 
 ```mermaid
 sequenceDiagram
@@ -299,24 +299,24 @@ sequenceDiagram
 
 ---
 
-## Error Type Characteristics
+## 错误类型特性
 
-| Error Type | File | `Serialize` | `Display` (thiserror?) | `From` Sources | Line Count |
+| 错误类型 | 文件 | `Serialize` | `Display` (thiserror?) | `From` 来源 | 行数 |
 |------------|------|------------|------------------------|----------------|------------|
-| **VfsError** | `src-tauri/src/vfs/error.rs` | derive | manual Display (~25 variants) | io, serde_json, rusqlite, anyhow, String | 239 |
-| **DstuError** | `src-tauri/src/dstu/error.rs` | derive | thiserror (~11 variants) | io, serde_json, rusqlite, VfsError, String | 174 |
-| **ChatV2Error** | `src-tauri/src/chat_v2/error.rs` | derive | thiserror (~20 variants) | serde_json, rusqlite, anyhow | 215 |
-| **ToolError** | `src-tauri/src/chat_v2/tools/executor.rs` | -- | manual (~6 variants) | String, ChatV2Error | ~30 |
-| **DataGovernanceError** | `src-tauri/src/data_governance/mod.rs` | manual custom | thiserror (~5 variants) | MigrationError, SchemaRegistryError, anyhow, rusqlite, String | ~60 |
-| **EssayGradingError** | `src-tauri/src/essay_grading/error.rs` | derive | manual (~5 variants) | AppError, VfsError, anyhow | 57 |
-| **MemoryError** | `src-tauri/src/memory/error.rs` | derive | manual (~4 variants) | VfsError, anyhow, rusqlite, String | 56 |
-| **AnkiConnectError** | `src-tauri/src/anki_connect_service.rs` | -- | manual (~3 variants) | String | ~30 |
+| **VfsError** | `src-tauri/src/vfs/error.rs` | derive | 手动 Display（~25 变体） | io, serde_json, rusqlite, anyhow, String | 239 |
+| **DstuError** | `src-tauri/src/dstu/error.rs` | derive | thiserror（~11 变体） | io, serde_json, rusqlite, VfsError, String | 174 |
+| **ChatV2Error** | `src-tauri/src/chat_v2/error.rs` | derive | thiserror（~20 变体） | serde_json, rusqlite, anyhow | 215 |
+| **ToolError** | `src-tauri/src/chat_v2/tools/executor.rs` | -- | 手动（~6 变体） | String, ChatV2Error | ~30 |
+| **DataGovernanceError** | `src-tauri/src/data_governance/mod.rs` | 手动自定义 | thiserror（~5 变体） | MigrationError, SchemaRegistryError, anyhow, rusqlite, String | ~60 |
+| **EssayGradingError** | `src-tauri/src/essay_grading/error.rs` | derive | 手动（~5 变体） | AppError, VfsError, anyhow | 57 |
+| **MemoryError** | `src-tauri/src/memory/error.rs` | derive | 手动（~4 变体） | VfsError, anyhow, rusqlite, String | 56 |
+| **AnkiConnectError** | `src-tauri/src/anki_connect_service.rs` | -- | 手动（~3 变体） | String | ~30 |
 
-### ChatV2Error JSON Serialization
+### ChatV2Error JSON 序列化
 
-`ChatV2Error` uses a custom `From<ChatV2Error> for String` conversion that outputs structured JSON with error codes:
+`ChatV2Error` 使用自定义的 `From<ChatV2Error> for String` 转换，输出带有错误码的结构化 JSON：
 
-| Variant | Error Code |
+| 变体 | 错误码 |
 |---------|-----------|
 | `SessionNotFound` | `SESSION_NOT_FOUND` |
 | `Database` | `DATABASE_ERROR` |
@@ -325,17 +325,17 @@ sequenceDiagram
 | `Cancelled` | `CANCELLED` |
 | `DatabaseCorrupted` | `DATABASE_CORRUPTED` |
 | `Timeout` | `TIMEOUT` |
-| (others) | Variant-specific codes |
+| （其他） | 各变体特定错误码 |
 
-### DataGovernanceError Serialization
+### DataGovernanceError 序列化
 
-`DataGovernanceError` implements a manual `Serialize` that outputs `{ "code": "MIGRATION_ERROR", "message": "..." }` with 5 error codes: `MIGRATION_ERROR`, `SCHEMA_REGISTRY_ERROR`, `BACKUP_ERROR`, `SYNC_ERROR`, `NOT_IMPLEMENTED`.
+`DataGovernanceError` 实现了手动 `Serialize`，输出 `{ "code": "MIGRATION_ERROR", "message": "..." }` 格式，包含 5 个错误码：`MIGRATION_ERROR`、`SCHEMA_REGISTRY_ERROR`、`BACKUP_ERROR`、`SYNC_ERROR`、`NOT_IMPLEMENTED`。
 
 ---
 
-## Key Files & Line Numbers
+## 关键文件与行号
 
-| Error Type | File | Enum Definition Line |
+| 错误类型 | 文件 | 枚举定义行号 |
 |------------|------|---------------------|
 | VfsError | `src-tauri/src/vfs/error.rs` | 12 |
 | DstuError | `src-tauri/src/dstu/error.rs` | 10 |

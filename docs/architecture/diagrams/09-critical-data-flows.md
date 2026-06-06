@@ -1,26 +1,26 @@
-# Critical Data Flows — Frontend-Backend Interaction Sequences
+# 关键数据流 — 前后端交互序列
 
-> This document traces three critical end-to-end operations through the full frontend-backend stack, referencing source files and line numbers.
+> 本文档追踪三个关键的端到端操作流程，覆盖完整的前后端栈，并引用源文件及行号。
 
 ---
 
-## a) PDF Upload → OCR → Searchable Flow
+## a) PDF 上传 → OCR → 可搜索流程
 
-### Source Files
+### 源文件
 
-| Component | File | Key Lines |
+| 组件 | 文件 | 关键行号 |
 |---|---|---|
-| Learning Hub FileContentView | `src/features/learning-hub/views/FileContentView.tsx` | Drop handler |
-| VFS Ref API | `src/features/chat/context/vfsRefApiEnhancements.ts` | `upload()` wrapper |
-| VFS File API | `src/api/vfsFileApi.ts` | Lines 91-93: `vfsFileApi.upload()` |
-| VFS Upload Handler | `src-tauri/src/vfs/handlers/file_handlers.rs` | `vfs_upload_file` |
-| PDF Processing Service | `src-tauri/src/vfs/pdf_processing_service.rs` | Event emission |
-| PdfOcrService (legacy) | `src-tauri/src/pdf_ocr_service.rs` | Lines 360-480: render events |
-| PdfProcessing Hook | `src/hooks/usePdfProcessingProgress.ts` | Lines 181-252: event handlers |
-| Media Processing Store | `src/features/pdf/stores/pdfProcessingStore.ts` | State management |
-| VFS Index Handlers | `src-tauri/src/vfs/handlers/index_handlers.rs` | `vfs_rag_search` |
+| Learning Hub FileContentView | `src/features/learning-hub/views/FileContentView.tsx` | 拖放处理 |
+| VFS Ref API | `src/features/chat/context/vfsRefApiEnhancements.ts` | `upload()` 封装 |
+| VFS 文件 API | `src/api/vfsFileApi.ts` | 第 91-93 行：`vfsFileApi.upload()` |
+| VFS 上传处理 | `src-tauri/src/vfs/handlers/file_handlers.rs` | `vfs_upload_file` |
+| PDF 处理服务 | `src-tauri/src/vfs/pdf_processing_service.rs` | 事件发射 |
+| PdfOcrService（旧版） | `src-tauri/src/pdf_ocr_service.rs` | 第 360-480 行：渲染事件 |
+| PdfProcessing Hook | `src/hooks/usePdfProcessingProgress.ts` | 第 181-252 行：事件处理 |
+| 媒体处理 Store | `src/features/pdf/stores/pdfProcessingStore.ts` | 状态管理 |
+| VFS 索引处理 | `src-tauri/src/vfs/handlers/index_handlers.rs` | `vfs_rag_search` |
 
-### Full Sequence Diagram
+### 完整时序图
 
 ```mermaid
 sequenceDiagram
@@ -104,34 +104,34 @@ sequenceDiagram
     API-->>FCV: Display search results with highlights
 ```
 
-### Key Observations
+### 关键观察
 
-- File upload deduplication happens by SHA256 hash inside `vfs_upload_file`
-- The media processing pipeline runs asynchronously and reports progress via events
-- `invalidateResourceCache()` is called both when new readyModes appear and on completion, ensuring `resolveVfsRefs` returns fresh data
-- Legacy OCR (`pdf_ocr_progress`) coexists with the unified `media-processing-*` events; both update the same `pdfProcessingStore`
-- The `PdfProcessingService` has `VfsIndexCoordinator` callback injected at app startup (`lib.rs:1875-1889`)
+- 文件上传去重通过 `vfs_upload_file` 内部的 SHA256 哈希完成
+- 媒体处理流水线异步运行，通过事件报告进度
+- `invalidateResourceCache()` 在新 readyModes 出现时和处理完成时均被调用，确保 `resolveVfsRefs` 返回最新数据
+- 旧版 OCR（`pdf_ocr_progress`）与统一的 `media-processing-*` 事件共存，两者均更新同一个 `pdfProcessingStore`
+- `PdfProcessingService` 在应用启动时注入了 `VfsIndexCoordinator` 回调（`lib.rs:1875-1889`）
 
 ---
 
-## b) Chat Message Flow
+## b) 聊天消息流程
 
-### Source Files
+### 源文件
 
-| Component | File | Key Lines |
+| 组件 | 文件 | 关键行号 |
 |---|---|---|
-| InputBar | `src/features/chat/InputBar.tsx` | Send handler |
-| ChatStore | `src/features/chat/core/store/chatStore.ts` | State management |
-| TauriAdapter | `src/features/chat/adapters/TauriAdapter.ts` | Lines 453-569: setup, Listeners 500-514 |
+| InputBar | `src/features/chat/InputBar.tsx` | 发送处理 |
+| ChatStore | `src/features/chat/core/store/chatStore.ts` | 状态管理 |
+| TauriAdapter | `src/features/chat/adapters/TauriAdapter.ts` | 第 453-569 行：设置，监听器 500-514 |
 | EventBridge | `src/features/chat/core/middleware/eventBridge.ts` | `handleBackendEventWithSequence()` |
-| Chat V2 Send | `src-tauri/src/chat_v2/handlers/send_message.rs` | `chat_v2_send_message` |
-| Chat V2 Pipeline | `src-tauri/src/chat_v2/pipeline/` | Message processing |
-| LLM Manager | `src-tauri/src/llm_manager/` | Provider routing + streaming |
-| Chat V2 Events | `src-tauri/src/chat_v2/events.rs` | Lines 688-1349: EventEmitter |
-| Streaming (LLM) | `src-tauri/src/llm_manager/streaming.rs` | Lines 485-590: citations |
-| Chunk Buffer | `src/features/chat/core/middleware/chunkBuffer.ts` | `chunkBuffer` module |
+| Chat V2 发送 | `src-tauri/src/chat_v2/handlers/send_message.rs` | `chat_v2_send_message` |
+| Chat V2 流水线 | `src-tauri/src/chat_v2/pipeline/` | 消息处理 |
+| LLM Manager | `src-tauri/src/llm_manager/` | 供应商路由 + 流式 |
+| Chat V2 事件 | `src-tauri/src/chat_v2/events.rs` | 第 688-1349 行：EventEmitter |
+| 流式 (LLM) | `src-tauri/src/llm_manager/streaming.rs` | 第 485-590 行：引用 |
+| 块缓冲 | `src/features/chat/core/middleware/chunkBuffer.ts` | `chunkBuffer` 模块 |
 
-### Full Sequence Diagram
+### 完整时序图
 
 ```mermaid
 sequenceDiagram
@@ -294,33 +294,33 @@ sequenceDiagram
     end
 ```
 
-### Key Observations
+### 关键观察
 
-- The frontend optimistically creates a user message before the `invoke()` call, enabling instant UI response
-- Event sequence IDs are tracked per session to detect out-of-order or dropped events (`chat_v2/events.rs:713`)
-- Chunk buffering (`chunkBuffer.ts`) debounces rapid content chunks into periodic store updates (typically ~50ms intervals)
-- The `autoSave` middleware saves the session after stream completion
-- Tool calls can span multiple rounds (tool loops), each round emitting block events independently
-- In multi-model (variant) mode, `variant_start`/`variant_end` events bracket each model's block events
+- 前端在 `invoke()` 调用之前乐观创建用户消息，实现即时 UI 响应
+- 事件序列 ID 按会话追踪，用于检测乱序或丢失事件（`chat_v2/events.rs:713`）
+- 块缓冲（`chunkBuffer.ts`）将快速到达的内容块防抖为周期性的 store 更新（通常约 50ms 间隔）
+- `autoSave` 中间件在流完成后保存会话
+- 工具调用可跨多轮（工具循环），每轮独立发射块事件
+- 在多模型（变体）模式下，每个模型的块事件由 `variant_start`/`variant_end` 事件括起来
 
 ---
 
-## c) Learning Hub Resource Open Flow
+## c) Learning Hub 资源打开流程
 
-### Source Files
+### 源文件
 
-| Component | File | Key Lines |
+| 组件 | 文件 | 关键行号 |
 |---|---|---|
-| Learning Hub | `src/features/learning-hub/LearningHubSidebar.tsx` | Resource click handler |
-| FileContentView | `src/features/learning-hub/views/FileContentView.tsx` | PDF viewer container |
-| usePdfLoader | `src/features/learning-hub/hooks/usePdfLoader.ts` | PDF loading logic |
-| VFS File API | `src/api/vfsFileApi.ts` | Lines 91-97 |
-| pdfstream protocol | `src-tauri/src/pdf_protocol.rs` | HTTP Range Request handler |
-| VFS Attachment | `src-tauri/src/vfs/handlers/attachment_handlers.rs` | `vfs_get_attachment_content` |
-| VFS PDF handlers | `src-tauri/src/vfs/handlers/pdf_handlers.rs` | `vfs_get_blob_pdfstream_url` |
-| EnhancedPdfViewer | `src/features/learning-hub/components/EnhancedPdfViewer.tsx` | react-pdf integration |
+| Learning Hub | `src/features/learning-hub/LearningHubSidebar.tsx` | 资源点击处理 |
+| FileContentView | `src/features/learning-hub/views/FileContentView.tsx` | PDF 查看器容器 |
+| usePdfLoader | `src/features/learning-hub/hooks/usePdfLoader.ts` | PDF 加载逻辑 |
+| VFS 文件 API | `src/api/vfsFileApi.ts` | 第 91-97 行 |
+| pdfstream 协议 | `src-tauri/src/pdf_protocol.rs` | HTTP Range Request 处理 |
+| VFS 附件 | `src-tauri/src/vfs/handlers/attachment_handlers.rs` | `vfs_get_attachment_content` |
+| VFS PDF 处理 | `src-tauri/src/vfs/handlers/pdf_handlers.rs` | `vfs_get_blob_pdfstream_url` |
+| EnhancedPdfViewer | `src/features/learning-hub/components/EnhancedPdfViewer.tsx` | react-pdf 集成 |
 
-### Full Sequence Diagram
+### 完整时序图
 
 ```mermaid
 sequenceDiagram
@@ -410,17 +410,17 @@ sequenceDiagram
     end
 ```
 
-### Key Observations
+### 关键观察
 
-- The `pdfstream://` protocol (`lib.rs:1729-1756`, `pdf_protocol.rs`) is a custom Tauri URI scheme that handles HTTP Range Requests, enabling react-pdf to efficiently load PDFs page-by-page without loading the entire file into memory
-- Processing pipeline runs asynchronously; the UI displays processing status from the store while waiting
-- `resolveVfsRefs` checks both the in-memory store (for cached resolved refs) and the backend (for fresh OCR/text results)
-- OCR text chunks are stored in VFS and indexed in Lance for vector search; the `vfs_get_pdf_page_image` command provides page-level images for multimodal RAG
-- The flow supports both initial full PDF load (first HTTP GET returns full bytes) and efficient partial-range loading (subsequent Range requests return 206 Partial Content)
+- `pdfstream://` 协议（`lib.rs:1729-1756`、`pdf_protocol.rs`）是一个自定义的 Tauri URI 方案，处理 HTTP Range Requests，使 react-pdf 能够逐页高效加载 PDF，而无需将整个文件加载到内存中
+- 处理流水线异步运行；UI 在等待时显示来自 store 的处理状态
+- `resolveVfsRefs` 同时检查内存中的 store（缓存已解析引用）和后端（获取最新 OCR/文本结果）
+- OCR 文本块存储在 VFS 中并索引到 Lance 进行向量搜索；`vfs_get_pdf_page_image` 命令提供页面级图像用于多模态 RAG
+- 该流程同时支持初始完整 PDF 加载（首次 HTTP GET 返回完整字节）和高效的部分范围加载（后续 Range 请求返回 206 Partial Content）
 
 ---
 
-## Flow Dependency Graph
+## 流程依赖图
 
 ```mermaid
 flowchart LR
@@ -454,13 +454,13 @@ flowchart LR
 
 ---
 
-## Event-Driven Architecture Summary
+## 事件驱动架构总结
 
-The application uses a **hybrid invoke + event-driven** architecture:
+该应用使用 **混合 invoke + 事件驱动** 架构：
 
-1. **Command Pattern**: Frontend calls `invoke('command_name', args)` for request-response operations (CRUD, configuration)
-2. **Event Pattern**: Backend emits events via `window.emit()` for streaming and state changes (chat tokens, processing progress)
-3. **Custom Protocol**: `pdfstream://` for efficient binary data streaming (PDF file serving)
+1. **命令模式**：前端调用 `invoke('command_name', args)` 进行请求-响应操作（CRUD、配置）
+2. **事件模式**：后端通过 `window.emit()` 发射流式和状态变更事件（聊天 token、处理进度）
+3. **自定义协议**：`pdfstream://` 用于高效的二进制数据流（PDF 文件服务）
 
 ```
 Invoke (request-response)       Event (streaming/async)

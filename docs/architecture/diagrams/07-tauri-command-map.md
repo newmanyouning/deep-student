@@ -1,12 +1,12 @@
-# Tauri Command Map — Frontend-Backend Data Connectivity
+# Tauri 命令映射 — 前后端数据连通
 
-> This document maps every Tauri command group from its registration in `lib.rs` through its Rust handler to its frontend `invoke()` call site.
+> 本文档从 `lib.rs` 中的注册入口开始，经由 Rust 处理器，一直到前端的 `invoke()` 调用点，完整映射每一组 Tauri 命令。
 
 ---
 
-## a) Command Registration Map
+## a) 命令注册映射
 
-### Overview Flowchart
+### 概览流程图
 
 ```mermaid
 flowchart TB
@@ -105,7 +105,7 @@ flowchart TB
     LLM_MGR -->|"chat_v2_llm_request_body"| EVENTS
 ```
 
-### Command Registration in `lib.rs`
+### `lib.rs` 中的命令注册
 
 ```mermaid
 flowchart LR
@@ -159,7 +159,7 @@ flowchart LR
     GENERATE --> GROUP22
 ```
 
-### Handler-to-Dependency Map
+### 处理器到依赖映射
 
 ```mermaid
 flowchart TB
@@ -260,13 +260,13 @@ flowchart TB
 
 ---
 
-## b) Frontend-Backend Command Mapping Table
+## b) 前后端命令映射表
 
-### Core Commands (`src-tauri/src/commands.rs`)
+### 核心命令 (`src-tauri/src/commands.rs`)
 
-| Command Name | Rust Handler File | Frontend API File | invoke() Location | Parameters | Return Type |
+| 命令名称 | Rust 处理器文件 | 前端 API 文件 | invoke() 调用位置 | 参数 | 返回类型 |
 |---|---|---|---|---|---|
-| `get_app_version` | `commands.rs` | — (called within TauriAdapter) | `src/features/chat/adapters/TauriAdapter.ts` | — | `string` |
+| `get_app_version` | `commands.rs` | — (在 TauriAdapter 中调用) | `src/features/chat/adapters/TauriAdapter.ts` | — | `string` |
 | `get_setting` | `commands.rs` | `src/api/settingsApi.ts:getSetting()` | `src/api/settingsApi.ts:9` | `key: string` | `string \| null` |
 | `save_setting` | `commands.rs` | `src/api/settingsApi.ts:setSetting()` | `src/api/settingsApi.ts:14` | `key: string, value: string` | `void` |
 | `vfs_upload_file` | `vfs/handlers/file_handlers.rs` | `src/api/vfsFileApi.ts:vfsFileApi.upload()` | `src/api/vfsFileApi.ts:92` | `params: UploadFileParams` | `UploadFileResult` |
@@ -275,11 +275,11 @@ flowchart TB
 | `vfs_get_attachment_content` | `vfs/handlers/attachment_handlers.rs` | `src/api/attachmentConfigApi.ts` | `src/features/chat/context/vfsRefApiEnhancements.ts` | `attachmentId: string` | `string` (base64) |
 | `get_image_as_base64` | `commands.rs` | — | `src/features/chat/context/vfsRefApiEnhancements.ts` | `path: string` | `string` (base64) |
 
-### Chat V2 Commands (`src-tauri/src/chat_v2/handlers/`)
+### Chat V2 命令 (`src-tauri/src/chat_v2/handlers/`)
 
-| Command Name | Rust Handler File | Frontend API File | invoke() Location | Parameters | Return Type |
+| 命令名称 | Rust 处理器文件 | 前端 API 文件 | invoke() 调用位置 | 参数 | 返回类型 |
 |---|---|---|---|---|---|
-| `chat_v2_send_message` | `send_message.rs` | — | `src/features/chat/adapters/TauriAdapter.ts` | `sessionId, content, contextRefs, ...` | `void` (streams via events) |
+| `chat_v2_send_message` | `send_message.rs` | — | `src/features/chat/adapters/TauriAdapter.ts` | `sessionId, content, contextRefs, ...` | `void` (通过事件流式传输) |
 | `chat_v2_cancel_stream` | `send_message.rs` | `src/api/chatV2Api.ts:cancelStream()` | `src/api/chatV2Api.ts:19` | `sessionId, messageId` | `void` |
 | `chat_v2_load_session` | `manage_session.rs` | — | `src/features/chat/adapters/TauriAdapter.ts` | `sessionId` | `LoadSessionResponseType` |
 | `chat_v2_create_session` | `manage_session.rs` | — | `src/features/chat/core/session/sessionManager.ts` | `title?, type?, ...` | `{ sessionId: string }` |
@@ -289,9 +289,9 @@ flowchart TB
 | `chat_v2_perform_ocr` | `ocr.rs` | — | `src/features/chat/adapters/TauriAdapter.ts` | `imageBase64, fileName` | `{ text: string }` |
 | `chat_v2_search_content` | `search_handlers.rs` | — | `src/features/chat/adapters/TauriAdapter.ts` | `query, limit?` | `SearchResult[]` |
 
-### VFS Commands (`src-tauri/src/vfs/handlers/`)
+### VFS 命令 (`src-tauri/src/vfs/handlers/`)
 
-| Command Name | Rust Handler File | Frontend API File | invoke() Location | Parameters | Return Type |
+| 命令名称 | Rust 处理器文件 | 前端 API 文件 | invoke() 调用位置 | 参数 | 返回类型 |
 |---|---|---|---|---|---|
 | `vfs_search` | `index_handlers.rs` | `src/api/vfsRagApi.ts` | `src/features/learning-hub/views/IndexStatusView.tsx` | `query, limit?, folderId?` | `SearchResult[]` |
 | `vfs_list_textbooks` | `index_handlers.rs` | — | `src/features/learning-hub/LearningHubSidebar.tsx` | `limit?, offset?` | `ResourceSummary[]` |
@@ -302,9 +302,9 @@ flowchart TB
 | `vfs_reindex_resource` | `index_handlers.rs` | `src/api/vfsUnifiedIndexApi.ts:reindexResource()` | `src/api/vfsUnifiedIndexApi.ts:192` | `resourceId: string` | `number` (units) |
 | `vfs_todo_create_item` | `todo_handlers.rs` | — | `src/features/todo/TodoView.tsx` | `listId, title, ...` | `TodoItem` |
 
-### DSTU Commands (`src-tauri/src/dstu/handlers/`)
+### DSTU 命令 (`src-tauri/src/dstu/handlers/`)
 
-| Command Name | Rust Handler File | Frontend API File | invoke() Location | Parameters | Return Type |
+| 命令名称 | Rust 处理器文件 | 前端 API 文件 | invoke() 调用位置 | 参数 | 返回类型 |
 |---|---|---|---|---|---|
 | `dstu_list` | `handlers/common.rs` | — | `src/features/dstu/DstuListView.tsx` | `folderId?, resourceType?` | `DstuNode[]` |
 | `dstu_get` | `handlers/common.rs` | — | `src/features/dstu/DstuNodeView.tsx` | `id: string` | `DstuNode` |
@@ -312,31 +312,31 @@ flowchart TB
 | `dstu_folder_create` | `folder_handlers.rs` | — | `src/features/dstu/DstuFolderTree.tsx` | `name, parentId?` | `DstuFolder` |
 | `dstu_soft_delete` | `trash_handlers.rs` | — | `src/features/dstu/DstuNodeActions.tsx` | `id: string` | `void` |
 
-### Data Governance Commands (`src-tauri/src/data_governance/commands*.rs`)
+### 数据治理命令 (`src-tauri/src/data_governance/commands*.rs`)
 
-| Command Name | Rust Handler File | Frontend API File | invoke() Location | Parameters | Return Type |
+| 命令名称 | Rust 处理器文件 | 前端 API 文件 | invoke() 调用位置 | 参数 | 返回类型 |
 |---|---|---|---|---|---|
 | `data_governance_get_schema_registry` | `commands.rs` | `src/api/dataGovernance.ts:getSchemaRegistry()` | `src/api/dataGovernance.ts:64` | — | `SchemaRegistryResponse` |
 | `data_governance_run_backup` | `commands_backup.rs` | `src/api/dataGovernance.ts:runBackup()` | `src/api/dataGovernance.ts` | `options` | `BackupResultResponse` |
 | `data_governance_restore_backup` | `commands_restore.rs` | `src/api/dataGovernance.ts:restoreBackup()` | `src/api/dataGovernance.ts` | `backupId, options` | `RestoreResultResponse` |
 | `data_governance_run_sync` | `commands_sync.rs` | `src/api/dataGovernance.ts:runSync()` | `src/api/dataGovernance.ts` | — | `SyncResultResponse` |
 
-### Other Commands
+### 其他命令
 
-| Command Name | Rust Handler File | Frontend API File | invoke() Location | Parameters | Return Type |
+| 命令名称 | Rust 处理器文件 | 前端 API 文件 | invoke() 调用位置 | 参数 | 返回类型 |
 |---|---|---|---|---|---|
 | `memory_search` | `memory/handlers/*` | `src/api/memoryApi.ts:memorySearch()` | `src/api/memoryApi.ts` | `query, limit?` | `MemoryEntry[]` |
 | `memory_write` | `memory/handlers/*` | `src/api/memoryApi.ts:memoryWrite()` | `src/api/memoryApi.ts` | `content, tags?` | `MemoryEntry` |
-| `essay_grading_stream` | `essay_grading/*` | — | `src/features/essay/EssayGradingView.tsx` | `content, criteria` | `void` (streams via events) |
+| `essay_grading_stream` | `essay_grading/*` | — | `src/features/essay/EssayGradingView.tsx` | `content, criteria` | `void` (通过事件流式传输) |
 | `review_plan_get_due` | `review_plan_service/*` | — | `src/features/review/ReviewPlanView.tsx` | `limit?` | `DueItem[]` |
 | `qbank_search_questions` | `commands.rs` | `src/api/questionBankApi.ts` | `src/api/questionBankApi.ts` | `query, filters?` | `Question[]` |
-| `translate_text_stream` | `translation/*` | — | `src/features/translation/TranslationView.tsx` | `text, sourceLang, targetLang` | `void` (streams via events) |
+| `translate_text_stream` | `translation/*` | — | `src/features/translation/TranslationView.tsx` | `text, sourceLang, targetLang` | `void` (通过事件流式传输) |
 
 ---
 
-## c) Custom Protocol: `pdfstream://`
+## c) 自定义协议：`pdfstream://`
 
-Registered in `lib.rs:1729` via `register_uri_scheme_protocol("pdfstream", ...)`. This custom protocol serves PDF blob data directly to the frontend with HTTP Range Request support, enabling efficient page-by-page rendering without loading entire PDFs into memory.
+在 `lib.rs:1729` 通过 `register_uri_scheme_protocol("pdfstream", ...)` 注册。此自定义协议将 PDF blob 数据直接提供给前端，支持 HTTP Range Request，无需将整个 PDF 加载到内存即可实现高效的逐页渲染。
 
 ```mermaid
 flowchart LR
@@ -348,4 +348,4 @@ flowchart LR
 
 ---
 
-> **Note**: This mapping covers the major command groups. The total registered command count is approximately 500+ across all subsystems (see `lib.rs:847-1727` for the complete list).
+> **注**：以上映射覆盖了主要命令组。已注册的命令总数约为 500+，涵盖所有子系统（完整列表请参见 `lib.rs:847-1727`）。

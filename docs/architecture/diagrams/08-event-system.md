@@ -1,35 +1,35 @@
-# Event System — Frontend-Backend Event Flow
+# 事件系统 — 前后端事件流
 
-> This document maps every Tauri event emitted by the Rust backend and the corresponding frontend `listen()` consuming it.
+> 本文档映射由 Rust 后端发射的每个 Tauri 事件及其对应的前端 `listen()` 消费方。
 
-## Event Categories
+## 事件分类
 
-| Category | Channel Pattern | Backend Source | Frontend Consumer |
+| 类别 | 频道模式 | 后端来源 | 前端消费方 |
 |---|---|---|---|
-| Chat Streaming | `chat_v2_event_{session_id}` | `chat_v2/events.rs` | `TauriAdapter.ts` |
-| Chat Session | `chat_v2_session_{session_id}` | `chat_v2/events.rs` | `TauriAdapter.ts` |
-| Chat Request Body | `chat_v2_llm_request_body` | `llm_manager/model2_pipeline.rs` | `TauriAdapter.ts` |
-| Media Processing | `media-processing-*` | `vfs/pdf_processing_service.rs` | `usePdfProcessingProgress.ts` |
-| Media Processing (legacy) | `pdf-processing-*` | `vfs/pdf_processing_service.rs` | `usePdfProcessingProgress.ts` |
-| OCR Progress (legacy) | `pdf_ocr_progress` | `pdf_ocr_service.rs` | `usePdfProcessingProgress.ts` |
-| Anki Generation | `anki_generation_event` | `enhanced_anki_service.rs`, `streaming_anki_service.rs` | `TauriAdapter.ts` |
-| Workspace | `workspace_*` | `chat_v2/workspace/emitter.rs` | `workspace/events.ts` |
-| Data Governance | `data-governance-migration-status` | `lib.rs` (setup) | `useMigrationStatusListener.ts` |
-| Data Governance Sync | `data-governance-sync-progress` | `data_governance/sync/emitter.rs` | `DataGovernanceDashboard.tsx` |
-| Backup | `backup-job-progress` | `backup_job_manager.rs` | `useBackupJobListener.ts` |
-| Cloud Sync | `cloud-sync-progress` | `cloud_storage/mod.rs` | `CloudSyncManager` |
+| 聊天流式传输 | `chat_v2_event_{session_id}` | `chat_v2/events.rs` | `TauriAdapter.ts` |
+| 聊天会话 | `chat_v2_session_{session_id}` | `chat_v2/events.rs` | `TauriAdapter.ts` |
+| 聊天请求体 | `chat_v2_llm_request_body` | `llm_manager/model2_pipeline.rs` | `TauriAdapter.ts` |
+| 媒体处理 | `media-processing-*` | `vfs/pdf_processing_service.rs` | `usePdfProcessingProgress.ts` |
+| 媒体处理（旧版） | `pdf-processing-*` | `vfs/pdf_processing_service.rs` | `usePdfProcessingProgress.ts` |
+| OCR 进度（旧版） | `pdf_ocr_progress` | `pdf_ocr_service.rs` | `usePdfProcessingProgress.ts` |
+| Anki 生成 | `anki_generation_event` | `enhanced_anki_service.rs`, `streaming_anki_service.rs` | `TauriAdapter.ts` |
+| 工作区 | `workspace_*` | `chat_v2/workspace/emitter.rs` | `workspace/events.ts` |
+| 数据治理 | `data-governance-migration-status` | `lib.rs` (setup) | `useMigrationStatusListener.ts` |
+| 数据治理同步 | `data-governance-sync-progress` | `data_governance/sync/emitter.rs` | `DataGovernanceDashboard.tsx` |
+| 备份 | `backup-job-progress` | `backup_job_manager.rs` | `useBackupJobListener.ts` |
+| 云同步 | `cloud-sync-progress` | `cloud_storage/mod.rs` | `CloudSyncManager` |
 | MCP | `mcp_tools_changed` | `lib.rs` (MCP init) | `McpService` |
-| MCP Test | `mcp-test-progress` | `cmd/mcp.rs` | MCP Debug Panel |
-| Menu | `menu-event-*` | `menu.rs` | `menuEventBridge.ts` |
+| MCP 测试 | `mcp-test-progress` | `cmd/mcp.rs` | MCP 调试面板 |
+| 菜单 | `menu-event-*` | `menu.rs` | `menuEventBridge.ts` |
 | DSTU | `dstu:change:{path}` | `dstu/handler_utils/node_converters.rs` | `LearningHubSidebar.tsx` |
-| Canvas | `canvas:ai-edit-request` | `chat_v2/tools/canvas_executor.rs` | `useCanvasAIEditHandler.ts` |
-| Import Progress | `question_import_progress`, `csv_import_progress`, `textbook-import-progress`, `notes-import-progress` | `commands.rs`, `cmd/textbooks.rs`, `cmd/notes.rs` | `DataImportExport.tsx` |
-| Legacy Migration | `chat_v2_migration_event` | `chat_v2/migration/legacy_migration.rs` | `ChatMigrationSection.tsx` |
-| Anki Tool | `anki_tool_call` | `chat_v2/tools/anki_executor.rs` | `CardEngine.ts` |
+| 画布 | `canvas:ai-edit-request` | `chat_v2/tools/canvas_executor.rs` | `useCanvasAIEditHandler.ts` |
+| 导入进度 | `question_import_progress`, `csv_import_progress`, `textbook-import-progress`, `notes-import-progress` | `commands.rs`, `cmd/textbooks.rs`, `cmd/notes.rs` | `DataImportExport.tsx` |
+| 旧版迁移 | `chat_v2_migration_event` | `chat_v2/migration/legacy_migration.rs` | `ChatMigrationSection.tsx` |
+| Anki 工具 | `anki_tool_call` | `chat_v2/tools/anki_executor.rs` | `CardEngine.ts` |
 
 ---
 
-## a) Event Emission Map — Backend Sources
+## a) 事件发射映射 — 后端来源
 
 ```mermaid
 flowchart TB
@@ -123,20 +123,20 @@ flowchart TB
     CMDS_RS["commands.rs</br>(import progress)"] --> C20
 ```
 
-### How Events Are Emitted (Rust Pattern)
+### 事件发射方式（Rust 模式）
 
-The backend uses `tauri::Emitter` via either:
-1. **Window**: `window.emit("event_name", payload)` — scoped to the emitting window
-2. **AppHandle**: `app_handle.emit("event_name", payload)` — global, all windows receive it
+后端通过 `tauri::Emitter` 使用以下两种方式之一：
+1. **Window**：`window.emit("event_name", payload)` — 限定在发射窗口内
+2. **AppHandle**：`app_handle.emit("event_name", payload)` — 全局，所有窗口均可接收
 
-The global `AppHandle` is stored at module level in `src-tauri/src/lib.rs:124`:
+全局 `AppHandle` 存储在 `src-tauri/src/lib.rs:124` 的模块级别：
 ```rust
 static GLOBAL_APP_HANDLE: OnceLock<AppHandle> = OnceLock::new();
 ```
 
 ---
 
-## b) Event Subscription Map — Frontend Listeners
+## b) 事件订阅映射 — 前端监听器
 
 ```mermaid
 flowchart TB
@@ -246,7 +246,7 @@ flowchart TB
     DEBUG --> E8
 ```
 
-### Key Frontend Event Handlers
+### 关键前端事件处理器
 
 **ChatV2TauriAdapter** (`src/features/chat/adapters/TauriAdapter.ts:500-514`)
 ```typescript
@@ -281,9 +281,9 @@ listen('pdf_ocr_progress', handler);
 
 ---
 
-## c) Event Lifecycle Sequence Diagrams
+## c) 事件生命周期时序图
 
-### 1. Media Processing Events (PDF Upload → Processing → Completion)
+### 1. 媒体处理事件（PDF 上传 → 处理 → 完成）
 
 ```mermaid
 sequenceDiagram
@@ -331,7 +331,7 @@ sequenceDiagram
     end
 ```
 
-### 2. OCR Progress Events (Legacy `pdf_ocr_progress`)
+### 2. OCR 进度事件（旧版 `pdf_ocr_progress`）
 
 ```mermaid
 sequenceDiagram
@@ -368,7 +368,7 @@ sequenceDiagram
     end
 ```
 
-### 3. Chat V2 Streaming Events
+### 3. Chat V2 流式传输事件
 
 ```mermaid
 sequenceDiagram
@@ -457,24 +457,24 @@ sequenceDiagram
     Store-->>FE: Render complete message
 ```
 
-### Event Channel Summary Table
+### 事件频道汇总表
 
-| Channel Pattern | Payload Type | Purpose | Serialization |
+| 频道模式 | 负载类型 | 用途 | 序列化方式 |
 |---|---|---|---|
-| `chat_v2_event_{sessionId}` | `BackendEvent` (camelCase) | Block-level lifecycle (start/chunk/end/error) | `#[serde(rename_all = "camelCase")]` |
-| `chat_v2_session_{sessionId}` | `SessionEvent` (camelCase) | Session-level flow control | `#[serde(rename_all = "camelCase")]` |
-| `{streamEvent}_web_search` | `{sources: [...], tool_name, timestamp}` | Web search citation sources | Manual `json!()` |
-| `{streamEvent}_rag_sources` | `{sources: [...], tool_name, timestamp}` | RAG citation sources | Manual `json!()` |
-| `{streamEvent}_memory_sources` | `{sources: [...], tool_name, timestamp}` | Memory citation sources | Manual `json!()` |
-| `chat_v2_llm_request_body` | `{streamEvent, model, url, requestBody, ...}` | LLM request body for debug | Manual `json!()` |
-| `anki_generation_event` | `{type, sessionId, ...}` | Anki card generation progress | Manual `json!()` |
-| `media-processing-*` | `{fileId, status/readyModes/error, mediaType}` | PDF/image processing pipeline | `#[serde(rename_all = "camelCase")]` |
-| `pdf_ocr_progress` | `{type, session_id, page_index, ...}` | Legacy OCR per-page events | Manual `json!()` |
-| `workspace_*` | Varies by event type | Multi-agent workspace events | Manual `json!()` |
-| `backup-job-progress` | `BackupJobSnapshot` | Backup job progress | `#[serde(rename_all = "camelCase")]` |
-| `data-governance-sync-progress` | `SyncProgress` | Data governance sync phases | `#[serde(rename_all = "camelCase")]` |
-| `dstu:change:{path}` | `{action, resourceId, ...}` | DSTU resource change notifications | Manual `json!()` |
+| `chat_v2_event_{sessionId}` | `BackendEvent` (camelCase) | 块级生命周期（start/chunk/end/error） | `#[serde(rename_all = "camelCase")]` |
+| `chat_v2_session_{sessionId}` | `SessionEvent` (camelCase) | 会话级流程控制 | `#[serde(rename_all = "camelCase")]` |
+| `{streamEvent}_web_search` | `{sources: [...], tool_name, timestamp}` | 网络搜索引用来源 | 手动 `json!()` |
+| `{streamEvent}_rag_sources` | `{sources: [...], tool_name, timestamp}` | RAG 引用来源 | 手动 `json!()` |
+| `{streamEvent}_memory_sources` | `{sources: [...], tool_name, timestamp}` | 记忆引用来源 | 手动 `json!()` |
+| `chat_v2_llm_request_body` | `{streamEvent, model, url, requestBody, ...}` | LLM 请求体（调试用） | 手动 `json!()` |
+| `anki_generation_event` | `{type, sessionId, ...}` | Anki 卡片生成进度 | 手动 `json!()` |
+| `media-processing-*` | `{fileId, status/readyModes/error, mediaType}` | PDF/图片处理管线 | `#[serde(rename_all = "camelCase")]` |
+| `pdf_ocr_progress` | `{type, session_id, page_index, ...}` | 旧版 OCR 逐页事件 | 手动 `json!()` |
+| `workspace_*` | 因事件类型而异 | 多代理工作区事件 | 手动 `json!()` |
+| `backup-job-progress` | `BackupJobSnapshot` | 备份任务进度 | `#[serde(rename_all = "camelCase")]` |
+| `data-governance-sync-progress` | `SyncProgress` | 数据治理同步阶段 | `#[serde(rename_all = "camelCase")]` |
+| `dstu:change:{path}` | `{action, resourceId, ...}` | DSTU 资源变更通知 | 手动 `json!()` |
 
 ---
 
-> **Note on Sequence IDs**: The `ChatV2EventEmitter` maintains per-session atomic sequence counters (`SESSION_SEQUENCE_COUNTERS` in `chat_v2/events.rs:713`) that produce strictly increasing `sequenceId` values. The frontend `eventBridge.ts` uses these to detect out-of-order or dropped events.
+> **关于序列 ID 的说明**：`ChatV2EventEmitter` 维护每个会话的原子序列计数器（`chat_v2/events.rs:713` 中的 `SESSION_SEQUENCE_COUNTERS`），生成严格递增的 `sequenceId` 值。前端 `eventBridge.ts` 利用这些值检测乱序或丢失的事件。
