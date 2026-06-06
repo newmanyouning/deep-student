@@ -502,6 +502,7 @@ const FileContentViewInner: React.FC<ContentViewProps> = ({
                 focusRequest={focusRequest}
                 onFocusHandled={handleFocusHandled}
                 resourcePath={node.path}
+                fileId={node.id}
               />
             </div>
           </div>

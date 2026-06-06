@@ -3,6 +3,7 @@ import { NotionButton } from '@/components/ui/NotionButton';
 import { Document, Page, Thumbnail, pdfjs } from 'react-pdf';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { useTranslation } from 'react-i18next';
+import { invoke } from '@tauri-apps/api/core';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { usePdfSettingsStore } from '../stores/pdfSettingsStore';
 import { dstu } from '@/dstu';
@@ -32,7 +33,9 @@ import {
   BookmarkSimple as BookmarkCheck,
   Pencil,
   Trash,
-  DotsThree
+  DotsThree,
+  Scan,
+  CircleNotch
 } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/shad/Input';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -104,6 +107,8 @@ export interface EnhancedPdfViewerProps {
   enableTextSelection?: boolean;
   /** 资源路径，用于持久化高亮批注（如 "/tb_xxx" 或 "/高考复习/tb_xxx"） */
   resourcePath?: string;
+  /** 文件 ID，用于手动触发 OCR 流水线 */
+  fileId?: string;
   /** 初始高亮数据（外部控制模式） */
   initialHighlights?: Highlight[];
   /** 高亮变化回调（外部控制模式） */
@@ -144,6 +149,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   onRegisterCommands,
   enableTextSelection,
   resourcePath,
+  fileId,
   initialHighlights,
   onHighlightsChange,
   bookmarks: externalBookmarks,
@@ -183,6 +189,8 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [isScrolling, setIsScrolling] = useState<boolean>(false);
   const [isScannedPdf, setIsScannedPdf] = useState<boolean>(false);
+  const [isOcrTriggering, setIsOcrTriggering] = useState<boolean>(false);
+  const [ocrTriggered, setOcrTriggered] = useState<boolean>(false);
   
   const thumbnailsContainerRef = useRef<HTMLDivElement>(null);
   
@@ -363,6 +371,22 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
       });
     }
   }, []);
+
+  // 手动触发 OCR 流水线
+  const handleRetryOcr = useCallback(() => {
+    if (!fileId || isOcrTriggering) return;
+    setIsOcrTriggering(true);
+    invoke('vfs_ensure_ocr_pipeline', { fileId })
+      .then(() => {
+        setOcrTriggered(true);
+        setIsOcrTriggering(false);
+        // 通知父组件 OCR 已启动
+        document.dispatchEvent(new CustomEvent('ocr:triggered', { detail: { fileId } }));
+      })
+      .catch(() => {
+        setIsOcrTriggering(false);
+      });
+  }, [fileId, isOcrTriggering]);
 
   // 旋转页面
   const handleRotate = useCallback(() => {
@@ -1379,7 +1403,25 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
       {isScannedPdf && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#eef2ff', color: '#4338ca', fontSize: 13, borderBottom: '1px solid #c7d2fe' }}>
           <Info size={16} />
-          <span>This appears to be a scanned PDF without embedded text. OCR processing will make the content searchable.</span>
+          <span style={{ flex: 1 }}>
+            {ocrTriggered
+              ? (t('pdf:ocr.processing', 'OCR 处理中...') || 'OCR processing...')
+              : (t('pdf:ocr.scanned_notice', 'This appears to be a scanned PDF without embedded text. OCR processing will make the content searchable.') || 'This appears to be a scanned PDF without embedded text. OCR processing will make the content searchable.')
+            }
+          </span>
+          {fileId && !ocrTriggered && (
+            <NotionButton variant="primary" size="sm" onClick={handleRetryOcr} disabled={isOcrTriggering} style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              {isOcrTriggering ? (
+                <CircleNotch size={14} className="animate-spin" />
+              ) : (
+                <Scan size={14} />
+              )}
+              {isOcrTriggering
+                ? (t('pdf:ocr.starting', '启动中...') || 'Starting...')
+                : (t('pdf:ocr.retry', '重新OCR') || 'Retry OCR')
+              }
+            </NotionButton>
+          )}
         </div>
       )}
 

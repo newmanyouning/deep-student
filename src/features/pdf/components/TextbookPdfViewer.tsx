@@ -35,6 +35,7 @@ interface TextbookPdfViewerProps {
   readingProgress?: ReadingProgress;
   onProgressChange?: (progress: ReadingProgress) => void;
   resourcePath?: string;
+  fileId?: string;
   bookmarks?: Bookmark[];
   onBookmarksChange?: (bookmarks: Bookmark[]) => void;
   /** @deprecated 自动导出已移除，此参数无效 */
@@ -56,6 +57,7 @@ export const TextbookPdfViewer: React.FC<TextbookPdfViewerProps> = ({
   readingProgress,
   onProgressChange,
   resourcePath,
+  fileId,
   bookmarks,
   onBookmarksChange,
 }) => {
@@ -307,6 +309,7 @@ export const TextbookPdfViewer: React.FC<TextbookPdfViewerProps> = ({
             onRegisterCommands={handleRegisterViewerCommands}
             initialPage={readingProgress?.page ? readingProgress.page - 1 : 0}
             resourcePath={resourcePath}
+            fileId={fileId}
             bookmarks={bookmarks}
             onBookmarksChange={onBookmarksChange}
           />
