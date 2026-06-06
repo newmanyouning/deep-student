@@ -158,6 +158,8 @@ export interface BlockRendererProps {
   block: Block;
   /** 是否正在流式生成 */
   isStreaming?: boolean;
+  /** 骨架屏：块尚未就绪时显示占位符 */
+  pending?: boolean;
   /** 自定义类名 */
   className?: string;
 }
@@ -211,11 +213,21 @@ const GenericBlock: React.FC<{ block: Block; isStreaming?: boolean }> = ({
 export const BlockRenderer: React.FC<BlockRendererProps> = ({
   block,
   isStreaming = false,
+  pending = false,
   className,
 }) => {
-  // 📊 细粒度打点：BlockRenderer render
+  // skeleton: block not ready, show placeholder
+  if (pending) {
+    return (
+      <div className="block-renderer--skeleton animate-pulse flex items-center gap-2 p-3 rounded-lg bg-muted/20">
+        <div className="w-4 h-4 rounded bg-muted/40" />
+        <div className="h-3 w-24 rounded bg-muted/40" />
+      </div>
+    );
+  }
+
+  // blocking: only subscription/render when present
   sessionSwitchPerf.mark('br_render', { blockType: block.type });
-  
   // 跳过来源类型块，这些块只在 SourcePanelV2 中统一展示
   if (SOURCE_BLOCK_TYPES.has(block.type)) {
     return null;
@@ -247,6 +259,8 @@ export interface BlockRendererWithStoreProps {
   store: StoreApi<ChatStore>;
   /** 块 ID */
   blockId: string;
+  /** 骨架屏：块尚未就绪时显示占位符 */
+  pending?: boolean;
   /** 自定义类名 */
   className?: string;
 }
@@ -265,17 +279,23 @@ export interface BlockRendererWithStoreProps {
 const BlockRendererWithStoreInner: React.FC<BlockRendererWithStoreProps> = ({
   store,
   blockId,
+  pending = false,
   className,
 }) => {
   // 🚀 细粒度订阅：只订阅单个 block
   const block = useBlock(store, blockId);
-  
+
   // 🚀 细粒度订阅：只订阅此 block 的流式状态
   const isStreaming = useIsBlockActive(store, blockId);
 
-  // 块不存在时返回 null
-  if (!block) {
-    return null;
+  // 块不存在或 pending 状态时显示骨架屏
+  if (!block || pending) {
+    return (
+      <div className="block-renderer--skeleton animate-pulse flex items-center gap-2 p-3 rounded-lg bg-muted/20">
+        <div className="w-4 h-4 rounded bg-muted/40" />
+        <div className="h-3 w-24 rounded bg-muted/40" />
+      </div>
+    );
   }
 
   // 跳过来源类型块
@@ -308,6 +328,7 @@ export const BlockRendererWithStore = memo(
   BlockRendererWithStoreInner,
   (prevProps, nextProps) => {
     return (
+      prevProps.pending === nextProps.pending &&
       prevProps.store === nextProps.store &&
       prevProps.blockId === nextProps.blockId &&
       prevProps.className === nextProps.className

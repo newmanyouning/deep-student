@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { createThrottledStorage } from '@/utils/throttledStorage';
 import type { PomodoroState, PomodoroMode } from '../types';
 import { DEFAULT_POMODORO_SETTINGS } from '../types';
 import { createPomodoroRecord } from '../api';
@@ -202,11 +203,12 @@ export const usePomodoroStore = create<PomodoroState>()(
     }),
     {
       name: 'pomodoro-storage',
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         settings: state.settings,
         completedPomodorosToday: state.completedPomodorosToday,
         lastActiveDate: state.lastActiveDate,
       }),
+      storage: createThrottledStorage(),
     }
   )
 );
