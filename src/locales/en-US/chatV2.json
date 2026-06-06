@@ -430,6 +430,11 @@
       "openInNewTab": "Open in new tab",
       "close": "Close"
     },
+    "deprecatedTool": {
+      "toolDeprecated": "Tool \"{{toolName}}\" is no longer available, but historical data has been preserved",
+      "input": "Input Parameters",
+      "output": "Output Result"
+    },
     "ankiCards": {
       "title": "Anki Cards",
       "card": "Card",

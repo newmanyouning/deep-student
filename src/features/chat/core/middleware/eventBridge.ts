@@ -1164,13 +1164,12 @@ export async function handleStreamComplete(
   // 🔧 清理流式块保存器的累积内容（防止内存泄漏）
   streamingBlockSaver.cleanup(store.sessionId);
 
-  // 清理事件上下文
-  clearEventContext(store.sessionId);
-
-  // 清理事件桥接状态
-  clearBridgeState(store.sessionId);
-  // 清理去重集合，避免新流复用 sequenceId 时被误判重复
-  clearProcessedEventIds(store.sessionId);
+  // 🔧 修复 ChatAnki 后台管线数据断裂：
+  // 不在此处清理事件上下文/桥接状态/去重集合，因为后台管线（ChatAnki pipeline）
+  // 可能在 stream_complete 之后继续发射 anki_cards chunk/end 事件。
+  // 若在此处清空，这些事件会被乱序缓冲区捕获并延迟 3 秒（gap timeout），
+  // 极端情况下若 gap timer 被后续 cancel 则事件永久丢失，导致卡片"生而不见"。
+  // 桥接状态由下一条消息的 resetBridgeState() 统一清理。
 
   // 强制立即保存
   await autoSave.forceImmediateSave(store);
@@ -1197,13 +1196,10 @@ export async function handleStreamAbort(store: ChatStore): Promise<void> {
   // 🔧 清理流式块保存器的累积内容（防止内存泄漏）
   streamingBlockSaver.cleanup(store.sessionId);
 
-  // 清理事件上下文
-  clearEventContext(store.sessionId);
-
-  // 清理事件桥接状态
-  clearBridgeState(store.sessionId);
-  // 清理去重集合，避免新流复用 sequenceId 时被误判重复
-  clearProcessedEventIds(store.sessionId);
+  // 🔧 修复 ChatAnki 后台管线数据断裂（同 handleStreamComplete）：
+  // 不在此处清理事件上下文/桥接状态/去重集合，避免中断后仍可能到达的
+  // anki_cards chunk/end 事件被错误缓冲或丢失。由下一条消息的
+  // resetBridgeState() 统一清理。
 
   // 强制立即保存
   await autoSave.forceImmediateSave(store);

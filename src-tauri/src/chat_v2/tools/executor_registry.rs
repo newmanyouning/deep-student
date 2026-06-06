@@ -25,6 +25,47 @@ use super::{
 };
 
 // ============================================================================
+// 已弃用工具注册表
+// ============================================================================
+
+/// 已弃用工具名到其替代工具的映射
+///
+/// 当软件更新后旧工具被重命名或移除，此映射用于：
+/// 1. 在 get_executor 中给出友好的错误提示
+/// 2. 在 execute 中提供替代方案建议
+/// 3. 日志中记录清晰警告
+const DEPRECATED_TOOL_MAP: &[(&str, &str)] = &[
+    // CardForge 2.0 => ChatAnki 3.0
+    ("builtin-anki_generate_cards", "builtin-chatanki_run"),
+    ("builtin-anki_control_task", "builtin-chatanki_control"),
+    ("builtin-anki_export_cards", "builtin-chatanki_export"),
+    ("builtin-anki_list_templates", "builtin-chatanki_list_templates"),
+    ("builtin-anki_analyze_content", "builtin-chatanki_analyze"),
+    ("builtin-anki_query_progress", "builtin-chatanki_status"),
+    // 无前缀的兼容格式
+    ("anki_generate_cards", "builtin-chatanki_run"),
+    ("anki_control_task", "builtin-chatanki_control"),
+    ("anki_export_cards", "builtin-chatanki_export"),
+    ("anki_list_templates", "builtin-chatanki_list_templates"),
+    ("anki_analyze_content", "builtin-chatanki_analyze"),
+    ("anki_query_progress", "builtin-chatanki_status"),
+];
+
+/// 检查是否为已弃用的工具
+pub fn is_deprecated_tool(tool_name: &str) -> bool {
+    DEPRECATED_TOOL_MAP.iter().any(|(old, _)| *old == tool_name)
+        || tool_name.strip_prefix("builtin-").unwrap_or(tool_name).starts_with("anki_")
+}
+
+/// 获取已弃用工具的替代工具名
+pub fn get_deprecated_tool_replacement(tool_name: &str) -> Option<&'static str> {
+    DEPRECATED_TOOL_MAP
+        .iter()
+        .find(|(old, _)| *old == tool_name)
+        .map(|(_, replacement)| *replacement)
+}
+
+// ============================================================================
 // 全局超时配置
 // ============================================================================
 
@@ -134,12 +175,36 @@ impl ToolExecutorRegistry {
     /// ## 返回
     /// - `Some(executor)`: 找到的执行器
     /// - `None`: 没有执行器能处理此工具
+    ///
+    /// ## 已弃用工具检测
+    /// 如果工具名已知已弃用，会记录警告日志并提示替代工具。
     pub fn get_executor(&self, tool_name: &str) -> Option<Arc<dyn ToolExecutor>> {
         for executor in &self.executors {
             if executor.can_handle(tool_name) {
                 return Some(executor.clone());
             }
         }
+
+        // 未找到执行器，检查是否为已弃用工具
+        if is_deprecated_tool(tool_name) {
+            if let Some(replacement) = get_deprecated_tool_replacement(tool_name) {
+                log::warn!(
+                    "[ToolExecutorRegistry] Deprecated tool '{}' is no longer registered. \
+                     Its replacement is '{}'. Old sessions referencing this tool will still \
+                     display historical data via the 'deprecated_tool' block type.",
+                    tool_name,
+                    replacement,
+                );
+            } else {
+                log::warn!(
+                    "[ToolExecutorRegistry] Deprecated tool '{}' is no longer registered. \
+                     No direct replacement found. Old sessions referencing this tool will still \
+                     display historical data via the 'deprecated_tool' block type.",
+                    tool_name,
+                );
+            }
+        }
+
         None
     }
 
@@ -179,9 +244,23 @@ impl ToolExecutorRegistry {
         }
 
         // 查找能处理的执行器
-        let executor = self
-            .get_executor(&call.name)
-            .ok_or_else(|| ToolError::NotFound(format!("No executor found for tool: {}", call.name)))?;
+        let executor = self.get_executor(&call.name).ok_or_else(|| {
+            // 增强已弃用工具的报错信息，提供替代工具建议
+            if let Some(replacement) = get_deprecated_tool_replacement(&call.name) {
+                ToolError::NotFound(format!(
+                    "工具 '{name}' 已不再可用（已弃用），请使用替代工具 '{replacement}'。历史数据已保留。",
+                    name = call.name,
+                    replacement = replacement,
+                ))
+            } else if is_deprecated_tool(&call.name) {
+                ToolError::NotFound(format!(
+                    "工具 '{name}' 已不再可用（已弃用），且无直接替代工具。历史数据已保留。",
+                    name = call.name,
+                ))
+            } else {
+                ToolError::NotFound(format!("未找到可处理工具 '{name}' 的执行器", name = call.name))
+            }
+        })?;
 
         log::debug!(
             "[ToolExecutorRegistry] Executing tool '{}' with executor '{}'",

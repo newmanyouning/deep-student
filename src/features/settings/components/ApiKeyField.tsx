@@ -39,10 +39,16 @@ export const ApiKeyField = React.forwardRef<HTMLInputElement, ApiKeyFieldProps>(
 
   // React controlled <input type="password"> sometimes does NOT fire onChange
   // when the user pastes (Ctrl+V) in certain browsers / WebViews (e.g. Tauri
-  // WebView2 on Windows).  Forward the event to the parent's onPaste handler
-  // which reads the updated value after the browser applies the paste.
+  // WebView2 on Windows). Force onChange after paste so the parent form
+  // detects the value change and enables save/apply buttons.
   const handlePaste = React.useCallback((e: React.ClipboardEvent<HTMLInputElement>) => {
     onPasteProp?.(e);
+    // Force React's onChange to fire by dispatching a native 'input' event
+    // after the browser has applied the pasted text.
+    const input = e.currentTarget;
+    setTimeout(() => {
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }, 0);
   }, [onPasteProp]);
 
   return (

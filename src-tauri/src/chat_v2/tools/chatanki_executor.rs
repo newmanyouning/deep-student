@@ -978,11 +978,24 @@ impl ChatAnkiToolExecutor {
         let should_retry = matches!(final_status.as_str(), "timeout" | "not_found");
 
         // Always return a structured result (avoid tool failure for "not found" / "timeout").
+        // 🔧 修复 ChatAnki 数据链：包含实际卡片数据，使 LLM 能感知卡片内容。
+        let final_cards_value = final_document_id.as_deref().and_then(|doc_id| {
+            anki_db.as_ref().and_then(|db| {
+                db.get_cards_for_document(doc_id)
+                    .ok()
+                    .map(|cards| -> Vec<Value> {
+                        let limit = std::cmp::min(cards.len(), 100);
+                        cards.iter().take(limit).map(convert_backend_card).collect()
+                    })
+            })
+        });
+
         let tool_output = json!({
             "status": final_status,
             "ankiBlockId": final_anki_block_id.or_else(|| args.anki_block_id.clone()).unwrap_or_default(),
             "documentId": final_document_id,
             "cardsCount": final_cards_count.unwrap_or(0),
+            "cards": final_cards_value,
             "progress": final_progress,
             "ankiConnect": final_anki_connect,
             "error": final_error,

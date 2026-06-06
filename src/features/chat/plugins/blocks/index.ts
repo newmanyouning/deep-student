@@ -56,6 +56,9 @@ import './askUserBlock';
 // 🆕 P1: 上下文压缩摘要块（长会话锚定摘要 + 尾部保真）
 import './compactionSummary';
 
+// 已弃用工具块（旧工具重命名/移除后保留历史数据）
+import './deprecatedTool';
+
 // 知识检索块
 import './rag';
 import './memory';

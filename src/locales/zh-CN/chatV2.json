@@ -430,6 +430,11 @@
       "openInNewTab": "新标签页打开",
       "close": "关闭"
     },
+    "deprecatedTool": {
+      "toolDeprecated": "工具「{{toolName}}」已不再可用，但历史数据已保留",
+      "input": "输入参数",
+      "output": "输出结果"
+    },
     "ankiCards": {
       "title": "Anki 卡片",
       "card": "卡片",

@@ -105,6 +105,9 @@ pub mod block_types {
 
     // 🆕 用户提问块
     pub const ASK_USER: &str = "ask_user";
+
+    // 🆕 已弃用的工具块（旧会话中已移除/重命名的工具，保留历史数据用于展示）
+    pub const DEPRECATED_TOOL: &str = "deprecated_tool";
 }
 
 /// 块状态字符串常量（与前端 BlockStatus 完全对齐）

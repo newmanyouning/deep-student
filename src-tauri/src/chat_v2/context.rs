@@ -578,6 +578,11 @@ impl PipelineContext {
     pub fn get_block_type_for_tool_static(tool_name: &str) -> String {
         let stripped = tool_name.strip_prefix("builtin-").unwrap_or(tool_name);
 
+        // 检测已弃用的旧 Anki 工具（CardForge 2.0），映射到 deprecated_tool 类型
+        if stripped.starts_with("anki_") {
+            return block_types::DEPRECATED_TOOL.to_string();
+        }
+
         match stripped {
             "rag_search" | "multimodal_search" | "unified_search" => block_types::RAG.to_string(),
             "memory_search" => block_types::MEMORY.to_string(),

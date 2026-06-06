@@ -13,6 +13,46 @@ import { debugLog } from '@/debug-panel/debugMasterSwitch';
 import i18n from 'i18next';
 import { showOperationLockNotification } from './createChatStore';
 
+// ============================================================================
+// 已弃用工具检测
+// ============================================================================
+
+/**
+ * 已知已弃用的工具名列表（旧工具重命名/移除后标记为此类型）
+ *
+ * 当软件更新后工具被重命名或移除，旧会话中包含这些工具名的块
+ * 会在恢复时自动转换为 'deprecated_tool' 类型，保留历史数据但不再可执行。
+ */
+const DEPRECATED_TOOL_NAMES = new Set<string>([
+  // CardForge 2.0 => ChatAnki 3.0
+  'builtin-anki_generate_cards',
+  'builtin-anki_control_task',
+  'builtin-anki_export_cards',
+  'builtin-anki_list_templates',
+  'builtin-anki_analyze_content',
+  'builtin-anki_query_progress',
+  // 无前缀的旧格式兼容
+  'anki:generate_cards',
+  'anki:control_task',
+  'anki:export_cards',
+  'anki:list_templates',
+  'anki:analyze_content',
+  'anki:query_progress',
+]);
+
+/**
+ * 检测是否为已弃用的工具名
+ * 支持前缀变体匹配
+ */
+function isDeprecatedToolName(toolName: string | undefined): boolean {
+  if (!toolName) return false;
+  if (DEPRECATED_TOOL_NAMES.has(toolName)) return true;
+  // 匹配 anki_ 前缀的通用模式（所有旧 Anki 工具）
+  const stripped = toolName.replace(/^builtin[-:]/, '');
+  if (stripped.startsWith('anki_')) return true;
+  return false;
+}
+
 const console = debugLog as Pick<typeof debugLog, 'log' | 'warn' | 'error' | 'info' | 'debug'>;
 
 type PersistedSkillState = {
@@ -116,10 +156,23 @@ export function createRestoreActions(
           const tBlockMapStart = performance.now();
           const blocksMap = new Map<string, Block>();
           for (const blk of blocks) {
+            // 🔧 已弃用工具检测：如果块类型为 mcp_tool 且工具名已被弃用，
+            // 自动转换为 deprecated_tool 类型，保留完整历史数据
+            const rawType = blk.type as BlockType;
+            const resolvedType: BlockType =
+              rawType === 'mcp_tool' && isDeprecatedToolName(blk.toolName)
+                ? 'deprecated_tool'
+                : rawType;
+            if (resolvedType !== rawType) {
+              console.log(
+                `[ChatStore] Converted deprecated tool block: id=${blk.id}, toolName=${blk.toolName}, type=${rawType} -> deprecated_tool`
+              );
+            }
+
             const block: Block = {
               id: blk.id,
               messageId: blk.messageId,
-              type: blk.type as BlockType,
+              type: resolvedType,
               status: blk.status as BlockStatus,
               content: blk.content,
               toolName: blk.toolName,
