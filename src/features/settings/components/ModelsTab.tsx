@@ -80,7 +80,9 @@ const ModelAssignmentRow = ({
   noModelsMessage?: string;
   onSave: (field: string, value: string | null) => Promise<any>;
   setConfig: React.Dispatch<React.SetStateAction<any>>;
-}) => (
+}) => {
+  const { t } = useTranslation('settings');
+  return (
   <div className="group flex flex-col sm:flex-row sm:items-start gap-2 py-2.5 px-1 rounded overflow-hidden">
     <div className="flex-1 min-w-0 pt-1.5 sm:min-w-[200px]">
       <h3 className="text-sm text-foreground/90 leading-tight">{title}</h3>
@@ -99,6 +101,9 @@ const ModelAssignmentRow = ({
             setConfig((prev: any) => ({ ...prev, [configKey]: merged[field] || '' }));
             showGlobalNotification('success', notificationKey);
           } catch (error: unknown) {
+            const msg = error instanceof Error ? error.message : String(error);
+            console.error('[ModelAssignment] Save failed:', msg);
+            showGlobalNotification('error', t('settings:api.save_failed', { defaultValue: '保存失败，请重试' }));
           }
         }}
         variant="full"
@@ -114,7 +119,8 @@ const ModelAssignmentRow = ({
       )}
     </div>
   </div>
-);
+  );
+};
 
 const GroupTitle = ({ title }: { title: string }) => (
   <div className="px-1 mb-3 mt-8 first:mt-0">

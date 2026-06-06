@@ -2280,14 +2280,20 @@ impl ChatAnkiToolExecutor {
             .ok_or("Anki database not available")?
             .clone();
 
-        // ★ 提前检查 Anki 制卡模型是否已配置，避免后台任务静默失败
-        {
-            let model_assignments = llm_manager
-                .get_model_assignments()
-                .await
-                .unwrap_or_default();
-            if model_assignments.anki_card_model_config_id.is_none() {
-                let error_msg = "Anki 制卡模型未配置。请在 设置 → 模型 → 功能增强模型 中为「Anki 制卡」选择一个模型。".to_string();
+        // ★ 提前检查 Anki 制卡模型是否已配置且可用，避免后台任务静默失败
+        match llm_manager.get_anki_model_config().await {
+            Ok(config) => {
+                log::info!(
+                    "[ChatAnki] Anki model verified: {} ({} @ {})",
+                    config.name, config.model, config.base_url
+                );
+                // 继续正常流程
+            }
+            Err(e) => {
+                let error_msg = format!(
+                    "Anki 制卡模型不可用: {} 请在 设置 → 模型 → 功能增强模型 中检查「Anki 制卡」模型配置。",
+                    e
+                );
                 ctx.emit_tool_call_error(&error_msg);
                 let result = ToolResultInfo::failure(
                     Some(call.id.clone()),
