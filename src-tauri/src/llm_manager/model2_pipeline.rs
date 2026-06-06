@@ -1665,11 +1665,16 @@ impl LLMManager {
                 }
             }
 
+            let api_label = format!(
+                "{} ({} @ {})",
+                config.name, config.model, config.base_url
+            );
+
             let resp = request_builder
                 .json(&preq.body)
                 .send()
                 .await
-                .map_err(|e| AppError::network(format!("模型二API请求失败: {}", e)))?;
+                .map_err(|e| AppError::network(format!("{}: 网络请求失败: {}", api_label, e)))?;
 
             if resp.status().is_success() {
                 break resp;
@@ -1693,8 +1698,8 @@ impl LLMManager {
                     if retry_count < MAX_RETRIES {
                         retry_count += 1;
                         warn!(
-                            "[模型二API] 遇到速率限制(429)，等待 {}ms 后重试 ({}/{})",
-                            wait_ms, retry_count, MAX_RETRIES
+                            "[{}] 遇到速率限制(429)，等待 {}ms 后重试 ({}/{})",
+                            api_label, wait_ms, retry_count, MAX_RETRIES
                         );
                         tokio::time::sleep(tokio::time::Duration::from_millis(wait_ms)).await;
                         backoff_ms = (backoff_ms * 2).min(30000); // 指数退避，最大30秒
@@ -1702,8 +1707,8 @@ impl LLMManager {
                     } else {
                         let error_text = resp.text().await.unwrap_or_default();
                         let error_msg = format!(
-                            "模型二API请求失败: 速率限制(429)，已重试{}次仍失败 - {}",
-                            MAX_RETRIES, error_text
+                            "{}: 速率限制(429)，已重试{}次仍失败 - {}",
+                            api_label, MAX_RETRIES, error_text
                         );
                         error!("{}", error_msg);
                         return Err(AppError::llm(error_msg));
@@ -1713,10 +1718,10 @@ impl LLMManager {
                 401 | 403 => {
                     let error_text = resp.text().await.unwrap_or_default();
                     let error_msg = format!(
-                        "模型二API认证失败: API Key 无效或已过期 (HTTP {}) - {}",
-                        status_code, error_text
+                        "{}: API Key 无效或已过期 (HTTP {}) — 请检查设置 → 模型 → {} 的 API Key",
+                        api_label, status_code, config.name
                     );
-                    error!("{}", error_msg);
+                    error!("认证失败: {} | detail: {}", error_msg, error_text);
                     return Err(AppError::configuration(error_msg));
                 }
                 // 5xx 服务端错误：可重试
@@ -1724,8 +1729,8 @@ impl LLMManager {
                     if retry_count < MAX_RETRIES {
                         retry_count += 1;
                         warn!(
-                            "[模型二API] 服务端错误({})，等待 {}ms 后重试 ({}/{})",
-                            status_code, backoff_ms, retry_count, MAX_RETRIES
+                            "[{}] 上游服务错误({})，等待 {}ms 后重试 ({}/{})",
+                            api_label, status_code, backoff_ms, retry_count, MAX_RETRIES
                         );
                         tokio::time::sleep(tokio::time::Duration::from_millis(backoff_ms)).await;
                         backoff_ms = (backoff_ms * 2).min(30000);
@@ -1733,8 +1738,8 @@ impl LLMManager {
                     } else {
                         let error_text = resp.text().await.unwrap_or_default();
                         let error_msg = format!(
-                            "模型二API服务端错误: HTTP {} - 已重试{}次仍失败 - {}",
-                            status_code, MAX_RETRIES, error_text
+                            "{}: 上游服务错误 HTTP {} — 已重试{}次仍失败。请检查 API 地址是否正常，或尝试切换模型。\n服务器响应: {}",
+                            api_label, status_code, MAX_RETRIES, error_text
                         );
                         error!("{}", error_msg);
                         return Err(AppError::llm(error_msg));
@@ -1744,8 +1749,8 @@ impl LLMManager {
                 _ => {
                     let error_text = resp.text().await.unwrap_or_default();
                     let error_msg =
-                        format!("模型二API请求失败: HTTP {} - {}", status_code, error_text);
-                    error!("模型二API请求失败: {}", error_msg);
+                        format!("{}: HTTP {} 错误 — {}", api_label, status_code, error_text);
+                    error!("{}", error_msg);
                     return Err(AppError::llm(error_msg));
                 }
             }
@@ -3876,34 +3881,38 @@ impl LLMManager {
             }
         }
 
+        let api_label_ns = format!(
+            "{} ({} @ {})",
+            config.name, config.model, config.base_url
+        );
+
         let response = request_builder
             .json(&preq.body)
             .send()
             .await
-            .map_err(|e| AppError::network(format!("模型二API请求失败: {}", e)))?;
+            .map_err(|e| AppError::network(format!("{}: 网络请求失败: {}", api_label_ns, e)))?;
 
         if !response.status().is_success() {
             let status = response.status();
             let error_text = response.text().await.unwrap_or_default();
-            let error_msg = format!("模型二API请求失败: {} - {}", status, error_text);
-            // 非流式版本没有 stream_event/window 上下文，这里仅返回错误
-            error!("模型二API请求失败(非流式): {}", error_msg);
+            let error_msg = format!("{}: HTTP {} 错误 — {}", api_label_ns, status, error_text);
+            error!("{}(非流式): {}", api_label_ns, error_msg);
             return Err(AppError::llm(error_msg));
         }
 
         let response_text = response
             .text()
             .await
-            .map_err(|e| AppError::llm(format!("读取模型二响应失败: {}", e)))?;
+            .map_err(|e| AppError::llm(format!("{}: 读取响应失败: {}", api_label_ns, e)))?;
         let response_bytes = response_text.len();
         let response_json: Value = serde_json::from_str(&response_text)
-            .map_err(|e| AppError::llm(format!("解析模型二响应失败: {}", e)))?;
+            .map_err(|e| AppError::llm(format!("{}: 解析响应失败: {}", api_label_ns, e)))?;
 
         let openai_like_json = normalize_nonstream_response_to_openai(&config, &response_json)?;
 
         let content = openai_like_json["choices"][0]["message"]["content"]
             .as_str()
-            .ok_or_else(|| AppError::llm("无法解析模型二API响应"))?;
+            .ok_or_else(|| AppError::llm(format!("{}: 响应中无有效内容 — 模型返回了空响应，请检查模型配置或切换模型", api_label_ns)))?;
 
         // 如果启用了思维链，尝试提取思维链详情
         let chain_of_thought_details = if enable_chain_of_thought {
