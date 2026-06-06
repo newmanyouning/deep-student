@@ -2280,6 +2280,28 @@ impl ChatAnkiToolExecutor {
             .ok_or("Anki database not available")?
             .clone();
 
+        // ★ 提前检查 Anki 制卡模型是否已配置，避免后台任务静默失败
+        {
+            let model_assignments = llm_manager
+                .get_model_assignments()
+                .await
+                .unwrap_or_default();
+            if model_assignments.anki_card_model_config_id.is_none() {
+                let error_msg = "Anki 制卡模型未配置。请在 设置 → 模型 → 功能增强模型 中为「Anki 制卡」选择一个模型。".to_string();
+                ctx.emit_tool_call_error(&error_msg);
+                let result = ToolResultInfo::failure(
+                    Some(call.id.clone()),
+                    Some(ctx.block_id.clone()),
+                    call.name.clone(),
+                    call.arguments.clone(),
+                    error_msg,
+                    start_time.elapsed().as_millis() as u64,
+                );
+                let _ = ctx.save_tool_block(&result);
+                return Ok(result);
+            }
+        }
+
         let anki_block_id = format!("blk_{}", uuid::Uuid::new_v4());
         // 预分配 document_id，确保 tool output 立即包含真实 ID，
         // 避免 LLM 在 chatanki_wait 超时后因无 documentId 而编造假 ID
