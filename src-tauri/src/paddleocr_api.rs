@@ -540,29 +540,38 @@ impl PaddleOcrApiClient {
     /// - `Ok(())` — API 可达
     /// - `Err(PaddleOcrApiError)` — 连接失败（含原因：DNS / TCP / TLS / HTTP 状态码）
     pub async fn check_connectivity(&self) -> Result<(), PaddleOcrApiError> {
-        // 先测试基础 HTTP GET（无需认证的端点）
-        // PaddleOCR API 的 GET /api/v2/ocr/jobs 返回 401（未认证），但至少说明 API 可达
+        // ★ 修复：原代码使用 GET /ocr/jobs 探测连通性，期望返回 401。
+        // 但 PaddleOCR API 已变更为 POST-only 端点，GET 返回 405 Method Not Allowed。
+        // 改用 POST 空请求（不带 fileUrl），预期返回 400 Bad Request，
+        // 这同样证明 DNS 可达 + API 在线。
         let url = format!("{}/ocr/jobs", PADDLEOCR_API_BASE);
 
-        let resp = self.client.get(&url).timeout(std::time::Duration::from_secs(15)).send().await.map_err(|e| {
-            if e.is_timeout() {
-                PaddleOcrApiError::Api(format!("连接超时 (15s): {}", PADDLEOCR_API_BASE))
-            } else if e.is_connect() {
-                PaddleOcrApiError::Api(format!("连接失败/DNS解析: {} — 请检查网络、DNS 和防火墙", PADDLEOCR_API_BASE))
-            } else {
-                PaddleOcrApiError::Api(format!("网络错误: {}", e))
-            }
-        })?;
+        let resp = self.client
+            .post(&url)
+            .header("Authorization", format!("bearer {}", &self.token))
+            .header("Content-Type", "application/json")
+            .json(&serde_json::json!({"model": "PaddleOCR-VL-1.6"}))
+            .timeout(std::time::Duration::from_secs(15))
+            .send()
+            .await
+            .map_err(|e| {
+                if e.is_timeout() {
+                    PaddleOcrApiError::Api(format!("连接超时 (15s): {}", PADDLEOCR_API_BASE))
+                } else if e.is_connect() {
+                    PaddleOcrApiError::Api(format!("连接失败/DNS解析: {} — 请检查网络、DNS 和防火墙", PADDLEOCR_API_BASE))
+                } else {
+                    PaddleOcrApiError::Api(format!("网络错误: {}", e))
+                }
+            })?;
 
         let status = resp.status();
         let status_code = status.as_u16();
 
-        if status_code == 401 || status_code == 403 {
-            // 401/403 是预期行为（未带 token 或 token 无效），证明 API 可达
-            tracing::info!("[PaddleOCR] Connectivity check passed (HTTP {})", status_code);
+        // 400/401/403/405 都证明 API 可达（各种拒绝原因，但服务器在响应）
+        if status_code == 400 || status_code == 401 || status_code == 403 || status_code == 405 {
+            tracing::info!("[PaddleOCR] Connectivity check passed (HTTP {}, server reachable)", status_code);
             Ok(())
         } else if status_code == 200 {
-            // 理论上不会发生（GET /jobs 不应该返回 200），但记录一下
             tracing::warn!("[PaddleOCR] Connectivity check: unexpected 200 response");
             Ok(())
         } else {
