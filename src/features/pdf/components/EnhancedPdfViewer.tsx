@@ -192,15 +192,17 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   const [isScannedPdf, setIsScannedPdf] = useState<boolean>(false);
   const [isOcrTriggering, setIsOcrTriggering] = useState<boolean>(false);
 
-  // ★ OCR 触发逻辑：扫描件检测 + 后端 OCR 状态合并
-  // 只要 pdf.js 检测为扫描件即弹出 OCR 触发框；
-  // 按钮文案根据数据库中已有 OCR 数据动态切换：已完成→重新OCR，未完成→启动OCR
+  // ★ OCR 触发逻辑：只要 fileId 存在且 OCR 未实际完成，就显示按钮
+  // pdf.js 扫描件检测作为辅助提示文案，不作为按钮可见性的唯一条件
   const ocrStatus = usePdfProcessingStore(
     (s) => (fileId ? s.statusMap.get(fileId) : undefined)
   );
-  const ocrAlreadyDone = ocrStatus?.stage === 'completed'
-    || ocrStatus?.stage === 'completed_with_issues'
-    || ocrStatus?.readyModes?.includes('ocr');
+  // ★ 关键修复：仅当 readyModes 包含 'ocr' 才算 OCR 真正完成
+  // ocrStatus?.stage === 'completed' 可能表示管线完成但 OCR 被跳过（压缩/索引完成即可）
+  const ocrReallyDone = ocrStatus?.readyModes?.includes('ocr') === true;
+  // 按钮可见条件：有文件 ID，且 OCR 未实际完成
+  // 始终显示（不依赖 pdf.js 扫描检测），让用户可手动启动 OCR
+  const showOcrButton = !!fileId && !ocrReallyDone;
   // isScannedPdf 由 pdf.js handleDocumentLoadSuccessWithDoc 设置（检测前3页无文本层）
   const thumbnailsContainerRef = useRef<HTMLDivElement>(null);
   
@@ -369,15 +371,21 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
       const checks: Promise<boolean>[] = [];
       for (let i = 1; i <= samplePages; i++) {
         checks.push(
-          pdf.getPage(i).then(page => page.getTextContent()).then(tc => tc.items.length === 0)
+          pdf.getPage(i).then(page => page.getTextContent()).then(tc => {
+            const isEmpty = tc.items.length === 0;
+            console.log(`[OCR_DIAG] Page ${i} text items: ${tc.items.length} → scanned=${isEmpty}`);
+            return isEmpty;
+          })
         );
       }
       Promise.all(checks).then(results => {
-        if (results.every(r => r)) {
+        const allEmpty = results.every(r => r);
+        console.log(`[OCR_DIAG] Scanned PDF detection: pages=${results}, allEmpty=${allEmpty}, fileId=${fileId}`);
+        if (allEmpty) {
           setIsScannedPdf(true);
         }
-      }).catch(() => {
-        // 忽略扫描检测错误
+      }).catch((err) => {
+        console.warn('[OCR_DIAG] Scanned PDF detection failed:', err);
       });
     }
   }, []);
@@ -1407,16 +1415,16 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
         </div>
       )}
 
-      {/* 扫描 PDF 提示 — 检测到扫描件 OR OCR 尚未完成时显示按钮 */}
-      {(isScannedPdf || (!!fileId && !ocrAlreadyDone)) && (
+      {/* OCR 操作横幅 — 始终可见（只要有 fileId 且 OCR 未实际完成） */}
+      {showOcrButton && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#eef2ff', color: '#4338ca', fontSize: 13, borderBottom: '1px solid #c7d2fe' }}>
           <Info size={16} />
           <span style={{ flex: 1 }}>
             {isOcrTriggering
               ? (t('pdf:ocr.processing', 'OCR 处理中...') || 'OCR processing...')
-              : ocrAlreadyDone
-                ? (t('pdf:ocr.alreadyDone', '已存在 OCR 解析结果，可重新 OCR 覆盖') || 'OCR results exist. You can re-run OCR to refresh.')
-                : (t('pdf:ocr.scanned_notice', '检测到扫描件 PDF，OCR 识别可使内容可搜索') || 'Scanned PDF detected. OCR will make content searchable.')
+              : isScannedPdf
+                ? (t('pdf:ocr.scanned_notice', '检测到扫描件 PDF，OCR 识别可使内容可搜索') || 'Scanned PDF detected. OCR will make content searchable.')
+                : (t('pdf:ocr.available', '可启动 OCR 识别，使 PDF 内容可搜索、可复制') || 'OCR is available. Start OCR to make PDF content searchable.')
             }
           </span>
           <NotionButton
@@ -1433,9 +1441,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
             )}
             {isOcrTriggering
               ? (t('pdf:ocr.starting', '启动中...') || 'Starting...')
-              : ocrAlreadyDone
-                ? (t('pdf:ocr.retry', '重新OCR') || 'Re-run OCR')
-                : (t('pdf:ocr.start', '启动OCR') || 'Start OCR')
+              : (t('pdf:ocr.start', '启动OCR') || 'Start OCR')
             }
           </NotionButton>
         </div>
