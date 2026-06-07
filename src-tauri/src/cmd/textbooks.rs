@@ -1351,6 +1351,17 @@ pub async fn vfs_ensure_ocr_pipeline(
         .map_err(|e| AppError::database(format!("查询文件失败: {}", e)))?
         .ok_or_else(|| AppError::not_found(format!("文件不存在: {}", file_id)))?;
 
+    // ★ Fix 3: 诊断日志 — 记录文件 OCR 状态
+    info!(
+        "[OCR_DIAG] vfs_ensure_ocr_pipeline called: file_id={}, has_ocr_json={}, has_preview={}, text_len={}, page_count={:?}, processing_status={:?}",
+        file_id,
+        file.ocr_pages_json.as_ref().map(|s| !s.is_empty() && s != "{}").unwrap_or(false),
+        file.preview_json.as_ref().map(|s| !s.is_empty() && s != "{}").unwrap_or(false),
+        file.extracted_text.as_ref().map(|t| t.len()).unwrap_or(0),
+        file.page_count,
+        file.processing_status,
+    );
+
     // 2. 检查 OCR 是否已完成（解析检查点，区分部分完成和全部完成）
     if let Some(ref ocr_json_str) = file.ocr_pages_json {
         if !ocr_json_str.is_empty() && ocr_json_str != "{}" {
@@ -1373,10 +1384,15 @@ pub async fn vfs_ensure_ocr_pipeline(
                 "[Textbooks] Found incomplete OCR checkpoint for file {}, resuming pipeline",
                 file_id
             );
+            // ★ Fix 2: 标记强制 OCR（前端手动触发，绕过配置检查）
+            pdf_processing_service.mark_force_ocr(&file_id);
             pdf_processing_service
                 .start_pipeline(&file_id, Some(ProcessingStage::OcrProcessing))
                 .await
-                .map_err(|e| AppError::database(format!("启动 OCR 流水线失败: {}", e)))?;
+                .map_err(|e| {
+                    pdf_processing_service.unmark_force_ocr(&file_id);
+                    AppError::database(format!("启动 OCR 流水线失败: {}", e))
+                })?;
 
             return Ok(VfsEnsureOcrPipelineResponse {
                 status: "ocr_resumed".to_string(),
@@ -1400,11 +1416,16 @@ pub async fn vfs_ensure_ocr_pipeline(
     let ocr_wanted = is_scanned || (has_preview && file.ocr_pages_json.is_none());
 
     if ocr_wanted {
+        // ★ Fix 2: 标记强制 OCR（前端手动触发，绕过配置检查）
+        pdf_processing_service.mark_force_ocr(&file_id);
         // 触发 OCR 流水线
         pdf_processing_service
             .start_pipeline(&file_id, Some(ProcessingStage::OcrProcessing))
             .await
-            .map_err(|e| AppError::database(format!("启动 OCR 流水线失败: {}", e)))?;
+            .map_err(|e| {
+                pdf_processing_service.unmark_force_ocr(&file_id);
+                AppError::database(format!("启动 OCR 流水线失败: {}", e))
+            })?;
 
         info!(
             "[Textbooks] OCR pipeline started for file: {} (scanned={}, has_preview={})",

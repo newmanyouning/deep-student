@@ -191,22 +191,17 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   const [isScrolling, setIsScrolling] = useState<boolean>(false);
   const [isScannedPdf, setIsScannedPdf] = useState<boolean>(false);
   const [isOcrTriggering, setIsOcrTriggering] = useState<boolean>(false);
-  const [ocrTriggered, setOcrTriggered] = useState<boolean>(false);
 
-  // ★ 多重 OCR 检测：合并 pdf.js 文本层检测 + 后端 OCR 处理状态
-  // pdf.js 检测可能漏报（扫描件前3页若有少量文本则不触发），
-  // 后端状态可以弥补——只要文件有 ID 且 OCR 未完成/出错就显示横幅
+  // ★ OCR 触发逻辑：扫描件检测 + 后端 OCR 状态合并
+  // 只要 pdf.js 检测为扫描件即弹出 OCR 触发框；
+  // 按钮文案根据数据库中已有 OCR 数据动态切换：已完成→重新OCR，未完成→启动OCR
   const ocrStatus = usePdfProcessingStore(
     (s) => (fileId ? s.statusMap.get(fileId) : undefined)
   );
-  const showOcrBanner = isScannedPdf
-    || (!!fileId && ocrStatus?.stage === 'ocr_processing')
-    || (!!fileId && ocrStatus?.stage === 'page_rendering')
-    || (!!fileId && ocrStatus?.stage === 'page_compression')
-    || (!!fileId && ocrStatus?.stage === 'error')
-    || (!!fileId && ocrStatus?.stage === 'pending')
-    || (!!fileId && ocrStatus?.stage === 'completed_with_issues');
-  
+  const ocrAlreadyDone = ocrStatus?.stage === 'completed'
+    || ocrStatus?.stage === 'completed_with_issues'
+    || ocrStatus?.readyModes?.includes('ocr');
+  // isScannedPdf 由 pdf.js handleDocumentLoadSuccessWithDoc 设置（检测前3页无文本层）
   const thumbnailsContainerRef = useRef<HTMLDivElement>(null);
   
   // 批注状态
@@ -393,9 +388,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
     setIsOcrTriggering(true);
     invoke('vfs_ensure_ocr_pipeline', { fileId })
       .then(() => {
-        setOcrTriggered(true);
         setIsOcrTriggering(false);
-        // 通知父组件 OCR 已启动
         document.dispatchEvent(new CustomEvent('ocr:triggered', { detail: { fileId } }));
       })
       .catch(() => {
@@ -1414,31 +1407,37 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
         </div>
       )}
 
-      {/* 扫描 PDF / OCR 状态提示 — 多重检测确保不漏报 */}
-      {showOcrBanner && (
+      {/* 扫描 PDF 提示 — 检测到扫描件 OR OCR 尚未完成时显示按钮 */}
+      {(isScannedPdf || (!!fileId && !ocrAlreadyDone)) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#eef2ff', color: '#4338ca', fontSize: 13, borderBottom: '1px solid #c7d2fe' }}>
           <Info size={16} />
           <span style={{ flex: 1 }}>
-            {ocrTriggered
+            {isOcrTriggering
               ? (t('pdf:ocr.processing', 'OCR 处理中...') || 'OCR processing...')
-              : ocrStatus?.stage === 'error'
-                ? (t('pdf:ocr.failed', 'OCR 处理失败，可尝试重新启动') || 'OCR processing failed. Try restarting.')
-                : (t('pdf:ocr.scanned_notice', 'This appears to be a scanned PDF without embedded text. OCR processing will make the content searchable.') || 'This appears to be a scanned PDF without embedded text. OCR processing will make the content searchable.')
+              : ocrAlreadyDone
+                ? (t('pdf:ocr.alreadyDone', '已存在 OCR 解析结果，可重新 OCR 覆盖') || 'OCR results exist. You can re-run OCR to refresh.')
+                : (t('pdf:ocr.scanned_notice', '检测到扫描件 PDF，OCR 识别可使内容可搜索') || 'Scanned PDF detected. OCR will make content searchable.')
             }
           </span>
-          {fileId && !ocrTriggered && (
-            <NotionButton variant="primary" size="sm" onClick={handleRetryOcr} disabled={isOcrTriggering} style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              {isOcrTriggering ? (
-                <CircleNotch size={14} className="animate-spin" />
-              ) : (
-                <Scan size={14} />
-              )}
-              {isOcrTriggering
-                ? (t('pdf:ocr.starting', '启动中...') || 'Starting...')
-                : (t('pdf:ocr.retry', '重新OCR') || 'Retry OCR')
-              }
-            </NotionButton>
-          )}
+          <NotionButton
+            variant="primary"
+            size="sm"
+            onClick={handleRetryOcr}
+            disabled={isOcrTriggering || !fileId}
+            style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          >
+            {isOcrTriggering ? (
+              <CircleNotch size={14} className="animate-spin" />
+            ) : (
+              <Scan size={14} />
+            )}
+            {isOcrTriggering
+              ? (t('pdf:ocr.starting', '启动中...') || 'Starting...')
+              : ocrAlreadyDone
+                ? (t('pdf:ocr.retry', '重新OCR') || 'Re-run OCR')
+                : (t('pdf:ocr.start', '启动OCR') || 'Start OCR')
+            }
+          </NotionButton>
         </div>
       )}
 
