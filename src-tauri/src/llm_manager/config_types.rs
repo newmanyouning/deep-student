@@ -668,7 +668,17 @@ pub(crate) fn provider_supports_openai_responses(
     supports_openai_responses: Option<bool>,
 ) -> bool {
     if supports_openai_responses == Some(true) {
-        return true;
+        // ★ 第三方代理安全：对于有明确非 OpenAI 域名的 base_url
+        // （如 ai98pro.xyz / api.qsl.fan），忽略自动检测的 Responses API 支持。
+        // 这些代理的 Responses API 实现不完整，会导致上游 502 错误。
+        // 空 base_url（未配置）或 api.openai.com 不受影响。
+        let base_url_has_content = !base_url.is_empty();
+        let is_third_party = base_url_has_content && !resolves_to_official_openai(provider_type, base_url);
+        if !is_third_party {
+            return true;
+        }
+        // 第三方端点：不回退到 auto-detection，直接返回 false（禁用 Responses API）
+        return false;
     }
     if resolves_to_official_openai(provider_type, base_url) {
         return true;
