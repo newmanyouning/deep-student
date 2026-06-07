@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { invoke } from '@tauri-apps/api/core';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { usePdfSettingsStore } from '../stores/pdfSettingsStore';
+import { usePdfProcessingStore } from '../stores/pdfProcessingStore';
 import { dstu } from '@/dstu';
 import {
   CaretLeft,
@@ -191,6 +192,20 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   const [isScannedPdf, setIsScannedPdf] = useState<boolean>(false);
   const [isOcrTriggering, setIsOcrTriggering] = useState<boolean>(false);
   const [ocrTriggered, setOcrTriggered] = useState<boolean>(false);
+
+  // ★ 多重 OCR 检测：合并 pdf.js 文本层检测 + 后端 OCR 处理状态
+  // pdf.js 检测可能漏报（扫描件前3页若有少量文本则不触发），
+  // 后端状态可以弥补——只要文件有 ID 且 OCR 未完成/出错就显示横幅
+  const ocrStatus = usePdfProcessingStore(
+    (s) => (fileId ? s.statusMap.get(fileId) : undefined)
+  );
+  const showOcrBanner = isScannedPdf
+    || (!!fileId && ocrStatus?.stage === 'ocr_processing')
+    || (!!fileId && ocrStatus?.stage === 'page_rendering')
+    || (!!fileId && ocrStatus?.stage === 'page_compression')
+    || (!!fileId && ocrStatus?.stage === 'error')
+    || (!!fileId && ocrStatus?.stage === 'pending')
+    || (!!fileId && ocrStatus?.stage === 'completed_with_issues');
   
   const thumbnailsContainerRef = useRef<HTMLDivElement>(null);
   
@@ -1399,14 +1414,16 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
         </div>
       )}
 
-      {/* 扫描 PDF 提示 */}
-      {isScannedPdf && (
+      {/* 扫描 PDF / OCR 状态提示 — 多重检测确保不漏报 */}
+      {showOcrBanner && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#eef2ff', color: '#4338ca', fontSize: 13, borderBottom: '1px solid #c7d2fe' }}>
           <Info size={16} />
           <span style={{ flex: 1 }}>
             {ocrTriggered
               ? (t('pdf:ocr.processing', 'OCR 处理中...') || 'OCR processing...')
-              : (t('pdf:ocr.scanned_notice', 'This appears to be a scanned PDF without embedded text. OCR processing will make the content searchable.') || 'This appears to be a scanned PDF without embedded text. OCR processing will make the content searchable.')
+              : ocrStatus?.stage === 'error'
+                ? (t('pdf:ocr.failed', 'OCR 处理失败，可尝试重新启动') || 'OCR processing failed. Try restarting.')
+                : (t('pdf:ocr.scanned_notice', 'This appears to be a scanned PDF without embedded text. OCR processing will make the content searchable.') || 'This appears to be a scanned PDF without embedded text. OCR processing will make the content searchable.')
             }
           </span>
           {fileId && !ocrTriggered && (
