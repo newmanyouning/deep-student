@@ -25,7 +25,7 @@
 //! - docs/design/pdf-preprocessing-pipeline.md
 
 use base64::Engine;
-use dashmap::DashMap;
+use dashmap::{DashMap, DashSet};
 use futures::stream::{self, StreamExt};
 use rusqlite::{params, OptionalExtension};
 use serde::{Deserialize, Serialize};
@@ -431,6 +431,8 @@ pub struct PdfProcessingService {
     app_handle: RwLock<Option<AppHandle>>,
     /// 向量索引回调（由协调器注入，打破循环依赖）
     vector_index_callback: Option<VectorIndexCallback>,
+    /// ★ Fix 2: 强制 OCR 的文件集合（前端手动触发时标记，绕过配置检查）
+    force_ocr_set: DashSet<String>,
 }
 
 impl PdfProcessingService {
@@ -455,6 +457,7 @@ impl PdfProcessingService {
             generation_counter: AtomicU64::new(0),
             app_handle: RwLock::new(None),
             vector_index_callback: None,
+            force_ocr_set: DashSet::new(),
         }
     }
 
@@ -465,6 +468,20 @@ impl PdfProcessingService {
 
     fn load_ocr_config(&self) -> OcrStrategyConfig {
         OcrStrategyConfig::load_from_db(&self.settings_db)
+    }
+
+    /// ★ Fix 2: 标记文件为强制 OCR（前端手动触发时调用，绕过配置检查）
+    pub fn mark_force_ocr(&self, file_id: &str) {
+        self.force_ocr_set.insert(file_id.to_string());
+        info!(
+            "[PdfProcessingService] Marked file {} for force OCR (manual trigger)",
+            file_id
+        );
+    }
+
+    /// ★ Fix 2: 清除强制 OCR 标记
+    pub fn unmark_force_ocr(&self, file_id: &str) {
+        self.force_ocr_set.remove(file_id);
     }
 
     /// 设置 App Handle
@@ -891,17 +908,22 @@ impl PdfProcessingService {
         }
 
         // Stage 3: OCR 处理（如果需要）
-        let should_run_pdf_ocr = ocr_config.enabled
-            && ocr_config.ocr_scanned_pdf
-            && !ocr_config.skip_for_multimodal
-            && extracted_text_len < ocr_config.pdf_text_threshold;
+        // ★ Fix 2: 检查是否被标记为强制 OCR（前端手动触发），绕过配置检查
+        let is_force_ocr = self.force_ocr_set.contains(file_id);
+        let should_run_pdf_ocr = is_force_ocr
+            || (ocr_config.enabled
+                && ocr_config.ocr_scanned_pdf
+                && !ocr_config.skip_for_multimodal
+                && extracted_text_len < ocr_config.pdf_text_threshold);
 
         if start_stage <= ProcessingStage::OcrProcessing && !has_ocr {
             if !should_run_pdf_ocr {
                 info!(
-                    "[PdfProcessingService] OCR skipped for file {}: enabled={}, skip_for_multimodal={}, text_len={}, threshold={}",
+                    "[PdfProcessingService] OCR skipped for file {}: force_ocr={}, enabled={}, ocr_scanned_pdf={}, skip_for_multimodal={}, text_len={}, threshold={}",
                     file_id,
+                    is_force_ocr,
                     ocr_config.enabled,
+                    ocr_config.ocr_scanned_pdf,
                     ocr_config.skip_for_multimodal,
                     extracted_text_len,
                     ocr_config.pdf_text_threshold
@@ -1153,6 +1175,9 @@ impl PdfProcessingService {
                 file_id
             );
         }
+
+        // ★ Fix 2: 清理 force_ocr 标记（无论是否实际运行 OCR）
+        self.force_ocr_set.remove(file_id);
 
         // 如果已有 OCR，添加到就绪模式
         if has_ocr && !ready_modes.contains(&"ocr".to_string()) {

@@ -1407,8 +1407,8 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
         </div>
       )}
 
-      {/* 扫描 PDF 提示 — 只要检测到扫描件即显示 OCR 触发按钮 */}
-      {isScannedPdf && (
+      {/* 扫描 PDF 提示 — 检测到扫描件 OR OCR 尚未完成时显示按钮 */}
+      {(isScannedPdf || (!!fileId && !ocrAlreadyDone)) && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#eef2ff', color: '#4338ca', fontSize: 13, borderBottom: '1px solid #c7d2fe' }}>
           <Info size={16} />
           <span style={{ flex: 1 }}>

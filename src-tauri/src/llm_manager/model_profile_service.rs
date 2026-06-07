@@ -1081,6 +1081,17 @@ impl super::LLMManager {
                         let _ = self.db.save_setting("ocr.available_models", &updated_json);
                     }
                 }
+                // ★ Fix 3: 诊断日志 — 列出可用 OCR 引擎
+                let enabled_summary: Vec<String> = models
+                    .iter()
+                    .filter(|m| m.enabled)
+                    .map(|m| format!("{}::{} (pri={})", m.engine_type, m.name, m.priority))
+                    .collect();
+                log::info!(
+                    "[OCR_ENGINES] Available OCR models: enabled=[{}], total={}",
+                    enabled_summary.join(", "),
+                    models.len()
+                );
                 return models;
             }
         }
