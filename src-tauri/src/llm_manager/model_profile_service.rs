@@ -1439,9 +1439,18 @@ impl super::LLMManager {
             .await?
         };
 
-        let api_key = self.decrypt_api_key_if_needed(&config.api_key).map_err(|e| {
+        let mut api_key = self.decrypt_api_key_if_needed(&config.api_key).map_err(|e| {
             AppError::configuration(format!("PaddleOCR API key 解密失败: {}", e))
         })?;
+        // ★ 兜底：如果 config 中的 api_key 为空，尝试从专用 ocr.paddleocr.token 设置获取
+        if api_key.is_empty() {
+            if let Ok(Some(token)) = self.db.get_setting("ocr.paddleocr.token") {
+                if !token.is_empty() {
+                    log::info!("[OCR Test::PaddleApi] Using token from ocr.paddleocr.token setting");
+                    api_key = token;
+                }
+            }
+        }
 
         let model = &config.model;
 
