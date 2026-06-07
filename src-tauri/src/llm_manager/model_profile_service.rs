@@ -1213,14 +1213,10 @@ impl super::LLMManager {
         use serde_json::json;
 
         // ── 特殊路径: PaddleOCR REST API (job-based, 非 VLM prompt/response) ──
-        // 全部 PaddleOCR 引擎 (PaddleOcrApi/PaddleOcrVl/PaddleOcrVlV1) 共享同一 AI Studio
-        // job-based API (POST /api/v2/ocr/jobs)，不支持 /v1/chat/completions 格式
-        if matches!(
-            engine_type,
-            crate::ocr_adapters::OcrEngineType::PaddleOcrApi
-                | crate::ocr_adapters::OcrEngineType::PaddleOcrVl
-                | crate::ocr_adapters::OcrEngineType::PaddleOcrVlV1
-        ) {
+        // 仅 PaddleOcrApi 使用 AI Studio job-based API (POST /api/v2/ocr/jobs)。
+        // PaddleOcrVl / PaddleOcrVlV1 是 VLM 引擎（如 SiliconFlow 托管的 PaddleOCR-VL），
+        // 使用标准 /v1/chat/completions 格式，应走 VLM 路径。
+        if engine_type == crate::ocr_adapters::OcrEngineType::PaddleOcrApi {
             return self
                 .test_paddle_ocr_api_engine(&image_path, config_id)
                 .await;
