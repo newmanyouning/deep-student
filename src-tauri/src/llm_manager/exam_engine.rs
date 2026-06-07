@@ -932,9 +932,18 @@ impl LLMManager {
     ) -> Result<Vec<ExamSegmentationCard>> {
         use crate::paddleocr_api::PaddleOcrApiClient;
 
-        let api_key = self.decrypt_api_key_if_needed(&config.api_key).map_err(|e| {
+        let mut api_key = self.decrypt_api_key_if_needed(&config.api_key).map_err(|e| {
             AppError::configuration(format!("PaddleOCR API key 解密失败: {}", e))
         })?;
+        // ★ 兜底：如果 config 中的 api_key 为空，尝试从专用 ocr.paddleocr.token 设置获取
+        if api_key.is_empty() {
+            if let Ok(Some(token)) = self.db.get_setting("ocr.paddleocr.token") {
+                if !token.is_empty() {
+                    log::info!("[OCR::PaddleApi] Using token from ocr.paddleocr.token setting");
+                    api_key = token;
+                }
+            }
+        }
 
         let model = &config.model;
         let abs_path = self.file_manager.resolve_image_path(page_path);
@@ -1044,9 +1053,18 @@ impl LLMManager {
         use crate::paddleocr_api::PaddleOcrApiClient;
 
         let (config, _engine_type) = engine;
-        let api_key = self.decrypt_api_key_if_needed(&config.api_key).map_err(|e| {
+        let mut api_key = self.decrypt_api_key_if_needed(&config.api_key).map_err(|e| {
             AppError::configuration(format!("PaddleOCR API key 解密失败: {}", e))
         })?;
+        // ★ 兜底：如果 config 中的 api_key 为空，尝试从专用 ocr.paddleocr.token 设置获取
+        if api_key.is_empty() {
+            if let Ok(Some(token)) = self.db.get_setting("ocr.paddleocr.token") {
+                if !token.is_empty() {
+                    log::info!("[OCR::PaddleApi] Using token from ocr.paddleocr.token setting");
+                    api_key = token;
+                }
+            }
+        }
 
         let model = &config.model;
         let abs_path = self.file_manager.resolve_image_path(image_path);
