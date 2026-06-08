@@ -1,4 +1,4 @@
-import React, { useMemo, memo, useRef, useEffect } from 'react';
+import React, { useMemo, memo, useRef, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { FlowTokenMarkdownRenderer } from './FlowTokenMarkdownRenderer';
@@ -181,6 +181,18 @@ export const StreamingBlockRenderer: React.FC<StreamingBlockRendererProps> = mem
 }) => {
   const { t } = useTranslation('chatV2');
 
+  // 🔧 流式纪元追踪：当 isStreaming 从 false→true 转变时递增
+  // 用作 key 强制 FlowToken 组件 remount，清理累积的 tokensWithSources/fullTextRef 状态
+  // 解决流式重启后新旧文字重叠的问题
+  const [streamEpoch, setStreamEpoch] = useState(0);
+  const prevStreamingRef = useRef(isStreaming);
+  useEffect(() => {
+    if (isStreaming && !prevStreamingRef.current) {
+      setStreamEpoch((e) => e + 1);
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming]);
+
   // 行业最优解：不再裁剪未闭合数学。remark-math 自然降级为原文，
   // KaTeX 在闭合时无缝接管。原始 content 直通渲染器，
   // 由 flowtoken 的 AnimatedMarkdown / SplitText sep="diff" 负责增量动画。
@@ -246,7 +258,7 @@ export const StreamingBlockRenderer: React.FC<StreamingBlockRendererProps> = mem
     >
       {/* 思维链内容 */}
       {parsedContent?.thinkingContent && (
-        <div className="chain-of-thought">
+        <div className="chain-of-thought" key={`cot-${streamEpoch}`}>
           <div className="chain-header">
             <span className="chain-icon">🧠</span>
             <span className="chain-title">{t('renderer.aiThinkingProcess')}</span>
@@ -275,7 +287,7 @@ export const StreamingBlockRenderer: React.FC<StreamingBlockRendererProps> = mem
       )}
 
       {/* 块级增量渲染 */}
-      <div className="streaming-blocks">
+      <div className="streaming-blocks" key={`blocks-${streamEpoch}`}>
         {blocks.map((block, i) => (
           <MemoizedBlock
             key={block.id}

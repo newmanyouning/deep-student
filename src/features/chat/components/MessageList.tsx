@@ -241,7 +241,12 @@ const MessageListInner: React.FC<MessageListProps> = ({
   const programmaticScrollLockRef = useRef(false);
   const programmaticScrollUnlockTimerRef = useRef<number | null>(null);
 
-  // 🔧 用户滚动意图检测：根据实际滚动位置决定是否保持吸底跟随
+  // 🔧 用户滚动意图检测：单向 latch（对齐 DeepSeek/ChatGPT 行为）
+  // 一旦用户向上滚动，latch 置 true，rAF 循环停止自动跟底
+  // latch 仅在以下情况重置为 false：
+  //   1. 用户点击"回到底部"按钮
+  //   2. 用户发送新消息（streaming 刚开始）
+  // 注意：syncScrollState 不再重置此 latch，避免与 useSmoothWheel/rAF 循环冲突
   const userHasScrolledRef = useRef(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
@@ -293,6 +298,8 @@ const MessageListInner: React.FC<MessageListProps> = ({
   }, [scrollToBottom]);
 
   // 基于真实滚动位置同步吸底状态与按钮可见性
+  // 🔧 重构：syncScrollState 只负责控制按钮显隐 + 设置 latch（单向）
+  // latch 一旦置 true，不再由 scroll 位置自动重置（避免与 useSmoothWheel/rAF 冲突）
   useEffect(() => {
     if (!viewportElement) return;
 
@@ -300,7 +307,11 @@ const MessageListInner: React.FC<MessageListProps> = ({
       if (programmaticScrollLockRef.current) return;
 
       const nearBottom = isNearBottom();
-      userHasScrolledRef.current = !nearBottom;
+      // 🔧 单向 latch：仅当用户滚离底部时置 true
+      // 不在此处重置为 false — 重置仅在 handleScrollToBottomClick 和 streaming 开始时
+      if (!nearBottom) {
+        userHasScrolledRef.current = true;
+      }
       setShowScrollToBottom(!nearBottom);
     };
 
@@ -321,12 +332,12 @@ const MessageListInner: React.FC<MessageListProps> = ({
   }, []);
 
   // 🖱️ 平滑滚轮惯性 + 第一时间检测向上滚动意图（ChatGPT/Claude 同级手感）
+  // 🔧 简化：用户向上滚轮即置 latch，不再依赖 isAutoScrollingRef 守卫
+  // 避免 isAutoScrollingRef 状态切换时的 race condition 导致 latch 不生效
   useSmoothWheel(containerRef.current, {
     onUserScrollUp: () => {
-      if (isAutoScrollingRef.current) {
-        userHasScrolledRef.current = true;
-        setShowScrollToBottom(true);
-      }
+      userHasScrolledRef.current = true;
+      setShowScrollToBottom(true);
     },
   });
 
@@ -345,6 +356,8 @@ const MessageListInner: React.FC<MessageListProps> = ({
 
     // 使用 rAF 循环，仅在流式时执行
     // 大块内容（代码块/图片）出现时用 easing 平滑追赶，逐行文本用 instant 紧跟
+    // 🔧 每次程序化修改 scrollTop 前设置 programmaticScrollLockRef，
+    // 防止 syncScrollState 误判为"用户手动滚到底部"而重置 latch
     const scrollLoop = () => {
       if (!isAutoScrollingRef.current) return;
 
@@ -363,6 +376,9 @@ const MessageListInner: React.FC<MessageListProps> = ({
         return;
       }
 
+      // 🔧 程序化滚动前设置锁，防止触发的 scroll 事件重置 latch
+      programmaticScrollLockRef.current = true;
+
       // 大块内容（>200px，如代码块/图片）→ easing 追赶，避免视觉跳动
       // 小块内容（逐行文本）→ instant 紧跟
       if (distance > 200) {
@@ -371,6 +387,9 @@ const MessageListInner: React.FC<MessageListProps> = ({
       } else {
         viewportElement.scrollTop = maxScroll;
       }
+
+      // 🔧 短延迟后释放锁（连续滚动时锁会被每帧刷新，不释放）
+      scheduleProgrammaticScrollUnlock(50);
 
       rafIdRef.current = requestAnimationFrame(scrollLoop);
     };

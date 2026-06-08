@@ -1,6 +1,7 @@
 import type { ChatStoreState, SetState, GetState } from './types';
 import { addToSet, removeFromSet } from './immerHelpers';
 import { debugLog } from '@/debug-panel/debugMasterSwitch';
+import { chunkBuffer } from '../middleware/chunkBuffer';
 
 const console = debugLog as Pick<typeof debugLog, 'log' | 'warn' | 'error' | 'info' | 'debug'>;
 
@@ -11,6 +12,12 @@ export function createStreamActions(
   return {
         completeStream: (reason: 'success' | 'error' | 'cancelled' = 'success'): void => {
           const state = getState();
+
+          // 🔧 先刷新 chunk 缓冲区，确保所有待处理的 chunk 都已写入 block.content
+          // 防止流式结束后仍有残留 chunk 在下次流式时混入
+          if (state.sessionId) {
+            chunkBuffer.flushAndCleanupSession(state.sessionId);
+          }
           // 🔧 P0修复：支持 streaming 和 aborting 状态
           // aborting 状态时，后端可能仍然发送 stream_complete/stream_error
           // 需要正确处理以重置状态
