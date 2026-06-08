@@ -474,8 +474,13 @@ const ThinkingNodeContent: React.FC<ThinkingNodeContentProps> = ({ node, isFirst
   const getScrollContainer = useCallback((element: HTMLElement | null): HTMLElement | null => {
     if (typeof window === 'undefined') return null;
 
+    // 🔧 优先查找 OverlayScrollbars viewport（CustomScrollArea 的实际滚动容器）
     let current = element?.parentElement ?? null;
     while (current) {
+      // OverlayScrollbars 标记的实际滚动元素
+      if (current.hasAttribute?.('data-overlayscrollbars-viewport')) {
+        return current;
+      }
       const { overflowY } = window.getComputedStyle(current);
       if (overflowY === 'auto' || overflowY === 'scroll' || overflowY === 'overlay') {
         return current;
@@ -535,7 +540,12 @@ const ThinkingNodeContent: React.FC<ThinkingNodeContentProps> = ({ node, isFirst
   }, [getScrollContainer, hasSummaryScrolledPastTop, isExpanded, preserveStickyOnCollapse]);
 
   const hasContent = !!(node.content || node.isThinking);
-  const shouldStickSummary = hasContent && (isExpanded || preserveStickyOnCollapse);
+  // 🔧 修复：流式进行中（node.isThinking）时禁用 sticky
+  // 原因：流式期间内容高度不断变化，浏览器不会在每次 DOM 变更时重新计算
+  // sticky 定位，导致 sticky 元素的 ::after 渐变遮罩覆盖到下方新增内容。
+  // 用户滚动时浏览器才重新计算 sticky，所以"滚动几下就正常了"。
+  // 对齐 DeepSeek：思考指示器在流式期间随内容滚动，不吸顶。
+  const shouldStickSummary = hasContent && (isExpanded || preserveStickyOnCollapse) && !node.isThinking;
 
   const paragraphs = useMemo(
     () => (node.content ?? '')
