@@ -245,21 +245,6 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   const lastSavedHighlightsRef = useRef<string>('');
   const pendingSaveRef = useRef<(() => Promise<void>) | null>(null);
 
-  // Cleanup PDFDocumentProxy on file change or unmount to avoid memory leak.
-  // Before: empty deps `[]` meant this only ran on unmount. When `data`/`url` changed
-  // (triggering a new `file`), handleDocumentLoadSuccessWithDoc simply overwrote
-  // pdfDocRef.current with the new PDFDocumentProxy without calling destroy() on the old one.
-  // Each file switch leaked WebAssembly memory, cached page renderings, font data, and
-  // the entire PDF.js internal document state.
-  useEffect(() => {
-    return () => {
-      if (pdfDocRef.current) {
-        pdfDocRef.current.destroy();
-        pdfDocRef.current = null;
-      }
-    };
-  }, [file]);
-
   // 工具栏响应式：ResizeObserver 检测宽度，窄时切换紧凑模式
   const TOOLBAR_COMPACT_THRESHOLD = 520;
   useEffect(() => {
@@ -297,6 +282,21 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
     }
     return null;
   }, [data, url]);
+
+  // Cleanup PDFDocumentProxy on file change or unmount to avoid memory leak.
+  // Before: empty deps `[]` meant this only ran on unmount. When `data`/`url` changed
+  // (triggering a new `file`), handleDocumentLoadSuccessWithDoc simply overwrote
+  // pdfDocRef.current with the new PDFDocumentProxy without calling destroy() on the old one.
+  // Each file switch leaked WebAssembly memory, cached page renderings, font data, and
+  // the entire PDF.js internal document state.
+  useEffect(() => {
+    return () => {
+      if (pdfDocRef.current) {
+        pdfDocRef.current.destroy();
+        pdfDocRef.current = null;
+      }
+    };
+  }, [file]);
 
   // Refs for callbacks
   const numPagesRef = useRef(numPages);
