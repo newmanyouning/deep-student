@@ -223,6 +223,10 @@ const MessageListInner: React.FC<MessageListProps> = ({
     hasLoggedVirtualizerRef.current = true;
   }
 
+  // 🔧 程序化滚动锁 refs（需在 useLayoutEffect 之前声明，避免 TDZ）
+  const programmaticScrollLockRef = useRef(false);
+  const programmaticScrollUnlockTimerRef = useRef<number | null>(null);
+
   // 🔧 虚拟化就绪后立即测量（useLayoutEffect — 在浏览器 paint 之前执行）
   // 原实现使用 useEffect + requestAnimationFrame（paint 之后），导致首帧用
   // estimateSize(120px) 定位，实际高度差异（50-500px）造成消息视觉堆叠。
@@ -258,14 +262,26 @@ const MessageListInner: React.FC<MessageListProps> = ({
     if (!useDirectRender && virtualizerReady) {
       virtualizer.measure();
     }
+
+    // 🔧 历史会话打开后自动滚动到底部
+    // 在 layout 完成 + virtualizer 测量之后执行，确保 scrollHeight 准确
+    // 直接操作 scrollTop + 手动管理锁，避免引用后面才声明的 callback
+    programmaticScrollLockRef.current = true;
+    viewportElement.scrollTop = viewportElement.scrollHeight;
+    // 短延迟后释放程序化滚动锁
+    if (programmaticScrollUnlockTimerRef.current !== null) {
+      window.clearTimeout(programmaticScrollUnlockTimerRef.current);
+    }
+    programmaticScrollUnlockTimerRef.current = window.setTimeout(() => {
+      programmaticScrollLockRef.current = false;
+      programmaticScrollUnlockTimerRef.current = null;
+    }, 100);
   }, [isDataLoaded, viewportElement, useDirectRender, virtualizerReady, virtualizer]);
 
   // 🔧 优化：使用 ref 追踪上一次消息数量和滚动状态
   const prevMessageCountRef = useRef(messageOrder.length);
   const isAutoScrollingRef = useRef(false);
   const rafIdRef = useRef<number | null>(null);
-  const programmaticScrollLockRef = useRef(false);
-  const programmaticScrollUnlockTimerRef = useRef<number | null>(null);
 
   // 🔧 用户滚动意图检测：单向 latch（对齐 DeepSeek/ChatGPT 行为）
   // 一旦用户向上滚动，latch 置 true，rAF 循环停止自动跟底
@@ -275,6 +291,12 @@ const MessageListInner: React.FC<MessageListProps> = ({
   // 注意：syncScrollState 不再重置此 latch，避免与 useSmoothWheel/rAF 循环冲突
   const userHasScrolledRef = useRef(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+
+  // 🔧 会话切换时重置滚动 latch
+  // 防止上一会话用户滚离底部后，latch 残留导致新会话无法自动滚到底部
+  if (storeChanged) {
+    userHasScrolledRef.current = false;
+  }
 
   /** 检查当前是否在底部附近（阈值 50px，ChatGPT/Claude 同级灵敏度） */
   const isNearBottom = useCallback(() => {
@@ -294,24 +316,26 @@ const MessageListInner: React.FC<MessageListProps> = ({
   }, []);
 
   // 滚动到底部
+  // 🔧 使用 scrollTop 直接赋值替代 scrollTo({top, behavior})
+  // 原因：scrollTo({top: scrollHeight, behavior:'smooth'}) 在调用时捕获 scrollHeight，
+  // 若平滑滚动期间内容高度变化（图片加载、字体渲染、re-layout），目标位置变陈旧，
+  // 滚动会停在中途而非真正的底部。用户需再次点击才能到底。
+  // scrollTop = scrollHeight 是瞬时赋值，每次都读取最新值，始终到达正确底部。
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     if (!viewportElement) return;
 
-    const top = viewportElement.scrollHeight;
-    const shouldLock = behavior === 'smooth';
+    const maxScroll = viewportElement.scrollHeight - viewportElement.clientHeight;
 
-    if (shouldLock) {
+    if (behavior === 'smooth') {
       programmaticScrollLockRef.current = true;
-    }
-
-    if (typeof viewportElement.scrollTo === 'function') {
-      viewportElement.scrollTo({ top, behavior });
+      // 使用 scrollTo 的 smooth 行为但以足够大的值确保越过动态增长的内容
+      // maxScroll * 2 确保即使内容在动画期间增长也能到达真正的底部
+      viewportElement.scrollTo({ top: Math.max(maxScroll * 2, viewportElement.scrollHeight * 2), behavior: 'smooth' });
+      scheduleProgrammaticScrollUnlock(500);
     } else {
-      viewportElement.scrollTop = top;
-    }
-
-    if (shouldLock) {
-      scheduleProgrammaticScrollUnlock(250);
+      programmaticScrollLockRef.current = true;
+      viewportElement.scrollTop = viewportElement.scrollHeight;
+      scheduleProgrammaticScrollUnlock(100);
     }
   }, [scheduleProgrammaticScrollUnlock, viewportElement]);
 
