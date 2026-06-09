@@ -11,7 +11,7 @@
  * 5. 移除 flushSync，异步状态更新
  */
 
-import React, { useRef, useEffect, useCallback, memo, useMemo, useState } from 'react';
+import React, { useRef, useEffect, useLayoutEffect, useCallback, memo, useMemo, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { useTranslation } from 'react-i18next';
 import type { StoreApi } from 'zustand';
@@ -173,6 +173,13 @@ const MessageListInner: React.FC<MessageListProps> = ({
     lastStoreRef.current = store;
   }
 
+  // 🔧 追踪是否为历史会话首次渲染（用于跳过入场动画 + 强制布局）
+  // 会话切换时重置为 true，首次渲染完成后置 false
+  const isInitialRenderRef = useRef(true);
+  if (storeChanged) {
+    isInitialRenderRef.current = true;
+  }
+
   // 是否正在流式生成
   const isStreaming = sessionStatus === 'streaming';
   // 超长会话启用虚拟滚动，短会话保持直接渲染以降低复杂度
@@ -216,12 +223,13 @@ const MessageListInner: React.FC<MessageListProps> = ({
     hasLoggedVirtualizerRef.current = true;
   }
 
-  // 🚀 虚拟化就绪后强制测量一次
-  useEffect(() => {
+  // 🔧 虚拟化就绪后立即测量（useLayoutEffect — 在浏览器 paint 之前执行）
+  // 原实现使用 useEffect + requestAnimationFrame（paint 之后），导致首帧用
+  // estimateSize(120px) 定位，实际高度差异（50-500px）造成消息视觉堆叠。
+  // useLayoutEffect 在 DOM 提交后、paint 前同步执行 → 用户看到的就是正确位置。
+  useLayoutEffect(() => {
     if (virtualizerReady && !useDirectRender) {
-      requestAnimationFrame(() => {
-        virtualizer.measure();
-      });
+      virtualizer.measure();
     }
   }, [useDirectRender, virtualizerReady, virtualizer]);
 
@@ -233,6 +241,24 @@ const MessageListInner: React.FC<MessageListProps> = ({
     });
     return () => cancelAnimationFrame(rafId);
   }, [useDirectRender, virtualizerReady, virtualRowCount, isStreaming, virtualizer]);
+
+  // 🔧 历史会话首次加载：强制浏览器完成布局计算后再展示
+  // 问题：大量消息同时渲染时，浏览器可能在 layout 完成前就 paint，
+  // 导致消息高度计算不准确，出现视觉堆叠。展开思考/滚动触发 re-layout 后恢复。
+  // 解决：useLayoutEffect 在 paint 前同步执行，强制 reflow 确保所有高度已计算。
+  useLayoutEffect(() => {
+    if (!isDataLoaded || !viewportElement) return;
+    if (!isInitialRenderRef.current) return;
+    isInitialRenderRef.current = false;
+
+    // 强制同步 reflow：读取 offsetHeight 会触发浏览器完成所有待处理的 layout
+    void viewportElement.offsetHeight;
+
+    // 虚拟模式下强制重测所有可见项
+    if (!useDirectRender && virtualizerReady) {
+      virtualizer.measure();
+    }
+  }, [isDataLoaded, viewportElement, useDirectRender, virtualizerReady, virtualizer]);
 
   // 🔧 优化：使用 ref 追踪上一次消息数量和滚动状态
   const prevMessageCountRef = useRef(messageOrder.length);
@@ -587,7 +613,7 @@ const MessageListInner: React.FC<MessageListProps> = ({
                   <motion.div
                     key={messageId}
                     variants={newMessageVariants}
-                    initial="initial"
+                    initial={isInitialRenderRef.current ? "animate" : "initial"}
                     animate="animate"
                     exit="exit"
                   >
@@ -633,7 +659,7 @@ const MessageListInner: React.FC<MessageListProps> = ({
                 {isUserMessage ? (
                   <motion.div
                     variants={newMessageVariants}
-                    initial="initial"
+                    initial={isInitialRenderRef.current ? "animate" : "initial"}
                     animate="animate"
                   >
                     <MessageItem
