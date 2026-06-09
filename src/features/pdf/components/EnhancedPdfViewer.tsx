@@ -36,7 +36,8 @@ import {
   Trash,
   DotsThree,
   Scan,
-  CircleNotch
+  CircleNotch,
+  WarningCircle
 } from '@phosphor-icons/react';
 import { Input } from '@/components/ui/shad/Input';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
@@ -191,6 +192,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   const [isScrolling, setIsScrolling] = useState<boolean>(false);
   const [isScannedPdf, setIsScannedPdf] = useState<boolean>(false);
   const [isOcrTriggering, setIsOcrTriggering] = useState<boolean>(false);
+  const [ocrError, setOcrError] = useState<string | null>(null);
 
   // ★ OCR 触发逻辑：只要 fileId 存在且 OCR 未实际完成，就显示按钮
   // pdf.js 扫描件检测作为辅助提示文案，不作为按钮可见性的唯一条件
@@ -243,7 +245,12 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   const lastSavedHighlightsRef = useRef<string>('');
   const pendingSaveRef = useRef<(() => Promise<void>) | null>(null);
 
-  // Cleanup PDFDocumentProxy on unmount to avoid memory leak
+  // Cleanup PDFDocumentProxy on file change or unmount to avoid memory leak.
+  // Before: empty deps `[]` meant this only ran on unmount. When `data`/`url` changed
+  // (triggering a new `file`), handleDocumentLoadSuccessWithDoc simply overwrote
+  // pdfDocRef.current with the new PDFDocumentProxy without calling destroy() on the old one.
+  // Each file switch leaked WebAssembly memory, cached page renderings, font data, and
+  // the entire PDF.js internal document state.
   useEffect(() => {
     return () => {
       if (pdfDocRef.current) {
@@ -251,7 +258,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
         pdfDocRef.current = null;
       }
     };
-  }, []);
+  }, [file]);
 
   // 工具栏响应式：ResizeObserver 检测宽度，窄时切换紧凑模式
   const TOOLBAR_COMPACT_THRESHOLD = 520;
@@ -356,6 +363,11 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
 
   // 获取 PDF 文档对象用于目录和搜索
   const handleDocumentLoadSuccessWithDoc = useCallback((pdf: PDFDocumentProxy) => {
+    // Belt-and-suspenders: destroy any previously loaded proxy before overwriting,
+    // in case the useEffect cleanup (triggered by file change) hasn't run yet.
+    if (pdfDocRef.current && pdfDocRef.current !== pdf) {
+      pdfDocRef.current.destroy();
+    }
     pdfDocRef.current = pdf;
     // 加载目录
     pdf.getOutline().then((outlineItems) => {
@@ -393,13 +405,20 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
   // 手动触发 OCR 流水线
   const handleRetryOcr = useCallback(() => {
     if (!fileId || isOcrTriggering) return;
+    // 清除之前遗留的错误提示，用户再次尝试时重置
+    setOcrError(null);
     setIsOcrTriggering(true);
     invoke('vfs_ensure_ocr_pipeline', { fileId })
       .then(() => {
         setIsOcrTriggering(false);
+        setOcrError(null);
         document.dispatchEvent(new CustomEvent('ocr:triggered', { detail: { fileId } }));
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        // 提取错误消息并展示给用户，不再静默吞掉
+        const errorMsg = err instanceof Error ? err.message : typeof err === 'string' ? err : 'OCR 流水线启动失败';
+        console.error('[OCR] Pipeline error:', err);
+        setOcrError(errorMsg);
         setIsOcrTriggering(false);
       });
   }, [fileId, isOcrTriggering]);
@@ -1417,14 +1436,24 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
 
       {/* OCR 操作横幅 — 始终可见（只要有 fileId 且 OCR 未实际完成） */}
       {showOcrButton && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: '#eef2ff', color: '#4338ca', fontSize: 13, borderBottom: '1px solid #c7d2fe' }}>
-          <Info size={16} />
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', fontSize: 13,
+          borderBottom: '1px solid',
+          /* ★ 错误状态使用红色主题，正常状态使用蓝色主题 */
+          ...(ocrError
+            ? { background: '#fef2f2', color: '#b91c1c', borderBottomColor: '#fecaca' }
+            : { background: '#eef2ff', color: '#4338ca', borderBottomColor: '#c7d2fe' }
+          )
+        }}>
+          {ocrError ? <WarningCircle size={16} /> : <Info size={16} />}
           <span style={{ flex: 1 }}>
-            {isOcrTriggering
-              ? (t('pdf:ocr.processing', 'OCR 处理中...') || 'OCR processing...')
-              : isScannedPdf
-                ? (t('pdf:ocr.scanned_notice', '检测到扫描件 PDF，OCR 识别可使内容可搜索') || 'Scanned PDF detected. OCR will make content searchable.')
-                : (t('pdf:ocr.available', '可启动 OCR 识别，使 PDF 内容可搜索、可复制') || 'OCR is available. Start OCR to make PDF content searchable.')
+            {ocrError
+              ? (t('pdf:ocr.error', 'OCR 出错: {{error}}', { error: ocrError }) || `OCR error: ${ocrError}`)
+              : isOcrTriggering
+                ? (t('pdf:ocr.processing', 'OCR 处理中...') || 'OCR processing...')
+                : isScannedPdf
+                  ? (t('pdf:ocr.scanned_notice', '检测到扫描件 PDF，OCR 识别可使内容可搜索') || 'Scanned PDF detected. OCR will make content searchable.')
+                  : (t('pdf:ocr.available', '可启动 OCR 识别，使 PDF 内容可搜索、可复制') || 'OCR is available. Start OCR to make PDF content searchable.')
             }
           </span>
           <NotionButton

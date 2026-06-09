@@ -1342,14 +1342,17 @@ pub async fn vfs_ensure_ocr_pipeline(
         .as_ref()
         .ok_or_else(|| AppError::configuration("VFS database not configured"))?;
 
-    let conn = vfs_db
-        .get_conn_safe()
-        .map_err(|e| AppError::database(format!("获取 VFS 连接失败: {}", e)))?;
+    // 1. 查询文件 — 在块作用域中获取连接并释放，避免在后续 .await 期间持有连接池连接（连接池饥饿修复）
+    let file = {
+        let conn = vfs_db
+            .get_conn_safe()
+            .map_err(|e| AppError::database(format!("获取 VFS 连接失败: {}", e)))?;
 
-    // 1. 查询文件
-    let file = crate::vfs::VfsFileRepo::get_file_with_conn(&conn, &file_id)
-        .map_err(|e| AppError::database(format!("查询文件失败: {}", e)))?
-        .ok_or_else(|| AppError::not_found(format!("文件不存在: {}", file_id)))?;
+        crate::vfs::VfsFileRepo::get_file_with_conn(&conn, &file_id)
+            .map_err(|e| AppError::database(format!("查询文件失败: {}", e)))?
+            .ok_or_else(|| AppError::not_found(format!("文件不存在: {}", file_id)))?
+        // conn 在此作用域结束时自动归还到连接池
+    };
 
     // ★ Fix 3: 诊断日志 — 记录文件 OCR 状态
     info!(
@@ -1384,12 +1387,14 @@ pub async fn vfs_ensure_ocr_pipeline(
                 "[Textbooks] Found incomplete OCR checkpoint for file {}, resuming pipeline",
                 file_id
             );
-            // ★ Fix 2: 标记强制 OCR（前端手动触发，绕过配置检查）
+            // ★ Fix 3: 标记强制 OCR，标记将在 run_pdf_pipeline_internal 的
+            // ForceOcrGuard 中自动清理（包括任何非正常退出路径）
             pdf_processing_service.mark_force_ocr(&file_id);
             pdf_processing_service
                 .start_pipeline(&file_id, Some(ProcessingStage::OcrProcessing))
                 .await
                 .map_err(|e| {
+                    // start_pipeline 失败（任务生成前）时手动清理
                     pdf_processing_service.unmark_force_ocr(&file_id);
                     AppError::database(format!("启动 OCR 流水线失败: {}", e))
                 })?;
@@ -1416,13 +1421,15 @@ pub async fn vfs_ensure_ocr_pipeline(
     let ocr_wanted = is_scanned || (has_preview && file.ocr_pages_json.is_none());
 
     if ocr_wanted {
-        // ★ Fix 2: 标记强制 OCR（前端手动触发，绕过配置检查）
+        // ★ Fix 3: 标记强制 OCR，标记将在 run_pdf_pipeline_internal 的
+        // ForceOcrGuard 中自动清理（包括任何非正常退出路径）
         pdf_processing_service.mark_force_ocr(&file_id);
         // 触发 OCR 流水线
         pdf_processing_service
             .start_pipeline(&file_id, Some(ProcessingStage::OcrProcessing))
             .await
             .map_err(|e| {
+                // start_pipeline 失败（任务生成前）时手动清理
                 pdf_processing_service.unmark_force_ocr(&file_id);
                 AppError::database(format!("启动 OCR 流水线失败: {}", e))
             })?;

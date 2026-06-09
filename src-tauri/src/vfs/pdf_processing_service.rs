@@ -727,6 +727,22 @@ impl PdfProcessingService {
         cancel_token: CancellationToken,
         generation: u64,
     ) -> VfsResult<()> {
+        // ★ Fix 3: 保证 force_ocr 标记在任何退出路径上被清理
+        // （正常完成、错误、取消、panic）。使用本地守卫，在 drop 时自动清理。
+        struct ForceOcrGuard<'a> {
+            service: &'a PdfProcessingService,
+            file_id: String,
+        }
+        impl<'a> Drop for ForceOcrGuard<'a> {
+            fn drop(&mut self) {
+                self.service.force_ocr_set.remove(&self.file_id);
+            }
+        }
+        let _force_ocr_guard = ForceOcrGuard {
+            service: self,
+            file_id: file_id.to_string(),
+        };
+
         // 获取文件信息
         let conn = self.db.get_conn_safe()?;
         let (page_count, has_extracted_text, extracted_text_len, has_preview, has_ocr): (
@@ -1176,9 +1192,7 @@ impl PdfProcessingService {
             );
         }
 
-        // ★ Fix 2: 清理 force_ocr 标记（无论是否实际运行 OCR）
-        self.force_ocr_set.remove(file_id);
-
+        // ★ Fix 3: force_ocr 标记由 Fix 3 守卫在函数底部自动清理
         // 如果已有 OCR，添加到就绪模式
         if has_ocr && !ready_modes.contains(&"ocr".to_string()) {
             ready_modes.push("ocr".to_string());

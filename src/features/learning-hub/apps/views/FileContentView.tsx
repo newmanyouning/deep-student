@@ -154,7 +154,10 @@ const FileContentViewInner: React.FC<ContentViewProps> = ({
   });
 
   // ★ OCR 处理状态：从全局 store 读取当前文件的 OCR 进度
-  const ocrStatus = usePdfProcessingStore((s) => s.statusMap.get(node.id));
+  // FIX: use node.sourceId (resourceId/att_xxx) instead of node.id (VFS node ID),
+  // because the store (pdfProcessingStore.ts) is keyed by fileId (resourceId)
+  // matching the backend event payload's fileId field.
+  const ocrStatus = usePdfProcessingStore((s) => s.statusMap.get(node.sourceId));
   const isOcrProcessing = ocrStatus?.stage === 'ocr_processing' || ocrStatus?.stage === 'page_compression' || ocrStatus?.stage === 'page_rendering';
   const isOcrCompleted = ocrStatus?.stage === 'completed' || ocrStatus?.stage === 'completed_with_issues';
   const ocrReady = ocrStatus?.readyModes?.includes('ocr');
