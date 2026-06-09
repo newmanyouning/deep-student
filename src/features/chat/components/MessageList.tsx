@@ -458,42 +458,28 @@ const MessageListInner: React.FC<MessageListProps> = ({
   // 🆕 追踪 streaming 状态变化，用于检测"用户刚发送了新消息"
   const prevIsStreamingRef = useRef(isStreaming);
 
-  // 新消息定位：用户发送新消息时，以该消息在顶部开始（ChatGPT/Claude 同级体验）
+  // 新消息定位：用户发送新消息时直接滚动到底部
   // 流式开始后由 rAF 循环接管滚动；非流式新增消息仍 scrollToBottom
+  // 🔧 修复：移除了将用户消息定位到视口顶部的逻辑（scrollIntoView / scrollToIndex）
+  // 原因：该逻辑与 rAF 循环的自动跟底冲突：
+  //   1. scrollIntoView 跳到用户消息（视口顶部）
+  //   2. rAF 循环同时试图滚回底部 → 两股力冲突
+  //   3. 300ms 后程序化滚动锁过期 → syncScrollState 发现视口不在底部
+  //      → 设置 userHasScrolledRef = true → rAF 循环永久停止跟底
+  // 结果：用户被卡在顶部，必须手动滚回底部。
   useEffect(() => {
     const wasStreaming = prevIsStreamingRef.current;
     prevIsStreamingRef.current = isStreaming;
 
-    // 流式刚开始 → 用户刚发了新消息，定位用户消息到顶部
-    // 流式开始后由 rAF 循环接管，默认跟随 AI 输出滚动到底部
-    // 用户向上滚动时 rAF 检测到 userHasScrolledRef 后暂停跟随，让用户接管
+    // 流式刚开始 → 用户刚发了新消息，直接滚到底部
     if (isStreaming && !wasStreaming) {
       userHasScrolledRef.current = false;
       setShowScrollToBottom(false);
       requestAnimationFrame(() => {
         if (!viewportElement) return;
-        // 程序化滚动锁：防止 scrollIntoView 触发的原生 scroll 事件
-        // 被 syncScrollState 误判为"用户滚动"，从而错误地阻断 rAF 自动跟随
         programmaticScrollLockRef.current = true;
-        scheduleProgrammaticScrollUnlock(300);
-        if (useDirectRender) {
-          // viewportElement.lastElementChild 是 div[role="log"] 包装元素
-          // 其内部 children 按 messageOrder 排列，末尾两条是 [用户消息, 助手占位]
-          // 需要定位到倒数第二条（用户消息）使其在视口顶部
-          const logDiv = viewportElement.lastElementChild as HTMLElement | null;
-          const messageItems = logDiv?.children;
-          if (messageItems && messageItems.length >= 2) {
-            const userMessageEl = messageItems[messageItems.length - 2] as HTMLElement;
-            userMessageEl.scrollIntoView({ block: 'start', behavior: 'instant' as ScrollBehavior });
-            return;
-          }
-        }
-        // 虚拟模式下用 scrollToIndex 定位用户消息（倒数第二条）
-        if (messageOrder.length >= 2) {
-          virtualizer.scrollToIndex(messageOrder.length - 2, { align: 'start', behavior: 'auto' });
-          return;
-        }
-        scrollToBottom();
+        viewportElement.scrollTop = viewportElement.scrollHeight;
+        scheduleProgrammaticScrollUnlock(150);
       });
       return;
     }
