@@ -13,7 +13,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NotionButton } from '@/components/ui/NotionButton';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { useDisclosureMotion } from '../../hooks/useDisclosureMotion';
 import { useLiveDurationSeconds } from '../../hooks/useLiveDurationSeconds';
 import {
@@ -428,9 +428,9 @@ function readAutoCollapseSetting(): boolean {
 
 const ThinkingNodeContent: React.FC<ThinkingNodeContentProps> = ({ node, isFirst, isLast }) => {
   const { t } = useTranslation('chatV2');
-  const disclosureMotion = useDisclosureMotion();
   const contentId = useId();
   const summaryRef = useRef<HTMLDivElement | null>(null);
+  const prefersReduced = useReducedMotion();
 
   const [, forceRerender] = useReducer((x: number) => x + 1, 0);
 
@@ -545,7 +545,12 @@ const ThinkingNodeContent: React.FC<ThinkingNodeContentProps> = ({ node, isFirst
   // sticky 定位，导致 sticky 元素的 ::after 渐变遮罩覆盖到下方新增内容。
   // 用户滚动时浏览器才重新计算 sticky，所以"滚动几下就正常了"。
   // 对齐 DeepSeek：思考指示器在流式期间随内容滚动，不吸顶。
-  const shouldStickSummary = hasContent && (isExpanded || preserveStickyOnCollapse) && !node.isThinking;
+  // 🔧 Bug修复：展开时禁用 sticky（仅折叠保留吸顶摘要）
+  // 原因：虚拟滚动容器使用 transform:translateY 定位消息项，
+  // CSS position:sticky 在 transform 祖先内部创建新的 containing block，
+  // 展开时启用 sticky 导致按钮视觉跳至思考过程底部。
+  // 对齐 DeepSeek：展开思考时不吸顶，折叠时才保留吸顶摘要。
+  const shouldStickSummary = hasContent && preserveStickyOnCollapse && !node.isThinking;
 
   const paragraphs = useMemo(
     () => (node.content ?? '')
@@ -626,7 +631,15 @@ const ThinkingNodeContent: React.FC<ThinkingNodeContentProps> = ({ node, isFirst
       <AnimatePresence initial={false}>
         {isExpanded && node.content && (
           <motion.div
-            {...disclosureMotion}
+            // 高度动画(initial: height 0 → animate: height auto) 在虚拟滚动上下文中
+            // 会导致测量时序不匹配：measureElement 捕获到 0px 高度，
+            // ResizeObserver 始终滞后一帧触发 → 下方消息逐帧抖动。
+            // 修复：expand 方向仅动画透明度，高度恒为 auto（正确的全高立即测量），
+            // collapse 方向保留高度动画以保证折叠平滑。
+            initial={prefersReduced ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={prefersReduced ? { duration: 0 } : { duration: 0.2, ease: 'easeInOut' }}
             id={contentId}
             role="region"
             aria-label={t('timeline.thinking.contentLabel')}

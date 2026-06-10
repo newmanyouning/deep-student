@@ -165,11 +165,15 @@ const MessageListInner: React.FC<MessageListProps> = ({
   // 当 store 变化时，key 变化，CustomScrollArea 重新挂载，callback ref 被调用
   const scrollAreaKey = useMemo(() => Math.random(), [store]);
 
-  // 当 store 变化时（切换会话），重置标记和状态
+  // 🔧 用户滚动意图检测：单向 latch（对齐 DeepSeek/ChatGPT 行为）
+  // 一旦用户向上滚动，latch 置 true，rAF 循环停止自动跟底
+  // 需在 storeChanged 和测量 useEffect 之前声明，供 scroll anchoring 使用
+  const userHasScrolledRef = useRef(false);
   const storeChanged = lastStoreRef.current !== store;
   if (storeChanged) {
     hasMarkedFirstRenderRef.current = false;
     hasMarkedFirstRenderScheduledRef.current = false;
+    userHasScrolledRef.current = false;
     lastStoreRef.current = store;
   }
 
@@ -227,24 +231,18 @@ const MessageListInner: React.FC<MessageListProps> = ({
   const programmaticScrollLockRef = useRef(false);
   const programmaticScrollUnlockTimerRef = useRef<number | null>(null);
 
-  // 🔧 虚拟化就绪后立即测量（useLayoutEffect — 在浏览器 paint 之前执行）
-  // 原实现使用 useEffect + requestAnimationFrame（paint 之后），导致首帧用
-  // estimateSize(120px) 定位，实际高度差异（50-500px）造成消息视觉堆叠。
-  // useLayoutEffect 在 DOM 提交后、paint 前同步执行 → 用户看到的就是正确位置。
-  useLayoutEffect(() => {
-    if (virtualizerReady && !useDirectRender) {
-      virtualizer.measure();
-    }
-  }, [useDirectRender, virtualizerReady, virtualizer]);
+  // useLayoutEffect 中移除 virtualizer.measure() 调用
+  // ref callback (measureElement) 在提交阶段执行，此时 DOM 已创建但浏览器尚未 paint。
+  // getBoundingClientRect().height 已返回正确值，measure() 会清空 itemSizeCache，
+  // 导致所有回退到 estimateSize(120px) → 首帧位置错误。
+  // ResizeObserver 自动处理所有动态高度变化，无需显式 measure()。
 
-  // 动态内容（公式/代码块/图片）会改变高度，切到虚拟模式后按帧重测可避免重叠
-  useEffect(() => {
-    if (useDirectRender || !virtualizerReady) return;
-    const rafId = requestAnimationFrame(() => {
-      virtualizer.measure();
-    });
-    return () => cancelAnimationFrame(rafId);
-  }, [useDirectRender, virtualizerReady, virtualRowCount, isStreaming, virtualizer]);
+  // 移除了 virtualizer.measure() 的 useEffect
+  // 每次调用 measure() 都会清空 itemSizeCache，导致所有虚拟项回退到 estimateSize(120px)，
+  // 而 measureElement ref callback 在后续渲染中不会对已挂载的 DOM 节点重新触发，
+  // ResizeObserver 也只对高度变化的项（流式消息）触发。历史消息的高度被永久固定在 120px，
+  // 用户向上滚动时所有消息视觉重叠。
+  // ResizeObserver 已自动处理所有动态高度变化，无需 rAF 重测。
 
   // 🔧 历史会话首次加载：强制浏览器完成布局计算后再展示
   // 问题：大量消息同时渲染时，浏览器可能在 layout 完成前就 paint，
@@ -258,16 +256,20 @@ const MessageListInner: React.FC<MessageListProps> = ({
     // 强制同步 reflow：读取 offsetHeight 会触发浏览器完成所有待处理的 layout
     void viewportElement.offsetHeight;
 
-    // 虚拟模式下强制重测所有可见项
-    if (!useDirectRender && virtualizerReady) {
-      virtualizer.measure();
-    }
+    // 已移除 virtualizer.measure():
+    // 该调用在首次渲染时清空缓存，导致所有项回退至 estimateSize(120px)，
+    // 破坏了 measureElement ref callback 在提交阶段已捕获的正确高度。
+    // ResizeObserver + measureElement ref 已覆盖所有测量场景。
 
     // 🔧 历史会话打开后自动滚动到底部
-    // 在 layout 完成 + virtualizer 测量之后执行，确保 scrollHeight 准确
-    // 直接操作 scrollTop + 手动管理锁，避免引用后面才声明的 callback
+    // 使用 virtualizer.getTotalSize() 而非 scrollHeight：
+    // measureElement ref callbacks 在 commit 阶段已填充 itemSizeCache，
+    // getTotalSize() 实时重算返回真实高度，而 scrollHeight 仍是 render 阶段旧值
     programmaticScrollLockRef.current = true;
-    viewportElement.scrollTop = viewportElement.scrollHeight;
+    const realTotal = virtualizerReady && !useDirectRender
+      ? virtualizer.getTotalSize()
+      : viewportElement.scrollHeight;
+    viewportElement.scrollTop = realTotal;
     // 短延迟后释放程序化滚动锁
     if (programmaticScrollUnlockTimerRef.current !== null) {
       window.clearTimeout(programmaticScrollUnlockTimerRef.current);
@@ -282,21 +284,7 @@ const MessageListInner: React.FC<MessageListProps> = ({
   const prevMessageCountRef = useRef(messageOrder.length);
   const isAutoScrollingRef = useRef(false);
   const rafIdRef = useRef<number | null>(null);
-
-  // 🔧 用户滚动意图检测：单向 latch（对齐 DeepSeek/ChatGPT 行为）
-  // 一旦用户向上滚动，latch 置 true，rAF 循环停止自动跟底
-  // latch 仅在以下情况重置为 false：
-  //   1. 用户点击"回到底部"按钮
-  //   2. 用户发送新消息（streaming 刚开始）
-  // 注意：syncScrollState 不再重置此 latch，避免与 useSmoothWheel/rAF 循环冲突
-  const userHasScrolledRef = useRef(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
-
-  // 🔧 会话切换时重置滚动 latch
-  // 防止上一会话用户滚离底部后，latch 残留导致新会话无法自动滚到底部
-  if (storeChanged) {
-    userHasScrolledRef.current = false;
-  }
 
   /** 检查当前是否在底部附近（阈值 50px，ChatGPT/Claude 同级灵敏度） */
   const isNearBottom = useCallback(() => {
@@ -316,28 +304,31 @@ const MessageListInner: React.FC<MessageListProps> = ({
   }, []);
 
   // 滚动到底部
-  // 🔧 使用 scrollTop 直接赋值替代 scrollTo({top, behavior})
-  // 原因：scrollTo({top: scrollHeight, behavior:'smooth'}) 在调用时捕获 scrollHeight，
-  // 若平滑滚动期间内容高度变化（图片加载、字体渲染、re-layout），目标位置变陈旧，
-  // 滚动会停在中途而非真正的底部。用户需再次点击才能到底。
-  // scrollTop = scrollHeight 是瞬时赋值，每次都读取最新值，始终到达正确底部。
+  // 🔧 使用 virtualizer.getTotalSize() 而非 scrollHeight：
+  // scrollHeight 反映的是上次 render 阶段 DOM 中的值（基于 estimateSize 120px），
+  // 而 measureElement ref callbacks 在 commit 阶段已填充 itemSizeCache 并
+  // 递增 itemSizeCacheVersion → getTotalSize() 实时重算返回真实高度。
   const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
     if (!viewportElement) return;
 
-    const maxScroll = viewportElement.scrollHeight - viewportElement.clientHeight;
+    // 虚拟模式下用 virtualizer 的实时计算值，直渲模式下用 DOM scrollHeight
+    const totalHeight = useDirectRender
+      ? viewportElement.scrollHeight
+      : virtualizer.getTotalSize();
+    const maxScroll = totalHeight - viewportElement.clientHeight;
 
     if (behavior === 'smooth') {
       programmaticScrollLockRef.current = true;
       // 使用 scrollTo 的 smooth 行为但以足够大的值确保越过动态增长的内容
       // maxScroll * 2 确保即使内容在动画期间增长也能到达真正的底部
-      viewportElement.scrollTo({ top: Math.max(maxScroll * 2, viewportElement.scrollHeight * 2), behavior: 'smooth' });
+      viewportElement.scrollTo({ top: Math.max(maxScroll * 2, totalHeight * 2), behavior: 'smooth' });
       scheduleProgrammaticScrollUnlock(500);
     } else {
       programmaticScrollLockRef.current = true;
-      viewportElement.scrollTop = viewportElement.scrollHeight;
+      viewportElement.scrollTop = Math.max(0, maxScroll);
       scheduleProgrammaticScrollUnlock(100);
     }
-  }, [scheduleProgrammaticScrollUnlock, viewportElement]);
+  }, [scheduleProgrammaticScrollUnlock, viewportElement, useDirectRender, virtualizer]);
 
   /** 点击"回到底部"按钮 */
   const handleScrollToBottomClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
@@ -472,16 +463,11 @@ const MessageListInner: React.FC<MessageListProps> = ({
     prevIsStreamingRef.current = isStreaming;
 
     // 流式刚开始 → 用户刚发了新消息，直接滚到底部
+    // 使用 scrollToBottom() 内部已处理 programmaticScrollLock 和 unlock 计时
     if (isStreaming && !wasStreaming) {
       userHasScrolledRef.current = false;
       setShowScrollToBottom(false);
-      requestAnimationFrame(() => {
-        if (!viewportElement) return;
-        programmaticScrollLockRef.current = true;
-        viewportElement.scrollTop = viewportElement.scrollHeight;
-        scheduleProgrammaticScrollUnlock(150);
-      });
-      return;
+      requestAnimationFrame(() => { scrollToBottom(); });
     }
 
     // 流式结束 → 确保停在底部

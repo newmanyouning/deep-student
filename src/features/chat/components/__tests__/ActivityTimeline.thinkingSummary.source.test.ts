@@ -19,13 +19,15 @@ describe('activity timeline thinking summary source', () => {
   it('keeps thinking content expanded by default and only applies sticky behavior while expanded', () => {
     expect(activityTimelineSource).toContain('const [isExpanded, setIsExpanded] = useState(true);');
     expect(activityTimelineSource).toContain('const [preserveStickyOnCollapse, setPreserveStickyOnCollapse] = useState(false);');
-    expect(activityTimelineSource).toContain('const shouldStickSummary = hasContent && (isExpanded || preserveStickyOnCollapse);');
+    // 🔧 更新：sticky 仅在折叠保留吸顶时启用（preserveStickyOnCollapse），展开时不再 sticky
+    expect(activityTimelineSource).toContain('const shouldStickSummary = hasContent && preserveStickyOnCollapse && !node.isThinking;');
     expect(activityTimelineSource).toContain('thinking-summary-sticky sticky top-0 z-10');
   });
 
   it('preserves the sticky summary when the user collapses it from the pinned top position', () => {
     expect(activityTimelineSource).toContain('setPreserveStickyOnCollapse(!nextExpanded && pinnedAtTop);');
-    expect(activityTimelineSource).toContain('const shouldStickSummary = hasContent && (isExpanded || preserveStickyOnCollapse);');
+    // 🔧 更新：sticky 仅在折叠保留吸顶时启用
+    expect(activityTimelineSource).toContain('const shouldStickSummary = hasContent && preserveStickyOnCollapse && !node.isThinking;');
   });
 
   it('uses the full summary row as the thinking trigger without shrinking the tap target', () => {
