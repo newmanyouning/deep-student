@@ -104,10 +104,14 @@ class ChunkBufferImpl {
     if (existing) {
       existing.content += chunk;
     } else {
+      // 🔧 首个 chunk 立即刷新，后续 chunk 进入缓冲窗口
+      // 避免首字符的 8ms 延迟，用户立即看到响应开始
       session.buffers.set(blockId, {
         content: chunk,
         timestamp: Date.now(),
       });
+      this.flushSessionBlock(sessionId, blockId);
+      return;
     }
 
     // 检查是否需要立即刷新（超过最大缓冲大小）

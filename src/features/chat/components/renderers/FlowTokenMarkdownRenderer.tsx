@@ -12,7 +12,7 @@ interface FlowTokenMarkdownRendererProps {
 }
 
 const FLOWTOKEN_ANIMATION = 'fadeIn';
-const FLOWTOKEN_DURATION = '0.35s';
+const FLOWTOKEN_DURATION = '0.08s';
 const FLOWTOKEN_TIMING = 'ease-out';
 
 export const FlowTokenMarkdownRenderer: React.FC<FlowTokenMarkdownRendererProps> = memo(({
