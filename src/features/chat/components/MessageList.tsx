@@ -232,12 +232,14 @@ const MessageListInner: React.FC<MessageListProps> = ({
   // 导致所有回退到 estimateSize(120px) → 首帧位置错误。
   // ResizeObserver 自动处理所有动态高度变化，无需显式 measure()。
 
-  // 移除了 virtualizer.measure() 的 useEffect
-  // 每次调用 measure() 都会清空 itemSizeCache，导致所有虚拟项回退到 estimateSize(120px)，
-  // 而 measureElement ref callback 在后续渲染中不会对已挂载的 DOM 节点重新触发，
-  // ResizeObserver 也只对高度变化的项（流式消息）触发。历史消息的高度被永久固定在 120px，
-  // 用户向上滚动时所有消息视觉重叠。
-  // ResizeObserver 已自动处理所有动态高度变化，无需 rAF 重测。
+  // 仅在消息数量变化（新消息到达）时调用 measure()
+  // 这是唯一需要重算缓存的情况：新虚拟项无缓存条目，measureElement ref
+  // 回调在提交阶段捕获其实际高度 → resizeItem 填充缓存。
+  // 与旧的每帧重测不同：不随 isStreaming 触发，不随每帧 rAF 触发。
+  useEffect(() => {
+    if (useDirectRender || !virtualizerReady) return;
+    virtualizer.measure();
+  }, [virtualRowCount]);
 
   // 🔧 历史会话首次加载：强制浏览器完成布局计算后再展示
   // 问题：大量消息同时渲染时，浏览器可能在 layout 完成前就 paint，
