@@ -138,10 +138,6 @@ interface NotesContextType {
     // Editor bridge
     editor: CrepeEditorApi | null;
 
-    editorPortalNoteId: string | null;
-    requestEditorPortal: (noteId: string, target: HTMLElement) => void;
-    releaseEditorPortal: (noteId: string) => void;
-
     // ========== Canvas 智能笔记扩展（Chat V2） ==========
     
     /** Canvas 侧边栏是否打开 */
@@ -351,8 +347,6 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const [isAssistantOpen, setAssistantOpen] = useState(false);
     const [assistantInitialMode, setAssistantInitialMode] = useState<'chat' | 'selection'>('chat');
 
-    const [editorPortalNoteId, setEditorPortalNoteId] = useState<string | null>(null);
-
     // ========== Canvas 智能笔记状态（Chat V2） ==========
     const [canvasSidebarOpen, setCanvasSidebarOpen] = useState(false);
     const [canvasNoteId, setCanvasNoteId] = useState<string | null>(null);
@@ -441,7 +435,9 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setLoading(true);
 
         console.log('[NotesContext] Using DSTU API to list notes');
-        const result = await dstu.list('/', { typeFilter: 'note' });
+        // 🔧 修复：笔记主列表需要全量加载，用于笔记树、标签页与内容渲染
+        // 后端 dstu_list 默认 limit=50，不传会被截断，显式传大 limit 保证全量
+        const result = await dstu.list('/', { typeFilter: 'note', limit: 10000 });
 
         if (result.ok) {
             const items = result.value.map(node => dstuNodeToNoteItem(node));
@@ -707,12 +703,7 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setOpenTabs(newOrder);
     }, []);
 
-    // 编辑器 Portal（保留接口兼容）
-    const requestEditorPortal = useCallback((_noteId: string, _target: HTMLElement) => {
-    }, []);
-
-    const releaseEditorPortal = useCallback((_noteId: string) => {
-    }, []);
+    // 编辑器 Portal 接口已随白板功能移除 (2026-08-10, 原为保留兼容的空壳)
 
     // ========== Canvas 智能笔记方法（Chat V2） ==========
     
@@ -1775,9 +1766,6 @@ export const NotesProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         performSearch,
         sidebarRevealId,
         setSidebarRevealId,
-        editorPortalNoteId,
-        requestEditorPortal,
-        releaseEditorPortal,
         // Canvas 智能笔记扩展（Chat V2）
         canvasSidebarOpen,
         canvasNoteId,

@@ -9,7 +9,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleNotch, WarningCircle, Translate, ArrowClockwise } from '@phosphor-icons/react';
-import type { EditorProps, CreateEditorProps } from '../editorTypes';
+import type { EditorProps } from '../editorTypes';
 import { pathUtils } from '../utils/pathUtils';
 import { dstu } from '../api';
 import { cn } from '@/lib/utils';
@@ -28,27 +28,18 @@ interface TranslationData {
  *
  * 通过 DSTU API 加载翻译数据。
  */
-export const TranslationViewerWrapper: React.FC<EditorProps | CreateEditorProps> = (props) => {
+export const TranslationViewerWrapper: React.FC<EditorProps> = (props) => {
   const { t } = useTranslation(['dstu', 'translation', 'common']);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [translationData, setTranslationData] = useState<TranslationData | null>(null);
 
-  // 判断是否为创建模式（翻译不支持创建模式）
-  const isCreateMode = 'mode' in props && props.mode === 'create';
-
   // 解析路径获取信息
-  const pathInfo = !isCreateMode && 'path' in props ? pathUtils.parse(props.path) : null;
-  const path = !isCreateMode && 'path' in props ? props.path : null;
+  const pathInfo = pathUtils.parse(props.path);
+  const path = props.path;
 
   // 加载翻译数据
   const loadTranslation = useCallback(async () => {
-    if (isCreateMode) {
-      setError(t('dstu:errors.internal'));
-      setIsLoading(false);
-      return;
-    }
-
     if (!path) return;
 
     setIsLoading(true);
@@ -82,7 +73,7 @@ export const TranslationViewerWrapper: React.FC<EditorProps | CreateEditorProps>
       setError(errMsg);
       showGlobalNotification('error', errMsg);
     }
-  }, [isCreateMode, path, t]);
+  }, [path, t]);
 
   useEffect(() => {
     void loadTranslation();

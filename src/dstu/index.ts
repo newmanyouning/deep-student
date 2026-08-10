@@ -102,11 +102,7 @@ export type {
   EditorMode,
   ResourceCapabilities,
   EditorRegistryEntry,
-} from './editorTypes';
-
-export type {
   EditorProps,
-  CreateEditorProps,
 } from './editorTypes';
 
 export {

@@ -9,7 +9,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleNotch, WarningCircle, PenNib, ArrowClockwise, ShieldWarning } from '@phosphor-icons/react';
-import type { EditorProps, CreateEditorProps } from '../editorTypes';
+import type { EditorProps } from '../editorTypes';
 import { pathUtils } from '../utils/pathUtils';
 import { dstu } from '../api';
 import { cn } from '@/lib/utils';
@@ -31,7 +31,7 @@ interface EssayData {
  *
  * 通过 DSTU API 加载和保存作文数据。
  */
-export const EssayEditorWrapper: React.FC<EditorProps | CreateEditorProps> = (props) => {
+export const EssayEditorWrapper: React.FC<EditorProps> = (props) => {
   const { t } = useTranslation(['dstu', 'essay_grading', 'common']);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,21 +40,12 @@ export const EssayEditorWrapper: React.FC<EditorProps | CreateEditorProps> = (pr
   // M-050: 标记 JSON 解析失败的降级状态，阻止保存以防覆盖丢失评分数据
   const [isParseError, setIsParseError] = useState(false);
 
-  // 判断是否为创建模式
-  const isCreateMode = 'mode' in props && props.mode === 'create';
-
   // 解析路径获取信息
-  const pathInfo = !isCreateMode && 'path' in props ? pathUtils.parse(props.path) : null;
-  const path = !isCreateMode && 'path' in props ? props.path : null;
+  const pathInfo = pathUtils.parse(props.path);
+  const path = props.path;
 
   // 加载作文数据
   const loadEssay = useCallback(async () => {
-    if (isCreateMode) {
-      setEssayData({ title: '', content: '' });
-      setIsLoading(false);
-      return;
-    }
-
     if (!path) return;
 
     setIsLoading(true);
@@ -101,7 +92,7 @@ export const EssayEditorWrapper: React.FC<EditorProps | CreateEditorProps> = (pr
       setError(errMsg);
       showGlobalNotification('error', errMsg);
     }
-  }, [isCreateMode, path]);
+  }, [path]);
 
   useEffect(() => {
     void loadEssay();
@@ -124,39 +115,20 @@ export const EssayEditorWrapper: React.FC<EditorProps | CreateEditorProps> = (pr
     const contentJson = JSON.stringify(essayData);
 
     try {
-      if (isCreateMode) {
-        const createProps = props as CreateEditorProps;
-        const result = await dstu.create('/', {
-          type: 'essay',
-          name: essayData.title || 'New Essay',
-          content: contentJson,
-        });
+      const result = await dstu.update(props.path, contentJson, 'essay');
 
-        if (result.ok) {
-          showGlobalNotification('success', t('common:saveSuccess'));
-          createProps.onCreate?.(result.value.path);
-        } else {
-          const errMsg = result.error.toUserMessage();
-          setError(errMsg);
-          showGlobalNotification('error', errMsg);
-        }
+      if (result.ok) {
+        showGlobalNotification('success', t('common:saveSuccess'));
+        props.onSave?.();
       } else {
-        const editProps = props as EditorProps;
-        const result = await dstu.update(editProps.path, contentJson, 'essay');
-
-        if (result.ok) {
-          showGlobalNotification('success', t('common:saveSuccess'));
-          editProps.onSave?.();
-        } else {
-          const errMsg = result.error.toUserMessage();
-          setError(errMsg);
-          showGlobalNotification('error', errMsg);
-        }
+        const errMsg = result.error.toUserMessage();
+        setError(errMsg);
+        showGlobalNotification('error', errMsg);
       }
     } finally {
       setIsSaving(false);
     }
-  }, [isCreateMode, props, essayData, isSaving, isParseError, t]);
+  }, [props, essayData, isSaving, isParseError, t]);
 
   // 加载状态
   if (isLoading) {

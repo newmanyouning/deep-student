@@ -9,7 +9,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleNotch, WarningCircle, Image as ImageIcon, MagnifyingGlassPlus, MagnifyingGlassMinus, ArrowClockwise } from '@phosphor-icons/react';
-import type { EditorProps, CreateEditorProps } from '../editorTypes';
+import type { EditorProps } from '../editorTypes';
 import { pathUtils } from '../utils/pathUtils';
 import { dstu } from '../api';
 import { cn } from '@/lib/utils';
@@ -21,7 +21,7 @@ import { CustomScrollArea } from '@/components/custom-scroll-area';
  *
  * 通过 DSTU API 加载图片数据。
  */
-export const ImageViewerWrapper: React.FC<EditorProps | CreateEditorProps> = (props) => {
+export const ImageViewerWrapper: React.FC<EditorProps> = (props) => {
   const { t } = useTranslation(['dstu', 'common']);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,26 +29,17 @@ export const ImageViewerWrapper: React.FC<EditorProps | CreateEditorProps> = (pr
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
 
-  // 判断是否为创建模式（图片不支持创建模式）
-  const isCreateMode = 'mode' in props && props.mode === 'create';
-
   // 解析路径获取信息
-  const pathInfo = !isCreateMode && 'path' in props ? pathUtils.parse(props.path) : null;
+  const pathInfo = pathUtils.parse(props.path);
 
   // 解析路径用于加载
-  const path = !isCreateMode && 'path' in props ? props.path : null;
+  const path = props.path;
 
   // 用于清理 blob URL 的 ref
   const currentUrlRef = React.useRef<string | null>(null);
 
   // 加载图片
   const loadImage = useCallback(async () => {
-    if (isCreateMode) {
-      setError(t('dstu:errors.internal'));
-      setIsLoading(false);
-      return;
-    }
-
     if (!path) return;
 
     setIsLoading(true);
@@ -78,7 +69,7 @@ export const ImageViewerWrapper: React.FC<EditorProps | CreateEditorProps> = (pr
       setError(errMsg);
       showGlobalNotification('error', errMsg);
     }
-  }, [isCreateMode, path, t]);
+  }, [path, t]);
 
   useEffect(() => {
     void loadImage();

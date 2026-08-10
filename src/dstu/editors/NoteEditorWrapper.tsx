@@ -15,7 +15,7 @@
 import React, { lazy, Suspense, useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleNotch, WarningCircle, ArrowClockwise } from '@phosphor-icons/react';
-import type { EditorProps, CreateEditorProps } from '../editorTypes';
+import type { EditorProps } from '../editorTypes';
 import { dstu } from '../index';
 import { cn } from '@/lib/utils';
 import type { DstuNode } from '../types';
@@ -29,21 +29,18 @@ const NoteContentView = lazy(() => import('@/features/learning-hub/apps/views/No
  *
  * 渲染 DSTU 原生的 NoteContentView（无需 NotesProvider）
  */
-export const NoteEditorWrapper: React.FC<EditorProps | CreateEditorProps> = (props) => {
+export const NoteEditorWrapper: React.FC<EditorProps> = (props) => {
   const { t } = useTranslation(['dstu', 'notes', 'common']);
   const [node, setNode] = useState<DstuNode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 判断是否为创建模式
-  const isCreateMode = 'mode' in props && props.mode === 'create';
-
   // 解析路径获取 noteId
-  const path = !isCreateMode && 'path' in props ? props.path : '';
+  const path = props.path;
 
   // 获取 onClose 回调
-  const onClose = 'onClose' in props ? props.onClose : undefined;
-  const readOnly = !isCreateMode && 'readOnly' in props ? props.readOnly : false;
+  const onClose = props.onClose;
+  const readOnly = props.readOnly ?? false;
 
   // 加载 DstuNode
   const loadNode = useCallback(async () => {
@@ -76,25 +73,6 @@ export const NoteEditorWrapper: React.FC<EditorProps | CreateEditorProps> = (pro
   useEffect(() => {
     void loadNode();
   }, [loadNode]);
-
-  // 创建模式暂不支持
-  if (isCreateMode) {
-    return (
-      <div className={cn('flex flex-col items-center justify-center h-full py-8 gap-4', props.className)}>
-        <span className="text-muted-foreground text-center">
-          {t('dstu:actions.createNote')} - {t('common:comingSoon')}
-        </span>
-        {onClose && (
-          <button
-            className="px-4 py-2 border rounded-md hover:bg-[var(--interactive-hover)]"
-            onClick={onClose}
-          >
-            {t('common:actions.close')}
-          </button>
-        )}
-      </div>
-    );
-  }
 
   // 加载中
   if (isLoading) {

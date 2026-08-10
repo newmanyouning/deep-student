@@ -10,8 +10,7 @@
 import React, { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleNotch, WarningCircle, ArrowClockwise } from '@phosphor-icons/react';
-import type { EditorProps, CreateEditorProps } from '../editorTypes';
-import { pathUtils } from '../utils/pathUtils';
+import type { EditorProps } from '../editorTypes';
 import { dstu } from '../api';
 import type { DstuNode } from '../types';
 import { cn } from '@/lib/utils';
@@ -25,27 +24,17 @@ const TextbookContentView = lazy(() => import('@/features/learning-hub/apps/view
  *
  * 渲染完整的 TextbookAppPanel（教材查看器）
  */
-export const PDFViewerWrapper: React.FC<EditorProps | CreateEditorProps> = (props) => {
+export const PDFViewerWrapper: React.FC<EditorProps> = (props) => {
   const { t } = useTranslation(['dstu', 'textbook', 'common']);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dstuNode, setDstuNode] = useState<DstuNode | null>(null);
 
-  // 判断是否为创建模式（PDF 不支持创建模式）
-  const isCreateMode = 'mode' in props && props.mode === 'create';
-
-  // 解析路径获取信息
-  const pathInfo = !isCreateMode && 'path' in props ? pathUtils.parse(props.path) : null;
-  const path = !isCreateMode && 'path' in props ? props.path : null;
+  // 解析路径
+  const path = props.path;
 
   // 加载 DSTU 节点
   const loadPdf = useCallback(async () => {
-    if (isCreateMode) {
-      setError(t('dstu:errors.internal'));
-      setIsLoading(false);
-      return;
-    }
-
     if (!path) return;
 
     setIsLoading(true);
@@ -67,7 +56,7 @@ export const PDFViewerWrapper: React.FC<EditorProps | CreateEditorProps> = (prop
       setError(errMsg);
       showGlobalNotification('error', errMsg);
     }
-  }, [isCreateMode, path, t]);
+  }, [path, t]);
 
   useEffect(() => {
     void loadPdf();

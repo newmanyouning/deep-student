@@ -12,9 +12,8 @@
 import React, { lazy, Suspense, useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleNotch, WarningCircle, ArrowClockwise } from '@phosphor-icons/react';
-import type { EditorProps, CreateEditorProps } from '../editorTypes';
+import type { EditorProps } from '../editorTypes';
 import { dstu } from '../index';
-import { createEmpty } from '../factory';
 import { cn } from '@/lib/utils';
 import { NotionButton } from '@/components/ui/NotionButton';
 import type { DstuNode } from '../types';
@@ -28,21 +27,17 @@ const MindMapContentView = lazy(() =>
 /**
  * 知识导图编辑器包装组件
  */
-export const MindMapEditorWrapper: React.FC<EditorProps | CreateEditorProps> = (props) => {
+export const MindMapEditorWrapper: React.FC<EditorProps> = (props) => {
   const { t } = useTranslation(['dstu', 'mindmap', 'common']);
   const [node, setNode] = useState<DstuNode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 判断是否为创建模式
-  const isCreateMode = 'mode' in props && props.mode === 'create';
-
   // 解析路径获取 mindmapId
-  const path = !isCreateMode && 'path' in props ? props.path : '';
+  const path = props.path;
 
   // 获取回调
-  const onClose = 'onClose' in props ? props.onClose : undefined;
-  const onCreate = isCreateMode && 'onCreate' in props ? props.onCreate : undefined;
+  const onClose = props.onClose;
 
   // 从路径提取资源 ID
   const extractResourceId = (dstuPath: string): string | null => {
@@ -80,85 +75,8 @@ export const MindMapEditorWrapper: React.FC<EditorProps | CreateEditorProps> = (
   }, [path, t]);
 
   useEffect(() => {
-    if (!isCreateMode) {
-      return;
-    }
-
-    let cancelled = false;
-    const createMindMapResource = async () => {
-      setIsLoading(true);
-      setError(null);
-      const result = await createEmpty({ type: 'mindmap' });
-      if (cancelled) return;
-
-      if (result.ok) {
-        setIsLoading(false);
-        onCreate?.(result.value.path);
-        if (onClose) {
-          onClose();
-          return;
-        }
-        return;
-      }
-
-      const errMsg = result.error.toUserMessage();
-      setError(errMsg);
-      setIsLoading(false);
-      showGlobalNotification('error', errMsg);
-    };
-
-    void createMindMapResource();
-    return () => {
-      cancelled = true;
-    };
-  }, [isCreateMode, onCreate, onClose]);
-
-  useEffect(() => {
-    if (!isCreateMode) {
-      void loadNode();
-    }
-  }, [isCreateMode, loadNode]);
-
-  // 创建模式
-  if (isCreateMode) {
-    return (
-      <div className={cn('flex flex-col items-center justify-center h-full py-8 gap-3', props.className)}>
-        {error ? (
-          <>
-            <WarningCircle size={40} className="text-destructive/60" />
-            <span className="text-sm text-destructive text-center max-w-md">{error}</span>
-            {onClose && (
-              <NotionButton variant="ghost"
-                className="px-4 py-2 border rounded-md hover:bg-[var(--interactive-hover)]"
-                onClick={onClose}
-              >
-                {t('common:actions.close')}
-              </NotionButton>
-            )}
-          </>
-        ) : isLoading ? (
-          <>
-            <CircleNotch size={24} className="animate-spin text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              {t('dstu:actions.createMindMap')}...
-            </span>
-          </>
-        ) : (
-          <>
-            <span className="text-sm text-muted-foreground">{t('dstu:actions.mindMapCreated')}</span>
-            {onClose && (
-              <NotionButton variant="ghost"
-                className="px-4 py-2 border rounded-md hover:bg-[var(--interactive-hover)]"
-                onClick={onClose}
-              >
-                {t('common:actions.close')}
-              </NotionButton>
-            )}
-          </>
-        )}
-      </div>
-    );
-  }
+    void loadNode();
+  }, [loadNode]);
 
   // 加载中
   if (isLoading) {

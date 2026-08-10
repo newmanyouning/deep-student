@@ -111,31 +111,13 @@ export interface EditorProps {
 }
 
 /**
- * 新建模式编辑器 Props
- */
-export interface CreateEditorProps {
-  /** 创建模式标记 */
-  mode: 'create';
-
-  /** 资源类型 */
-  type: DstuNodeType;
-
-  /** 创建成功回调，返回新资源路径 */
-  onCreate?: (path: string) => void;
-
-  /** 关闭回调 */
-  onClose?: () => void;
-
-  /** 自定义类名 */
-  className?: string;
-}
-
-/**
  * 编辑器组件类型
  *
- * 支持编辑已有资源和创建新资源两种模式
+ * 仅支持编辑/查看已有资源 (EditorMode = 'view' | 'edit')。
+ * ★ 2026-08-10: CreateEditorProps ('create' 模式) 已移除 — 无任何调用方,
+ * 资源创建由 learning-hub 访达工具栏/DstuAppLauncher 的创建流程承载。
  */
-export type EditorComponent = ComponentType<EditorProps | CreateEditorProps>;
+export type EditorComponent = ComponentType<EditorProps>;
 
 // ============================================================================
 // 编辑器注册项

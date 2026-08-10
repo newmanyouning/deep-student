@@ -9,7 +9,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CircleNotch, WarningCircle, File, Download, Info, ArrowClockwise } from '@phosphor-icons/react';
-import type { EditorProps, CreateEditorProps } from '../editorTypes';
+import type { EditorProps } from '../editorTypes';
 import { pathUtils } from '../utils/pathUtils';
 import { dstu } from '../api';
 import { cn } from '@/lib/utils';
@@ -47,30 +47,21 @@ function formatDate(timestamp: number): string {
 /**
  * 通用文件查看器包装组件
  */
-export const FileViewerWrapper: React.FC<EditorProps | CreateEditorProps> = (props) => {
+export const FileViewerWrapper: React.FC<EditorProps> = (props) => {
   const { t } = useTranslation(['dstu', 'common']);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fileInfo, setFileInfo] = useState<FileInfo | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
-  // 判断是否为创建模式（通用文件不支持创建模式）
-  const isCreateMode = 'mode' in props && props.mode === 'create';
-
   // 解析路径获取信息
-  const pathInfo = !isCreateMode && 'path' in props ? pathUtils.parse(props.path) : null;
+  const pathInfo = pathUtils.parse(props.path);
 
   // 解析路径用于加载
-  const path = !isCreateMode && 'path' in props ? props.path : null;
+  const path = props.path;
 
   // 加载文件信息
   const loadFileInfo = useCallback(async () => {
-    if (isCreateMode) {
-      setError(t('dstu:errors.internal'));
-      setIsLoading(false);
-      return;
-    }
-
     if (!path) return;
 
     setIsLoading(true);
@@ -94,7 +85,7 @@ export const FileViewerWrapper: React.FC<EditorProps | CreateEditorProps> = (pro
       setError(errMsg);
       showGlobalNotification('error', errMsg);
     }
-  }, [isCreateMode, path, pathInfo?.id, t]);
+  }, [path, pathInfo?.id, t]);
 
   useEffect(() => {
     void loadFileInfo();
