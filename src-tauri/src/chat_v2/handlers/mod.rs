@@ -30,6 +30,7 @@ pub mod ocr;
 pub mod search_handlers;
 pub mod send_message;
 pub mod shared;
+pub mod snapshot_handlers; // 🆕 对话快照导出/导入
 pub mod variant_handlers;
 pub mod workspace_handlers;
 
@@ -67,6 +68,9 @@ pub use search_handlers::{
 pub use send_message::{
     chat_v2_cancel_stream, chat_v2_continue_message, chat_v2_edit_and_resend,
     chat_v2_retry_message, chat_v2_send_message,
+};
+pub use snapshot_handlers::{
+    chat_v2_export_session_meta, chat_v2_export_session_messages, chat_v2_import_session,
 };
 pub use variant_handlers::{
     chat_v2_cancel_variant, chat_v2_delete_variant, chat_v2_retry_variant, chat_v2_retry_variants,

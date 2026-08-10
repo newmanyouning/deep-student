@@ -4,6 +4,7 @@
 
 // 声明所有子模块，以便在 crate 内可见
 pub mod adapters;
+pub mod anki_service;
 pub mod anki_connect_service;
 pub mod apkg_exporter_service;
 pub mod backup_job_manager;
@@ -56,6 +57,7 @@ pub mod notes_exporter;
 pub mod notes_manager;
 pub mod ocr_adapters; // OCR 适配器模块（支持多种 OCR 引擎）
 pub mod paddleocr_api; // PaddleOCR REST API 直接集成
+pub mod paddleocr_split; // PaddleOCR 大 PDF 自动分片（docs/analysis/PDF_AUTO_SPLIT_DESIGN.md）
 pub mod ocr_circuit_breaker; // OCR 熔断器（三态：Closed/Open/HalfOpen）
 pub mod package_manager;
 pub mod page_rasterizer;
@@ -65,11 +67,13 @@ pub mod pdfium_utils; // Pdfium 公共工具（库加载 + 文本提取）
 pub mod persistent_message_queue;
 pub mod providers;
 pub mod qbank_grading;
+pub mod qbank_write_gate; // qbank 业务写命令的同步写门检查封装
 pub mod question_bank_service;
 pub mod question_export_service;
 pub mod question_import_service;
 pub mod question_sync_service;
 pub mod reasoning_policy; // 思维链回传策略模块（文档 29 第 7 节）
+pub mod research; // Research 模块 - HPIAS 深度研究引擎类型层（docs/plans/2026-08-06-type-unification-detailed-design.md §2）
 pub mod review_plan_service; // 复习计划服务（与错题系统集成）
 pub mod secure_store;
 pub mod services;
@@ -289,6 +293,9 @@ pub fn run() {
 
             // 初始化崩溃日志（即使后续仍有致命错误，也能落盘）
             crate::crash_logger::init_crash_logging(base_app_data_dir.clone());
+
+            // 清理 PaddleOCR 分片遗留的临时目录（> 1 小时，尽力而为）
+            crate::paddleocr_split::cleanup_orphaned_temp_dirs();
 
             // 启动 ANR 看门狗（所有平台，检测后端线程阻塞）
             crate::anr_watchdog::start_anr_watchdog();
@@ -949,9 +956,6 @@ pub fn run() {
             crate::commands::analyze_query_performance,
 
             crate::commands::clear_message_embeddings,
-            crate::commands::generate_anki_cards_from_document,
-            crate::commands::generate_anki_cards_from_document_file,
-            crate::commands::generate_anki_cards_from_document_base64,
             crate::commands::call_llm_for_boundary, // CardForge 2.0 - LLM 定界
             crate::commands::anki_connect_check_status,
             crate::commands::anki_connect_get_deck_names,
@@ -995,6 +999,7 @@ pub fn run() {
             crate::commands::parse_document_from_base64,
             // Translation Commands
             crate::translation::translate_text_stream,
+            crate::translation::translate_unified,
             crate::translation::chat_popover::stream_chat_translation_aligned,
             crate::translation::chat_popover::stream_chat_translation_plain,
             crate::commands::ocr_extract_text,
@@ -1218,6 +1223,10 @@ pub fn run() {
             ,crate::chat_v2::handlers::manage_session::chat_v2_restore_session
             // 会话分支
             ,crate::chat_v2::handlers::manage_session::chat_v2_branch_session
+            // 对话快照导出/导入
+            ,crate::chat_v2::handlers::snapshot_handlers::chat_v2_export_session_meta
+            ,crate::chat_v2::handlers::snapshot_handlers::chat_v2_export_session_messages
+            ,crate::chat_v2::handlers::snapshot_handlers::chat_v2_import_session
             // 会话分组命令
             ,crate::chat_v2::handlers::group_handlers::chat_v2_create_group
             ,crate::chat_v2::handlers::group_handlers::chat_v2_update_group
@@ -1605,6 +1614,16 @@ pub fn run() {
             ,crate::memory::handlers::memory_export_all
             ,crate::memory::handlers::memory_get_profile
             ,crate::memory::handlers::memory_get_audit_logs
+            // ===== L1 学习承诺 =====
+            ,crate::memory::handlers::memory_write_promise
+            ,crate::memory::handlers::memory_complete_promise
+            ,crate::memory::handlers::memory_get_pending_promises
+            // ===== L2 学习偏好 =====
+            ,crate::memory::handlers::memory_write_preference
+            ,crate::memory::handlers::memory_get_learning_preferences
+            // ===== L4 会话工作上下文 =====
+            ,crate::memory::handlers::memory_get_session_context
+            ,crate::memory::handlers::memory_update_session_context
             // =================================================
             // 复习计划与间隔重复系统（SM-2 算法）
             // =================================================
@@ -1795,6 +1814,11 @@ fn build_app_state(
             .unwrap_or_else(|e| panic!("Failed to initialise VFS Database: {}", e)),
     );
     app_handle.manage(vfs_db.clone());
+
+    // ★ 2026-08-10 settings 单一存储迁移：将 vfs 设置存储注入 legacy Database，
+    // settings 读写路由到 vfs.app_settings（vfs 优先 + mistakes 回退 + 双写过渡），
+    // 并做一次性存量复制。失败仅降级为旧行为，不影响启动。
+    database.set_settings_store(vfs_db.clone());
 
     // Register question-sync callback (breaks circular dependency question_repo ↔ question_sync_service)
     register_question_sync_callback(Box::new(QuestionSyncService));
@@ -2009,6 +2033,8 @@ fn build_app_state(
         pdf_ocr_skip_pages,
         app_handle,
         active_database: RwLock::new(crate::commands::ActiveDatabaseKind::Production),
+        // 云同步写门初始为空 (无同步在进行); 由 sync::permit::WritePermit 维护
+        sync_write_guard: Arc::new(tokio::sync::Mutex::new(None)),
         question_bank_service,
     }
 }

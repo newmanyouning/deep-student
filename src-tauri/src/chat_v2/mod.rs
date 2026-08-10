@@ -32,6 +32,7 @@ pub mod user_message_builder; // 用户消息统一构建模块
 pub mod variant_context;
 pub mod vfs_resolver;
 pub mod workspace; // VFS 解引用模块 - 统一处理首次发送和历史加载的资源解引用
+pub mod write_gate; // [写门-接线] 业务写命令的同步写门检查封装
 
 // 测试模块（仅在测试时编译）
 #[cfg(test)]
@@ -147,6 +148,10 @@ pub use handlers::{
     chat_v2_delete_variant,
     chat_v2_edit_and_resend,
     chat_v2_empty_deleted_sessions,
+    // 对话快照导出/导入
+    chat_v2_export_session_meta,
+    chat_v2_export_session_messages,
+    chat_v2_import_session,
     chat_v2_list_sessions,
     chat_v2_load_session,
     chat_v2_migrate_legacy_chat,

@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use serde_json::Value;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::chat_v2::database::ChatV2Database;
 use crate::chat_v2::error::ChatV2Error;
@@ -22,7 +22,7 @@ use crate::vfs::repos::VfsResourceRepo;
 /// 将 `Value` 中所有出现在 `id_map` 里的字符串原值替换为新 ID。
 /// 仅替换"整字符串完全等于映射键"的情况，避免对 UUID 子串、URL、日志文本等产生误命中。
 /// 递归遍历对象与数组；对象的 KEY 不变更（避免破坏 schema）。
-fn remap_ids_in_value(
+pub(crate) fn remap_ids_in_value(
     v: &mut serde_json::Value,
     id_map: &std::collections::HashMap<String, String>,
 ) {
@@ -80,12 +80,15 @@ fn session_has_running_anki_blocks(db: &ChatV2Database, session_id: &str) -> Res
 /// - `Err(String)`: 创建失败
 #[tauri::command]
 pub async fn chat_v2_create_session(
+    app: tauri::AppHandle,
     mode: String,
     title: Option<String>,
     metadata: Option<Value>,
     group_id: Option<String>,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<ChatSession, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_create_session: mode={}, title={:?}",
         mode,
@@ -183,10 +186,13 @@ pub async fn chat_v2_get_session(
 /// - `Err(String)`: 更新失败
 #[tauri::command]
 pub async fn chat_v2_update_session_settings(
+    app: tauri::AppHandle,
     session_id: String,
     settings: SessionSettings,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<ChatSession, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_update_session_settings: session_id={}, title={:?}",
         session_id,
@@ -217,9 +223,12 @@ pub async fn chat_v2_update_session_settings(
 /// - `Err(String)`: 归档失败
 #[tauri::command]
 pub async fn chat_v2_archive_session(
+    app: tauri::AppHandle,
     session_id: String,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_archive_session: session_id={}",
         session_id
@@ -248,10 +257,13 @@ pub async fn chat_v2_archive_session(
 /// - `Err(String)`: 保存失败
 #[tauri::command]
 pub async fn chat_v2_save_session(
+    app: tauri::AppHandle,
     session_id: String,
     session_state: SessionState,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     // 注意：此命令在流式过程中被频繁调用，使用 debug 级别避免日志过多
     log::debug!(
         "[ChatV2::handlers] chat_v2_save_session: session_id={}",
@@ -396,11 +408,14 @@ pub async fn chat_v2_list_agent_sessions(
 /// - `Err(String)`: 分支失败
 #[tauri::command]
 pub async fn chat_v2_branch_session(
+    app: tauri::AppHandle,
     source_session_id: String,
     up_to_message_id: String,
     db: State<'_, Arc<ChatV2Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> Result<ChatSession, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_branch_session: source={}, upTo={}",
         source_session_id,
@@ -478,10 +493,13 @@ pub async fn chat_v2_branch_session(
 /// - `Err(String)`: 软删除失败
 #[tauri::command]
 pub async fn chat_v2_soft_delete_session(
+    app: tauri::AppHandle,
     session_id: String,
     db: State<'_, Arc<ChatV2Database>>,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_soft_delete_session: session_id={}",
         session_id
@@ -535,9 +553,12 @@ pub async fn chat_v2_soft_delete_session(
 /// - `Err(String)`: 恢复失败
 #[tauri::command]
 pub async fn chat_v2_restore_session(
+    app: tauri::AppHandle,
     session_id: String,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<ChatSession, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_restore_session: session_id={}",
         session_id
@@ -581,11 +602,14 @@ pub async fn chat_v2_restore_session(
 /// - `chat_v2_session_state` 表中的会话状态
 #[tauri::command]
 pub async fn chat_v2_delete_session(
+    app: tauri::AppHandle,
     session_id: String,
     db: State<'_, Arc<ChatV2Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_delete_session: session_id={}",
         session_id
@@ -650,9 +674,12 @@ pub async fn chat_v2_delete_session(
 /// - `Err(String)`: 删除失败
 #[tauri::command]
 pub async fn chat_v2_empty_deleted_sessions(
+    app: tauri::AppHandle,
     db: State<'_, Arc<ChatV2Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> Result<u32, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!("[ChatV2::handlers] chat_v2_empty_deleted_sessions");
 
     // ★ 先查出所有待删除的会话 ID，逐个收集资源引用并批量递减
