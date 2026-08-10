@@ -17,7 +17,6 @@ import {
   Trophy,
   BookOpen,
   Lightbulb,
-  Repeat,
   Play,
   Pause,
   SkipForward,
@@ -41,7 +40,6 @@ export const LEARNING_EVENTS = {
   // 翻译
   OPEN_TRANSLATE: 'LEARNING_OPEN_TRANSLATE',
   TRANSLATE_SELECTION: 'LEARNING_TRANSLATE_SELECTION', // TODO: 未实现
-  SWITCH_LANGUAGE: 'LEARNING_SWITCH_LANGUAGE', // TODO: 未实现
   // 作文批改
   OPEN_ESSAY_GRADING: 'LEARNING_OPEN_ESSAY_GRADING',
   GRADE_ESSAY: 'LEARNING_GRADE_ESSAY', // TODO: 未实现
@@ -59,11 +57,10 @@ export const LEARNING_EVENTS = {
   NEXT_ITEM: 'LEARNING_NEXT_ITEM', // TODO: 未实现
   SHOW_ANSWER: 'LEARNING_SHOW_ANSWER', // TODO: 未实现
   // 阅读与朗读
-  READ_ALOUD: 'LEARNING_READ_ALOUD', // TODO: 未实现
+  READ_ALOUD: 'LEARNING_READ_ALOUD',
   FOCUS_MODE: 'LEARNING_FOCUS_MODE', // TODO: 未实现
   // 笔记与标注
   TAKE_NOTES: 'LEARNING_TAKE_NOTES', // TODO: 未实现
-  HIGHLIGHT: 'LEARNING_HIGHLIGHT', // TODO: 未实现
   // 成就与激励
   SHOW_ACHIEVEMENTS: 'LEARNING_SHOW_ACHIEVEMENTS', // TODO: 未实现
   SHOW_STREAK: 'LEARNING_SHOW_STREAK', // TODO: 未实现
@@ -109,20 +106,6 @@ export const learningCommands: Command[] = [
     isEnabled: () => isLearningCommandEnabled('learning.translate-selection'),
     execute: () => {
       window.dispatchEvent(new CustomEvent(LEARNING_EVENTS.TRANSLATE_SELECTION));
-    },
-  },
-  {
-    id: 'learning.switch-language-pair',
-    get name() { return i18next.t('command_palette:commands.learning.switch-language-pair', 'Switch Language Pair'); },
-    get description() { return i18next.t('command_palette:descriptions.learning.switch-language-pair', 'Switch source and target languages'); },
-    category: 'learning',
-    icon: Repeat,
-    get keywords() { return kw('learning.switch-language-pair'); },
-    priority: 98,
-    visibleInViews: ['learning-hub'],
-    isEnabled: () => isLearningCommandEnabled('learning.switch-language-pair'),
-    execute: () => {
-      window.dispatchEvent(new CustomEvent(LEARNING_EVENTS.SWITCH_LANGUAGE));
     },
   },
 
@@ -355,20 +338,6 @@ export const learningCommands: Command[] = [
     isEnabled: () => isLearningCommandEnabled('learning.take-notes'),
     execute: () => {
       window.dispatchEvent(new CustomEvent(LEARNING_EVENTS.TAKE_NOTES));
-    },
-  },
-  {
-    id: 'learning.highlight',
-    get name() { return i18next.t('command_palette:commands.learning.highlight', 'Highlight'); },
-    get description() { return i18next.t('command_palette:descriptions.learning.highlight', 'Highlight selected text'); },
-    category: 'learning',
-    icon: PenNib,
-    get keywords() { return kw('learning.highlight'); },
-    priority: 64,
-    visibleInViews: ['learning-hub', 'pdf-reader'],
-    isEnabled: () => isLearningCommandEnabled('learning.highlight'),
-    execute: () => {
-      window.dispatchEvent(new CustomEvent(LEARNING_EVENTS.HIGHLIGHT));
     },
   },
 

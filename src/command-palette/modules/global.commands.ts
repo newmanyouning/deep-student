@@ -14,20 +14,14 @@ import {
   ArrowCounterClockwise,
   Keyboard,
   Question,
-  Info,
-  Bug,
-  Download,
-  Upload,
   Copy,
   Clipboard,
   Bell,
   BellSlash,
   Moon,
   Sun,
-  Monitor,
   SpeakerHigh,
   SpeakerSlash,
-  WifiHigh,
   WifiSlash,
   Lock,
   LockOpen,
@@ -221,19 +215,6 @@ function createRawGlobalCommands(): Command[] {
         }
       },
     },
-    {
-      id: 'global.theme-system',
-      name: i18next.t('command_palette:commands.global.theme-system', 'System Theme'),
-      description: i18next.t('command_palette:descriptions.global.theme-system', 'Use system default theme setting'),
-      category: 'global',
-      icon: Monitor,
-      keywords: kw('global.theme-system'),
-      priority: 77,
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('GLOBAL_THEME_SYSTEM'));
-      },
-    },
-
     // ==================== 通知控制 ====================
     {
       id: 'global.toggle-notifications',
@@ -261,18 +242,6 @@ function createRawGlobalCommands(): Command[] {
     },
 
     // ==================== 网络与同步 ====================
-    {
-      id: 'global.check-connection',
-      name: i18next.t('command_palette:commands.global.check-connection', 'Check Connection'),
-      description: i18next.t('command_palette:descriptions.global.check-connection', 'Check API connection status'),
-      category: 'global',
-      icon: WifiHigh,
-      keywords: kw('global.check-connection'),
-      priority: 55,
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('GLOBAL_CHECK_CONNECTION'));
-      },
-    },
     {
       id: 'global.sync-now',
       name: i18next.t('command_palette:commands.global.sync-now', 'Sync Now'),
@@ -329,68 +298,6 @@ function createRawGlobalCommands(): Command[] {
       priority: 30,
       execute: () => {
         window.dispatchEvent(new CustomEvent('GLOBAL_SHOW_HELP'));
-      },
-    },
-    {
-      id: 'global.about',
-      name: i18next.t('command_palette:commands.global.about', 'About App'),
-      description: i18next.t('command_palette:descriptions.global.about', 'View app version and information'),
-      category: 'global',
-      icon: Info,
-      keywords: kw('global.about'),
-      priority: 29,
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('GLOBAL_SHOW_ABOUT'));
-      },
-    },
-    {
-      id: 'global.changelog',
-      name: i18next.t('command_palette:commands.global.changelog', 'Changelog'),
-      description: i18next.t('command_palette:descriptions.global.changelog', 'View version update log'),
-      category: 'global',
-      icon: Info,
-      keywords: kw('global.changelog'),
-      priority: 28,
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('GLOBAL_SHOW_CHANGELOG'));
-      },
-    },
-    {
-      id: 'global.report-bug',
-      name: i18next.t('command_palette:commands.global.report-bug', 'Report Bug'),
-      description: i18next.t('command_palette:descriptions.global.report-bug', 'Submit bug report'),
-      category: 'global',
-      icon: Bug,
-      keywords: kw('global.report-bug'),
-      priority: 27,
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('GLOBAL_REPORT_BUG'));
-      },
-    },
-
-    // ==================== 数据操作 ====================
-    {
-      id: 'global.export-all',
-      name: i18next.t('command_palette:commands.global.export-all', 'Export All Data'),
-      description: i18next.t('command_palette:descriptions.global.export-all', 'Export all application data'),
-      category: 'global',
-      icon: Download,
-      keywords: kw('global.export-all'),
-      priority: 35,
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('GLOBAL_EXPORT_ALL'));
-      },
-    },
-    {
-      id: 'global.import-data',
-      name: i18next.t('command_palette:commands.global.import-data', 'Import Data'),
-      description: i18next.t('command_palette:descriptions.global.import-data', 'Import data from file'),
-      category: 'global',
-      icon: Upload,
-      keywords: kw('global.import-data'),
-      priority: 34,
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('GLOBAL_IMPORT_DATA'));
       },
     },
 

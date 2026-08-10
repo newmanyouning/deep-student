@@ -14,21 +14,17 @@ import {
   ShareNetwork,
   Download,
   Upload,
-  Gear,
   Books,
   TreeStructure,
   Globe,
   Wrench,
-  Stack,
   BookOpen,
   Robot,
   Lightning,
-  ChatCircle,
   FileText,
   Image,
   Microphone,
   SidebarSimple,
-  ClockCounterClockwise,
   BookmarkSimple,
   MagnifyingGlass,
 } from '@phosphor-icons/react';
@@ -275,19 +271,6 @@ function createRawChatCommands(): Command[] {
         window.dispatchEvent(new CustomEvent('CHAT_SELECT_MODEL'));
       },
     },
-    {
-      id: 'chat.model-settings',
-      name: i18next.t('command_palette:commands.chat.model-settings', 'Model Settings'),
-      description: i18next.t('command_palette:descriptions.chat.model-settings', 'Adjust temperature, token, and other parameters'),
-      category: 'chat',
-      icon: Gear,
-      keywords: kw('chat.model-settings'),
-      priority: 74,
-      visibleInViews: ['chat-v2'],
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('CHAT_MODEL_SETTINGS'));
-      },
-    },
 
     // ==================== 输入增强 ====================
     {
@@ -361,19 +344,6 @@ function createRawChatCommands(): Command[] {
       },
     },
     {
-      id: 'chat.show-history',
-      name: i18next.t('command_palette:commands.chat.show-history', 'View Chat History'),
-      description: i18next.t('command_palette:descriptions.chat.show-history', 'Open conversation history list'),
-      category: 'chat',
-      icon: ClockCounterClockwise,
-      keywords: kw('chat.show-history'),
-      priority: 58,
-      visibleInViews: ['chat-v2'],
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('CHAT_SHOW_HISTORY'));
-      },
-    },
-    {
       id: 'chat.bookmark',
       name: i18next.t('command_palette:commands.chat.bookmark', 'Bookmark Conversation'),
       description: i18next.t('command_palette:descriptions.chat.bookmark', 'Add current conversation to favorites'),
@@ -389,20 +359,6 @@ function createRawChatCommands(): Command[] {
 
     // ==================== 高级功能 ====================
     {
-      id: 'chat.ai-continue',
-      name: i18next.t('command_palette:commands.chat.ai-continue', 'AI Continue'),
-      description: i18next.t('command_palette:descriptions.chat.ai-continue', 'Let AI continue current content'),
-      category: 'chat',
-      shortcut: 'mod+j',
-      icon: Robot,
-      keywords: kw('chat.ai-continue'),
-      priority: 50,
-      visibleInViews: ['chat-v2'],
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('CHAT_AI_CONTINUE'));
-      },
-    },
-    {
       id: 'chat.quick-prompt',
       name: i18next.t('command_palette:commands.chat.quick-prompt', 'Quick Prompt'),
       description: i18next.t('command_palette:descriptions.chat.quick-prompt', 'Use preset prompt templates'),
@@ -414,32 +370,6 @@ function createRawChatCommands(): Command[] {
       visibleInViews: ['chat-v2'],
       execute: () => {
         window.dispatchEvent(new CustomEvent('CHAT_QUICK_PROMPT'));
-      },
-    },
-    {
-      id: 'chat.multi-turn-edit',
-      name: i18next.t('command_palette:commands.chat.multi-turn-edit', 'Edit History Message'),
-      description: i18next.t('command_palette:descriptions.chat.multi-turn-edit', 'Edit and regenerate conversation'),
-      category: 'chat',
-      icon: ChatCircle,
-      keywords: kw('chat.multi-turn-edit'),
-      priority: 48,
-      visibleInViews: ['chat-v2'],
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('CHAT_EDIT_MESSAGE'));
-      },
-    },
-    {
-      id: 'chat.branch-conversation',
-      name: i18next.t('command_palette:commands.chat.branch-conversation', 'Branch Conversation'),
-      description: i18next.t('command_palette:descriptions.chat.branch-conversation', 'Create new conversation branch from current point'),
-      category: 'chat',
-      icon: Stack,
-      keywords: kw('chat.branch-conversation'),
-      priority: 47,
-      visibleInViews: ['chat-v2'],
-      execute: () => {
-        window.dispatchEvent(new CustomEvent('CHAT_BRANCH_CONVERSATION'));
       },
     },
   ];

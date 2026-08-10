@@ -9,7 +9,6 @@ export type CapabilityState = 'ready' | 'experimental' | 'hidden';
 const LEARNING_CAPABILITIES: Readonly<Record<string, CapabilityState>> = {
   'learning.translate': 'ready',
   'learning.translate-selection': 'hidden',
-  'learning.switch-language-pair': 'hidden',
   'learning.essay-grading': 'ready',
   'learning.grade-essay': 'ready',
   'learning.essay-suggestions': 'ready',
@@ -26,10 +25,10 @@ const LEARNING_CAPABILITIES: Readonly<Record<string, CapabilityState>> = {
   'learning.next-item': 'hidden',
   'learning.show-answer': 'hidden',
 
-  'learning.read-aloud': 'hidden',
+  // 朗读 — 已接线（LearningHubPage 监听, TTS 后端就绪）
+  'learning.read-aloud': 'ready',
   'learning.focus-mode': 'hidden',
   'learning.take-notes': 'hidden',
-  'learning.highlight': 'hidden',
 
   'learning.achievements': 'hidden',
   'learning.streak': 'hidden',
@@ -57,11 +56,11 @@ const CHAT_CAPABILITIES: Readonly<Record<string, CapabilityState>> = {
   'chat.retry': 'ready',
   'chat.clear': 'ready',
 
-  // 内容操作 — 无监听，隐藏
-  'chat.copy-last-response': 'hidden',
+  // 内容操作 — 已接线（copy-last-response/export 监听器在 useChatPageEvents, import 在 App.tsx）
+  'chat.copy-last-response': 'ready',
   'chat.share': 'hidden',
-  'chat.export': 'hidden',
-  'chat.import': 'hidden',
+  'chat.export': 'ready',
+  'chat.import': 'ready',
 
   // 模式切换 — 已有监听
   'chat.toggle-rag': 'ready',
@@ -73,7 +72,6 @@ const CHAT_CAPABILITIES: Readonly<Record<string, CapabilityState>> = {
 
   // 模型设置
   'chat.select-model': 'ready',
-  'chat.model-settings': 'hidden',
 
   // 输入增强
   'chat.upload-image': 'ready',
@@ -83,14 +81,10 @@ const CHAT_CAPABILITIES: Readonly<Record<string, CapabilityState>> = {
   // UI 控制
   'chat.toggle-sidebar': 'ready',
   'chat.toggle-panel': 'ready',
-  'chat.show-history': 'hidden',
   'chat.bookmark': 'ready',
 
-  // 高级功能 — 无监听，隐藏
-  'chat.ai-continue': 'hidden',
+  // 高级功能 — 无实现且无成熟替代，保留隐藏
   'chat.quick-prompt': 'hidden',
-  'chat.multi-turn-edit': 'hidden',
-  'chat.branch-conversation': 'hidden',
 };
 
 export const getChatCapability = (commandId: string): CapabilityState => {
@@ -127,30 +121,20 @@ const GLOBAL_CAPABILITIES: Readonly<Record<string, CapabilityState>> = {
   'global.toggle-theme': 'ready',
   'global.theme-light': 'ready',
   'global.theme-dark': 'ready',
-  // 跟随系统主题 — 无监听，隐藏
-  'global.theme-system': 'hidden',
 
-  // 通知控制 — 无监听，隐藏
+  // 通知控制 — 无实现且无替代，保留隐藏
   'global.toggle-notifications': 'hidden',
   'global.mute-sounds': 'hidden',
 
-  // 网络与同步 — 无监听，隐藏
-  'global.check-connection': 'hidden',
-  'global.sync-now': 'hidden',
+  // 网络与同步 — sync-now 已接线（App.tsx 监听, data_governance 后端就绪）
+  'global.sync-now': 'ready',
 
   // 剪贴板操作
   'global.copy-current-url': 'ready',
   'global.paste-from-clipboard': 'hidden',
 
-  // 帮助与信息 — 无监听，隐藏
+  // 帮助与信息 — 无实现且无替代，保留隐藏
   'global.show-help': 'hidden',
-  'global.about': 'hidden',
-  'global.changelog': 'hidden',
-  'global.report-bug': 'hidden',
-
-  // 数据操作 — 无监听，隐藏
-  'global.export-all': 'hidden',
-  'global.import-data': 'hidden',
 
   // 锁定 — 无监听，隐藏
   'global.lock-app': 'hidden',

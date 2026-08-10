@@ -2,6 +2,7 @@
 
 > 日期: 2026-08-10 21:50 CST | 分支: pr/3-pdf-reading
 > 来源: 功能精简计划决策点 4 (ImportConversationDialog 意图调研 + 设计文档) 与决策点 5 (hidden 命令调研), 用户指示合写一份
+> **状态更新 (2026-08-10): 已实现** — 后端 `snapshot_handlers.rs` 3 命令 (meta/分页 messages/import 全量 ID 重映射), 前端 5 命令接线完成 (export/import/copy-last-response/read-aloud/sync-now 转 ready); 按"有成熟替代才删"标准删除 14 个命令注册, 保留 22 个无替代命令。实现差异: 导出采用 meta+消息分页的分块 invoke (替代单一大 JSON), 导入经前端 fileManager 读文件后单 invoke 提交 (≤32MB)。
 
 ---
 
