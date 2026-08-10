@@ -222,7 +222,8 @@ export default tseslint.config(
       'scripts/**',
       'eslint-rules/**',
       'e2e-tests/**',
-      'mcp-servers/**'
+      'mcp-servers/**',
+      '_archive/**'
     ]
   },
   // 禁用一些与现有代码不兼容的 TypeScript 规则（可后续逐步启用）
