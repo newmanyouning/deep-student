@@ -15,6 +15,7 @@
 | 5 | `src/features/settings/components/ChatMigrationSection.tsx` | 同左 | chat→chat_v2 手动迁移 UI (522行)。完成度: 高 (后端 chat_v2_migrate_legacy_chat 等命令在册)。必要性: 无 — 一次性迁移工具, 本分支迁移已完成。冲突: 无 | 恢复意义仅在于旧数据用户手动迁移; 后端命令仍在, 如需恢复移回 + 挂到 DataGovernanceDashboard |
 | 6 | `src/components/TagTreeImportCheckModal.tsx` (+`.css`) | 同左 | 标签树导入前校验弹窗 (88行)。完成度: 高。必要性: 取决于现役导入流是否有校验 (未找到现役校验调用点)。冲突: 无 | 与 #7 成对恢复; 恢复前需确认题库/标签导入流是否需要校验步骤 |
 | 7 | `src/utils/TagTreeValidator.ts` | 同左 | 标签树校验逻辑, #6 的依赖 | 与 #6 成对 |
+| 8 | `src/promptkit/` (chat-container.tsx / prompt-input.tsx / ui/tooltip.tsx / lib/cn.ts) | 同左 | vendored promptkit 组件库残留 (4 文件), 零外部引用。决策点 3: 用户决定移入保留目录而非删除 (2026-08-10 先从批次 1e 的删除中经 git 历史恢复) | 整体恢复: `git mv _archive/2026-08-10-dead-code/src/promptkit src/`; 原契约测试 promptkitPromptInputActionTooltipContract.test.tsx 已删, 如需恢复见 commit c8c27243~1 |
 
 ## 未归档 (保留在 src/ 的孤儿成品)
 
