@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Atom,
   Archive,
+  Download,
   BookOpen,
   Bookmark,
   Brain,
@@ -72,6 +73,7 @@ import {
   AppMenuTrigger,
 } from '@/components/ui/app-menu/AppMenu';
 import { showArchiveSessionToast } from '@/features/chat/utils/archiveSessionToast';
+import { exportSessionToSnapshotFile } from '@/features/chat/utils/exportSessionSnapshot';
 import {
   markSessionSidebarIndicatorSeen,
   useSessionSidebarIndicators,
@@ -386,6 +388,9 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
 }) => {
   const { t } = useTranslation(['sidebar', 'common', 'chatV2']);
   const [recentSessions, setRecentSessions] = useState<ChatSession[]>([]);
+  // 🔧 修复：课题分组用完整已分组会话列表（不受 recentSessions limit=8 截断影响）
+  // 之前课题分组复用 recentSessions（最近 8 条），导致分组下较旧的会话被截断不显示
+  const [groupedSessions, setGroupedSessions] = useState<ChatSession[]>([]);
   const [recentGroups, setRecentGroups] = useState<SessionGroup[]>([]);
   const [collapsedRecentGroupIds, setCollapsedRecentGroupIds] = useState<Set<string>>(() => new Set());
   const [expandedRecentGroupSessionIds, setExpandedRecentGroupSessionIds] = useState<Set<string>>(() => new Set());
@@ -448,7 +453,7 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
   }, [currentView, onViewChange]);
 
   const loadSidebarData = useCallback(async () => {
-    const [sessionsResult, groupsResult] = await Promise.allSettled([
+    const [sessionsResult, groupsResult, groupedSessionsResult] = await Promise.allSettled([
       invoke<ChatSession[]>('chat_v2_list_sessions', {
         status: 'active',
         limit: 8,
@@ -456,6 +461,14 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
       }),
       invoke<SessionGroup[]>('chat_v2_list_groups', {
         status: 'active',
+      }),
+      // 🔧 修复：单独加载全部已分组会话（groupId='*' 表示 group_id IS NOT NULL），
+      // 供课题分组归类使用，避免被 recentSessions 的 limit=8 截断
+      invoke<ChatSession[]>('chat_v2_list_sessions', {
+        status: 'active',
+        groupId: '*',
+        limit: 10000,
+        offset: 0,
       }),
     ]);
 
@@ -471,6 +484,14 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
     } else {
       console.warn('[ModernSidebar] Failed to load recent groups:', groupsResult.status === 'rejected' ? groupsResult.reason : 'Invalid group payload');
       setRecentGroups([]);
+    }
+
+    // 🔧 修复：完整已分组会话列表，供课题分组归类
+    if (groupedSessionsResult.status === 'fulfilled' && Array.isArray(groupedSessionsResult.value)) {
+      setGroupedSessions(groupedSessionsResult.value);
+    } else {
+      console.warn('[ModernSidebar] Failed to load grouped sessions:', groupedSessionsResult.status === 'rejected' ? groupedSessionsResult.reason : 'Invalid session payload');
+      setGroupedSessions([]);
     }
   }, []);
 
@@ -979,6 +1000,15 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
               >
                 {t('chatV2:page.archiveSession', '归档线程')}
               </AppMenuItem>
+              <AppMenuItem
+                icon={<Download size={16} />}
+                onClick={() => {
+                  setOpenRecentSessionMenuId(null);
+                  void exportSessionToSnapshotFile(session.id, sessionTitle);
+                }}
+              >
+                {t('chatV2:page.exportSession', '导出对话')}
+              </AppMenuItem>
             </AppMenuGroup>
           </AppMenuContent>
         </AppMenu>
@@ -988,8 +1018,18 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
   }, [activeSessionId, confirmingArchiveSessionId, currentView, handleRecentSessionArchive, handleRecentSessionOpen, handleRecentSessionPinToggle, hoveredRecentSessionId, openRecentSessionMenuId, startRecentSessionRename, streamingSessionIdSet, t, unreadSessionIdSet]);
 
   const pinnedRecentSessions = useMemo(
-    () => sortSessionsByUpdatedAt(recentSessions.filter((session) => isSessionPinned(session))),
-    [recentSessions]
+    // 🔧 修复：置顶会话从"完整已分组会话 + 最近会话"的并集过滤，
+    // 不再只用 recentSessions（limit=8），避免已分组的置顶会话被截断不显示。
+    // 按 id 去重，避免同一会话同时出现在 groupedSessions 和 recentSessions 中重复。
+    () => {
+      const merged = new Map<string, ChatSession>();
+      for (const s of groupedSessions) merged.set(s.id, s);
+      for (const s of recentSessions) merged.set(s.id, s);
+      return sortSessionsByUpdatedAt(
+        Array.from(merged.values()).filter((session) => isSessionPinned(session))
+      );
+    },
+    [recentSessions, groupedSessions]
   );
 
   const {
@@ -1001,7 +1041,10 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
     const groupLookup = new Map(recentGroups.map((group) => [group.id, group]));
     const looseSessions: ChatSession[] = [];
 
-    recentSessions.forEach((session) => {
+    // 🔧 修复：课题分组用完整已分组会话（groupedSessions）归类，
+    // 不再用 recentSessions（limit=8），避免分组下较旧会话被截断不显示。
+    // 注：looseSessions（无分组的松散会话）仍来自 recentSessions，保持"最近"语义。
+    groupedSessions.forEach((session) => {
       if (isSessionPinned(session)) {
         return;
       }
@@ -1012,7 +1055,16 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
         sessionsByGroup.set(session.groupId, groupSessions);
         return;
       }
-      looseSessions.push(session);
+    });
+
+    // 🔧 松散会话（无分组）保持原逻辑：来自 recentSessions（最近 8 条）
+    recentSessions.forEach((session) => {
+      if (isSessionPinned(session)) {
+        return;
+      }
+      if (!session.groupId || !groupLookup.has(session.groupId)) {
+        looseSessions.push(session);
+      }
     });
 
     const toRecentGroupSection = (group: SessionGroup): RecentSessionGroup => ({
@@ -1035,7 +1087,7 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
       topicSessionGroups: topicGroups,
       conversationSessions: sortSessionsByUpdatedAt(looseSessions),
     };
-  }, [recentGroups, recentSessions]);
+  }, [recentGroups, recentSessions, groupedSessions]);
 
   const areAllTopicGroupsExpanded = useMemo(
     () => topicSessionGroups.length > 0 && topicSessionGroups.every((group) => !collapsedRecentGroupIds.has(group.id)),
