@@ -55,6 +55,8 @@ import './styles/responsive-utilities.css'; // 响应式工具类
 // 🚀 性能优化：页面组件改为懒加载
 import { NotificationContainer } from './components/NotificationContainer';
 import { showGlobalNotification } from './components/UnifiedNotification';
+import { loadStoredCloudStorageConfigWithCredentials } from './utils/cloudStorageApi';
+import { listenSyncProgress, runSyncWithProgress } from './api/dataGovernance';
 import { CustomScrollArea } from './components/custom-scroll-area';
 import { getErrorMessage } from './utils/errorUtils';
 import { useAppInitialization } from './hooks/useAppInitialization';
@@ -1391,11 +1393,46 @@ function App() {
     }, 100);
   }, [setCurrentView]);
 
+  // 🎯 命令面板: 打开导入对话对话框
+  const handleOpenImportConversation = useCallback(() => {
+    setShowImportConversation(true);
+  }, []);
+
+  // 🎯 命令面板: 立即同步（双向, keep_latest 策略, 逻辑同 SyncSettingsSection.handleSync）
+  const syncNowRunningRef = useRef(false);
+  const handleSyncNow = useCallback(async () => {
+    if (syncNowRunningRef.current) return;
+    const cloudConfig = await loadStoredCloudStorageConfigWithCredentials();
+    if (!cloudConfig) {
+      showGlobalNotification('warning', t('data:governance.cloud_sync_not_configured'));
+      return;
+    }
+    syncNowRunningRef.current = true;
+    const unlisten = await listenSyncProgress({
+      onComplete: () => {
+        showGlobalNotification('success', t('data:sync_settings.sync_success'));
+      },
+      onError: (error) => {
+        showGlobalNotification('error', `${t('data:sync_settings.sync_failed')}: ${error}`);
+      },
+    });
+    try {
+      await runSyncWithProgress('bidirectional', cloudConfig, 'keep_latest');
+    } catch (err) {
+      showGlobalNotification('error', `${t('data:sync_settings.sync_failed')}: ${getErrorMessage(err)}`);
+    } finally {
+      unlisten();
+      syncNowRunningRef.current = false;
+    }
+  }, [t]);
+
   useCommandEvents(
     {
       [COMMAND_EVENTS.NAV_BACK]: unifiedGoBack,
       [COMMAND_EVENTS.NAV_FORWARD]: unifiedGoForward,
       [COMMAND_EVENTS.GLOBAL_SHORTCUT_SETTINGS]: handleShortcutSettings,
+      [COMMAND_EVENTS.GLOBAL_SYNC_NOW]: handleSyncNow,
+      [COMMAND_EVENTS.CHAT_IMPORT_SESSION]: handleOpenImportConversation,
     },
     true
   );

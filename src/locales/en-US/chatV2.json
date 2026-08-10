@@ -833,7 +833,8 @@
     "studySessionsEmpty": "No topics yet",
     "resourceUnsupported": "This resource type is not yet supported in Learning Hub",
     "groupSaveFailed": "Failed to save group",
-    "openNoteFailed": "Failed to open note"
+    "openNoteFailed": "Failed to open note",
+    "exportSession": "Export Conversation"
   },
   "pdfRef": {
     "openFailedTitle": "Cannot Open PDF Reference",
@@ -1236,7 +1237,7 @@
     "workers": "Workers",
     "viewFull": "View Full",
     "loadError": "Load failed",
-    "refreshFailed": "Workspace sync failed: {{message}}",
+    "refreshFailed": "Refresh failed",
     "online": "Network restored, syncing workspace...",
     "offline": "Network disconnected, some operations unavailable",
     "noMessages": "No messages",
@@ -1311,8 +1312,6 @@
     },
     "adapterSetupFailed": "Adapter setup failed for agent: {{agent}}",
     "unableToResolveSessionId": "Unable to resolve requester session ID for workspace command",
-    "online": "Network restored, syncing workspace...",
-    "offline": "Network disconnected, some operations unavailable",
     "subagentRetryDefault": "Subagent completed the task but did not send a result message, re-triggering...",
     "subagentRetryFailed": "Subagent retry failed",
     "subagentRetryResolved": "Subagent has resent the result",
@@ -1322,7 +1321,6 @@
     "cancelFailed": "Stop failed: {{error}}",
     "cancel": "Stop",
     "refreshSuccess": "Refresh successful",
-    "refreshFailed": "Refresh failed",
     "loading": "Loading...",
     "restoreError": "Restore failed",
     "retry": "Retry",
@@ -1493,5 +1491,15 @@
   "qbankCitation": {
     "openQbank": "Open question set: {{title}}",
     "qbank": "Question Set"
+  },
+  "exportSession": {
+    "success": "Conversation exported",
+    "successDetail": "Exported {{count}} messages",
+    "failed": "Failed to export conversation",
+    "noSession": "No active conversation to export"
+  },
+  "copyLastResponse": {
+    "none": "No AI response in this conversation yet",
+    "empty": "The last response has no copyable content"
   }
 }

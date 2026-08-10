@@ -22,6 +22,8 @@ import { registerOpenResourceHandler, type OpenResourceHandler } from '@/dstu/op
 import type { DstuNode } from '@/dstu/types';
 import { createEmpty, dstu, type CreatableResourceType } from '@/dstu';
 import { showGlobalNotification } from '@/components/UnifiedNotification';
+import { getErrorMessage } from '@/utils/errorUtils';
+import { speak, stop as stopSpeaking, isSpeaking } from '@/utils/tts';
 import { setPendingMemoryLocate } from '@/utils/pendingMemoryLocate';
 import { getMemoryConfig } from '@/api/memoryApi';
 import { LearningHubSidebar } from './LearningHubSidebar';
@@ -826,6 +828,24 @@ export const LearningHubPage: React.FC = () => {
           'info',
           t('notes:export.not_available_all', '当前版本暂未接入“导出全部笔记”快捷命令，请使用导出面板。')
         );
+      },
+      // 朗读选中文本（再次触发则停止）；文本来源为当前窗口选区
+      [COMMAND_EVENTS.LEARNING_READ_ALOUD]: async () => {
+        try {
+          if (isSpeaking()) {
+            stopSpeaking();
+            showGlobalNotification('info', t('learningHub:readAloud.stopped', '已停止朗读'));
+            return;
+          }
+          const text = window.getSelection()?.toString().trim() || '';
+          if (!text) {
+            showGlobalNotification('info', t('learningHub:readAloud.noSelection', '请先选中要朗读的文本'));
+            return;
+          }
+          await speak(text);
+        } catch (err: unknown) {
+          showGlobalNotification('error', t('learningHub:readAloud.failed', '朗读失败'), getErrorMessage(err));
+        }
       },
     },
     true

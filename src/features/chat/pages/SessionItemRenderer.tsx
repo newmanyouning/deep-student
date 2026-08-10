@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { PencilSimple, Check, X, CircleNotch, PushPin, Archive } from '@phosphor-icons/react';
+import { PencilSimple, Check, X, CircleNotch, PushPin, Archive, Download } from '@phosphor-icons/react';
 import { type DraggableProvided, type DraggableStateSnapshot } from '@hello-pangea/dnd';
 import {
   AppMenu,
@@ -15,6 +15,7 @@ import { NotionButton } from '@/components/ui/NotionButton';
 import { Input } from '@/components/ui/shad/Input';
 import { getSidebarStudyRowClassName } from './sessionSidebarStyles';
 import { getSessionTitleText } from '../utils/sessionTitle';
+import { exportSessionToSnapshotFile } from '../utils/exportSessionSnapshot';
 import type { SessionGroup } from '../types/group';
 import type { ChatSession } from '../types/session';
 import { debugLog } from '@/debug-panel/debugMasterSwitch';
@@ -235,6 +236,12 @@ export function useSessionItemRenderer(deps: UseSessionItemRendererDeps) {
               onClick={() => archiveSession(session.id)}
             >
               {t('page.archiveSession')}
+            </AppMenuItem>
+            <AppMenuItem
+              icon={<Download size={16} />}
+              onClick={() => { void exportSessionToSnapshotFile(session.id, sessionTitle); }}
+            >
+              {t('page.exportSession', '导出对话')}
             </AppMenuItem>
           </AppMenuGroup>
         </AppMenuContent>

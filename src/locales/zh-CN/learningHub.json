@@ -389,6 +389,7 @@
       "allFiles": "全部文件",
       "favorites": "收藏",
       "notes": "全部笔记",
+      "ocrNotes": "OCR 识别",
       "textbooks": "全部教材",
       "exams": "全部题目集",
       "essays": "全部作文",
@@ -917,5 +918,10 @@
     "lanceHasPageIndex": "有 pageIndex",
     "lanceSampleMetadata": "抽样 metadata",
     "lanceRows": "行"
+  },
+  "readAloud": {
+    "stopped": "已停止朗读",
+    "noSelection": "请先选中要朗读的文本",
+    "failed": "朗读失败"
   }
 }

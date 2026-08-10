@@ -3434,9 +3434,11 @@
     },
     "errors": {
       "import_not_implemented": "Import feature not implemented",
+      "import_snapshot_too_large": "Snapshot file too large (over 32MB); import aborted.",
       "upload_failed": "Upload failed",
       "unknown_error_occurred": "An unknown error occurred",
       "unserializable_error": "An unserializable error occurred",
+      "sync_in_progress": "Data sync in progress, please try again later",
       "tts_unavailable": "Text-to-speech unavailable",
       "tts_not_supported": "Text-to-speech not supported in current environment"
     },

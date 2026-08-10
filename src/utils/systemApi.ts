@@ -2,6 +2,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { getErrorMessage } from './errorUtils';
 import { t } from './i18n';
 import { isTauriRuntime, invokeWithDebug, withGraphId } from './shared';
+import { readFileAsText } from './chatApi';
+import { importSessionSnapshot } from '@/api/chatV2Api';
 import type { Tag } from './shared';
 import { debugLog } from '../debug-panel/debugMasterSwitch';
 import type {
@@ -440,20 +442,29 @@ export async function checkAllPackageManagers(): Promise<{
 // ★ 2026-01 清理：错题分析相关占位方法已删除（analyzeNewMistake, analyzeFromBridge, analyzeStepByStep, startStreamingAnswer, continueChatStream, runtimeAutosaveCommit 等）
 
 /**
- * 导入对话快照（占位）
- * @deprecated 后端尚未实现，返回失败状态
+ * 导入对话快照（Conversation Snapshot v1）
+ *
+ * 读取快照文件（fileManager 链路，兼容移动端 content:// 路径），
+ * 调用 chat_v2_import_session 全量 ID 重映射后写入 chat_v2.db。
+ * 失败时抛错（由 ImportConversationDialog 的 catch 统一展示）。
  */
-export async function importConversationSnapshot(_params: unknown): Promise<{
+export async function importConversationSnapshot(filePath: unknown): Promise<{
   success: boolean;
   conversationId?: string;
   message?: string;
   warnings?: string[];
 }> {
-  console.warn('[TauriAPI] importConversationSnapshot not yet implemented');
+  const content = await readFileAsText(String(filePath));
+  // 防御性上限：单文件超过 32MB 拒绝（正常会话快照远低于此）
+  if (content.length > 32 * 1024 * 1024) {
+    throw new Error(t('utils.errors.import_snapshot_too_large'));
+  }
+  const result = await importSessionSnapshot(content);
   return {
-    success: false,
-    message: t('utils.errors.import_not_implemented'),
-    warnings: [t('utils.warnings.feature_unavailable')],
+    success: true,
+    conversationId: result.sessionId,
+    message: t('import.success_message', undefined, 'chat_host'),
+    warnings: result.warnings,
   };
 }
 

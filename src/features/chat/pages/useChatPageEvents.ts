@@ -11,6 +11,8 @@ import { RESOURCE_ID_PREFIX_MAP } from '@/dstu/types/path';
 import type { ResourceListItem, ResourceType } from '@/features/learning-hub/types';
 import { useCommandEvents, COMMAND_EVENTS } from '@/command-palette/hooks/useCommandEvents';
 import { useEventRegistry } from '@/hooks/useEventRegistry';
+import { copyTextToClipboard } from '@/utils/clipboardUtils';
+import { exportSessionToSnapshotFile } from '../utils/exportSessionSnapshot';
 import type { ChatSession } from '../types/session';
 import { debugLog } from '@/debug-panel/debugMasterSwitch';
 import type { TFunction } from 'i18next';
@@ -609,6 +611,66 @@ export function useChatPageEvents(deps: UseChatPageEventsDeps) {
             console.error('[ChatV2Page] Failed to bookmark session:', getErrorMessage(error));
           }
         }
+      },
+      // 复制最后一条 AI 回复（content 块优先，空时回退 thinking/tool，同 MessageItem）
+      [COMMAND_EVENTS.CHAT_COPY_LAST_RESPONSE]: async () => {
+        console.log('[ChatV2Page] CHAT_COPY_LAST_RESPONSE triggered');
+        const store = getCurrentStore();
+        if (!store) return;
+        const state = store.getState();
+        for (let i = state.messageOrder.length - 1; i >= 0; i--) {
+          const msg = state.messageMap.get(state.messageOrder[i]);
+          if (!msg || msg.role !== 'assistant') continue;
+          const activeVariant = msg.activeVariantId
+            ? msg.variants?.find((v) => v.id === msg.activeVariantId)
+            : undefined;
+          const blockIds =
+            activeVariant && activeVariant.blockIds.length > 0
+              ? activeVariant.blockIds
+              : msg.blockIds;
+          const blocks = blockIds
+            .map((bid) => state.blocks.get(bid))
+            .filter((b): b is NonNullable<typeof b> => Boolean(b));
+          const contentBlocks = blocks.filter((b) => b.type === 'content');
+          let text = contentBlocks.map((b) => b.content || '').join('\n').trim();
+          if (!text) {
+            const parts: string[] = [];
+            for (const b of blocks) {
+              if (b.type === 'thinking' && b.content) {
+                parts.push(`<thinking>\n${b.content}\n</thinking>`);
+              } else if (b.type === 'mcp_tool' && b.content) {
+                parts.push(b.content);
+              }
+            }
+            text = parts.join('\n\n').trim();
+          }
+          if (!text) {
+            showGlobalNotification(
+              'info',
+              t('chatV2:copyLastResponse.empty', '最后一条回复没有可复制的内容')
+            );
+            return;
+          }
+          try {
+            await copyTextToClipboard(text);
+            showGlobalNotification('success', t('chatV2:messageItem.actions.copySuccess', '已复制到剪贴板'));
+          } catch (error) {
+            showGlobalNotification('error', getErrorMessage(error));
+          }
+          return;
+        }
+        showGlobalNotification('info', t('chatV2:copyLastResponse.none', '当前会话还没有 AI 回复'));
+      },
+      // 导出当前会话为快照 JSON（分块导出）
+      [COMMAND_EVENTS.CHAT_EXPORT_SESSION]: async () => {
+        console.log('[ChatV2Page] CHAT_EXPORT_SESSION triggered');
+        const sessionId = currentSessionIdRef.current;
+        if (!sessionId) {
+          showGlobalNotification('info', t('chatV2:exportSession.noSession', '没有可导出的当前会话'));
+          return;
+        }
+        const title = getCurrentStore()?.getState().title;
+        await exportSessionToSnapshotFile(sessionId, title || undefined);
       },
     },
     true // 始终启用监听

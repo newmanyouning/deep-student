@@ -389,6 +389,7 @@
       "allFiles": "All Files",
       "favorites": "Favorites",
       "notes": "All Notes",
+      "ocrNotes": "OCR Notes",
       "textbooks": "All Textbooks",
       "exams": "All Question Sets",
       "essays": "All Essays",
@@ -917,5 +918,10 @@
     "lanceHasPageIndex": "has pageIndex",
     "lanceSampleMetadata": "Sample metadata",
     "lanceRows": "rows"
+  },
+  "readAloud": {
+    "stopped": "Reading stopped",
+    "noSelection": "Select some text to read aloud first",
+    "failed": "Read-aloud failed"
   }
 }

@@ -833,7 +833,8 @@
     "studySessionsEmpty": "暂无课题",
     "resourceUnsupported": "该资源类型暂不支持在学习中心打开",
     "groupSaveFailed": "保存分组失败",
-    "openNoteFailed": "打开笔记失败"
+    "openNoteFailed": "打开笔记失败",
+    "exportSession": "导出对话"
   },
   "pdfRef": {
     "openFailedTitle": "无法打开 PDF 引用",
@@ -1236,7 +1237,7 @@
     "workers": "Worker",
     "viewFull": "查看完整",
     "loadError": "加载失败",
-    "refreshFailed": "工作区同步失败: {{message}}",
+    "refreshFailed": "刷新失败",
     "online": "网络已恢复，正在同步工作区...",
     "offline": "网络已断开，部分操作不可用",
     "noMessages": "暂无消息",
@@ -1311,8 +1312,6 @@
     },
     "adapterSetupFailed": "代理适配器设置失败: {{agent}}",
     "unableToResolveSessionId": "无法解析工作区命令的请求者会话 ID",
-    "online": "网络已恢复，正在同步工作区...",
-    "offline": "网络已断开，部分操作不可用",
     "subagentRetryDefault": "子代理完成任务但未发送结果消息，正在重新触发...",
     "subagentRetryFailed": "子代理重试失败",
     "subagentRetryResolved": "子代理已重新发送结果",
@@ -1322,7 +1321,6 @@
     "cancelFailed": "停止失败: {{error}}",
     "cancel": "停止",
     "refreshSuccess": "刷新成功",
-    "refreshFailed": "刷新失败",
     "loading": "加载中...",
     "restoreError": "恢复失败",
     "retry": "重试",
@@ -1493,5 +1491,15 @@
   "qbankCitation": {
     "openQbank": "打开题目集：{{title}}",
     "qbank": "题目集"
+  },
+  "exportSession": {
+    "success": "对话已导出",
+    "successDetail": "已导出 {{count}} 条消息",
+    "failed": "导出对话失败",
+    "noSession": "没有可导出的当前会话"
+  },
+  "copyLastResponse": {
+    "none": "当前会话还没有 AI 回复",
+    "empty": "最后一条回复没有可复制的内容"
   }
 }

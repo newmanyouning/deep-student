@@ -29,9 +29,49 @@ export async function reorderGroups(sessionId: string, groupIds: string[]) { awa
 export async function askUserRespond(sessionId: string, response: string) { await invoke('chat_v2_ask_user_respond', { sessionId, response }); }
 export async function toolApprovalRespond(sessionId: string, approved: boolean) { await invoke('chat_v2_tool_approval_respond', { sessionId, approved }); }
 
+// ==================== Conversation Snapshot (export/import) ====================
+
+/** 快照元信息（chat_v2_export_session_meta 返回，camelCase） */
+export interface SnapshotExportMeta {
+  format: string;
+  version: number;
+  exportedAt: string;
+  appVersion: string;
+  session: Record<string, unknown>;
+  sessionState: Record<string, unknown> | null;
+  messageCount: number;
+  pageSize: number;
+}
+
+/** 消息分块（chat_v2_export_session_messages 返回） */
+export interface SnapshotMessagesChunk {
+  messages: Array<Record<string, unknown>>;
+  blocks: Array<Record<string, unknown>>;
+  nextOffset: number | null;
+}
+
+/** 导入结果（chat_v2_import_session 返回） */
+export interface ImportSessionSnapshotResult {
+  sessionId: string;
+  messageCount: number;
+  blockCount: number;
+  warnings: string[];
+}
+
+export async function exportSessionMeta(sessionId: string) {
+  return invoke<SnapshotExportMeta>('chat_v2_export_session_meta', { sessionId });
+}
+export async function exportSessionMessages(sessionId: string, offset: number, limit?: number) {
+  return invoke<SnapshotMessagesChunk>('chat_v2_export_session_messages', { sessionId, offset, limit });
+}
+export async function importSessionSnapshot(snapshotJson: string) {
+  return invoke<ImportSessionSnapshotResult>('chat_v2_import_session', { snapshotJson });
+}
+
 export const chatV2Api = {
   deleteSession, updateSessionSettings, archiveSession, saveSession,
   upsertStreamingBlock, updateBlockToolOutput, cancelStream,
   addTag, removeTag, reorderGroups,
   askUserRespond, toolApprovalRespond,
+  exportSessionMeta, exportSessionMessages, importSessionSnapshot,
 } as const;
