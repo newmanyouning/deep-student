@@ -1,3 +1,4 @@
+use super::envelope::{validate_change_payload, SyncEnvelope};
 use super::manifest::*;
 use super::retry::retry_async;
 use super::tombstone;
@@ -5,6 +6,17 @@ use crate::backup_common;
 use crate::cloud_storage::CloudStorage;
 use crate::crypto::backup_crypto;
 use std::collections::{HashMap, HashSet};
+
+/// 生成文件级同步的字节进度回调（经全局 sink 上报到前端，未挂 sink 时为 no-op）。
+/// 用于 put_file/get_file 的 progress 参数，消除大文件传输期间进度条静止的问题。
+fn file_progress_callback(
+    label: &'static str,
+    name: String,
+) -> Option<Box<dyn Fn(u64, u64) + Send + Sync>> {
+    Some(Box::new(move |done, total| {
+        super::emitter::report_file_sync_progress(label, &name, done, total);
+    }))
+}
 
 /// 同步管理器
 pub struct SyncManager {
@@ -698,14 +710,16 @@ impl SyncManager {
         Ok(())
     }
 
-    /// 下载变更数据（支持新旧两种格式）
+    /// 下载变更数据（支持新旧多种格式）
     ///
     /// 从云端下载指定版本之后的所有变更数据。
-    /// - 新格式（v2）：`SyncChangesPayload`，包含完整记录数据
-    /// - 旧格式（v1）：`PendingChanges`，仅含 ChangeLogEntry 元数据
+    /// - v3（信封）：`SyncEnvelope`，含完整记录数据 + 格式层逐条校验
+    /// - v2：`SyncChangesPayload`，包含完整记录数据
+    /// - v1：`PendingChanges`，仅含 ChangeLogEntry 元数据
     ///
-    /// 返回统一的 `Vec<SyncChangeWithData>`，新格式数据已含 `data` 字段，
-    /// 旧格式的 INSERT/UPDATE 变更 `data` 字段为 None（回放时会记录告警并跳过）。
+    /// 返回统一的 `Vec<SyncChangeWithData>`，v3/v2 数据已含 `data` 字段，
+    /// v1 的 INSERT/UPDATE 变更 `data` 字段为 None（回放时会记录告警并跳过）。
+    /// v3 单条格式校验失败的记录进入 `quarantined_records`（隔离跳过，非致命）。
     ///
     /// # 参数
     /// * `storage` - 云存储实例
@@ -729,6 +743,8 @@ impl SyncManager {
         let mut all_changes: Vec<(u64, SyncChangeWithData)> = Vec::new();
         let mut skipped_self = 0usize;
         let mut decode_failures: Vec<String> = Vec::new();
+        // v3 SyncEnvelope 单条格式校验失败的记录（隔离跳过，非致命，随结果上报）
+        let mut quarantined_records: Vec<QuarantineRow> = Vec::new();
 
         for file in files {
             // 跳过本设备上传的变更文件，避免回声下载
@@ -766,9 +782,15 @@ impl SyncManager {
                             zstd::stream::decode_all(std::io::Cursor::new(decrypted.as_slice()))
                                 .unwrap_or(decrypted);
 
+                        // 格式解析顺序（写入顺序）: v2 (SyncChangesPayload) → v3 (SyncEnvelope) → v1 (PendingChanges)
+                        // 任一成功即视为已解析; 全部失败记 decode_failures（非致命，已有语义）。
+                        // v3 要求 format_version >= 3，防止缺字段的老 JSON 被误识别为信封。
+                        let mut parsed = false;
+
                         if let Ok(payload) =
                             serde_json::from_slice::<SyncChangesPayload>(&decoded_data)
                         {
+                            parsed = true;
                             tracing::debug!(
                                 "[sync] 下载变更文件(v2): key={}, count={}",
                                 file.key,
@@ -784,26 +806,90 @@ impl SyncManager {
                                 }
                                 all_changes.push((version, change));
                             }
-                        } else if let Ok(changes) =
-                            serde_json::from_slice::<PendingChanges>(&decoded_data)
-                        {
-                            tracing::warn!(
-                                "[sync] 下载变更文件(v1/旧格式，数据不完整): key={}, count={}",
-                                file.key,
-                                changes.total_count
-                            );
-                            for entry in &changes.entries {
-                                let change = SyncChangeWithData::from_entry(entry);
-                                if let Some(db) = change.database_name.as_deref() {
-                                    if let Some(db_since) = per_db_since.and_then(|m| m.get(db)) {
-                                        if version < *db_since {
+                        }
+
+                        if !parsed {
+                            if let Ok(envelope) =
+                                serde_json::from_slice::<SyncEnvelope>(&decoded_data)
+                            {
+                                if envelope.format_version >= 3 {
+                                    parsed = true;
+                                    // v3: 逐条格式校验，不合规进 quarantine（跳过继续），
+                                    // 合规条目转成 SyncChangeWithData 进入现有应用流，
+                                    // 不改变任何应用逻辑
+                                    let mut file_quarantined: Vec<QuarantineRow> = Vec::new();
+                                    for change in &envelope.changes {
+                                        if let Err(reason) = validate_change_payload(change) {
+                                            file_quarantined.push(QuarantineRow {
+                                                table_name: change.table_name.clone(),
+                                                record_id: change.record_id.clone(),
+                                                reason,
+                                            });
                                             continue;
                                         }
+                                        let converted = change
+                                            .to_sync_change_with_data(&envelope.created_at_hlc);
+                                        if let Some(db) = converted.database_name.as_deref() {
+                                            if let Some(db_since) =
+                                                per_db_since.and_then(|m| m.get(db))
+                                            {
+                                                if version < *db_since {
+                                                    continue;
+                                                }
+                                            }
+                                        }
+                                        all_changes.push((version, converted));
+                                    }
+                                    if file_quarantined.is_empty() {
+                                        tracing::debug!(
+                                            "[sync] 下载变更文件(v3): key={}, count={}",
+                                            file.key,
+                                            envelope.changes.len()
+                                        );
+                                    } else {
+                                        tracing::warn!(
+                                            "[sync] 下载变更文件(v3): key={}, count={}, quarantined={}, 示例: {}/{} ({})",
+                                            file.key,
+                                            envelope.changes.len(),
+                                            file_quarantined.len(),
+                                            file_quarantined[0].table_name,
+                                            file_quarantined[0].record_id,
+                                            file_quarantined[0].reason
+                                        );
+                                        quarantined_records.extend(file_quarantined);
                                     }
                                 }
-                                all_changes.push((version, change));
+                                // format_version < 3: 不是合法 v3 信封，落回 v1 继续尝试
                             }
-                        } else {
+                        }
+
+                        if !parsed {
+                            if let Ok(changes) =
+                                serde_json::from_slice::<PendingChanges>(&decoded_data)
+                            {
+                                parsed = true;
+                                tracing::warn!(
+                                    "[sync] 下载变更文件(v1/旧格式，数据不完整): key={}, count={}",
+                                    file.key,
+                                    changes.total_count
+                                );
+                                for entry in &changes.entries {
+                                    let change = SyncChangeWithData::from_entry(entry);
+                                    if let Some(db) = change.database_name.as_deref() {
+                                        if let Some(db_since) =
+                                            per_db_since.and_then(|m| m.get(db))
+                                        {
+                                            if version < *db_since {
+                                                continue;
+                                            }
+                                        }
+                                    }
+                                    all_changes.push((version, change));
+                                }
+                            }
+                        }
+
+                        if !parsed {
                             decode_failures.push(file.key.clone());
                             tracing::error!("[sync] 无法解析变更文件: key={}", file.key);
                         }
@@ -868,6 +954,7 @@ impl SyncManager {
         Ok(DownloadChangesResult {
             changes: all_changes.into_iter().map(|(_, change)| change).collect(),
             decode_failures,
+            quarantined_records,
         })
     }
 
@@ -1019,6 +1106,7 @@ impl SyncManager {
                     conflicts_detected: 0,
                     duration_ms: start.elapsed().as_millis() as u64,
                     error_message: None,
+                    quarantined_records: vec![],
                 },
                 vec![],
             ));
@@ -1043,6 +1131,7 @@ impl SyncManager {
                 conflicts_detected: 0,
                 duration_ms: start.elapsed().as_millis() as u64,
                 error_message: None,
+                quarantined_records: vec![],
             },
             change_ids,
         ))
@@ -1084,12 +1173,15 @@ impl SyncManager {
             let downloaded = self
                 .download_changes(storage, since_version, Some(&per_db_since))
                 .await?;
-            let warning = if downloaded.decode_failures.is_empty() {
+            let warning = if downloaded.decode_failures.is_empty()
+                && downloaded.quarantined_records.is_empty()
+            {
                 None
             } else {
                 Some(format!(
-                    "检测到 {} 个云端变更文件解析失败，已跳过并继续同步。",
-                    downloaded.decode_failures.len()
+                    "检测到 {} 个云端变更文件解析失败、{} 条记录格式校验未通过已隔离，均已跳过并继续同步。",
+                    downloaded.decode_failures.len(),
+                    downloaded.quarantined_records.len()
                 ))
             };
 
@@ -1102,6 +1194,8 @@ impl SyncManager {
                     conflicts_detected: 0,
                     duration_ms: start.elapsed().as_millis() as u64,
                     error_message: warning,
+                    // 隔离记录随结果上报，命令层聚合进 SyncExecutionResponse
+                    quarantined_records: downloaded.quarantined_records,
                 },
                 downloaded.changes,
             ));
@@ -1146,12 +1240,15 @@ impl SyncManager {
         let downloaded = self
             .download_changes(storage, since_version, Some(&per_db_since))
             .await?;
-        let warning = if downloaded.decode_failures.is_empty() {
+        let warning = if downloaded.decode_failures.is_empty()
+            && downloaded.quarantined_records.is_empty()
+        {
             None
         } else {
             Some(format!(
-                "检测到 {} 个云端变更文件解析失败，已跳过并继续同步。",
-                downloaded.decode_failures.len()
+                "检测到 {} 个云端变更文件解析失败、{} 条记录格式校验未通过已隔离，均已跳过并继续同步。",
+                downloaded.decode_failures.len(),
+                downloaded.quarantined_records.len()
             ))
         };
 
@@ -1170,6 +1267,8 @@ impl SyncManager {
                 conflicts_detected: conflicts_count,
                 duration_ms: start.elapsed().as_millis() as u64,
                 error_message: warning,
+                // 隔离记录随结果上报，命令层聚合进 SyncExecutionResponse
+                quarantined_records: downloaded.quarantined_records,
             },
             downloaded.changes,
         ))
@@ -1219,6 +1318,8 @@ impl SyncManager {
                 conflicts_detected: download_result.conflicts_detected,
                 duration_ms: start.elapsed().as_millis() as u64,
                 error_message: download_result.error_message,
+                // 双向分支聚合下载阶段的隔离记录（上传无隔离概念）
+                quarantined_records: download_result.quarantined_records,
             },
             change_ids,
             downloaded_changes,
@@ -1333,8 +1434,12 @@ impl SyncManager {
             };
             if should_upload {
                 let key = format!("{}/{}.db", Self::WORKSPACES_CLOUD_PREFIX, ws_id);
-                match storage.put_file(&key, path, None).await {
+                match storage
+                    .put_file(&key, path, file_progress_callback("上传工作区数据库", ws_id.clone()))
+                    .await
+                {
                     Ok(_) => {
+                        super::emitter::report_file_sync_file_done();
                         new_manifest.entries.insert(
                             ws_id.clone(),
                             WorkspaceEntry {
@@ -1361,10 +1466,16 @@ impl SyncManager {
                 let dest = workspaces_dir.join(format!("{}.db", ws_id));
                 let key = format!("{}/{}.db", Self::WORKSPACES_CLOUD_PREFIX, ws_id);
                 match storage
-                    .get_file(&key, &dest, Some(&cloud_entry.sha256), None)
+                    .get_file(
+                        &key,
+                        &dest,
+                        Some(&cloud_entry.sha256),
+                        file_progress_callback("下载工作区数据库", ws_id.clone()),
+                    )
                     .await
                 {
                     Ok(_) => {
+                        super::emitter::report_file_sync_file_done();
                         tracing::info!("[sync] 工作区数据库已下载: {}", ws_id);
                     }
                     Err(e) => {
@@ -1452,8 +1563,12 @@ impl SyncManager {
             let mut last_err = String::new();
             let mut ok = false;
             for attempt in 0..Self::BLOB_MAX_RETRIES {
-                match storage.put_file(&key, path, None).await {
+                match storage
+                    .put_file(&key, path, file_progress_callback("上传附件", relative.clone()))
+                    .await
+                {
                     Ok(_) => {
+                        super::emitter::report_file_sync_file_done();
                         new_manifest.entries.insert(
                             hash.clone(),
                             BlobEntry {
@@ -1503,7 +1618,15 @@ impl SyncManager {
             let mut last_err = String::new();
             let mut ok = false;
             for attempt in 0..Self::BLOB_MAX_RETRIES {
-                match storage.get_file(&key, &dest, Some(hash), None).await {
+                match storage
+                    .get_file(
+                        &key,
+                        &dest,
+                        Some(hash),
+                        file_progress_callback("下载附件", cloud_entry.relative_path.clone()),
+                    )
+                    .await
+                {
                     Ok(_) => {
                         let actual_size = std::fs::metadata(&dest).map(|m| m.len()).unwrap_or(0);
                         if cloud_entry.size > 0 && actual_size != cloud_entry.size {
@@ -1526,6 +1649,7 @@ impl SyncManager {
                             continue;
                         }
                         downloaded_count += 1;
+                        super::emitter::report_file_sync_file_done();
                         ok = true;
                         break;
                     }
@@ -1643,8 +1767,12 @@ impl SyncManager {
                 continue;
             }
             let remote_key = format!("{}/{}", Self::ASSETS_CLOUD_PREFIX, key);
-            match storage.put_file(&remote_key, path, None).await {
+            match storage
+                .put_file(&remote_key, path, file_progress_callback("上传资产文件", key.clone()))
+                .await
+            {
                 Ok(_) => {
+                    super::emitter::report_file_sync_file_done();
                     new_manifest.entries.insert(
                         key.clone(),
                         AssetFileEntry {
@@ -1676,10 +1804,18 @@ impl SyncManager {
             }
             let remote_key = format!("{}/{}", Self::ASSETS_CLOUD_PREFIX, key);
             match storage
-                .get_file(&remote_key, &dest, Some(&entry.sha256), None)
+                .get_file(
+                    &remote_key,
+                    &dest,
+                    Some(&entry.sha256),
+                    file_progress_callback("下载资产文件", key.clone()),
+                )
                 .await
             {
-                Ok(_) => downloaded += 1,
+                Ok(_) => {
+                    super::emitter::report_file_sync_file_done();
+                    downloaded += 1;
+                }
                 Err(e) => {
                     tracing::warn!("[sync] 资产下载失败（跳过）: {}: {}", key, e);
                     let _ = std::fs::remove_file(&dest);

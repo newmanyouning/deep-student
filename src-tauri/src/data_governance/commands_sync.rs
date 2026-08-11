@@ -10,8 +10,9 @@ use tracing::{debug, error, info, warn};
 use super::audit::{AuditLog, AuditOperation};
 use super::schema_registry::DatabaseId;
 use super::sync::{
-    ChangeLogEntry, DatabaseSyncState, MergeStrategy, PendingChanges, SyncChangeWithData,
-    SyncDirection, SyncExecutionResult, SyncManager, SyncManifest,
+    check_write_gate, ChangeLogEntry, DatabaseSyncState, MergeStrategy, PendingChanges,
+    QuarantineRow, SyncChangeWithData, SyncDirection, SyncExecutionResult, SyncGuardSlot,
+    SyncManager, SyncManifest, SyncSession,
 };
 use crate::backup_common::BACKUP_GLOBAL_LIMITER;
 use crate::cloud_storage::{create_storage, CloudStorage, CloudStorageConfig};
@@ -386,6 +387,11 @@ fn get_device_id(app: &tauri::AppHandle) -> String {
         .clone()
 }
 
+/// 生成同步会话 ID（ULID: 时间戳 + 随机，可排序，用于关联日志/审计/前端排查）
+fn new_sync_session_id() -> String {
+    format!("sync_{}", ulid::Ulid::new())
+}
+
 /// 同步状态响应
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct SyncStatusResponse {
@@ -586,6 +592,11 @@ pub async fn data_governance_resolve_conflicts(
     // P0-6: 维护模式检查——禁止在备份/恢复/迁移期间访问数据库文件
     check_maintenance_mode(&app)?;
 
+    // [写门-接线] 同步写门检查: 冲突解决基于同步状态, 同步应用期间不应并发执行。
+    // 写门被占 (同步进行中) → SyncInProgress (可重试)。
+    let state = app.state::<crate::commands::AppState>();
+    check_write_gate(&state.sync_write_guard, "conflict_resolution")?;
+
     let start = Instant::now();
 
     // 解析合并策略
@@ -743,6 +754,9 @@ pub async fn data_governance_run_sync(
 
     let start = Instant::now();
 
+    // 同步会话 ID：命令链入口生成，贯穿日志与审计（关联排查）
+    let sync_session_id = new_sync_session_id();
+
     // 解析同步方向
     let sync_direction = SyncDirection::from_str(&direction).ok_or_else(|| {
         format!(
@@ -801,12 +815,14 @@ pub async fn data_governance_run_sync(
                 "strategy": strategy.as_deref().unwrap_or("keep_latest"),
                 "provider": format!("{:?}", config.provider),
                 "root": config.root.clone(),
+                "sync_session_id": sync_session_id.clone(),
             })),
         );
     }
 
     // P1-4: 全局互斥（带超时）：避免与备份/恢复/ZIP 导入导出并发，降低一致性风险
-    let _permit = tokio::time::timeout(
+    // [P0-接线] 保持 60s 超时语义不变 —— 只把拿到的信号量许可移交给 SyncSession 持有
+    let semaphore_permit = tokio::time::timeout(
         std::time::Duration::from_secs(SYNC_LOCK_TIMEOUT_SECS),
         BACKUP_GLOBAL_LIMITER.clone().acquire_owned(),
     )
@@ -818,6 +834,15 @@ pub async fn data_governance_run_sync(
         )
     })?
     .map_err(|_| "获取全局数据治理锁失败".to_string())?;
+
+    // [P0-接线] 创建同步会话 (RAII 容器): 信号量许可移交会话持有, 贯穿整个同步命令链;
+    // 会话 Drop 时按逆序自动释放全部权限 (写门 → 读连接 → 信号量), 错误路径不残留权限。
+    let mut session = SyncSession::new();
+    session.attach_global_semaphore(semaphore_permit);
+
+    // [P3-接线] 写门句柄: AppState.sync_write_guard 的共享句柄,
+    // 供 apply 阶段每库独立 acquire/release (只挡业务写, 不挡同步自身)。
+    let write_guard = app.state::<crate::commands::AppState>().sync_write_guard.clone();
 
     // 创建云存储实例
     let storage = create_storage(&config)
@@ -848,6 +873,15 @@ pub async fn data_governance_run_sync(
     }
 
     let local_manifest = manager.create_manifest(local_databases);
+
+    // [P1-接线] 只读快照阶段开始: 为存在的受管库获取只读连接 (ReadPermit)。
+    // 本阶段 (读 pending changes + enrich 整行数据) 只做只读查询, 不持有任何写权限。
+    for db_id in DatabaseId::all_ordered() {
+        let db_path = resolve_database_path(&db_id, &active_dir);
+        if db_path.exists() {
+            session.acquire_read(&db_path)?;
+        }
+    }
 
     // 遍历所有数据库，收集待同步变更并用 enrich_changes_with_data 补全完整记录数据
     let mut all_enriched: Vec<SyncChangeWithData> = Vec::new();
@@ -900,6 +934,10 @@ pub async fn data_governance_run_sync(
             all_enriched.extend(enriched);
         }
     }
+
+    // [P1-接线] 只读快照结束: 回收全部只读连接 (连接关闭 = 读权限自动回收)。
+    // 后续 P2 传输 / P3 应用阶段不再持有只读快照。
+    session.release_read_permits();
 
     if !db_found {
         return Err(DataGovernanceError::from("未找到可用的数据库。请先初始化数据库。".to_string()));
@@ -984,6 +1022,7 @@ pub async fn data_governance_run_sync(
                     conflicts_detected: 0,
                     duration_ms: start.elapsed().as_millis() as u64,
                     error_message: None,
+                    quarantined_records: vec![],
                 },
                 0,
             ))
@@ -1014,6 +1053,7 @@ pub async fn data_governance_run_sync(
                 .map_err(|e| format!("下载同步失败: {}", e))?;
 
             // 下载的变更已包含完整数据，按来源数据库路由并应用
+            // [P3-接线] 写门随 apply 传入: 每库应用前 acquire / 应用结束即 release
             let mut exec_result = exec_result;
             let mut total_skipped = 0usize;
             if !downloaded_changes.is_empty() {
@@ -1021,6 +1061,7 @@ pub async fn data_governance_run_sync(
                     &downloaded_changes,
                     &active_dir,
                     merge_strategy,
+                    Some(write_guard.clone()),
                 )?;
                 total_skipped = apply_agg.total_skipped;
                 if total_skipped > 0 {
@@ -1070,6 +1111,7 @@ pub async fn data_governance_run_sync(
 
             // [P0 Fix] 先应用下载的变更，再上传本地变更。
             // 这确保上传时不会推送已被下载覆盖的过时数据。
+            // [P3-接线] 写门随 apply 传入: 每库应用前 acquire / 应用结束即 release
             let mut exec_result = exec_result;
             let mut total_skipped = 0usize;
             let mut applied_keys = std::collections::HashSet::new();
@@ -1078,6 +1120,7 @@ pub async fn data_governance_run_sync(
                     &downloaded_changes,
                     &active_dir,
                     merge_strategy,
+                    Some(write_guard.clone()),
                 )?;
                 total_skipped = apply_agg.total_skipped;
                 applied_keys = apply_agg.applied_keys;
@@ -1186,6 +1229,10 @@ pub async fn data_governance_run_sync(
 
     let duration_ms = start.elapsed().as_millis() as u64;
 
+    // [收尾-接线] 同步会话 RAII 释放: Drop 按逆序回收 — 写门 → 读连接 → 全局信号量。
+    // 任意错误路径同样经 Drop 兜底, 不残留任何权限。
+    drop(session);
+
     match result {
         Ok((mut exec_result, skipped)) => {
             // 与带进度链路保持一致：在普通同步中也执行文件级同步
@@ -1264,12 +1311,14 @@ pub async fn data_governance_run_sync(
             }
 
             info!(
-                "[data_governance] 同步完成: direction={}, uploaded={}, downloaded={}, conflicts={}, skipped={}, duration={}ms",
+                "[data_governance] 同步完成: session_id={}, direction={}, uploaded={}, downloaded={}, conflicts={}, skipped={}, quarantined={}, duration={}ms",
+                sync_session_id,
                 exec_result.direction.as_str(),
                 exec_result.changes_uploaded,
                 exec_result.changes_downloaded,
                 exec_result.conflicts_detected,
                 skipped,
+                exec_result.quarantined_records.len(),
                 exec_result.duration_ms
             );
 
@@ -1296,6 +1345,8 @@ pub async fn data_governance_run_sync(
                     "changes_uploaded": exec_result.changes_uploaded,
                     "changes_downloaded": exec_result.changes_downloaded,
                     "conflicts_detected": exec_result.conflicts_detected,
+                    "quarantined_count": exec_result.quarantined_records.len(),
+                    "sync_session_id": sync_session_id.clone(),
                 }));
 
                 if exec_result.success {
@@ -1323,10 +1374,13 @@ pub async fn data_governance_run_sync(
                 device_id,
                 error_message: exec_result.error_message.clone(),
                 skipped_changes: skipped,
+                // 下载/双向分支的隔离记录随结果上报；上传分支恒为空
+                quarantined_records: exec_result.quarantined_records.clone(),
+                sync_session_id: sync_session_id.clone(),
             })
         }
         Err(e) => {
-            error!("[data_governance] 同步失败: {}", e);
+            error!("[data_governance] 同步失败: session_id={}, {}", sync_session_id, e);
             #[cfg(feature = "data_governance")]
             {
                 let audit_direction = match sync_direction {
@@ -1348,6 +1402,7 @@ pub async fn data_governance_run_sync(
                         "device_id": device_id.clone(),
                         "direction": sync_direction.as_str(),
                         "strategy": strategy.clone().unwrap_or_else(|| "keep_latest".to_string()),
+                        "sync_session_id": sync_session_id.clone(),
                     })),
                 );
             }
@@ -1361,6 +1416,8 @@ pub async fn data_governance_run_sync(
                 device_id,
                 error_message: Some(e.to_string()),
                 skipped_changes: 0,
+                quarantined_records: vec![],
+                sync_session_id,
             })
         }
     }
@@ -1389,6 +1446,14 @@ pub struct SyncExecutionResponse {
     /// 前端可据此展示"部分完成"状态而非纯成功
     #[serde(default)]
     pub skipped_changes: usize,
+    /// 下载/应用过程中被隔离的违规记录
+    /// （v3 SyncEnvelope 单条格式校验失败，跳过应用，非致命）
+    /// 前端可据此展示"部分记录未应用"的明细（表名/记录 ID/原因）
+    #[serde(default)]
+    pub quarantined_records: Vec<QuarantineRow>,
+    /// 同步会话 ID（命令链入口生成，贯穿日志与审计，用于问题排查关联）
+    #[serde(default)]
+    pub sync_session_id: String,
 }
 
 fn cleanup_temp_sync_file(path: Option<&PathBuf>, context: &str) {
@@ -1479,6 +1544,7 @@ pub async fn data_governance_export_sync_data(
 
     // 构建导出数据（使用带完整数据的变更）
     let export_data = SyncExportData {
+        format_version: 2, // 当前导出格式版本
         manifest,
         pending_changes: all_enriched_changes.clone(),
         exported_at: chrono::Utc::now().to_rfc3339(),
@@ -1540,14 +1606,27 @@ pub async fn data_governance_export_sync_data(
 }
 
 /// 同步导出数据（v2：含完整记录数据）
+///
+/// ## 格式版本语义
+/// - `1`：遗留格式，无 `format_version` 字段（反序列化时由 `#[serde(default)]` 回填）
+/// - `2`：当前格式，带 `format_version` 字段标记
+/// - `3+`：未来格式（SyncEnvelope），由后续任务引入，导入时给出明确错误提示
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct SyncExportData {
+    /// 导出数据格式版本（1 = 遗留无版本字段格式；2 = 当前带版本标记格式；3+ = 未来格式）
+    #[serde(default = "default_export_format_version")]
+    pub format_version: u32,
     /// 同步清单
     pub manifest: SyncManifest,
     /// 待同步的变更（含完整记录数据，支持跨设备回放）
     pub pending_changes: Vec<SyncChangeWithData>,
     /// 导出时间
     pub exported_at: String,
+}
+
+/// 遗留格式（无 `format_version` 字段）的默认版本号
+fn default_export_format_version() -> u32 {
+    1
 }
 
 /// 同步导出响应
@@ -1582,6 +1661,11 @@ pub async fn data_governance_import_sync_data(
     strategy: Option<String>,
 ) -> DataGovernanceResult<SyncImportResponse> {
     info!("[data_governance] 导入同步数据: path={}", input_path);
+
+    // [写门-接线] 同步写门检查: 导入会写本地业务库, 与同步应用并发会互相踩踏。
+    // 写门被占 (同步进行中) → SyncInProgress (可重试), 经 From 转换链变成命令错误。
+    let state = app.state::<crate::commands::AppState>();
+    check_write_gate(&state.sync_write_guard, "sync_import")?;
 
     let app_data_dir = get_app_data_dir(&app)?;
     let active_dir = get_active_data_dir(&app)?;
@@ -1619,6 +1703,21 @@ pub async fn data_governance_import_sync_data(
             return Err(DataGovernanceError::from(format!("解析导入数据失败: {}", err)));
         }
     };
+
+    // 按格式版本分派：1/2 走现有导入逻辑（行为不变），未来版本（3+）给出明确错误而非泛化解析失败
+    if import_data.format_version > 2 {
+        cleanup_temp_sync_file(cleanup_path.as_ref(), "sync_import");
+        return Ok(SyncImportResponse {
+            success: false,
+            imported_changes: 0,
+            conflicts_detected: 0,
+            needs_manual_resolution: false,
+            error_message: Some(format!(
+                "导出文件格式版本 {} 不受支持，请升级应用后重试",
+                import_data.format_version
+            )),
+        });
+    }
 
     // 创建同步管理器
     let device_id = get_device_id(&app);
@@ -1687,10 +1786,12 @@ pub async fn data_governance_import_sync_data(
 
     if !import_data.pending_changes.is_empty() {
         // 导入的变更已含完整记录数据，直接按数据库路由并应用
+        // [P3-接线] 写门随 apply 传入: 每库应用前 acquire / 应用结束即 release
         match apply_downloaded_changes_to_databases(
             &import_data.pending_changes,
             &active_dir,
             merge_strategy,
+            Some(state.sync_write_guard.clone()),
         ) {
             Ok(apply_agg) => {
                 total_applied = apply_agg.total_success;
@@ -1801,11 +1902,14 @@ pub async fn data_governance_run_sync_with_progress(
 
     let start = Instant::now();
 
+    // 同步会话 ID：命令链入口生成，贯穿日志与审计（关联排查）
+    let sync_session_id = new_sync_session_id();
+
     // 创建进度发射器
     let emitter = SyncProgressEmitter::new(app.clone());
 
-    // 发送准备中状态
-    emitter.emit_preparing().await;
+    // 发送预检阶段（命令开头，P0: 维护模式检查 → 全局锁 → 云凭据校验）
+    emitter.emit_preflight().await;
 
     // 解析同步方向
     let sync_direction = match SyncDirection::from_str(&direction) {
@@ -1874,12 +1978,14 @@ pub async fn data_governance_run_sync_with_progress(
                 "provider": format!("{:?}", config.provider),
                 "root": config.root.clone(),
                 "with_progress": true,
+                "sync_session_id": sync_session_id.clone(),
             })),
         );
     }
 
     // P1-4: 全局互斥（带超时）：避免与备份/恢复/ZIP 导入导出并发，降低一致性风险
-    let _permit = match tokio::time::timeout(
+    // [P0-接线] 保持 60s 超时语义不变 —— 只把拿到的信号量许可移交给 SyncSession 持有
+    let semaphore_permit = match tokio::time::timeout(
         std::time::Duration::from_secs(SYNC_LOCK_TIMEOUT_SECS),
         BACKUP_GLOBAL_LIMITER.clone().acquire_owned(),
     )
@@ -1901,8 +2007,17 @@ pub async fn data_governance_run_sync_with_progress(
         }
     };
 
-    // 发送检测变更状态
-    emitter.emit_detecting_changes().await;
+    // [P0-接线] 创建同步会话 (RAII 容器): 信号量许可移交会话持有, 贯穿整个同步命令链;
+    // 会话 Drop 时按逆序自动释放全部权限 (写门 → 读连接 → 信号量), 错误路径不残留权限。
+    let mut session = SyncSession::new();
+    session.attach_global_semaphore(semaphore_permit);
+
+    // [P3-接线] 写门句柄: AppState.sync_write_guard 的共享句柄,
+    // 供 apply 阶段每库独立 acquire/release (只挡业务写, 不挡同步自身)。
+    let write_guard = app.state::<crate::commands::AppState>().sync_write_guard.clone();
+
+    // 发送导出阶段（P1: 读 pending changes + 整行数据快照）
+    emitter.emit_export().await;
 
     // 创建云存储实例
     let storage = match create_storage(&config).await {
@@ -1945,6 +2060,19 @@ pub async fn data_governance_run_sync_with_progress(
 
     let local_manifest = manager.create_manifest(local_databases);
 
+    // [P1-接线] 只读快照阶段开始: 为存在的受管库获取只读连接 (ReadPermit)。
+    // 本阶段 (读 pending changes + enrich 整行数据) 只做只读查询, 不持有任何写权限。
+    for db_id in DatabaseId::all_ordered() {
+        let db_path = resolve_database_path(&db_id, &active_dir);
+        if db_path.exists() {
+            if let Err(e) = session.acquire_read(&db_path) {
+                // 按现有错误传播路径返回 (From 转换链保留 SyncBusy/SyncInProgress 变体)
+                emitter.emit_failed(&e.to_string()).await;
+                return Err(e.into());
+            }
+        }
+    }
+
     // 遍历所有数据库，收集待同步变更并补全完整记录数据
     let mut all_enriched: Vec<SyncChangeWithData> = Vec::new();
     let mut db_found = false;
@@ -1958,10 +2086,10 @@ pub async fn data_governance_run_sync_with_progress(
         }
         db_found = true;
 
-        // 每处理一个 DB 就推送一次 detecting_changes 进度，消除大批量富化时的静默窗口
+        // 每处理一个 DB 就推送一次 export 进度，消除大批量富化时的静默窗口
         emitter
             .emit(SyncProgress {
-                phase: SyncPhase::DetectingChanges,
+                phase: SyncPhase::Export,
                 percent: 5.0,
                 current: db_index as u64 + 1,
                 total: total_dbs,
@@ -2020,6 +2148,10 @@ pub async fn data_governance_run_sync_with_progress(
         }
     }
 
+    // [P1-接线] 只读快照结束: 回收全部只读连接 (连接关闭 = 读权限自动回收)。
+    // 后续 P2 传输 / P3 应用阶段不再持有只读快照。
+    session.release_read_permits();
+
     if !db_found {
         let error_msg = "未找到可用的数据库。请先初始化数据库。".to_string();
         emitter.emit_failed(&error_msg).await;
@@ -2044,6 +2176,9 @@ pub async fn data_governance_run_sync_with_progress(
 
     // 使用 OptionalEmitter 包装
     let opt_emitter = OptionalEmitter::with_emitter(emitter.clone());
+    // 挂载文件级同步进度 sink（orchestrator 内部 put_file/get_file 字节回调经此上报；
+    // 消除工作区库/附件等大文件传输期间进度条"卡在中间不动"的静默窗口）
+    super::sync::emitter::set_file_sync_sink(emitter.clone());
 
     // 执行同步（带进度回调）
     let result = match sync_direction {
@@ -2069,6 +2204,7 @@ pub async fn data_governance_run_sync_with_progress(
                 &active_dir,
                 &app_data_dir,
                 &opt_emitter,
+                &write_guard,
             )
             .await
         }
@@ -2083,6 +2219,7 @@ pub async fn data_governance_run_sync_with_progress(
                 &active_dir,
                 &app_data_dir,
                 &opt_emitter,
+                &write_guard,
             )
             .await
         }
@@ -2090,18 +2227,32 @@ pub async fn data_governance_run_sync_with_progress(
 
     let duration_ms = start.elapsed().as_millis() as u64;
 
+    // 卸下文件级同步进度 sink（成功/失败路径都经过这里）
+    super::sync::emitter::clear_file_sync_sink();
+
+    // [收尾-接线] 同步会话 RAII 释放: Drop 按逆序回收 — 写门 → 读连接 → 全局信号量。
+    // 任意错误路径同样经 Drop 兜底, 不残留任何权限。
+    drop(session);
+
     match result {
         Ok((exec_result, skipped)) => {
-            // 发送完成状态
+            // 发送收尾阶段（P4: mark_synced + manifest 上传 + prune + 审计）
+            emitter.emit_finalizing().await;
+            // 发送会话结束事件（六阶段命名最后一个事件）
+            emitter.emit_ended().await;
+            // 发送完成状态（保留的旧终态阶段，旧前端以 completed 判定完成回调；
+            // 作为事件流最后一个事件，避免旧前端收到未知终态后卡在运行中 UI）
             emitter.emit_completed().await;
 
             info!(
-                "[data_governance] 带进度同步完成: direction={}, uploaded={}, downloaded={}, conflicts={}, skipped={}, duration={}ms",
+                "[data_governance] 带进度同步完成: session_id={}, direction={}, uploaded={}, downloaded={}, conflicts={}, skipped={}, quarantined={}, duration={}ms",
+                sync_session_id,
                 exec_result.direction.as_str(),
                 exec_result.changes_uploaded,
                 exec_result.changes_downloaded,
                 exec_result.conflicts_detected,
                 skipped,
+                exec_result.quarantined_records.len(),
                 exec_result.duration_ms
             );
 
@@ -2129,7 +2280,9 @@ pub async fn data_governance_run_sync_with_progress(
                     "changes_downloaded": exec_result.changes_downloaded,
                     "conflicts_detected": exec_result.conflicts_detected,
                     "skipped_changes": skipped,
+                    "quarantined_count": exec_result.quarantined_records.len(),
                     "with_progress": true,
+                    "sync_session_id": sync_session_id.clone(),
                 }));
 
                 if exec_result.success {
@@ -2157,11 +2310,20 @@ pub async fn data_governance_run_sync_with_progress(
                 device_id,
                 error_message: exec_result.error_message.clone(),
                 skipped_changes: skipped,
+                // 下载/双向分支的隔离记录随结果上报；上传分支恒为空
+                quarantined_records: exec_result.quarantined_records.clone(),
+                sync_session_id: sync_session_id.clone(),
             })
         }
         Err(e) => {
+            // 发送会话结束事件（六阶段命名最后一个事件；前置失败路径仅发 failed）
+            emitter.emit_ended().await;
+            // 发送失败状态（保留的旧终态阶段，事件流最后一个事件）
             emitter.emit_failed(e.to_string()).await;
-            error!("[data_governance] 带进度同步失败: {}", e);
+            error!(
+                "[data_governance] 带进度同步失败: session_id={}, {}",
+                sync_session_id, e
+            );
             #[cfg(feature = "data_governance")]
             {
                 let audit_direction = match sync_direction {
@@ -2184,6 +2346,7 @@ pub async fn data_governance_run_sync_with_progress(
                         "direction": sync_direction.as_str(),
                         "strategy": strategy.clone().unwrap_or_else(|| "keep_latest".to_string()),
                         "with_progress": true,
+                        "sync_session_id": sync_session_id.clone(),
                     })),
                 );
             }
@@ -2197,6 +2360,8 @@ pub async fn data_governance_run_sync_with_progress(
                 device_id,
                 error_message: Some(e.to_string()),
                 skipped_changes: 0,
+                quarantined_records: vec![],
+                sync_session_id,
             })
         }
     }
@@ -2207,6 +2372,27 @@ pub async fn data_governance_run_sync_with_progress(
 // ============================================================================
 
 /// 执行上传同步（v2：带进度、多库、完整数据载荷）
+/// 构造一个步进式进度事件（v2 进度带专用）。
+///
+/// v2 进度带（各方向均为单调递增，消除"卡在中间不动"与百分比倒退）：
+/// - 0% 预检 → 5% 导出（按 DB 步进）
+/// - 10%–25% 下载云端变更 → 30%–40% 应用
+/// - 45%–60% 上传变更（字节级）→ 62% 上传清单
+/// - 65%–92% 文件级同步（工作区库/附件/资产，经 emitter 全局 sink 字节级上报）
+/// - 94% 清理旧变更 → 99% 收尾 → 100% 完成
+fn step_progress(phase: SyncPhase, percent: f32, item: impl Into<String>) -> SyncProgress {
+    SyncProgress {
+        phase,
+        percent,
+        current: 0,
+        total: 0,
+        current_item: Some(item.into()),
+        speed_bytes_per_sec: None,
+        eta_seconds: None,
+        error: None,
+    }
+}
+
 async fn execute_upload_with_progress_v2(
     manager: &SyncManager,
     storage: &dyn CloudStorage,
@@ -2227,7 +2413,7 @@ async fn execute_upload_with_progress_v2(
             .await
             .map_err(|e| format!("上传清单失败: {}", e))?;
     } else {
-        emitter.emit_uploading(0, total, None).await;
+        emitter.emit_transfer(0, total, None).await;
 
         // 分批上传变更（每批 1000 条），避免一次性构造/压缩/传输数十万条记录
         // 带来的内存尖峰 + 重试代价过大。批次边界的进度按批次数换算成 10%~50% 占比。
@@ -2240,9 +2426,10 @@ async fn execute_upload_with_progress_v2(
         let batch_count = batches.len();
 
         for (batch_idx, batch) in batches.iter().enumerate() {
+            // 上传变更占用 10%–45% 进度带（之后 50% 清单、65%–92% 文件级同步）
             let batch_progress_base =
-                10.0_f32 + (batch_idx as f32 / batch_count.max(1) as f32) * 40.0;
-            let batch_progress_span = 40.0_f32 / batch_count.max(1) as f32;
+                10.0_f32 + (batch_idx as f32 / batch_count.max(1) as f32) * 35.0;
+            let batch_progress_span = 35.0_f32 / batch_count.max(1) as f32;
 
             let emitter_cb = emitter.clone();
             let last_emit_ms = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
@@ -2267,7 +2454,7 @@ async fn execute_upload_with_progress_v2(
                     };
                     let pct = batch_progress_base + inner_pct * batch_progress_span;
                     emitter_cb.emit_force_sync(SyncProgress {
-                        phase: SyncPhase::Uploading,
+                        phase: SyncPhase::Transfer,
                         percent: pct,
                         current: done,
                         total: total_bytes,
@@ -2294,7 +2481,9 @@ async fn execute_upload_with_progress_v2(
             tokio::task::yield_now().await;
         }
 
-        emitter.emit_uploading(total, total, None).await;
+        emitter
+            .emit(step_progress(SyncPhase::Transfer, 45.0, "变更上传完成"))
+            .await;
 
         // 先标记变更为已同步（若后续 manifest 上传失败会执行回滚）
         let mut marked_by_db: HashMap<String, Vec<i64>> = HashMap::new();
@@ -2320,6 +2509,9 @@ async fn execute_upload_with_progress_v2(
         }
 
         // 标记完成后重建 manifest 再上传（确保 data_version 反映最新状态）
+        emitter
+            .emit(step_progress(SyncPhase::Transfer, 50.0, "上传同步清单…"))
+            .await;
         {
             let mut refreshed_dbs: HashMap<String, DatabaseSyncState> = HashMap::new();
             for db_id in DatabaseId::all_ordered() {
@@ -2342,7 +2534,10 @@ async fn execute_upload_with_progress_v2(
         }
     }
 
-    emitter.emit_applying(total, total, None).await;
+    // 进入文件级同步带（65%–92%，由全局 sink 按字节回调推进）
+    emitter
+        .emit(step_progress(SyncPhase::Transfer, 62.0, "清单已同步，开始文件同步…"))
+        .await;
 
     // 文件级云同步：工作区数据库（ws_*.db）+ VFS blobs
     let blobs_dir = active_dir.join("vfs_blobs");
@@ -2391,6 +2586,9 @@ async fn execute_upload_with_progress_v2(
     }
 
     // 清理云端超过 30 天的旧变更文件（非致命）
+    emitter
+        .emit(step_progress(SyncPhase::Transfer, 94.0, "清理云端旧变更…"))
+        .await;
     if let Err(e) = manager.prune_old_changes(storage, 30).await {
         tracing::warn!("[data_governance] 云端变更文件清理失败（非致命）: {}", e);
     }
@@ -2406,6 +2604,8 @@ async fn execute_upload_with_progress_v2(
             conflicts_detected: 0,
             duration_ms: start.elapsed().as_millis() as u64,
             error_message: upload_warning,
+            // 上传分支无隔离概念，恒为空
+            quarantined_records: vec![],
         },
         0,
     ))
@@ -2420,30 +2620,41 @@ async fn execute_download_with_progress_v2(
     active_dir: &std::path::Path,
     app_data_dir: &std::path::Path,
     emitter: &OptionalEmitter,
+    // [P3-接线] 同步写门句柄, 随 apply 传入 (每库应用前 acquire / 应用结束即 release)
+    write_guard: &SyncGuardSlot,
 ) -> DataGovernanceResult<(SyncExecutionResult, usize)> {
     let _start = std::time::Instant::now();
 
-    emitter.emit_downloading(0, 0, None).await;
+    emitter
+        .emit(step_progress(SyncPhase::Transfer, 10.0, "下载云端变更数据…"))
+        .await;
 
     let (exec_result, downloaded_changes) = manager
         .execute_download(storage, local_manifest, merge_strategy)
         .await
         .map_err(|e| format!("下载同步失败: {}", e))?;
 
-    let total = downloaded_changes.len() as u64;
-    emitter.emit_downloading(total, total, None).await;
+    emitter
+        .emit(step_progress(SyncPhase::Transfer, 25.0, "云端变更下载完成"))
+        .await;
 
     // 下载的变更已含完整数据，按数据库路由并应用
     let mut exec_result = exec_result;
     let mut total_skipped = 0usize;
     if !downloaded_changes.is_empty() {
-        let total_changes = downloaded_changes.len() as u64;
+        let _total_changes = downloaded_changes.len() as u64;
         emitter
-            .emit_applying(0, total_changes, Some("应用变更".to_string()))
+            .emit(step_progress(SyncPhase::Apply, 30.0, "应用变更…"))
             .await;
 
-        let apply_agg =
-            apply_downloaded_changes_to_databases(&downloaded_changes, active_dir, merge_strategy)?;
+        // [P3-接线] 写门随 apply 传入: 每库应用前 acquire / 应用结束即 release
+        // 注意: (*write_guard).clone() 克隆 Arc 本身, 而非克隆 &Arc 引用
+        let apply_agg = apply_downloaded_changes_to_databases(
+            &downloaded_changes,
+            active_dir,
+            merge_strategy,
+            Some((*write_guard).clone()),
+        )?;
         total_skipped = apply_agg.total_skipped;
         if total_skipped > 0 {
             exec_result.error_message = Some(format!(
@@ -2453,9 +2664,14 @@ async fn execute_download_with_progress_v2(
         }
 
         emitter
-            .emit_applying(total_changes, total_changes, None)
+            .emit(step_progress(SyncPhase::Apply, 40.0, "变更应用完成"))
             .await;
     }
+
+    // 进入文件级同步带（65%–92%，由全局 sink 按字节回调推进）
+    emitter
+        .emit(step_progress(SyncPhase::Transfer, 62.0, "开始文件同步…"))
+        .await;
 
     // 文件级云同步：工作区数据库（ws_*.db）+ VFS blobs
     let blobs_dir = active_dir.join("vfs_blobs");
@@ -2519,20 +2735,26 @@ async fn execute_bidirectional_with_progress_v2(
     active_dir: &std::path::Path,
     app_data_dir: &std::path::Path,
     emitter: &OptionalEmitter,
+    // [P3-接线] 同步写门句柄, 随 apply 传入 (每库应用前 acquire / 应用结束即 release)
+    write_guard: &SyncGuardSlot,
 ) -> DataGovernanceResult<(SyncExecutionResult, usize)> {
     let _start = std::time::Instant::now();
 
-    // 先执行下载同步（不先发射 downloading 事件，避免在无内容时发操导致百分比倒退）
+    // 下载阶段开始（此前是覆盖整个下载+冲突检测的静默窗口，进度条停在 5% 不动）
+    emitter
+        .emit(step_progress(SyncPhase::Transfer, 10.0, "下载云端变更数据…"))
+        .await;
+
+    // 先执行下载同步
     let (exec_result, change_ids, downloaded_changes) = manager
         .execute_bidirectional(storage, pending, local_manifest, merge_strategy)
         .await
         .map_err(|e| format!("双向同步失败: {}", e))?;
 
-    // 有下载内容时才发射 downloading 事件
-    if !downloaded_changes.is_empty() {
-        let dl_total = downloaded_changes.len() as u64;
-        emitter.emit_downloading(dl_total, dl_total, None).await;
-    }
+    // 下载阶段完成（无论是否有内容都推进，保持百分比单调前进）
+    emitter
+        .emit(step_progress(SyncPhase::Transfer, 25.0, "云端变更下载完成"))
+        .await;
 
     // [P0 Fix] 先应用下载的变更，再上传本地变更。
     // 这确保上传时不会推送已被下载覆盖的过时数据。
@@ -2540,13 +2762,19 @@ async fn execute_bidirectional_with_progress_v2(
     let mut total_skipped = 0usize;
     let mut applied_keys = std::collections::HashSet::new();
     if !downloaded_changes.is_empty() {
-        let total_changes = downloaded_changes.len() as u64;
+        let _total_changes = downloaded_changes.len() as u64;
         emitter
-            .emit_applying(0, total_changes, Some("应用下载变更".to_string()))
+            .emit(step_progress(SyncPhase::Apply, 30.0, "应用下载变更…"))
             .await;
 
-        let apply_agg =
-            apply_downloaded_changes_to_databases(&downloaded_changes, active_dir, merge_strategy)?;
+        // [P3-接线] 写门随 apply 传入: 每库应用前 acquire / 应用结束即 release
+        // 注意: (*write_guard).clone() 克隆 Arc 本身, 而非克隆 &Arc 引用
+        let apply_agg = apply_downloaded_changes_to_databases(
+            &downloaded_changes,
+            active_dir,
+            merge_strategy,
+            Some((*write_guard).clone()),
+        )?;
         total_skipped = apply_agg.total_skipped;
         applied_keys = apply_agg.applied_keys;
         if total_skipped > 0 {
@@ -2557,7 +2785,7 @@ async fn execute_bidirectional_with_progress_v2(
         }
 
         emitter
-            .emit_applying(total_changes, total_changes, None)
+            .emit(step_progress(SyncPhase::Apply, 40.0, "下载变更应用完成"))
             .await;
     }
 
@@ -2587,10 +2815,12 @@ async fn execute_bidirectional_with_progress_v2(
 
     // 上传过滤后的变更（唯一上传点，execute_bidirectional 不再内部上传）
     if !filtered_enriched.is_empty() {
-        let upload_total = filtered_enriched.len() as u64;
-        emitter.emit_uploading(0, upload_total, None).await;
+        emitter
+            .emit(step_progress(SyncPhase::Transfer, 45.0, "上传本地变更…"))
+            .await;
 
         // 字节级进度回调——通过流式 PUT 实时上报已传输字节数（节流 100ms）
+        // 上传变更占用 45%–60% 进度带
         let emitter_cb = emitter.clone();
         let last_emit_ms = std::sync::Arc::new(std::sync::atomic::AtomicU64::new(0));
         let byte_progress_cb: Box<dyn Fn(u64, u64) + Send + Sync> =
@@ -2608,12 +2838,12 @@ async fn execute_bidirectional_with_progress_v2(
                     last_emit_ms.store(now_ms, std::sync::atomic::Ordering::Relaxed);
                 }
                 let pct = if total_bytes > 0 {
-                    10.0_f32 + (done as f32 / total_bytes as f32) * 40.0
+                    45.0_f32 + (done as f32 / total_bytes as f32) * 15.0
                 } else {
-                    10.0
+                    45.0
                 };
                 emitter_cb.emit_force_sync(SyncProgress {
-                    phase: SyncPhase::Uploading,
+                    phase: SyncPhase::Transfer,
                     percent: pct,
                     current: done,
                     total: total_bytes,
@@ -2633,7 +2863,7 @@ async fn execute_bidirectional_with_progress_v2(
             .map_err(|e| format!("上传变更失败: {}", e))?;
 
         emitter
-            .emit_uploading(upload_total, upload_total, None)
+            .emit(step_progress(SyncPhase::Transfer, 60.0, "本地变更上传完成"))
             .await;
     }
 
@@ -2670,6 +2900,9 @@ async fn execute_bidirectional_with_progress_v2(
     }
 
     // 重建 manifest 反映下载应用 + 标记后的最新状态，再上传
+    emitter
+        .emit(step_progress(SyncPhase::Transfer, 62.0, "上传同步清单…"))
+        .await;
     {
         let mut refreshed_databases: HashMap<String, DatabaseSyncState> = HashMap::new();
         for db_id in DatabaseId::all_ordered() {
@@ -2688,6 +2921,11 @@ async fn execute_bidirectional_with_progress_v2(
             return Err(DataGovernanceError::from(format!("上传刷新清单失败: {}", e)));
         }
     }
+
+    // 进入文件级同步带（65%–92%，由全局 sink 按字节回调推进）
+    emitter
+        .emit(step_progress(SyncPhase::Transfer, 65.0, "开始文件同步…"))
+        .await;
 
     // 文件级云同步：工作区数据库（ws_*.db）+ VFS blobs
     let blobs_dir = active_dir.join("vfs_blobs");
@@ -2747,6 +2985,9 @@ async fn execute_bidirectional_with_progress_v2(
     }
 
     // 清理云端超过 30 天的旧变更文件
+    emitter
+        .emit(step_progress(SyncPhase::Transfer, 94.0, "清理云端旧变更…"))
+        .await;
     if let Err(e) = manager.prune_old_changes(storage, 30).await {
         tracing::warn!("[data_governance] 云端变更文件清理失败（非致命）: {}", e);
     }
@@ -2972,6 +3213,11 @@ pub async fn data_governance_resolve_record_conflict(
     resolution: String,
     merged_data_json: Option<String>,
 ) -> DataGovernanceResult<()> {
+    // [写门-接线] 同步写门检查: 冲突解决会写业务表 + __sync_conflicts,
+    // 同步应用期间 (写门被占) → SyncInProgress (可重试), 不并发踩踏。
+    let state = app.state::<crate::commands::AppState>();
+    check_write_gate(&state.sync_write_guard, &database_name)?;
+
     let active_dir = get_active_data_dir(&app)?;
 
     // 找对应数据库
@@ -3051,6 +3297,11 @@ pub async fn data_governance_purge_resolved_conflicts(
     app: tauri::AppHandle,
     older_than_days: Option<u32>,
 ) -> DataGovernanceResult<u64> {
+    // [写门-接线] 同步写门检查: 清理会写各库 __sync_conflicts 表,
+    // 同步应用期间 (写门被占) → SyncInProgress (可重试), 不并发踩踏。
+    let state = app.state::<crate::commands::AppState>();
+    check_write_gate(&state.sync_write_guard, "sync_conflicts")?;
+
     let active_dir = get_active_data_dir(&app)?;
     let cutoff_days = older_than_days.unwrap_or(30) as i64;
     let cutoff = (chrono::Utc::now() - chrono::Duration::days(cutoff_days)).to_rfc3339();

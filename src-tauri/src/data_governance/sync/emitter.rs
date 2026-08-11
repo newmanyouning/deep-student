@@ -1,6 +1,14 @@
 //! 进度事件发射器
 //!
 //! 负责将同步进度事件发送到前端，支持节流以避免过于频繁的更新。
+//!
+//! ## 阶段语义（六阶段生命周期，设计文档 §3.5）
+//! 同步命令的事件序列对齐为 6 个阶段命名：
+//! `preflight`（命令入口预检）→ `export`（导出快照）→ `transfer`（上传/下载）→
+//! `apply`（本地回放）→ `finalize`（收尾）→ `ended`（会话结束）。
+//! 其中 `completed` / `failed` 为保留的旧终态阶段（旧前端以此触发完成/失败回调，
+//! 必须始终作为事件流的**最后一个**事件，否则旧前端会卡在"运行中"UI）；
+//! `ended` 在 `finalize` 之后、旧终态阶段之前发出。前端对未知阶段名降级显示。
 
 use super::progress::{SyncPhase, SyncProgress};
 use std::sync::Arc;
@@ -89,64 +97,60 @@ impl SyncProgressEmitter {
         self.do_emit(&progress);
     }
 
-    /// 发射准备中状态
-    pub async fn emit_preparing(&self) {
-        self.emit(SyncProgress::preparing()).await;
+    /// 发射预检阶段（命令入口：维护模式检查 → 全局锁 → 云凭据校验）
+    pub async fn emit_preflight(&self) {
+        self.emit(SyncProgress::preflight()).await;
     }
 
-    /// 发射检测变更状态
-    pub async fn emit_detecting_changes(&self) {
-        self.emit(SyncProgress::detecting_changes()).await;
+    /// 发射导出阶段（读 pending changes + 整行数据快照）
+    pub async fn emit_export(&self) {
+        self.emit(SyncProgress::export()).await;
     }
 
-    /// 发射上传进度
+    /// 发射传输阶段（上传/下载变更 + 冲突检测，覆盖原 uploading/downloading）
     ///
     /// # 参数
     /// * `current` - 当前项目数
     /// * `total` - 总项目数
     /// * `current_item` - 当前处理的项目名（可选）
-    pub async fn emit_uploading(&self, current: u64, total: u64, current_item: Option<String>) {
-        let mut progress = SyncProgress::uploading(current, total);
+    pub async fn emit_transfer(&self, current: u64, total: u64, current_item: Option<String>) {
+        let mut progress = SyncProgress::transfer(current, total);
         if let Some(item) = current_item {
             progress = progress.with_current_item(item);
         }
         self.emit(progress).await;
     }
 
-    /// 发射下载进度
+    /// 发射应用阶段（下载变更本地事务回放）
     ///
     /// # 参数
     /// * `current` - 当前项目数
     /// * `total` - 总项目数
     /// * `current_item` - 当前处理的项目名（可选）
-    pub async fn emit_downloading(&self, current: u64, total: u64, current_item: Option<String>) {
-        let mut progress = SyncProgress::downloading(current, total);
+    pub async fn emit_apply(&self, current: u64, total: u64, current_item: Option<String>) {
+        let mut progress = SyncProgress::apply(current, total);
         if let Some(item) = current_item {
             progress = progress.with_current_item(item);
         }
         self.emit(progress).await;
     }
 
-    /// 发射应用变更进度
-    ///
-    /// # 参数
-    /// * `current` - 当前项目数
-    /// * `total` - 总项目数
-    /// * `current_item` - 当前处理的项目名（可选）
-    pub async fn emit_applying(&self, current: u64, total: u64, current_item: Option<String>) {
-        let mut progress = SyncProgress::applying(current, total);
-        if let Some(item) = current_item {
-            progress = progress.with_current_item(item);
-        }
-        self.emit(progress).await;
+    /// 发射收尾阶段（mark_synced + manifest 上传 + prune + 审计写入）
+    pub async fn emit_finalizing(&self) {
+        self.emit(SyncProgress::finalizing()).await;
     }
 
-    /// 发射完成状态
+    /// 发射会话结束事件（六阶段命名最后一个事件，在 completed/failed 之前发出）
+    pub async fn emit_ended(&self) {
+        self.emit(SyncProgress::ended()).await;
+    }
+
+    /// 发射完成状态（保留的旧终态阶段，旧前端以 completed 判定完成回调）
     pub async fn emit_completed(&self) {
         self.emit(SyncProgress::completed()).await;
     }
 
-    /// 发射失败状态
+    /// 发射失败状态（保留的旧终态阶段，旧前端以 failed 判定错误回调）
     ///
     /// # 参数
     /// * `error` - 错误信息
@@ -259,49 +263,50 @@ impl OptionalEmitter {
         }
     }
 
-    /// 发射准备中状态
-    pub async fn emit_preparing(&self) {
-        self.emit(SyncProgress::preparing()).await;
+    /// 发射预检阶段（命令入口）
+    pub async fn emit_preflight(&self) {
+        self.emit(SyncProgress::preflight()).await;
     }
 
-    /// 发射检测变更状态
-    pub async fn emit_detecting_changes(&self) {
-        self.emit(SyncProgress::detecting_changes()).await;
+    /// 发射导出阶段（读 pending + 整行数据快照）
+    pub async fn emit_export(&self) {
+        self.emit(SyncProgress::export()).await;
     }
 
-    /// 发射上传进度
-    pub async fn emit_uploading(&self, current: u64, total: u64, current_item: Option<String>) {
-        let mut progress = SyncProgress::uploading(current, total);
+    /// 发射传输阶段（上传/下载，覆盖原 uploading/downloading）
+    pub async fn emit_transfer(&self, current: u64, total: u64, current_item: Option<String>) {
+        let mut progress = SyncProgress::transfer(current, total);
         if let Some(item) = current_item {
             progress = progress.with_current_item(item);
         }
         self.emit(progress).await;
     }
 
-    /// 发射下载进度
-    pub async fn emit_downloading(&self, current: u64, total: u64, current_item: Option<String>) {
-        let mut progress = SyncProgress::downloading(current, total);
+    /// 发射应用阶段（下载变更本地回放）
+    pub async fn emit_apply(&self, current: u64, total: u64, current_item: Option<String>) {
+        let mut progress = SyncProgress::apply(current, total);
         if let Some(item) = current_item {
             progress = progress.with_current_item(item);
         }
         self.emit(progress).await;
     }
 
-    /// 发射应用变更进度
-    pub async fn emit_applying(&self, current: u64, total: u64, current_item: Option<String>) {
-        let mut progress = SyncProgress::applying(current, total);
-        if let Some(item) = current_item {
-            progress = progress.with_current_item(item);
-        }
-        self.emit(progress).await;
+    /// 发射收尾阶段（mark_synced + manifest 上传 + prune + 审计）
+    pub async fn emit_finalizing(&self) {
+        self.emit(SyncProgress::finalizing()).await;
     }
 
-    /// 发射完成状态
+    /// 发射会话结束事件（六阶段命名最后一个事件）
+    pub async fn emit_ended(&self) {
+        self.emit(SyncProgress::ended()).await;
+    }
+
+    /// 发射完成状态（保留的旧终态阶段）
     pub async fn emit_completed(&self) {
         self.emit(SyncProgress::completed()).await;
     }
 
-    /// 发射失败状态
+    /// 发射失败状态（保留的旧终态阶段）
     pub async fn emit_failed(&self, error: impl Into<String>) {
         self.emit(SyncProgress::failed(error.into())).await;
     }
@@ -341,6 +346,129 @@ impl From<SyncProgressEmitter> for OptionalEmitter {
     }
 }
 
+// ==================== 文件级同步进度汇聚点（全局 sink） ====================
+//
+// 背景：文件级同步（工作区数据库 / VFS blob / 资产目录）由 SyncManager 内部的
+// 多个循环执行，逐文件调用 put_file/get_file，期间无任何进度事件。大文件
+// （几十 MB 的工作区库、PDF 附件）在坚果云限速下单文件就要几分钟，UI 进度条
+// 因此"卡在中间不动"。
+//
+// 这些函数签名改动会波及大量调用方（含测试与非进度同步路径），因此采用
+// 全局 sink：命令层在开始同步前挂上发射器，orchestrator 内部的字节回调
+// 经 `report_file_sync_progress` 上报；同步结束（无论成败）必须
+// `clear_file_sync_sink`。同步本身有全局信号量串行化，不存在并发写冲突。
+//
+// percent 策略：总字节数事先未知（取决于云端清单与本地扫描的差集），
+// 采用"已完成文件数 + 当前文件字节比例"渐进推进，固定区间 65%–92%，
+// 单调不回退（put_file 重试时会从 0 重新汇报当前文件字节）。
+
+/// 文件同步进度区间下限
+const FILE_SYNC_BAND_MIN: f32 = 65.0;
+/// 文件同步进度区间上限（之后留给 prune/finalize）
+const FILE_SYNC_BAND_MAX: f32 = 92.0;
+/// 字节回调最小发射间隔
+const FILE_SYNC_EMIT_INTERVAL: Duration = Duration::from_millis(200);
+
+struct FileSyncSink {
+    emitter: SyncProgressEmitter,
+    last_emit: Instant,
+    files_done: u32,
+    max_percent: f32,
+}
+
+static FILE_SYNC_SINK: std::sync::OnceLock<std::sync::RwLock<Option<FileSyncSink>>> =
+    std::sync::OnceLock::new();
+
+fn file_sync_sink_slot() -> &'static std::sync::RwLock<Option<FileSyncSink>> {
+    FILE_SYNC_SINK.get_or_init(|| std::sync::RwLock::new(None))
+}
+
+/// 挂上文件级同步进度发射器（同步命令入口调用）
+pub fn set_file_sync_sink(emitter: SyncProgressEmitter) {
+    if let Ok(mut guard) = file_sync_sink_slot().write() {
+        *guard = Some(FileSyncSink {
+            emitter,
+            // 初始化为已过期，保证第一次回调立即发射
+            last_emit: Instant::now() - FILE_SYNC_EMIT_INTERVAL,
+            files_done: 0,
+            max_percent: FILE_SYNC_BAND_MIN,
+        });
+    }
+}
+
+/// 卸下文件级同步进度发射器（同步命令结束/失败时调用）
+pub fn clear_file_sync_sink() {
+    if let Ok(mut guard) = file_sync_sink_slot().write() {
+        *guard = None;
+    }
+}
+
+/// 上报文件级同步的字节级进度（由 put_file/get_file 的进度回调调用）。
+///
+/// # 参数
+/// * `label` - 操作标签，如 "上传附件" / "下载工作区数据库"
+/// * `name` - 文件名或标识
+/// * `done` / `total` - 当前文件已传输/总字节数
+pub fn report_file_sync_progress(label: &str, name: &str, done: u64, total: u64) {
+    let mut guard = match file_sync_sink_slot().write() {
+        Ok(g) => g,
+        Err(_) => return,
+    };
+    let sink = match guard.as_mut() {
+        Some(s) => s,
+        None => return,
+    };
+
+    let is_final = total > 0 && done >= total;
+    if !is_final && sink.last_emit.elapsed() < FILE_SYNC_EMIT_INTERVAL {
+        return;
+    }
+    sink.last_emit = Instant::now();
+
+    let frac = if total > 0 {
+        (done as f32 / total as f32).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    // 每完成一个文件 +1.5%，当前文件字节比例最多再 +3%，上限封顶
+    let pct = (FILE_SYNC_BAND_MIN + sink.files_done as f32 * 1.5 + frac * 3.0)
+        .min(FILE_SYNC_BAND_MAX)
+        .max(sink.max_percent);
+    sink.max_percent = pct;
+
+    let item = if total > 0 {
+        format!(
+            "{} {} ({:.1}/{:.1} MB)",
+            label,
+            name,
+            done as f64 / 1_048_576.0,
+            total as f64 / 1_048_576.0
+        )
+    } else {
+        format!("{} {}", label, name)
+    };
+
+    sink.emitter.emit_force(SyncProgress {
+        phase: SyncPhase::Transfer,
+        percent: pct,
+        current: done,
+        total,
+        current_item: Some(item),
+        speed_bytes_per_sec: None,
+        eta_seconds: None,
+        error: None,
+    });
+}
+
+/// 标记一个文件传输完成（推进文件计数，从而推进进度区间）
+pub fn report_file_sync_file_done() {
+    if let Ok(mut guard) = file_sync_sink_slot().write() {
+        if let Some(sink) = guard.as_mut() {
+            sink.files_done = sink.files_done.saturating_add(1);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -355,11 +483,13 @@ mod tests {
         assert!(!emitter.has_emitter());
 
         // 这些调用应该不会 panic
-        emitter.emit_preparing().await;
+        emitter.emit_preflight().await;
         emitter
-            .emit_uploading(1, 10, Some("test.txt".to_string()))
+            .emit_transfer(1, 10, Some("test.txt".to_string()))
             .await;
+        emitter.emit_finalizing().await;
         emitter.emit_completed().await;
+        emitter.emit_ended().await;
     }
 
     #[test]
@@ -372,7 +502,7 @@ mod tests {
     async fn test_noop_callback() {
         let callback = NoopProgressCallback;
         // 这些调用应该不会 panic
-        callback.on_progress(SyncProgress::preparing()).await;
+        callback.on_progress(SyncProgress::preflight()).await;
         callback.on_complete().await;
         callback.on_error("test error".to_string()).await;
     }
