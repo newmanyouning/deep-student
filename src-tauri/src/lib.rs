@@ -204,9 +204,19 @@ pub fn run() {
         .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_fs::init());
 
-    // 桌面端专用：自动更新 + 进程管理（仅 macOS/Windows/Linux）
+    // 桌面端专用：单实例 + 自动更新 + 进程管理（仅 macOS/Windows/Linux）
+    // 单实例须最先注册：第二次启动时聚焦已有主窗口并立即退出新实例，
+    // 防止双开共享 WebView2 用户数据目录导致白屏、以及 SQLite 双写竞争。
     #[cfg(any(target_os = "macos", windows, target_os = "linux"))]
     let builder = builder
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            use tauri::Manager;
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init());
 

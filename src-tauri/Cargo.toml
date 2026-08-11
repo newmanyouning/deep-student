@@ -143,6 +143,7 @@ tauri-plugin-clipboard-manager = "~2.2"
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+tauri-plugin-single-instance = "2"
 
 # OAuth2 在 Android 上暂不支持（会引入 native-tls）
 [target.'cfg(not(target_os = "android"))'.dependencies]
