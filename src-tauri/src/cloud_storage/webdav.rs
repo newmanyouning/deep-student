@@ -24,6 +24,28 @@ use super::traits::{
 use crate::backup_common::calculate_file_hash;
 use crate::models::AppError;
 
+/// reqwest 发送错误的完整诊断链。
+///
+/// `reqwest::Error` 的 Display 只有顶层一句 "error sending request for url (...)"，
+/// 真正的原因（TLS 握手失败 / 连接被重置 / 超时 / connection closed before message
+/// completed）都在 source 链里。不展开会让用户只看到一句无法定位的报错。
+fn reqwest_error_detail(e: &reqwest::Error) -> String {
+    use std::error::Error as _;
+    let mut msg = e.to_string();
+    let mut src = e.source();
+    while let Some(s) = src {
+        msg.push_str(&format!(" -> {s}"));
+        src = s.source();
+    }
+    if e.is_timeout() {
+        msg.push_str(" [超时]");
+    }
+    if e.is_connect() {
+        msg.push_str(" [连接建立失败]");
+    }
+    msg
+}
+
 /// WebDAV 存储实现
 pub struct WebDavStorage {
     base_url: Url,
@@ -58,6 +80,7 @@ impl WebDavStorage {
             .timeout(Duration::from_secs(300))
             .connect_timeout(Duration::from_secs(30))
             .min_tls_version(reqwest::tls::Version::TLS_1_2)
+            .user_agent(concat!("deep-student/", env!("CARGO_PKG_VERSION")))
             .build()
             .map_err(|e| AppError::internal(format!("构建 HTTP 客户端失败: {e}")))?;
 
@@ -155,6 +178,43 @@ impl WebDavStorage {
             .map_err(|e| AppError::internal(format!("无效 WebDAV 方法 PROPFIND: {e}")))
     }
 
+    /// 发送 HTTP 请求并带有限重试（应对连接复用竞争、短暂网络抖动等瞬时发送错误）。
+    ///
+    /// `build` 在每次尝试时重新构造 RequestBuilder，因此 body 必须是可重建的内容。
+    /// 发送阶段的错误意味着没有收到完整响应；PUT/DELETE/PROPFIND 对同一 key 重发是幂等的。
+    async fn send_with_retry(
+        &self,
+        desc: &str,
+        build: impl Fn() -> reqwest::RequestBuilder,
+    ) -> Result<reqwest::Response> {
+        const MAX_ATTEMPTS: u32 = 3;
+        let mut last_detail = String::new();
+
+        for attempt in 0..MAX_ATTEMPTS {
+            if attempt > 0 {
+                let delay = Duration::from_millis(500 * (1 << attempt));
+                tracing::debug!("WebDAV {} 重试 {}/{}", desc, attempt + 1, MAX_ATTEMPTS);
+                tokio::time::sleep(delay).await;
+            }
+            match build().send().await {
+                Ok(resp) => return Ok(resp),
+                Err(e) => {
+                    last_detail = reqwest_error_detail(&e);
+                    tracing::warn!(
+                        "WebDAV {} 第 {} 次发送失败: {}",
+                        desc,
+                        attempt + 1,
+                        last_detail
+                    );
+                }
+            }
+        }
+
+        Err(AppError::network(format!(
+            "WebDAV {desc} 请求失败（已重试 {MAX_ATTEMPTS} 次）: {last_detail}"
+        )))
+    }
+
     /// 发送 HTTP 请求（带重试）
     async fn request_with_path(
         &self,
@@ -163,44 +223,19 @@ impl WebDavStorage {
         body: Option<Vec<u8>>,
     ) -> Result<reqwest::Response> {
         let url = self.build_path_url(path)?;
-        let max_retries = 3;
-        let mut last_error = None;
-
-        for attempt in 0..max_retries {
-            if attempt > 0 {
-                let delay = std::time::Duration::from_millis(500 * (1 << attempt));
-                tokio::time::sleep(delay).await;
-                tracing::debug!("WebDAV {} 重试 {}/{}", method, attempt + 1, max_retries);
-            }
-
+        let desc = method.to_string();
+        self.send_with_retry(&desc, || {
             let builder = self
                 .http
                 .request(method.clone(), url.clone())
                 .header("Authorization", self.auth_header());
-
-            let builder = if let Some(ref b) = body {
+            if let Some(ref b) = body {
                 builder.body(b.clone())
             } else {
                 builder
-            };
-
-            match builder.send().await {
-                Ok(resp) => return Ok(resp),
-                Err(e) => {
-                    last_error = Some(e);
-                    if attempt == max_retries - 1 {
-                        break;
-                    }
-                }
             }
-        }
-
-        Err(AppError::network(format!(
-            "WebDAV {} 请求失败（已重试 {} 次）: {}",
-            method,
-            max_retries,
-            last_error.map(|e| e.to_string()).unwrap_or_default()
-        )))
+        })
+        .await
     }
 
     async fn request(
@@ -426,16 +461,17 @@ impl CloudStorage for WebDavStorage {
         // 不能用 GET：坚果云等 SabreDAV 系服务器禁止 GET 目录集合，
         // 已认证用户会收到 403 Forbidden，导致误报"连接检测失败"。
         let url = self.build_path_url(&format!("{}/", self.root))?;
+        let method = Self::propfind_method()?;
         let res = self
-            .http
-            .request(Self::propfind_method()?, url)
-            .header("Authorization", self.auth_header())
-            .header("Depth", "0")
-            .header("Content-Type", "application/xml")
-            .body(r#"<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:allprop/></d:propfind>"#)
-            .send()
-            .await
-            .map_err(|e| AppError::network(format!("WebDAV PROPFIND 请求失败: {e}")))?;
+            .send_with_retry("PROPFIND(连接检测)", || {
+                self.http
+                    .request(method.clone(), url.clone())
+                    .header("Authorization", self.auth_header())
+                    .header("Depth", "0")
+                    .header("Content-Type", "application/xml")
+                    .body(r#"<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:allprop/></d:propfind>"#)
+            })
+            .await?;
 
         if res.status().is_success() || res.status() == StatusCode::NOT_FOUND {
             Ok(())
@@ -479,32 +515,74 @@ impl CloudStorage for WebDavStorage {
         .await
         .map_err(|e| AppError::internal(format!("计算校验和任务失败: {e}")))??;
 
-        let file = tokio::fs::File::open(local_path)
-            .await
-            .map_err(|e| AppError::file_system(format!("打开文件失败: {e}")))?;
-
+        let url = self.build_url(key)?;
         let uploaded = Arc::new(AtomicU64::new(0));
-        let progress_cb = progress.clone();
-        let stream = ReaderStream::new(file).map(move |chunk| {
-            if let Ok(ref bytes) = chunk {
-                let new_total =
-                    uploaded.fetch_add(bytes.len() as u64, Ordering::SeqCst) + bytes.len() as u64;
-                if let Some(cb) = progress_cb.as_ref() {
-                    cb(new_total, file_size);
+
+        // 流式上传带有限重试：每次尝试重新打开文件、重建流。
+        // 复用连接被服务端提前关闭时（"connection closed before message completed"），
+        // reqwest 无法自动重放流式 body，必须重建。PUT 同一 key 内容一致，重发幂等。
+        const MAX_ATTEMPTS: u32 = 3;
+        let mut last_detail = String::new();
+        let mut res_opt: Option<reqwest::Response> = None;
+
+        for attempt in 0..MAX_ATTEMPTS {
+            if attempt > 0 {
+                let delay = Duration::from_millis(500 * (1 << attempt));
+                tracing::debug!("WebDAV PUT 流式上传重试 {}/{}", attempt + 1, MAX_ATTEMPTS);
+                tokio::time::sleep(delay).await;
+            }
+
+            let file = match tokio::fs::File::open(local_path).await {
+                Ok(f) => f,
+                Err(e) => return Err(AppError::file_system(format!("打开文件失败: {e}"))),
+            };
+
+            // 重置进度计数，避免重试时进度重复累计
+            uploaded.store(0, Ordering::SeqCst);
+            let progress_cb = progress.clone();
+            let uploaded_ref = uploaded.clone();
+            let stream = ReaderStream::new(file).map(move |chunk| {
+                if let Ok(ref bytes) = chunk {
+                    let new_total = uploaded_ref.fetch_add(bytes.len() as u64, Ordering::SeqCst)
+                        + bytes.len() as u64;
+                    if let Some(cb) = progress_cb.as_ref() {
+                        cb(new_total, file_size);
+                    }
+                }
+                chunk
+            });
+
+            // 显式 Content-Length：坚果云（SabreDAV 系）对 chunked PUT 支持不佳，
+            // 可能直接断开连接，表现为 "error sending request for url"。
+            match self
+                .http
+                .request(Method::PUT, url.clone())
+                .header("Authorization", self.auth_header())
+                .header("Content-Length", file_size)
+                .body(reqwest::Body::wrap_stream(stream))
+                .send()
+                .await
+            {
+                Ok(res) => {
+                    res_opt = Some(res);
+                    break;
+                }
+                Err(e) => {
+                    last_detail = reqwest_error_detail(&e);
+                    tracing::warn!(
+                        "WebDAV PUT 流式上传第 {} 次发送失败: {}",
+                        attempt + 1,
+                        last_detail
+                    );
                 }
             }
-            chunk
-        });
+        }
 
-        let url = self.build_url(key)?;
-        let res = self
-            .http
-            .request(Method::PUT, url)
-            .header("Authorization", self.auth_header())
-            .body(reqwest::Body::wrap_stream(stream))
-            .send()
-            .await
-            .map_err(|e| AppError::network(format!("WebDAV 上传失败: {e}")))?;
+        let res = res_opt.ok_or_else(|| {
+            AppError::network(format!(
+                "WebDAV 上传失败（已重试 {MAX_ATTEMPTS} 次）: {last_detail}"
+            ))
+        })?;
 
         if res.status().is_success() {
             if let Some(cb) = progress.as_ref() {
@@ -568,7 +646,7 @@ impl CloudStorage for WebDavStorage {
 
             let mut stream = res.bytes_stream();
             while let Some(chunk) = stream.next().await {
-                let bytes = chunk.map_err(|e| AppError::network(format!("读取响应体失败: {e}")))?;
+                let bytes = chunk.map_err(|e| AppError::network(format!("读取响应体失败: {}", reqwest_error_detail(&e))))?;
                 file.write_all(&bytes)
                     .await
                     .map_err(|e| AppError::file_system(format!("写入文件失败: {e}")))?;
@@ -639,7 +717,7 @@ impl CloudStorage for WebDavStorage {
         let bytes = res
             .bytes()
             .await
-            .map_err(|e| AppError::network(format!("读取响应体失败: {e}")))?;
+            .map_err(|e| AppError::network(format!("读取响应体失败: {}", reqwest_error_detail(&e))))?;
         Ok(Some(bytes.to_vec()))
     }
 
@@ -674,17 +752,18 @@ impl CloudStorage for WebDavStorage {
                 format!("{}/", dir)
             };
             let url = self.build_url(&dir_with_slash)?;
+            let method = Self::propfind_method()?;
 
             let res = self
-                .http
-                .request(Self::propfind_method()?, url)
-                .header("Authorization", self.auth_header())
-                .header("Depth", "1")
-                .header("Content-Type", "application/xml")
-                .body(propfind_body)
-                .send()
-                .await
-                .map_err(|e| AppError::network(format!("WebDAV PROPFIND 请求失败: {e}")))?;
+                .send_with_retry("PROPFIND(列表)", || {
+                    self.http
+                        .request(method.clone(), url.clone())
+                        .header("Authorization", self.auth_header())
+                        .header("Depth", "1")
+                        .header("Content-Type", "application/xml")
+                        .body(propfind_body)
+                })
+                .await?;
 
             if res.status() == StatusCode::NOT_FOUND {
                 continue;
@@ -700,7 +779,7 @@ impl CloudStorage for WebDavStorage {
             let xml = res
                 .text()
                 .await
-                .map_err(|e| AppError::network(format!("读取 PROPFIND 响应失败: {e}")))?;
+                .map_err(|e| AppError::network(format!("读取 PROPFIND 响应失败: {}", reqwest_error_detail(&e))))?;
 
             let (files, subdirs) = self.parse_propfind_entries(&xml, prefix, &dir);
 
@@ -743,17 +822,18 @@ impl CloudStorage for WebDavStorage {
 
     async fn stat(&self, key: &str) -> Result<Option<FileInfo>> {
         let url = self.build_url(key)?;
+        let method = Self::propfind_method()?;
 
         let res = self
-            .http
-            .request(Self::propfind_method()?, url)
-            .header("Authorization", self.auth_header())
-            .header("Depth", "0")
-            .header("Content-Type", "application/xml")
-            .body(r#"<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:getlastmodified/><d:getcontentlength/></d:prop></d:propfind>"#)
-            .send()
-            .await
-            .map_err(|e| AppError::network(format!("WebDAV PROPFIND 请求失败: {e}")))?;
+            .send_with_retry("PROPFIND(stat)", || {
+                self.http
+                    .request(method.clone(), url.clone())
+                    .header("Authorization", self.auth_header())
+                    .header("Depth", "0")
+                    .header("Content-Type", "application/xml")
+                    .body(r#"<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:prop><d:getlastmodified/><d:getcontentlength/></d:prop></d:propfind>"#)
+            })
+            .await?;
 
         if res.status() == StatusCode::NOT_FOUND {
             return Ok(None);
@@ -769,7 +849,7 @@ impl CloudStorage for WebDavStorage {
         let xml = res
             .text()
             .await
-            .map_err(|e| AppError::network(format!("读取 PROPFIND 响应失败: {e}")))?;
+            .map_err(|e| AppError::network(format!("读取 PROPFIND 响应失败: {}", reqwest_error_detail(&e))))?;
 
         let files = self.parse_propfind_response(&xml, "");
         Ok(files.into_iter().next())
