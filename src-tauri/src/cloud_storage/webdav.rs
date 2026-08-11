@@ -422,8 +422,21 @@ impl CloudStorage for WebDavStorage {
         // 先确保同步根目录存在，再做连接探测
         self.ensure_directory(&self.root).await?;
 
-        // 回退：GET 根目录
-        let res = self.request(Method::GET, "", None).await?;
+        // 用 PROPFIND Depth:0 探测根目录（同 stat() 的做法）。
+        // 不能用 GET：坚果云等 SabreDAV 系服务器禁止 GET 目录集合，
+        // 已认证用户会收到 403 Forbidden，导致误报"连接检测失败"。
+        let url = self.build_path_url(&format!("{}/", self.root))?;
+        let res = self
+            .http
+            .request(Self::propfind_method()?, url)
+            .header("Authorization", self.auth_header())
+            .header("Depth", "0")
+            .header("Content-Type", "application/xml")
+            .body(r#"<?xml version="1.0"?><d:propfind xmlns:d="DAV:"><d:allprop/></d:propfind>"#)
+            .send()
+            .await
+            .map_err(|e| AppError::network(format!("WebDAV PROPFIND 请求失败: {e}")))?;
+
         if res.status().is_success() || res.status() == StatusCode::NOT_FOUND {
             Ok(())
         } else {
