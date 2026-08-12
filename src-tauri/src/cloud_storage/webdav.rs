@@ -216,6 +216,13 @@ impl WebDavStorage {
                             attempt + 2,
                             MAX_ATTEMPTS
                         );
+                        super::traits::report_status(&format!(
+                            "云端限流（{}），{} 秒后自动重试（第 {}/{} 次）…",
+                            resp.status().as_u16(),
+                            delay.as_secs(),
+                            attempt + 2,
+                            MAX_ATTEMPTS
+                        ));
                         tokio::time::sleep(delay).await;
                         continue;
                     }
@@ -229,6 +236,14 @@ impl WebDavStorage {
                         attempt + 1,
                         last_detail
                     );
+                    if attempt + 1 < MAX_ATTEMPTS {
+                        super::traits::report_status(&format!(
+                            "网络波动，{} 稍后自动重试（第 {}/{} 次）…",
+                            desc,
+                            attempt + 2,
+                            MAX_ATTEMPTS
+                        ));
+                    }
                 }
             }
         }
@@ -631,6 +646,13 @@ impl CloudStorage for WebDavStorage {
                             attempt + 2,
                             MAX_ATTEMPTS
                         );
+                        super::traits::report_status(&format!(
+                            "上传被云端限流（{}），{} 秒后自动重试（第 {}/{} 次）…",
+                            res.status().as_u16(),
+                            delay.as_secs(),
+                            attempt + 2,
+                            MAX_ATTEMPTS
+                        ));
                         tokio::time::sleep(delay).await;
                         continue;
                     }
@@ -644,6 +666,13 @@ impl CloudStorage for WebDavStorage {
                         attempt + 1,
                         last_detail
                     );
+                    if attempt + 1 < MAX_ATTEMPTS {
+                        super::traits::report_status(&format!(
+                            "上传中断，稍后自动重试（第 {}/{} 次）…",
+                            attempt + 2,
+                            MAX_ATTEMPTS
+                        ));
+                    }
                 }
             }
         }

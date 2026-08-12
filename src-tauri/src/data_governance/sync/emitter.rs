@@ -391,7 +391,8 @@ pub fn set_file_sync_sink(emitter: SyncProgressEmitter) {
             // 初始化为已过期，保证第一次回调立即发射
             last_emit: Instant::now() - FILE_SYNC_EMIT_INTERVAL,
             files_done: 0,
-            max_percent: FILE_SYNC_BAND_MIN,
+            // sink 在导出阶段（5%）之后挂载；状态提示显示的百分比从此起步、只增不减
+            max_percent: 5.0,
         });
     }
 }
@@ -467,6 +468,39 @@ pub fn report_file_sync_file_done() {
             sink.files_done = sink.files_done.saturating_add(1);
         }
     }
+}
+
+/// 记录外部进度带的当前百分比（如变更上传 45%–60% 的字节回调），
+/// 使状态提示（限流退避等）能显示与当前进度一致的百分比，不倒退。
+pub fn note_sync_progress_percent(percent: f32) {
+    if let Ok(mut guard) = file_sync_sink_slot().write() {
+        if let Some(sink) = guard.as_mut() {
+            sink.max_percent = sink.max_percent.max(percent);
+        }
+    }
+}
+
+/// 上报同步期间的状态提示（如"云端限流，32 秒后自动重试…"）。
+/// percent 保持当前已知最大值（单调不回退），仅更新说明文字。
+pub fn report_file_sync_status(message: &str) {
+    let guard = match file_sync_sink_slot().read() {
+        Ok(g) => g,
+        Err(_) => return,
+    };
+    let sink = match guard.as_ref() {
+        Some(s) => s,
+        None => return,
+    };
+    sink.emitter.emit_force(SyncProgress {
+        phase: SyncPhase::Transfer,
+        percent: sink.max_percent,
+        current: 0,
+        total: 0,
+        current_item: Some(message.to_string()),
+        speed_bytes_per_sec: None,
+        eta_seconds: None,
+        error: None,
+    });
 }
 
 #[cfg(test)]

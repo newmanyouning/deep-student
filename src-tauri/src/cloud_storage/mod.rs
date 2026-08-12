@@ -32,7 +32,7 @@ pub use sync_manager::{
     get_device_id, BackupVersion, CloudManifest, CloudSyncManager, DownloadResult, SyncStatus,
     UploadResult,
 };
-pub use traits::{CloudStorage, FileInfo, Result};
+pub use traits::{clear_status_hook, set_status_hook, CloudStorage, FileInfo, Result};
 
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};

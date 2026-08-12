@@ -2179,6 +2179,11 @@ pub async fn data_governance_run_sync_with_progress(
     // 挂载文件级同步进度 sink（orchestrator 内部 put_file/get_file 字节回调经此上报；
     // 消除工作区库/附件等大文件传输期间进度条"卡在中间不动"的静默窗口）
     super::sync::emitter::set_file_sync_sink(emitter.clone());
+    // 注册云存储状态提示钩子：限流退避/网络重试等无字节流动的窗口期，
+    // 把原因（"云端限流，32 秒后自动重试…"）显示到前端而不是看起来像卡死
+    crate::cloud_storage::set_status_hook(Box::new(|msg| {
+        super::sync::emitter::report_file_sync_status(msg);
+    }));
 
     // 执行同步（带进度回调）
     let result = match sync_direction {
@@ -2229,6 +2234,7 @@ pub async fn data_governance_run_sync_with_progress(
 
     // 卸下文件级同步进度 sink（成功/失败路径都经过这里）
     super::sync::emitter::clear_file_sync_sink();
+    crate::cloud_storage::clear_status_hook();
 
     // [收尾-接线] 同步会话 RAII 释放: Drop 按逆序回收 — 写门 → 读连接 → 全局信号量。
     // 任意错误路径同样经 Drop 兜底, 不残留任何权限。
@@ -2381,6 +2387,8 @@ pub async fn data_governance_run_sync_with_progress(
 /// - 65%–92% 文件级同步（工作区库/附件/资产，经 emitter 全局 sink 字节级上报）
 /// - 94% 清理旧变更 → 99% 收尾 → 100% 完成
 fn step_progress(phase: SyncPhase, percent: f32, item: impl Into<String>) -> SyncProgress {
+    // 同步记录到全局 sink，使限流/重试等状态提示能显示与当前一致的百分比
+    super::sync::emitter::note_sync_progress_percent(percent);
     SyncProgress {
         phase,
         percent,
@@ -2453,6 +2461,7 @@ async fn execute_upload_with_progress_v2(
                         0.0
                     };
                     let pct = batch_progress_base + inner_pct * batch_progress_span;
+                    super::sync::emitter::note_sync_progress_percent(pct);
                     emitter_cb.emit_force_sync(SyncProgress {
                         phase: SyncPhase::Transfer,
                         percent: pct,
@@ -2842,6 +2851,7 @@ async fn execute_bidirectional_with_progress_v2(
                 } else {
                     45.0
                 };
+                super::sync::emitter::note_sync_progress_percent(pct);
                 emitter_cb.emit_force_sync(SyncProgress {
                     phase: SyncPhase::Transfer,
                     percent: pct,
