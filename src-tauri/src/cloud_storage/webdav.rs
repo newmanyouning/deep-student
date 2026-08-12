@@ -53,6 +53,10 @@ pub struct WebDavStorage {
     password: String,
     root: String,
     http: Client,
+    /// 已确认存在的目录缓存（实例生命周期内有效）。
+    /// 逐文件上传时避免每个文件都重发整串 MKCOL——数千个小文件会多发上万次请求，
+    /// 直接触发坚果云的 WebDAV 频率限制（503）。
+    ensured_dirs: std::sync::Mutex<std::collections::HashSet<String>>,
 }
 
 impl WebDavStorage {
@@ -90,6 +94,7 @@ impl WebDavStorage {
             password: config.password,
             root: root.trim_matches('/').to_string(),
             http,
+            ensured_dirs: std::sync::Mutex::new(std::collections::HashSet::new()),
         })
     }
 
@@ -182,22 +187,40 @@ impl WebDavStorage {
     ///
     /// `build` 在每次尝试时重新构造 RequestBuilder，因此 body 必须是可重建的内容。
     /// 发送阶段的错误意味着没有收到完整响应；PUT/DELETE/PROPFIND 对同一 key 重发是幂等的。
+    ///
+    /// 已收到响应但状态为 429/503（坚果云 WebDAV 频率限制）时同样重试，
+    /// 优先服从 Retry-After 响应头，否则指数退避（2s/8s/32s，上限 60s）。
     async fn send_with_retry(
         &self,
         desc: &str,
         build: impl Fn() -> reqwest::RequestBuilder,
     ) -> Result<reqwest::Response> {
-        const MAX_ATTEMPTS: u32 = 3;
+        const MAX_ATTEMPTS: u32 = 5;
         let mut last_detail = String::new();
 
         for attempt in 0..MAX_ATTEMPTS {
             if attempt > 0 {
-                let delay = Duration::from_millis(500 * (1 << attempt));
+                let delay = Duration::from_millis(500 * (1 << attempt.min(7)));
                 tracing::debug!("WebDAV {} 重试 {}/{}", desc, attempt + 1, MAX_ATTEMPTS);
                 tokio::time::sleep(delay).await;
             }
             match build().send().await {
-                Ok(resp) => return Ok(resp),
+                Ok(resp) => {
+                    if Self::is_rate_limited(resp.status()) && attempt + 1 < MAX_ATTEMPTS {
+                        let delay = Self::rate_limit_delay(&resp, attempt);
+                        tracing::warn!(
+                            "WebDAV {} 被限流（{}），{:?} 后重试 {}/{}",
+                            desc,
+                            resp.status(),
+                            delay,
+                            attempt + 2,
+                            MAX_ATTEMPTS
+                        );
+                        tokio::time::sleep(delay).await;
+                        continue;
+                    }
+                    return Ok(resp);
+                }
                 Err(e) => {
                     last_detail = reqwest_error_detail(&e);
                     tracing::warn!(
@@ -213,6 +236,26 @@ impl WebDavStorage {
         Err(AppError::network(format!(
             "WebDAV {desc} 请求失败（已重试 {MAX_ATTEMPTS} 次）: {last_detail}"
         )))
+    }
+
+    /// 是否为频率限制/服务不可用状态（坚果云限流返回 503）
+    fn is_rate_limited(status: StatusCode) -> bool {
+        matches!(
+            status,
+            StatusCode::TOO_MANY_REQUESTS | StatusCode::SERVICE_UNAVAILABLE
+        )
+    }
+
+    /// 限流退避时长：优先 Retry-After 响应头，否则指数退避（2s/8s/32s），上限 60s
+    fn rate_limit_delay(resp: &reqwest::Response, attempt: u32) -> Duration {
+        if let Some(v) = resp.headers().get(reqwest::header::RETRY_AFTER) {
+            if let Ok(s) = v.to_str() {
+                if let Ok(secs) = s.trim().parse::<u64>() {
+                    return Duration::from_secs(secs.min(60));
+                }
+            }
+        }
+        Duration::from_secs((2u64 << (attempt * 2).min(4)).min(60))
     }
 
     /// 发送 HTTP 请求（带重试）
@@ -249,6 +292,9 @@ impl WebDavStorage {
     }
 
     /// 确保目录存在（递归创建）
+    ///
+    /// 已确认存在的目录会缓存（`ensured_dirs`），批量上传大量小文件时
+    /// 避免每个文件都重发整串 MKCOL 触发服务端频率限制。
     async fn ensure_directory(&self, path: &str) -> Result<()> {
         let parts: Vec<&str> = path
             .trim_matches('/')
@@ -262,6 +308,13 @@ impl WebDavStorage {
                 current.push('/');
             }
             current.push_str(part);
+
+            // 目录缓存命中则跳过 MKCOL
+            if let Ok(cache) = self.ensured_dirs.lock() {
+                if cache.contains(&current) {
+                    continue;
+                }
+            }
 
             // MKCOL 创建目录
             let res = self
@@ -278,6 +331,10 @@ impl WebDavStorage {
             ) {
                 // 不是致命错误，目录可能已存在
                 tracing::debug!("WebDAV MKCOL {} 返回 {}", current, res.status());
+            }
+
+            if let Ok(mut cache) = self.ensured_dirs.lock() {
+                cache.insert(current.clone());
             }
         }
         Ok(())
@@ -564,6 +621,19 @@ impl CloudStorage for WebDavStorage {
                 .await
             {
                 Ok(res) => {
+                    // 限流（429/503）：服从 Retry-After 或指数退避后重试
+                    if Self::is_rate_limited(res.status()) && attempt + 1 < MAX_ATTEMPTS {
+                        let delay = Self::rate_limit_delay(&res, attempt);
+                        tracing::warn!(
+                            "WebDAV PUT 流式上传被限流（{}），{:?} 后重试 {}/{}",
+                            res.status(),
+                            delay,
+                            attempt + 2,
+                            MAX_ATTEMPTS
+                        );
+                        tokio::time::sleep(delay).await;
+                        continue;
+                    }
                     res_opt = Some(res);
                     break;
                 }
