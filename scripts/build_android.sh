@@ -369,6 +369,11 @@ if [[ -z "${NDK_HOME:-}" ]]; then
     fi
 fi
 
+# Windows 下路径带反斜杠（C:\Users\1\...），其中 \1 等序列会被 sed 的
+# 替换 RHS 当作反向引用而报错；统一转换为正斜杠（cargo/sed 均接受）
+ANDROID_HOME="${ANDROID_HOME//\\//}"
+NDK_HOME="${NDK_HOME//\\//}"
+
 # 检查 Rust Android 目标
 if ! rustup target list --installed | grep -q "aarch64-linux-android"; then
     warn "未安装 aarch64-linux-android 目标，正在安装..."
@@ -570,7 +575,7 @@ if [[ -z "${SKIP_ANDROID_BUILD:-}" ]]; then
     # 配置 src-tauri/.cargo/config.toml 中的 Android 链接器
     # 确保 Cargo 使用正确的链接器
     CARGO_CONFIG_FILE="$REPO_ROOT/src-tauri/.cargo/config.toml"
-    if ! grep -q "\[target.aarch64-linux-android\]" "$CARGO_CONFIG_FILE" 2>/dev/null; then
+    if ! grep -q "^\[target.aarch64-linux-android\]" "$CARGO_CONFIG_FILE" 2>/dev/null; then
         say "更新 Cargo 配置文件以包含 Android NDK 链接器配置..."
         cat >> "$CARGO_CONFIG_FILE" <<EOF
 
