@@ -273,6 +273,12 @@ setup_dev_package
 # 切换到项目根目录，确保所有相对路径命令能正确执行
 cd "$REPO_ROOT" || die "无法切换到项目根目录: $REPO_ROOT"
 
+# 优先使用 JAVA_HOME 下的 JDK 工具（java/keytool/jarsigner），
+# 未配置 JAVA_HOME 时回退到 PATH 中已安装的 JDK
+if [[ -n "${JAVA_HOME:-}" && -d "${JAVA_HOME}/bin" ]]; then
+    export PATH="${JAVA_HOME}/bin:${PATH}"
+fi
+
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "缺少必需命令: $1"
 }
@@ -329,7 +335,7 @@ say "检查构建环境..."
 
 # 检查 Java
 if ! command -v java >/dev/null 2>&1; then
-    die "未找到 Java。请安装 JDK 17 或更高版本"
+    die "未找到 Java。请安装 JDK 17 或更高版本（或设置 JAVA_HOME）"
 fi
 
 JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2 | cut -d'.' -f1)
