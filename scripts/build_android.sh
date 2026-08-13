@@ -306,6 +306,11 @@ find_build_tools_cmd() {
       echo "$dir/$cmd"
       return 0
     fi
+    # Windows 版构建工具是 .bat 批处理（apksigner.bat 等）
+    if [[ -f "$dir/$cmd.bat" ]]; then
+      echo "$dir/$cmd.bat"
+      return 0
+    fi
   done
 
   return 1
