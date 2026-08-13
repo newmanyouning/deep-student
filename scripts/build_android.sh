@@ -531,21 +531,30 @@ if [[ -z "${SKIP_ANDROID_BUILD:-}" ]]; then
     # rm -rf src-tauri/gen/android/app/build/outputs/apk
 
     # 配置 Android NDK 工具链环境变量
-    # 检测系统架构（darwin-x86_64 或 darwin-arm64）
+    # 检测宿主平台的 NDK 预构建目录（macOS / Linux / Windows 均支持）
     NDK_PREBUILT_DIR=""
-    if [[ -d "$NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64" ]]; then
-        NDK_PREBUILT_DIR="$NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64"
-    elif [[ -d "$NDK_HOME/toolchains/llvm/prebuilt/darwin-arm64" ]]; then
-        NDK_PREBUILT_DIR="$NDK_HOME/toolchains/llvm/prebuilt/darwin-arm64"
-    else
-        die "无法找到 NDK 预构建工具链目录"
+    for _ndk_host in darwin-arm64 darwin-x86_64 linux-x86_64 windows-x86_64; do
+        if [[ -d "$NDK_HOME/toolchains/llvm/prebuilt/$_ndk_host" ]]; then
+            NDK_PREBUILT_DIR="$NDK_HOME/toolchains/llvm/prebuilt/$_ndk_host"
+            break
+        fi
+    done
+    if [[ -z "$NDK_PREBUILT_DIR" ]]; then
+        die "无法找到 NDK 预构建工具链目录（$NDK_HOME/toolchains/llvm/prebuilt/ 下无受支持的平台目录）"
     fi
 
+    # Windows 版 NDK 的 clang 驱动是 .cmd 批处理（无扩展名的是 POSIX shell 脚本，
+    # cargo 无法直接执行）；llvm-ar 的 .exe 可无扩展名调用
+    CLANG_SUFFIX=""
+    case "$(uname -s)" in
+        MINGW*|MSYS*|CYGWIN*|Windows_NT) CLANG_SUFFIX=".cmd" ;;
+    esac
+
     # 设置 Cargo 使用的 Android 工具链
-    export CC_aarch64_linux_android="$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang"
-    export CXX_aarch64_linux_android="$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang++"
+    export CC_aarch64_linux_android="$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang$CLANG_SUFFIX"
+    export CXX_aarch64_linux_android="$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang++$CLANG_SUFFIX"
     export AR_aarch64_linux_android="$NDK_PREBUILT_DIR/bin/llvm-ar"
-    export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang"
+    export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang$CLANG_SUFFIX"
     
     # 配置 src-tauri/.cargo/config.toml 中的 Android 链接器
     # 确保 Cargo 使用正确的链接器
@@ -556,22 +565,17 @@ if [[ -z "${SKIP_ANDROID_BUILD:-}" ]]; then
 
 # Android NDK 配置（由 build_android.sh 自动添加）
 [target.aarch64-linux-android]
-linker = "$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang"
+linker = "$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang$CLANG_SUFFIX"
 ar = "$NDK_PREBUILT_DIR/bin/llvm-ar"
 EOF
     else
         # 如果配置已存在，更新链接器路径
         say "更新 Android NDK 链接器路径..."
         if [[ "$(uname)" == "Darwin" ]]; then
-            if [[ "$(uname -m)" == "arm64" ]]; then
-                sed -i '' "s|linker = \".*aarch64-linux-android.*\"|linker = \"$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang\"|" "$CARGO_CONFIG_FILE"
-                sed -i '' "s|ar = \".*llvm-ar\"|ar = \"$NDK_PREBUILT_DIR/bin/llvm-ar\"|" "$CARGO_CONFIG_FILE"
-            else
-                sed -i '' "s|linker = \".*aarch64-linux-android.*\"|linker = \"$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang\"|" "$CARGO_CONFIG_FILE"
-                sed -i '' "s|ar = \".*llvm-ar\"|ar = \"$NDK_PREBUILT_DIR/bin/llvm-ar\"|" "$CARGO_CONFIG_FILE"
-            fi
+            sed -i '' "s|linker = \".*aarch64-linux-android.*\"|linker = \"$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang$CLANG_SUFFIX\"|" "$CARGO_CONFIG_FILE"
+            sed -i '' "s|ar = \".*llvm-ar\"|ar = \"$NDK_PREBUILT_DIR/bin/llvm-ar\"|" "$CARGO_CONFIG_FILE"
         else
-            sed -i "s|linker = \".*aarch64-linux-android.*\"|linker = \"$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang\"|" "$CARGO_CONFIG_FILE"
+            sed -i "s|linker = \".*aarch64-linux-android.*\"|linker = \"$NDK_PREBUILT_DIR/bin/aarch64-linux-android21-clang$CLANG_SUFFIX\"|" "$CARGO_CONFIG_FILE"
             sed -i "s|ar = \".*llvm-ar\"|ar = \"$NDK_PREBUILT_DIR/bin/llvm-ar\"|" "$CARGO_CONFIG_FILE"
         fi
     fi

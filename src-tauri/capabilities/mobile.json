@@ -100,7 +100,6 @@
         { "url": "https://api.openalex.org/*" },
         { "url": "https://api.unpaywall.org/*" },
         { "url": "https://doi.org/*" },
-        { "url": "https://download.deepstudent.cn/*" },
         { "url": "https://www.deepstudent.cn/*" },
         { "url": "https://github.com/*" },
         { "url": "https://api.github.com/*" },
