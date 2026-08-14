@@ -130,6 +130,7 @@ setup_dev_package() {
         npx @tauri-apps/cli android init || die "Android 项目初始化失败"
         info "✓ Android 项目已重新初始化"
         inject_android_permissions
+        apply_gradle_china_mirrors
     fi
 }
 
@@ -184,6 +185,42 @@ inject_android_permissions() {
         sed -i "/<manifest/a\\    $PERM" "$MANIFEST"
     fi
     info "✓ 已注入 RECORD_AUDIO 权限"
+}
+
+# 国内网络优化：Gradle 发行版换腾讯镜像、Maven 仓库加阿里云镜像。
+# services.gradle.org / dl.google.com 在国内不稳定，会导致 wrapper 下载超时。
+# 幂等：已注入则跳过。gen/android 被重新初始化后需重新注入（脚本每次构建都会调用）。
+apply_gradle_china_mirrors() {
+    local GEN_DIR="$REPO_ROOT/src-tauri/gen/android"
+    local WRAPPER_PROPS="$GEN_DIR/gradle/wrapper/gradle-wrapper.properties"
+    local ROOT_BUILD="$GEN_DIR/build.gradle.kts"
+
+    if [[ -f "$WRAPPER_PROPS" ]]; then
+        if grep -q "services.gradle.org" "$WRAPPER_PROPS"; then
+            sed -i "s|services.gradle.org/distributions|mirrors.cloud.tencent.com/gradle|" "$WRAPPER_PROPS"
+            grep -q "networkTimeout" "$WRAPPER_PROPS" || echo "networkTimeout=60000" >> "$WRAPPER_PROPS"
+            info "✓ Gradle wrapper 已切换腾讯镜像"
+        fi
+    fi
+
+    if [[ -f "$ROOT_BUILD" ]]; then
+        if ! grep -q "maven.aliyun.com" "$ROOT_BUILD"; then
+            # 在 buildscript/allprojects 的 repositories 块首行 google() 前插入镜像
+            python - "$ROOT_BUILD" <<'PYEOF'
+import io, sys
+p = sys.argv[1]
+s = io.open(p, encoding='utf-8').read()
+aliyun = ('        // 国内镜像（构建脚本自动注入）\n'
+          '        maven { url = uri("https://maven.aliyun.com/repository/google") }\n'
+          '        maven { url = uri("https://maven.aliyun.com/repository/central") }\n'
+          '        maven { url = uri("https://maven.aliyun.com/repository/gradle-plugin") }\n')
+for header in ('buildscript {\n    repositories {\n', 'allprojects {\n    repositories {\n'):
+    s = s.replace(header, header + aliyun)
+io.open(p, 'w', encoding='utf-8').write(s)
+PYEOF
+            info "✓ Maven 仓库已注入阿里云镜像"
+        fi
+    fi
 }
 
 apply_android_version_code() {
@@ -524,6 +561,7 @@ if [[ -z "${SKIP_ANDROID_BUILD:-}" ]]; then
     say "打包 pdfium 动态库..."
     ensure_android_project
     inject_android_permissions
+    apply_gradle_china_mirrors
     JNILIBS_DIR="$REPO_ROOT/src-tauri/gen/android/app/src/main/jniLibs/arm64-v8a"
     mkdir -p "$JNILIBS_DIR"
     PDFIUM_ANDROID_SO="$REPO_ROOT/src-tauri/resources/pdfium/libpdfium_android_arm64.so"
