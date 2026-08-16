@@ -463,7 +463,9 @@ async fn execute_restore_with_progress(
     }
 
     // ============ 阶段 3a: 恢复加密密钥（跨设备恢复支持） ============
-    match manager.restore_crypto_keys(&backup_subdir) {
+    // 🔧 2026-08-16 修复: 密钥必须写入数据库恢复的目标槽位（inactive_dir），
+    // 重启切换到该槽位后 SecureStore 才能读到；写入应用根目录会静默丢失。
+    match manager.restore_crypto_keys_to(&backup_subdir, &inactive_dir) {
         Ok(count) => {
             if count > 0 {
                 info!(

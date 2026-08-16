@@ -1008,8 +1008,21 @@ impl BackupManager {
     /// 包含 `.master_key`（CryptoService 主密钥）和 `.secure/` 目录（SecureStore 密钥种子 + 加密凭据）。
     /// 这些文件在跨设备恢复时必须一并还原，否则 API 密钥将无法解密。
     pub fn backup_crypto_keys(&self, backup_subdir: &Path) -> Result<usize, BackupError> {
-        let master_key_path = self.app_data_dir.join(".master_key");
-        let secure_dir = self.app_data_dir.join(".secure");
+        // 🔧 2026-08-16 修复: 密钥实际存放在数据空间槽位目录（slots/<slot>/），
+        // 而非应用根目录。优先从活跃槽位读取；槽位无密钥时回退根目录（兼容旧布局）。
+        let active_dir = crate::data_space::get_data_space_manager()
+            .map(|mgr| mgr.active_dir())
+            .unwrap_or_else(|| self.app_data_dir.join("slots").join("slotA"));
+        let slot_master_key = active_dir.join(".master_key");
+        let slot_secure = active_dir.join(".secure");
+        let (master_key_path, secure_dir) = if slot_master_key.exists() || slot_secure.is_dir() {
+            (slot_master_key, slot_secure)
+        } else {
+            (
+                self.app_data_dir.join(".master_key"),
+                self.app_data_dir.join(".secure"),
+            )
+        };
 
         // 无加密文件时跳过，避免创建空目录
         if !master_key_path.exists() && !(secure_dir.exists() && secure_dir.is_dir()) {
@@ -1064,7 +1077,22 @@ impl BackupManager {
     ///
     /// 恢复 `.master_key` 和 `.secure/` 目录，使跨设备恢复后 API 密钥可正常解密。
     /// 仅在备份中包含 crypto/ 子目录时执行。
+    ///
+    /// 🔧 2026-08-16 修复: 默认写入活跃槽位目录（与应用实际读取位置一致），
+    /// 旧版行为写入应用根目录导致槽位架构下密钥"恢复了但读不到"。
     pub fn restore_crypto_keys(&self, backup_subdir: &Path) -> Result<usize, BackupError> {
+        let active_dir = crate::data_space::get_data_space_manager()
+            .map(|mgr| mgr.active_dir())
+            .unwrap_or_else(|| self.app_data_dir.join("slots").join("slotA"));
+        self.restore_crypto_keys_to(backup_subdir, &active_dir)
+    }
+
+    /// 从备份目录恢复加密密钥文件到指定目标目录（通常是数据库恢复的目标槽位）
+    pub fn restore_crypto_keys_to(
+        &self,
+        backup_subdir: &Path,
+        target_dir: &Path,
+    ) -> Result<usize, BackupError> {
         let crypto_src = backup_subdir.join("crypto");
         if !crypto_src.exists() || !crypto_src.is_dir() {
             info!("[Restore] 备份中无加密密钥文件（旧版备份），跳过");
@@ -1076,7 +1104,7 @@ impl BackupManager {
         // 1. 恢复 .master_key
         let master_key_src = crypto_src.join(".master_key");
         if master_key_src.exists() {
-            let dest = self.app_data_dir.join(".master_key");
+            let dest = target_dir.join(".master_key");
             fs::copy(&master_key_src, &dest)
                 .map_err(|e| BackupError::RestoreFailed(format!("恢复 .master_key 失败: {}", e)))?;
             count += 1;
@@ -1086,7 +1114,7 @@ impl BackupManager {
         // 2. 恢复 .secure/ 目录
         let secure_src = crypto_src.join(".secure");
         if secure_src.exists() && secure_src.is_dir() {
-            let secure_dest = self.app_data_dir.join(".secure");
+            let secure_dest = target_dir.join(".secure");
             fs::create_dir_all(&secure_dest)?;
 
             let mut secure_count = 0usize;
