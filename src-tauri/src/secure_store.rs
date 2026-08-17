@@ -180,6 +180,7 @@ impl SecureStore {
         let candidate = dirs::data_local_dir()
             .map(|d| d.join("deep-student").join(".secure"))
             .unwrap_or_else(|| std::env::temp_dir().join("deep-student").join(".secure"));
+        tracing::info!("[SECSTORE] fallback dir resolved: {:?}", candidate);
 
         match std::fs::create_dir_all(&candidate) {
             Ok(()) => Ok(candidate),
@@ -499,26 +500,43 @@ impl SecureStore {
 use crate::models::AppError;
 
 /// 全局安全存储实例
+///
+/// 🔧 2026-08-18 修复: 移动端统一使用活动数据空间目录（slots/<slot>/.secure），
+/// 与 Database 使用的存储位置一致。原实现依赖 `dirs::data_local_dir()`/`temp_dir()`
+/// 回退路径，在 Android 上 HOME 等环境变量不确定，既导致云凭据读写异常，
+/// 又与槽位存储割裂（备份无法覆盖）。桌面端保持原回退路径（兼容既有安装）。
 fn get_secure_store() -> SecureStore {
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        if let Some(mgr) = crate::data_space::get_data_space_manager() {
+            return SecureStore::new_with_dir(SecureStoreConfig::default(), mgr.active_dir());
+        }
+    }
     SecureStore::new(SecureStoreConfig::default())
 }
 
 /// 保存云存储凭据到安全存储
 #[tauri::command]
 pub fn secure_save_cloud_credentials(credentials: CloudStorageCredentials) -> Result<(), AppError> {
+    tracing::info!("[SECSTORE] save_cloud_credentials: enter");
     let store = get_secure_store();
-    store
-        .save_cloud_credentials(&credentials)
-        .map_err(|e| AppError::internal(format!("保存凭据失败: {}", e)))
+    let result = store.save_cloud_credentials(&credentials);
+    tracing::info!("[SECSTORE] save_cloud_credentials: done, ok={}", result.is_ok());
+    result.map_err(|e| AppError::internal(format!("保存凭据失败: {}", e)))
 }
 
 /// 获取云存储凭据
 #[tauri::command]
 pub fn secure_get_cloud_credentials() -> Result<Option<CloudStorageCredentials>, AppError> {
+    tracing::info!("[SECSTORE] get_cloud_credentials: enter");
     let store = get_secure_store();
-    store
-        .get_cloud_credentials()
-        .map_err(|e| AppError::internal(format!("获取凭据失败: {}", e)))
+    tracing::info!("[SECSTORE] store created, reading credentials...");
+    let result = store.get_cloud_credentials();
+    match &result {
+        Ok(v) => tracing::info!("[SECSTORE] read ok, has_value={}", v.is_some()),
+        Err(e) => tracing::warn!("[SECSTORE] read failed: {}", e),
+    }
+    result.map_err(|e| AppError::internal(format!("获取凭据失败: {}", e)))
 }
 
 /// 删除云存储凭据
