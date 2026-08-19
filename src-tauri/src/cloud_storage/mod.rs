@@ -109,8 +109,39 @@ pub async fn create_storage(config: &CloudStorageConfig) -> Result<Box<dyn Cloud
 /// 检查云存储连接
 #[tauri::command]
 pub async fn cloud_storage_check_connection(config: CloudStorageConfig) -> Result<bool> {
+    // 🔍 [NETPROBE] 临时诊断: 移动端 reqwest 挂死定位 (定位后移除)
+    tracing::info!("[NETPROBE] check_connection: enter");
+    let probe_host = config
+        .webdav
+        .as_ref()
+        .and_then(|w| url::Url::parse(&w.endpoint).ok())
+        .and_then(|u| u.host_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "dav.jianguoyun.com".to_string());
+    let probe = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        tokio::task::spawn_blocking(move || {
+            use std::net::ToSocketAddrs;
+            (probe_host.as_str(), 443)
+                .to_socket_addrs()
+                .map(|it| it.take(3).collect::<Vec<_>>())
+        }),
+    )
+    .await;
+    match &probe {
+        Ok(Ok(Ok(addrs))) => tracing::info!("[NETPROBE] getaddrinfo OK: {:?}", addrs),
+        Ok(Ok(Err(e))) => tracing::warn!("[NETPROBE] getaddrinfo failed: {}", e),
+        Ok(Err(e)) => tracing::warn!("[NETPROBE] spawn_blocking join error: {}", e),
+        Err(_) => tracing::warn!("[NETPROBE] getaddrinfo TIMEOUT(10s)"),
+    }
+    tracing::info!("[NETPROBE] create_storage...");
     let storage = create_storage(&config).await?;
-    storage.check_connection().await?;
+    tracing::info!("[NETPROBE] storage created, check_connection()...");
+    let result = storage.check_connection().await;
+    match &result {
+        Ok(()) => tracing::info!("[NETPROBE] check_connection OK"),
+        Err(e) => tracing::warn!("[NETPROBE] check_connection failed: {}", e),
+    }
+    result?;
     Ok(true)
 }
 
