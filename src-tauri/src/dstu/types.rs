@@ -1,7 +1,7 @@
 //! DSTU 访达协议层类型定义
 //!
 //! 本模块定义 DSTU 协议的核心类型，包括：
-//! - `DstuNodeType`: 节点类型枚举
+//! - `DstuNodeType`: 节点类型（`ResourceKind` 类型别名，已收编）
 //! - `DstuNode`: 资源节点
 //! - `DstuListOptions`: 列表选项
 //! - `DstuCreateOptions`: 创建选项
@@ -25,181 +25,26 @@ use serde_json::Value;
 // use super::error::{DstuError, DstuResult};
 
 // ============================================================================
-// 节点类型枚举
+// 节点类型（收编自 ResourceKind）
 // ============================================================================
 
-/// DSTU 节点类型
+/// DSTU 节点类型（`ResourceKind` 的类型别名）
 ///
-/// 定义 DSTU 协议支持的资源类型，序列化为小写字符串。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum DstuNodeType {
-    /// 文件夹（虚拟节点，用于表示科目或类型目录）
-    Folder,
-    /// 笔记
-    Note,
-    /// 教材
-    Textbook,
-    /// 题目集识别
-    Exam,
-    /// 翻译
-    Translation,
-    /// 作文批改
-    Essay,
-    /// 图片
-    Image,
-    /// 文件附件
-    File,
-    /// 检索结果（RAG 知识库检索）
-    Retrieval,
-    /// 知识导图
-    MindMap,
-}
-
-impl DstuNodeType {
-    /// 从字符串解析节点类型
-    ///
-    /// # 参数
-    /// - `s`: 类型字符串（如 "note", "textbook"）
-    ///
-    /// # 返回
-    /// 解析成功返回 `Some(DstuNodeType)`，失败返回 `None`
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s.to_lowercase().as_str() {
-            "folder" | "文件夹" => Some(DstuNodeType::Folder),
-            "note" | "notes" | "笔记" => Some(DstuNodeType::Note),
-            "textbook" | "textbooks" | "教材" => Some(DstuNodeType::Textbook),
-            "exam" | "exams" | "题目集" | "试卷" => Some(DstuNodeType::Exam),
-            "translation" | "translations" | "翻译" => Some(DstuNodeType::Translation),
-            "essay" | "essays" | "作文" | "作文批改" => Some(DstuNodeType::Essay),
-            "image" | "images" | "图片" => Some(DstuNodeType::Image),
-            "file" | "files" | "文件" => Some(DstuNodeType::File),
-            "retrieval" | "retrievals" | "检索" | "检索结果" => Some(DstuNodeType::Retrieval),
-            "mindmap" | "mindmaps" | "知识导图" | "导图" => Some(DstuNodeType::MindMap),
-            // 附件类型映射到 Image（图片附件）或 File（文档附件）
-            "attachment" | "attachments" | "附件" => Some(DstuNodeType::Image),
-            _ => None,
-        }
-    }
-
-    /// 转换为路径段字符串（复数形式）
-    ///
-    /// 用于构建 DSTU 路径，如 "/高考复习/note_123"
-    pub fn to_path_segment(&self) -> &'static str {
-        match self {
-            DstuNodeType::Folder => "folders",
-            DstuNodeType::Note => "notes",
-            DstuNodeType::Textbook => "textbooks",
-            DstuNodeType::Exam => "exams",
-            DstuNodeType::Translation => "translations",
-            DstuNodeType::Essay => "essays",
-            DstuNodeType::Image => "images",
-            DstuNodeType::File => "files",
-            DstuNodeType::Retrieval => "retrievals",
-            DstuNodeType::MindMap => "mindmaps",
-        }
-    }
-
-    /// 转换为单数字符串（用于 type 字段）
-    ///
-    /// 返回资源类型的单数形式，如 "note", "textbook", "exam"
-    pub fn to_type_string(&self) -> &'static str {
-        match self {
-            DstuNodeType::Note => "note",
-            DstuNodeType::Textbook => "textbook",
-            DstuNodeType::Exam => "exam",
-            DstuNodeType::Translation => "translation",
-            DstuNodeType::Essay => "essay",
-            DstuNodeType::Image => "image",
-            DstuNodeType::File => "file",
-            DstuNodeType::Folder => "folder",
-            DstuNodeType::MindMap => "mindmap",
-            DstuNodeType::Retrieval => "retrieval",
-        }
-    }
-
-    /// 从资源 ID 前缀推断节点类型（新的规范函数）
-    ///
-    /// 这是推断资源类型的唯一规范入口。
-    /// 所有 ID 前缀映射应集中在此函数中。
-    ///
-    /// # 参数
-    /// - `id`: 资源 ID（如 "note_abc123", "tb_xyz"）
-    ///
-    /// # 返回
-    /// 推断成功返回 `Some(DstuNodeType)`，无法识别返回 `None`
-    pub fn from_id_prefix(id: &str) -> Option<Self> {
-        if id.starts_with("note_") {
-            Some(DstuNodeType::Note)
-        } else if id.starts_with("tb_") {
-            Some(DstuNodeType::Textbook)
-        } else if id.starts_with("file_") || id.starts_with("att_") || id.starts_with("img_") {
-            Some(DstuNodeType::File)
-        } else if id.starts_with("exam_") {
-            Some(DstuNodeType::Exam)
-        } else if id.starts_with("tr_") {
-            Some(DstuNodeType::Translation)
-        } else if id.starts_with("essay_session_") || id.starts_with("essay_") {
-            Some(DstuNodeType::Essay)
-        } else if id.starts_with("fld_") {
-            Some(DstuNodeType::Folder)
-        } else if id.starts_with("mm_") {
-            Some(DstuNodeType::MindMap)
-        } else {
-            None
-        }
-    }
-
-    /// 获取显示名称的 i18n 键
-    pub fn display_name_key(&self) -> &'static str {
-        match self {
-            DstuNodeType::Folder => "dstu:types.folder",
-            DstuNodeType::Note => "dstu:types.note",
-            DstuNodeType::Textbook => "dstu:types.textbook",
-            DstuNodeType::Exam => "dstu:types.exam",
-            DstuNodeType::Translation => "dstu:types.translation",
-            DstuNodeType::Essay => "dstu:types.essay",
-            DstuNodeType::Image => "dstu:types.image",
-            DstuNodeType::File => "dstu:types.file",
-            DstuNodeType::Retrieval => "dstu:types.retrieval",
-            DstuNodeType::MindMap => "dstu:types.mindmap",
-        }
-    }
-
-    /// 获取预览类型
-    pub fn preview_type(&self) -> &'static str {
-        match self {
-            DstuNodeType::Folder => "none",
-            DstuNodeType::Note => "markdown",
-            DstuNodeType::Textbook => "pdf",
-            DstuNodeType::Exam => "exam",
-            DstuNodeType::Translation => "markdown",
-            DstuNodeType::Essay => "markdown",
-            DstuNodeType::Image => "image",
-            DstuNodeType::File => "none",
-            DstuNodeType::Retrieval => "markdown",
-            DstuNodeType::MindMap => "mindmap",
-        }
-    }
-}
-
-impl std::fmt::Display for DstuNodeType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            DstuNodeType::Folder => "folder",
-            DstuNodeType::Note => "note",
-            DstuNodeType::Textbook => "textbook",
-            DstuNodeType::Exam => "exam",
-            DstuNodeType::Translation => "translation",
-            DstuNodeType::Essay => "essay",
-            DstuNodeType::Image => "image",
-            DstuNodeType::File => "file",
-            DstuNodeType::Retrieval => "retrieval",
-            DstuNodeType::MindMap => "mindmap",
-        };
-        write!(f, "{}", s)
-    }
-}
+/// `DstuNodeType` 已收编为 `crate::vfs::resource_kind::ResourceKind` 的类型别名
+/// （"三个资源枚举统一"的第三步），满足：
+/// - **唯一事实源**: `ResourceKind` (vfs/resource_kind.rs)，11 个变体
+///   （原 9 变体 + Card/Folder，无变体被删除）
+/// - **序列化契约不变**: serde lowercase 11 个小写字符串，由 `ResourceKind` 的
+///   `#[serde(rename_all = "lowercase")]` 保证，且新增 Card → "card" / Folder → "folder"
+/// - **方法由 `ResourceKind` 提供**: `from_str` / `to_path_segment` /
+///   `to_type_string` / `from_id_prefix` / `display_name_key` / `preview_type` /
+///   `Display`，均通过别名直接可用
+///
+/// 协议层差异说明：
+/// - `display_name_key()` / `preview_type()` 已原样迁移到 `ResourceKind`，
+///   并新增 Card 臂（"dstu:types.card" / "card"）
+/// - `from_id_prefix` 行为变化为**设计内变更**：`img_` 前缀由 File 修复为 Image
+pub type DstuNodeType = crate::vfs::ResourceKind;
 
 // ============================================================================
 // 资源节点
@@ -424,6 +269,13 @@ pub struct DstuListOptions {
     /// 分页：偏移量
     #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<u32>,
+
+    /// ★ 2026-08-10 笔记三分域（md 区分规则）：仅配合 type_filter=note 生效。
+    /// - `"normal"`: 普通笔记 — 排除 OCR 识别页笔记（tags 含 "ocr"）与记忆子树笔记
+    /// - `"ocr"`: 仅 OCR 识别页笔记（tags 含 "ocr"，由 pdf_processing_service 创建）
+    /// - `None`/其它: 全部笔记（兼容旧行为）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note_scope: Option<String>,
 }
 
 impl DstuListOptions {
@@ -454,6 +306,11 @@ impl DstuListOptions {
     /// 获取类型筛选
     pub fn get_type_filter(&self) -> Option<DstuNodeType> {
         self.type_filter
+    }
+
+    /// 获取笔记三分域（"normal" | "ocr" | None=全部）
+    pub fn get_note_scope(&self) -> Option<&str> {
+        self.note_scope.as_deref()
     }
 
     /// 是否使用文件夹优先模式
@@ -747,22 +604,11 @@ pub struct PathCacheEntry {
 }
 
 /// C3: 资源定位信息
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ResourceLocation {
-    /// 资源唯一 ID
-    pub id: String,
-    /// 资源类型
-    pub resource_type: String,
-    /// 所在文件夹 ID
-    pub folder_id: Option<String>,
-    /// 文件夹路径
-    pub folder_path: String,
-    /// 完整路径
-    pub full_path: String,
-    /// 内容哈希（如有）
-    pub hash: Option<String>,
-}
+///
+/// 已收编至 `crate::vfs::types::ResourceLocation`（"资源类型统一"第五步）。
+/// 唯一事实源为 vfs 版（vfs/types.rs），此处 re-export 以保持
+/// `dstu::types::ResourceLocation` 路径兼容。
+pub use crate::vfs::types::ResourceLocation;
 
 /// C4: 批量移动请求
 #[derive(Debug, Clone, Serialize, Deserialize)]

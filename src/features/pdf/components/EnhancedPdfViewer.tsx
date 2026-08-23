@@ -229,6 +229,20 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
 
   const containerRef = useRef<HTMLDivElement>(null);
   const pageContainerRef = useRef<HTMLDivElement>(null);
+  // ★ 2026-08-10 修复（虚拟列表首次不渲染）：
+  // CustomScrollArea 底层 OverlayScrollbars 在 initialized 事件里异步回写 viewport，
+  // ref 赋值不触发 React 重渲染，useVirtualizer 可能永远拿到 null scroll element。
+  // 修复：viewport 元素同时进 state（TanStack Virtual 官方推荐模式）。
+  const [pageScrollElement, setPageScrollElement] = useState<HTMLDivElement | null>(null);
+  const pageViewportCallbackRef = useCallback((el: HTMLDivElement | null) => {
+    (pageContainerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    setPageScrollElement(el);
+  }, []);
+  const [thumbnailsScrollElement, setThumbnailsScrollElement] = useState<HTMLDivElement | null>(null);
+  const thumbnailsViewportCallbackRef = useCallback((el: HTMLDivElement | null) => {
+    (thumbnailsContainerRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    setThumbnailsScrollElement(el);
+  }, []);
   const zoomMenuRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<PDFDocumentProxy | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -1143,7 +1157,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
 
   const pageVirtualizer = useVirtualizer({
     count: pageRowCount,
-    getScrollElement: () => pageContainerRef.current,
+    getScrollElement: () => pageScrollElement,
     estimateSize: () => estimatedRowHeight,
     overscan: pdfSettings.virtualizerOverscan,
     measureElement: (element) => element?.getBoundingClientRect().height ?? estimatedRowHeight,
@@ -1236,7 +1250,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
 
   const thumbnailVirtualizer = useVirtualizer({
     count: sidebarMode === 'thumbnails' ? numPages : 0,
-    getScrollElement: () => thumbnailsContainerRef.current,
+    getScrollElement: () => thumbnailsScrollElement,
     estimateSize: () => thumbnailHeight,
     overscan: pdfSettings.thumbnailOverscan,
     measureElement: (element) => element?.getBoundingClientRect().height ?? thumbnailHeight,
@@ -1523,7 +1537,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
                     <X size={14} />
                   </NotionButton>
                 </div>
-                <CustomScrollArea className="ds-thumbnails-content" viewportRef={thumbnailsContainerRef} viewportClassName="ds-thumbnails-content-viewport">
+                <CustomScrollArea className="ds-thumbnails-content" viewportRef={thumbnailsViewportCallbackRef} viewportClassName="ds-thumbnails-content-viewport">
                   <div
                     className="ds-thumbnails-virtualizer"
                     style={{
@@ -1562,7 +1576,7 @@ const EnhancedPdfViewerImpl: React.FC<EnhancedPdfViewerProps> = ({
         <CustomScrollArea
           className={`ds-pdf__content ${viewMode === 'dual' ? 'dual-page' : ''}`}
           viewportClassName="ds-pdf__content-viewport"
-          viewportRef={pageContainerRef}
+          viewportRef={pageViewportCallbackRef}
           orientation="both"
         >
           {loadError ? (

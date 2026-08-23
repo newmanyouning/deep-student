@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use rusqlite::OptionalExtension;
 use serde_json::Value;
-use tauri::{State, Window};
+use tauri::{Manager, State, Window};
 
 use super::super::error::{DstuError, DstuResult};
 use super::super::handler_utils::{
@@ -14,8 +14,9 @@ use super::super::handler_utils::{
     extract_resource_info, fallback_lookup_uuid_resource, fetch_resource_as_dstu_node,
     get_content_by_type, get_resource_by_type_and_id, infer_resource_type_from_id, is_uuid_format,
     item_type_to_dstu_node_type, list_resources_by_type_with_folder_path, list_unassigned_essays,
-    list_unassigned_exams, list_unassigned_notes, list_unassigned_textbooks,
-    list_unassigned_translations, purge_resource_by_type, restore_resource_by_type,
+    list_unassigned_exams, list_unassigned_files, list_unassigned_images,
+    list_unassigned_notes, list_unassigned_textbooks, list_unassigned_translations,
+    purge_resource_by_type, restore_resource_by_type,
     restore_resource_by_type_with_conn, update_content_by_type,
 };
 use super::super::path_parser::build_simple_resource_path;
@@ -232,6 +233,8 @@ async fn dstu_list_folder_first(
         results.extend(list_unassigned_exams(vfs_db, &all_assigned_ids).await?);
         results.extend(list_unassigned_translations(vfs_db, &all_assigned_ids).await?);
         results.extend(list_unassigned_essays(vfs_db, &all_assigned_ids).await?);
+        results.extend(list_unassigned_files(vfs_db, &all_assigned_ids).await?);
+        results.extend(list_unassigned_images(vfs_db, &all_assigned_ids).await?);
 
         return Ok(results);
     } else if let Some(ref actual_folder_id) = options.folder_id {
@@ -271,7 +274,10 @@ async fn dstu_list_folder_first(
         for item in items {
             if let Some(type_filter) = options.get_type_filter() {
                 if let Some(node_type) = item_type_to_dstu_node_type(&item.item_type) {
-                    if node_type != type_filter {
+                    // ★★ 修复：file 类型物品可能是 PDF/DOCX/图片等，实际 node_type
+                    // 由 file_to_dstu_node 根据 MIME 动态决定。对 file 类型跳过类型筛选，
+                    // 由后续 fetch_resource_as_dstu_node 确定正确的节点类型
+                    if node_type != type_filter && item.item_type != "file" && item.item_type != "image" {
                         continue;
                     }
                 }
@@ -414,11 +420,14 @@ pub async fn dstu_get(
 
 #[tauri::command]
 pub async fn dstu_create(
+    app: tauri::AppHandle,
     path: String,
     options: DstuCreateOptions,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<DstuNode> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[DSTU::handlers] dstu_create: path={}, type={:?}, name={}",
         path,
@@ -496,6 +505,13 @@ pub async fn dstu_create(
         "files" => {
             file_handlers::handle_create(&vfs_db, &options, &path, options.folder_id.clone()).await?
         }
+        "cards" => {
+            // ★ 2026-08-07 迁移补充：DstuNodeType 收编为 ResourceKind 后新增 Card 变体。
+            // 卡片不支持通过 DSTU 创建（由卡组/复习模块管理），显式返回 NotSupported
+            return Err(DstuError::NotSupported(
+                "卡片资源不支持通过 DSTU 创建".to_string(),
+            ));
+        }
         "folders" => {
             // 创建文件夹
             let new_folder = VfsFolder::new(
@@ -537,12 +553,15 @@ pub async fn dstu_create(
 
 #[tauri::command]
 pub async fn dstu_update(
+    app: tauri::AppHandle,
     path: String,
     content: String,
     resource_type: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<DstuNode> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[DSTU::handlers] dstu_update: path={}, type={}, content_len={}",
         path,
@@ -721,10 +740,13 @@ pub async fn dstu_update(
 
 #[tauri::command]
 pub async fn dstu_delete(
+    app: tauri::AppHandle,
     path: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!("[DSTU::handlers] dstu_delete: path={}", path);
 
     let (resource_type, id) = match extract_resource_info(&path) {
@@ -767,11 +789,14 @@ pub async fn dstu_delete(
 
 #[tauri::command]
 pub async fn dstu_move(
+    app: tauri::AppHandle,
     src: String,
     dst: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<DstuNode> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!("[DSTU::handlers] dstu_move: src={}, dst={}", src, dst);
 
     let (src_type, src_id) = match extract_resource_info(&src) {
@@ -867,11 +892,14 @@ pub async fn dstu_move(
 
 #[tauri::command]
 pub async fn dstu_rename(
+    app: tauri::AppHandle,
     path: String,
     new_name: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<DstuNode> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[DSTU::handlers] dstu_rename: path={}, new_name={}",
         path,
@@ -1068,11 +1096,14 @@ pub async fn dstu_rename(
 
 #[tauri::command]
 pub async fn dstu_copy(
+    app: tauri::AppHandle,
     src: String,
     dst: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<DstuNode> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!("[DSTU::handlers] dstu_copy: src={}, dst={}", src, dst);
 
     let (src_resource_type, src_id) = match extract_resource_info(&src) {
@@ -1636,11 +1667,14 @@ pub async fn dstu_get_exam_content(
 
 #[tauri::command]
 pub async fn dstu_set_metadata(
+    app: tauri::AppHandle,
     path: String,
     metadata: Value,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!("[DSTU::handlers] dstu_set_metadata: path={}", path);
 
     let normalized_path = if path.starts_with('/') {
@@ -1797,10 +1831,13 @@ pub async fn dstu_set_metadata(
 
 #[tauri::command]
 pub async fn dstu_restore(
+    app: tauri::AppHandle,
     path: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<DstuNode> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!("[DSTU::handlers] dstu_restore: path={}", path);
 
     let (resource_type, id) = match extract_resource_info(&path) {
@@ -1875,11 +1912,14 @@ pub async fn dstu_restore(
 
 #[tauri::command]
 pub async fn dstu_purge(
+    app: tauri::AppHandle,
     path: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!("[DSTU::handlers] dstu_purge: path={}", path);
 
     let (resource_type, id) = match extract_resource_info(&path) {
@@ -1928,11 +1968,14 @@ pub async fn dstu_purge(
 
 #[tauri::command]
 pub async fn dstu_set_favorite(
+    app: tauri::AppHandle,
     path: String,
     favorite: bool,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[DSTU::handlers] dstu_set_favorite: path={}, favorite={}",
         path,
@@ -2106,11 +2149,14 @@ pub async fn dstu_list_deleted(
 
 #[tauri::command]
 pub async fn dstu_purge_all(
+    app: tauri::AppHandle,
     resource_type: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
 ) -> DstuResult<usize> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!("[DSTU::handlers] dstu_purge_all: type={}", resource_type);
 
     let resource_ids_to_cleanup: Vec<String> = {
@@ -2214,11 +2260,14 @@ pub async fn dstu_purge_all(
 
 #[tauri::command]
 pub async fn dstu_delete_many(
+    app: tauri::AppHandle,
     paths: Vec<String>,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
 ) -> DstuResult<usize> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!("[DSTU::handlers] dstu_delete_many: {} paths", paths.len());
 
     if paths.len() > MAX_BATCH_SIZE {
@@ -2336,10 +2385,13 @@ pub async fn dstu_delete_many(
 
 #[tauri::command]
 pub async fn dstu_restore_many(
+    app: tauri::AppHandle,
     paths: Vec<String>,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<usize> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!("[DSTU::handlers] dstu_restore_many: {} paths", paths.len());
 
     if paths.len() > MAX_BATCH_SIZE {
@@ -2405,11 +2457,14 @@ pub async fn dstu_restore_many(
 
 #[tauri::command]
 pub async fn dstu_move_many(
+    app: tauri::AppHandle,
     paths: Vec<String>,
     dest_folder: String,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<usize> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[DSTU::handlers] dstu_move_many: {} paths to {}",
         paths.len(),
@@ -2723,11 +2778,14 @@ pub async fn dstu_get_resource_by_path(
 
 #[tauri::command]
 pub async fn dstu_move_to_folder(
+    app: tauri::AppHandle,
     resource_id: String,
     target_folder_id: Option<String>,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<ResourceLocation> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[DSTU::handlers] dstu_move_to_folder: resource_id={}, target_folder_id={:?}",
         resource_id,
@@ -2847,10 +2905,13 @@ pub async fn dstu_move_to_folder(
 
 #[tauri::command]
 pub async fn dstu_batch_move(
+    app: tauri::AppHandle,
     request: BatchMoveRequest,
     window: Window,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<BatchMoveResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[DSTU::handlers] dstu_batch_move: item_ids={:?}, target_folder_id={:?}",
         request.item_ids,
@@ -3032,9 +3093,12 @@ fn move_single_item(
 
 #[tauri::command]
 pub async fn dstu_refresh_path_cache(
+    app: tauri::AppHandle,
     resource_id: Option<String>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<usize> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[DSTU::handlers] dstu_refresh_path_cache: resource_id={:?}",
         resource_id

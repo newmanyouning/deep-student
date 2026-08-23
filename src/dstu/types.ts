@@ -26,6 +26,10 @@
  * - image: 图片
  * - file: 文件/附件
  * - retrieval: 检索结果（RAG 知识库检索）
+ * - card: 题目卡片快照
+ *
+ * ★ 与 src/types/resourceKind.ts 的 ResourceKind（11 值）收敛：
+ * 本联合 = ResourceKind 全集（含 folder/card），对应后端 DstuNodeType
  */
 export type DstuNodeType =
   | 'folder'
@@ -37,7 +41,8 @@ export type DstuNodeType =
   | 'image'
   | 'file'
   | 'mindmap'
-  | 'retrieval';
+  | 'retrieval'
+  | 'card';
 
 /**
  * 预览类型
@@ -149,6 +154,13 @@ export interface DstuListOptions {
    * 按类型筛选资源，但返回的 path 仍是文件夹路径
    */
   typeFilter?: DstuNodeType;
+
+  /** ★ 2026-08-10 笔记三分域（仅 typeFilter='note' 生效）
+   * - 'normal': 普通笔记（排除 OCR 页笔记与记忆笔记）
+   * - 'ocr': 仅 OCR 识别页笔记
+   * - 缺省: 全部笔记（兼容旧行为）
+   */
+  noteScope?: 'normal' | 'ocr';
 
   /** ★ 收藏筛选 - 仅返回已收藏的资源 */
   isFavorite?: boolean;
@@ -508,6 +520,12 @@ export const EMPTY_RESOURCE_TEMPLATES: Record<
     content: '',
     metadata: { type: 'rag_result', query: '' },
     previewType: 'markdown',
+  },
+  card: {
+    defaultName: '新题目卡片',
+    content: '',
+    metadata: { type: 'card_snapshot', source: '' },
+    previewType: 'card',
   },
 };
 

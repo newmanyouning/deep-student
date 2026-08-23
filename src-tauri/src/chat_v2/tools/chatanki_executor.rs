@@ -41,7 +41,8 @@ use crate::models::{
 use crate::utils::text::safe_truncate_chars;
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::repos::{VfsFileRepo, VfsResourceRepo};
-use crate::vfs::types::{VfsContextRefData, VfsResourceRef, VfsResourceType};
+use crate::vfs::resource_kind::ResourceKind;
+use crate::vfs::types::{VfsContextRefData, VfsResourceRef};
 
 // ============================================================================
 // Args
@@ -398,7 +399,7 @@ impl ChatAnkiToolExecutor {
         start_time: Instant,
     ) -> ToolResult<ToolResultInfo> {
         let (available, error) =
-            match crate::anki_connect_service::check_anki_connect_availability().await {
+            match crate::anki_service::check_anki_connect_availability().await {
                 Ok(v) => (v, None),
                 Err(e) => (false, Some(e.to_string())),
             };
@@ -1507,7 +1508,7 @@ impl ChatAnkiToolExecutor {
             // 多模板 APKG 导出：每种 template_id 创建独立的 Anki model，
             // 每张卡片的 notes.mid 指向自己模板对应的 model。
             // Anki 格式支持一个 APKG 内多个 note type（model），字段和 card template 各自独立。
-            crate::apkg_exporter_service::anki_connect_export_multi_apkg(
+            crate::anki_service::anki_connect_export_multi_apkg(
                 cards,
                 deck_name.clone(),
                 output_path.clone(),
@@ -1652,7 +1653,7 @@ impl ChatAnkiToolExecutor {
         }
 
         // Validate AnkiConnect availability.
-        if let Err(e) = crate::anki_connect_service::check_anki_connect_availability().await {
+        if let Err(e) = crate::anki_service::check_anki_connect_availability().await {
             let error_key = "blocks.ankiCards.errors.ankiConnectUnavailable".to_string();
             log::warn!("[ChatAnkiToolExecutor] AnkiConnect unavailable: {}", e);
             ctx.emit_tool_call_error(&error_key.to_string());
@@ -1683,7 +1684,7 @@ impl ChatAnkiToolExecutor {
             .count();
         let all_cloze = cloze_count == cards.len();
         if all_cloze {
-            let model_names = crate::anki_connect_service::get_model_names()
+            let model_names = crate::anki_service::get_model_names()
                 .await
                 .map_err(|e| e.to_string())?;
             if !model_names.iter().any(|name| name == "Cloze") {
@@ -1706,7 +1707,7 @@ impl ChatAnkiToolExecutor {
         }
 
         // Ensure deck exists (best-effort).
-        let _ = crate::anki_connect_service::create_deck_if_not_exists(&deck_name).await;
+        let _ = crate::anki_service::create_deck_if_not_exists(&deck_name).await;
 
         let explicit_template_id = args
             .template_id
@@ -1758,7 +1759,7 @@ impl ChatAnkiToolExecutor {
             }
         }
 
-        let note_ids = match crate::anki_connect_service::add_notes_to_anki_with_card_models(
+        let note_ids = match crate::anki_service::add_notes_to_anki_with_card_models(
             cards.clone(),
             deck_name.clone(),
             note_type.clone(),
@@ -2607,7 +2608,7 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> ToolResul
     let document_name_for_errors = derive_document_name_from_goal(&params.goal);
     // 1) Check AnkiConnect early (best-effort).
     let (anki_available, anki_error) =
-        match crate::anki_connect_service::check_anki_connect_availability().await {
+        match crate::anki_service::check_anki_connect_availability().await {
             Ok(v) => (Some(v), None),
             Err(e) => (Some(false), Some(e)),
         };
@@ -3621,14 +3622,25 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> ToolResul
 
         if !is_in_progress && !is_paused {
             // Done: emit end with full cards list.
+            log::info!(
+                "[ChatAnki] Pipeline complete for doc={}: tasks={} cards={} paused={} cancelled={} ratio={:.2}",
+                document_id,
+                tasks.len(),
+                cards.len(),
+                is_paused,
+                has_cancelled,
+                ratio
+            );
             if cards.len() > visible_card_count {
                 for c in cards.iter().skip(visible_card_count) {
                     let _ = params.anki_db.enhanced_anki_delete_card(&c.id);
                 }
             }
+            // Hard cap final report cards to prevent Tauri IPC event size overflow (>128KB)
+            const FINAL_REPORT_CARD_LIMIT: usize = 200;
             let final_cards: Vec<Value> = cards
                 .iter()
-                .take(visible_card_count)
+                .take(visible_card_count.min(FINAL_REPORT_CARD_LIMIT))
                 .map(convert_backend_card)
                 .collect();
             let has_failed = tasks.iter().any(|t| {
@@ -3757,11 +3769,21 @@ async fn run_chatanki_pipeline_background(params: BackgroundParams) -> ToolResul
                     .unwrap_or_else(|| "blocks.ankiCards.errors.partialSegmentsFailed".to_string());
                 emit_anki_cards_error(&params.emitter, &params.anki_block_id, &error_key);
             } else {
+                log::info!(
+                    "[ChatAnki] Emitting final report: doc={} cards={} stage={}",
+                    document_id,
+                    final_cards.len(),
+                    final_stage
+                );
                 params.emitter.emit_end(
                     event_types::ANKI_CARDS,
                     &params.anki_block_id,
                     Some(final_output),
                     None,
+                );
+                log::info!(
+                    "[ChatAnki] Final report emitted successfully for doc={}",
+                    document_id
                 );
             }
             break;
@@ -3926,8 +3948,8 @@ fn decide_route(ref_data: &VfsContextRefData) -> ChatAnkiRoute {
     let mut file_count = 0usize;
     for r in ref_data.refs.iter() {
         match r.resource_type {
-            VfsResourceType::Image => image_count += 1,
-            VfsResourceType::File => file_count += 1,
+            ResourceKind::Image => image_count += 1,
+            ResourceKind::File => file_count += 1,
             _ => {}
         }
     }
@@ -4095,7 +4117,7 @@ fn extract_text_from_refs(
             break;
         }
         match r.resource_type {
-            VfsResourceType::File => {
+            ResourceKind::File => {
                 // Prefer stored extracted_text (unescaped), fallback to parsing blob.
                 let extracted: Option<String> = conn
                     .query_row(
@@ -4256,11 +4278,11 @@ fn build_single_ref_data_from_context_ref(context_ref: &ContextRef) -> Option<Vf
 
     let source_id = context_ref.resource_id.clone();
     let resource_type = if context_ref.type_id == "image" {
-        VfsResourceType::Image
+        ResourceKind::Image
     } else if source_id.starts_with("tb_") {
-        VfsResourceType::Textbook
+        ResourceKind::Textbook
     } else if source_id.starts_with("file_") || source_id.starts_with("att_") {
-        VfsResourceType::File
+        ResourceKind::File
     } else if source_id.starts_with("fld_") {
         return None;
     } else {
@@ -4362,28 +4384,36 @@ fn resolve_context_ref_from_any_id(
     }
 
     let source_id = match resource.resource_type {
-        VfsResourceType::File | VfsResourceType::Image | VfsResourceType::Textbook => {
+        ResourceKind::File | ResourceKind::Image | ResourceKind::Textbook => {
             resolve_file_like_source_id_by_resource_id(vfs_db, &resource.id)?
         }
-        VfsResourceType::MindMap => {
+        ResourceKind::MindMap => {
             return Err(ToolError::InvalidArgs(format!(
                 "Resource '{}' is a mindmap resource and cannot be used directly by chatanki_run. Please choose the underlying file/image resource instead.",
                 trimmed
             )));
         }
-        VfsResourceType::Note => {
+        ResourceKind::Note => {
             return Err(ToolError::InvalidArgs(format!(
                 "Resource '{}' is a note resource and cannot be used directly by chatanki_run. Please export or attach the source file/text first.",
                 trimmed
             )));
         }
-        VfsResourceType::Exam | VfsResourceType::Essay | VfsResourceType::Translation => {
+        ResourceKind::Exam | ResourceKind::Essay | ResourceKind::Translation => {
             return Err(ToolError::InvalidArgs(format!(
                 "Resource '{}' has unsupported type '{}' for chatanki_run direct input.",
                 trimmed, resource.resource_type
             )));
         }
-        VfsResourceType::Retrieval => None,
+        ResourceKind::Retrieval => None,
+        // ★ 2026-08-07 迁移补充：Card（题目卡片快照）/Folder（虚拟文件夹节点）
+        // chatanki_run 不支持，与 Exam/Essay/Translation 同组报错
+        ResourceKind::Card | ResourceKind::Folder => {
+            return Err(ToolError::InvalidArgs(format!(
+                "Resource '{}' has unsupported type '{}' for chatanki_run direct input.",
+                trimmed, resource.resource_type
+            )));
+        }
     };
 
     let Some(source_id) = source_id else {
@@ -5497,7 +5527,8 @@ fn append_block_id_to_message(
 mod tests {
     use super::*;
     use crate::models::{DocumentTask, TaskStatus};
-    use crate::vfs::types::{VfsContextRefData, VfsResourceRef, VfsResourceType};
+    use crate::vfs::resource_kind::ResourceKind;
+use crate::vfs::types::{VfsContextRefData, VfsResourceRef};
     use tempfile::tempdir;
 
     fn make_task(status: TaskStatus) -> DocumentTask {
@@ -5515,7 +5546,7 @@ mod tests {
         }
     }
 
-    fn make_ref(resource_type: VfsResourceType) -> VfsResourceRef {
+    fn make_ref(resource_type: ResourceKind) -> VfsResourceRef {
         VfsResourceRef {
             source_id: format!("src-{:?}", resource_type),
             resource_hash: "hash".to_string(),
@@ -5662,7 +5693,7 @@ mod tests {
     #[test]
     fn test_decide_route_heuristics() {
         let simple_refs = VfsContextRefData {
-            refs: vec![make_ref(VfsResourceType::File)],
+            refs: vec![make_ref(ResourceKind::File)],
             truncated: false,
             total_count: 1,
         };
@@ -5670,9 +5701,9 @@ mod tests {
 
         let light_refs = VfsContextRefData {
             refs: vec![
-                make_ref(VfsResourceType::File),
-                make_ref(VfsResourceType::Image),
-                make_ref(VfsResourceType::Image),
+                make_ref(ResourceKind::File),
+                make_ref(ResourceKind::Image),
+                make_ref(ResourceKind::Image),
             ],
             truncated: false,
             total_count: 3,
@@ -5681,10 +5712,10 @@ mod tests {
 
         let full_refs = VfsContextRefData {
             refs: vec![
-                make_ref(VfsResourceType::Image),
-                make_ref(VfsResourceType::Image),
-                make_ref(VfsResourceType::Image),
-                make_ref(VfsResourceType::Image),
+                make_ref(ResourceKind::Image),
+                make_ref(ResourceKind::Image),
+                make_ref(ResourceKind::Image),
+                make_ref(ResourceKind::Image),
             ],
             truncated: false,
             total_count: 4,
@@ -5757,7 +5788,7 @@ mod tests {
         let ref_data = build_single_ref_data_from_context_ref(&context_ref)
             .expect("should build single ref data");
         assert_eq!(ref_data.refs.len(), 1);
-        assert_eq!(ref_data.refs[0].resource_type, VfsResourceType::Image);
+        assert_eq!(ref_data.refs[0].resource_type, ResourceKind::Image);
     }
 
     #[test]

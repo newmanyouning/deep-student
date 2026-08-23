@@ -2,6 +2,23 @@
 //!
 //! 本模块实现统一虚拟文件系统，作为 Chat V2 上下文注入系统的唯一数据来源（SSOT）。
 //!
+//! ## 架构位置 (分层关系)
+//!
+//! ```
+//! 前端
+//!   ├→ DSTU (crate::dstu) — 资源 CRUD / 文件夹 / 回收站 / 导出
+//!   └→ VFS 专门服务 — OCR / PDF处理 / 索引 / RAG / Todo / Pomodoro
+//!        ↓
+//! VFS (本模块) — 内部服务层
+//!   ├── repos/  — 仓库层 (note/file/mindmap/textbook/...)
+//!   ├── 索引服务 — 文本嵌入 + 多模态嵌入
+//!   ├── OCR/PDF 管道
+//!   └── Todo/Pomodoro 子系统
+//! ```
+//!
+//! **前端应通过 DSTU 协议访问资源 CRUD 操作**，不应直接调用 VFS CRUD 命令。
+//! VFS 专门服务 (OCR/PDF/索引/RAG/Todo/Pomodoro) 无 DSTU 等效，由前端直接调用。
+//!
 //! ## 核心概念
 //! - **单一数据库**：使用单个 `vfs.db`，通过文件夹层级实现资源组织
 //! - **全局去重**：基于 SHA-256 哈希全局去重
@@ -38,9 +55,11 @@ pub mod ocr_utils;
 pub mod pdf_processing_service;
 pub mod ref_handlers;
 pub mod repos;
+pub mod resource_kind;
 pub mod todo_handlers;
 pub mod types;
 pub mod unit_builder;
+pub mod write_gate; // [写门-接线] 业务写命令的同步写门检查封装
 
 pub use database::{VfsDatabase, VfsDatabaseStats, VfsPool, VfsPooledConnection};
 pub use embedding_service::{
@@ -73,6 +92,7 @@ pub use repos::{
     VfsMindMapRepo, VfsNoteRepo, VfsPomodoroRepo, VfsResourceRepo, VfsTextbookRepo, VfsTodoRepo,
     VfsTranslationRepo,
 };
+pub use resource_kind::ResourceKind;
 pub use types::*;
 
 // 统一文本抽取策略（供 DSTU 等其他模块调用）

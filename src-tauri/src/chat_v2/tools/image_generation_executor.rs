@@ -13,9 +13,8 @@ use crate::chat_v2::events::event_types;
 use crate::chat_v2::types::{ToolCall, ToolResultInfo};
 use crate::llm_manager::ApiConfig;
 use crate::vfs::repos::{VfsAttachmentRepo, VfsFolderRepo, VfsResourceRepo};
-use crate::vfs::types::{
-    VfsFolder, VfsResourceMetadata, VfsResourceType, VfsUploadAttachmentParams,
-};
+use crate::vfs::resource_kind::ResourceKind;
+use crate::vfs::types::{VfsFolder, VfsResourceMetadata, VfsUploadAttachmentParams};
 
 const TOOL_NAME: &str = "image_generate";
 const TOOL_TIMEOUT_SECS: u64 = 300;
@@ -434,7 +433,7 @@ impl ImageGenerationExecutor {
 
         let wrapper = VfsResourceRepo::create_or_reuse(
             vfs_db,
-            VfsResourceType::Image,
+            ResourceKind::Image,
             &serde_json::to_string(&ref_data)
                 .map_err(|e| ToolError::Execution(format!("序列化图片上下文引用失败: {}", e)))?,
             Some(&upload_result.source_id),

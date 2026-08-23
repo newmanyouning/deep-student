@@ -35,6 +35,7 @@ import { usePdfProcessingStore } from '@/features/pdf/stores/pdfProcessingStore'
 import { TextbookPdfViewer } from '@/features/pdf/components/TextbookPdfViewer';
 import { resolveFilePreviewMode } from './filePreviewResolver';
 import { RichDocumentPreview } from './RichDocumentPreview';
+import { MarkdownPreview } from '@/features/notes/preview/MarkdownPreview';
 
 /**
  * 根据 MIME 类型获取对应图标
@@ -124,9 +125,10 @@ const FileContentViewInner: React.FC<ContentViewProps> = ({
   const isPdf = previewMode === 'pdf';
   const isAudio = previewMode === 'audio';
   const isVideo = previewMode === 'video';
+  const isMarkdown = previewMode === 'markdown';
   const needsRichPreview = isDocx || isExcel || isPptx;
   const needsBinaryPreview = needsRichPreview || isAudio || isVideo;
-  const canPreviewText = previewMode === 'text';
+  const canPreviewText = previewMode === 'text' || isMarkdown;
 
   // 使用统一的 PDF 加载 Hook（支持缓存、去重、大文件检测）
   const {
@@ -161,6 +163,23 @@ const FileContentViewInner: React.FC<ContentViewProps> = ({
   const isOcrProcessing = ocrStatus?.stage === 'ocr_processing' || ocrStatus?.stage === 'page_compression' || ocrStatus?.stage === 'page_rendering';
   const isOcrCompleted = ocrStatus?.stage === 'completed' || ocrStatus?.stage === 'completed_with_issues';
   const ocrReady = ocrStatus?.readyModes?.includes('ocr');
+  // ★ 历史 PDF 重处理：未 OCR 的 PDF 可以手动触发
+  const isOcrNotStarted = !isOcrProcessing && !isOcrCompleted && !ocrReady;
+  const [isOcrTriggering, setIsOcrTriggering] = useState(false);
+
+  const handleStartOcr = useCallback(async () => {
+    if (!node.sourceId || isOcrTriggering) return;
+    setIsOcrTriggering(true);
+    try {
+      await invoke('vfs_ensure_ocr_pipeline', { fileId: node.sourceId });
+      showGlobalNotification('info', t('learningHub:file.ocrStarted', 'OCR 处理已启动'));
+    } catch (err) {
+      console.error('[FileContentView] Failed to start OCR:', err);
+      showGlobalNotification('error', getErrorMessage(err));
+    } finally {
+      setIsOcrTriggering(false);
+    }
+  }, [node.sourceId, isOcrTriggering, t]);
 
   // 处理页面选择变化 + 广播给 Chat InputBar
   const handlePageSelectionChange = useCallback((pages: Set<number>) => {
@@ -471,6 +490,27 @@ const FileContentViewInner: React.FC<ContentViewProps> = ({
       if (pdfFile) {
         return (
           <div className="flex flex-col h-full">
+            {/* ★ 历史 PDF 重处理：未 OCR 的文件显示"开始 OCR"按钮 */}
+            {isPdf && isOcrNotStarted && (
+              <div className="flex items-center gap-2 px-4 py-1.5 text-xs bg-amber-50 dark:bg-amber-950 border-b border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300">
+                <Scan size={14} />
+                <span>{t('learningHub:file.ocrNotStarted', '此 PDF 尚未 OCR 识别，内容不可搜索')}</span>
+                <div className="flex-1" />
+                <NotionButton
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleStartOcr}
+                  disabled={isOcrTriggering}
+                  className="text-xs h-6"
+                >
+                  {isOcrTriggering ? (
+                    <><CircleNotch size={12} className="animate-spin mr-1" />{t('learningHub:file.ocrStarting', '启动中...')}</>
+                  ) : (
+                    t('learningHub:file.startOcr', '开始 OCR')
+                  )}
+                </NotionButton>
+              </div>
+            )}
             {/* OCR 进度横幅 */}
             {isPdf && isOcrProcessing && (
               <div className="flex items-center gap-2 px-4 py-1.5 text-xs bg-blue-50 dark:bg-blue-950 border-b border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300">
@@ -556,6 +596,11 @@ const FileContentViewInner: React.FC<ContentViewProps> = ({
           </video>
         </div>
       );
+    }
+
+    // Markdown 预览（使用 MarkdownRenderer 渲染，而不是纯文本 <pre>）
+    if (isMarkdown && textContent) {
+      return <MarkdownPreview content={textContent} className="h-full" />;
     }
 
     // 纯文本预览（带滚动容器）

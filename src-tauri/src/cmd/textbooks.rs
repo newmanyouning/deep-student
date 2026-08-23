@@ -10,8 +10,10 @@ use crate::vfs::repos::blob_repo::VfsBlobRepo;
 use crate::vfs::repos::pdf_preview::{render_pdf_preview_with_progress, PdfPreviewConfig};
 // ★ 2026-02 移除：VfsIndexService 和 UnitBuildInput 不再需要
 // sync_resource_units 调用已移除，由 Pipeline 统一处理
+use crate::vfs::indexing::types::OcrPagesJson;
 use crate::vfs::{PdfProcessingService, ProcessingStage};
 use chrono::Utc;
+use rusqlite::params;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{Emitter, State, Window};
@@ -1337,6 +1339,11 @@ pub async fn vfs_ensure_ocr_pipeline(
     pdf_processing_service: State<'_, Arc<PdfProcessingService>>,
     file_id: String,
 ) -> Result<VfsEnsureOcrPipelineResponse> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    // 本命令错误类型为 AppError, 在调用点手工映射（消息保留"请稍后重试"语义）。
+    crate::vfs::write_gate::check_vfs_write_gate(&state)
+        .map_err(|e| AppError::unknown(e.to_string()))?;
+
     let vfs_db = state
         .vfs_db
         .as_ref()
@@ -1354,7 +1361,7 @@ pub async fn vfs_ensure_ocr_pipeline(
         // conn 在此作用域结束时自动归还到连接池
     };
 
-    // ★ Fix 3: 诊断日志 — 记录文件 OCR 状态
+    // ★★ 诊断日志 — 记录文件 OCR 状态
     info!(
         "[OCR_DIAG] vfs_ensure_ocr_pipeline called: file_id={}, has_ocr_json={}, has_preview={}, text_len={}, page_count={:?}, processing_status={:?}",
         file_id,
@@ -1364,6 +1371,34 @@ pub async fn vfs_ensure_ocr_pipeline(
         file.page_count,
         file.processing_status,
     );
+
+    // ★★ 检查文件状态：序列化冲突和系统占用
+    // 如果 processing_status 指示正在进行中，则拒绝重复启动
+    if let Some(ref status) = file.processing_status {
+        let is_running = matches!(
+            status.as_str(),
+            "pending" | "processing" | "ocr_processing" | "page_compression" | "page_rendering"
+        );
+        if is_running {
+            return Ok(VfsEnsureOcrPipelineResponse {
+                status: "already_running".to_string(),
+                message: Some(format!("文件正在处理中 ({}), 请等待完成", status)),
+            });
+        }
+    }
+
+    // ★★ 检查 pending 状态：如果 processing_progress 存在且 stage 未完成
+    if let Some(ref progress) = file.processing_progress {
+        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(progress) {
+            let stage = parsed.get("stage").and_then(|v| v.as_str()).unwrap_or("");
+            if matches!(stage, "ocr_processing" | "page_compression" | "page_rendering") {
+                return Ok(VfsEnsureOcrPipelineResponse {
+                    status: "already_running".to_string(),
+                    message: Some(format!("OCR 正在进行中 (stage: {})", stage)),
+                });
+            }
+        }
+    }
 
     // 2. 检查 OCR 是否已完成（解析检查点，区分部分完成和全部完成）
     if let Some(ref ocr_json_str) = file.ocr_pages_json {
@@ -1376,9 +1411,21 @@ pub async fn vfs_ensure_ocr_pipeline(
                 .unwrap_or(false);
 
             if is_completed {
+                // ★ 检查 OCR 笔记是否存在，如果缺失则补建
+                let note_id = pdf_processing_service.ensure_ocr_note(&file_id).await;
+                if let Some(ref nid) = note_id {
+                    info!(
+                        "[Textbooks] OCR note ensured for file {}: note_id={}",
+                        file_id, nid
+                    );
+                    return Ok(VfsEnsureOcrPipelineResponse {
+                        status: "note_created".to_string(),
+                        message: Some(format!("OCR 笔记已补建: {}", nid)),
+                    });
+                }
                 return Ok(VfsEnsureOcrPipelineResponse {
                     status: "ocr_completed".to_string(),
-                    message: Some("OCR 已完成".to_string()),
+                    message: Some("OCR 已完成（笔记创建失败或无可提取文本）".to_string()),
                 });
             }
 
@@ -1449,4 +1496,52 @@ pub async fn vfs_ensure_ocr_pipeline(
             message: Some("文本提取已足够，无需 OCR".to_string()),
         })
     }
+}
+
+/// ★ 获取单页 OCR Markdown 内容（按需计算，避免加载全部页面到编辑器卡死）
+#[tauri::command]
+pub async fn get_ocr_page_md(
+    state: State<'_, AppState>,
+    file_id: String,
+    page_index: usize,
+) -> std::result::Result<String, String> {
+    let vfs_db = state
+        .vfs_db
+        .as_ref()
+        .ok_or_else(|| "VFS database not configured".to_string())?;
+
+    let conn = vfs_db
+        .get_conn_safe()
+        .map_err(|e| format!("Failed to get DB connection: {}", e))?;
+
+    let json_str: String = conn
+        .query_row(
+            "SELECT ocr_pages_json FROM files WHERE id = ?1",
+            params![file_id],
+            |row| row.get(0),
+        )
+        .map_err(|e| format!("Failed to load OCR data: {}", e))?;
+
+    if json_str.is_empty() || json_str == "{}" {
+        return Err("No OCR data available".to_string());
+    }
+
+    let ocr_json: OcrPagesJson =
+        serde_json::from_str(&json_str).map_err(|e| format!("Failed to parse OCR data: {}", e))?;
+
+    let page = ocr_json
+        .pages
+        .iter()
+        .find(|p| p.page_index == page_index)
+        .ok_or_else(|| format!("Page {} not found (total: {})", page_index + 1, ocr_json.pages.len()))?;
+
+    let mut md = format!("# Page {}\n\n", page_index + 1);
+    for block in &page.blocks {
+        if !block.text.trim().is_empty() {
+            md.push_str(&block.text);
+            md.push('\n');
+        }
+    }
+
+    Ok(md)
 }

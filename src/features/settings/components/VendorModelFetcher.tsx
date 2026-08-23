@@ -21,9 +21,10 @@ import type { VendorConfig } from '@/types';
 
 const GEMINI_PROVIDER = 'gemini';
 
-/** 检查供应商是否支持模型列表获取 — 所有有 baseUrl 的供应商均可尝试（默认 OpenAI 兼容） */
-export function supportsModelFetching(_providerType?: string | null): boolean {
-  return true;
+/** 检查供应商是否支持模型列表获取 */
+export function supportsModelFetching(providerType?: string | null): boolean {
+  // PaddleOCR 使用非 OpenAI 兼容 API (/api/v2/ocr/jobs)，不支持 /models 端点
+  return (providerType ?? '').toLowerCase() !== 'paddleocr';
 }
 
 /** OpenAI 兼容 API 返回的模型对象 */
@@ -124,6 +125,7 @@ export const VendorModelFetcher: React.FC<VendorModelFetcherProps> = ({
   const hasBaseUrl = !!(vendor.baseUrl && vendor.baseUrl.trim());
 
   const isGemini = (vendor.providerType ?? '').toLowerCase() === GEMINI_PROVIDER;
+  const isAnthropic = (vendor.providerType ?? '').toLowerCase() === 'anthropic' || (vendor.providerType ?? '').toLowerCase() === 'claude';
 
   // 缓存：加载
   const loadCache = useCallback(async (): Promise<boolean> => {
@@ -189,17 +191,44 @@ export const VendorModelFetcher: React.FC<VendorModelFetcherProps> = ({
     return message.includes('fetch_read_body') && message.includes('streamChannel');
   };
 
-  /** 获取 OpenAI 兼容 API 的模型列表 */
+  /** 获取 OpenAI 兼容 API 的模型列表
+   * 已通过直接 curl 验证各供应商端点:
+   * - OpenAI/DeepSeek/SiliconFlow/Qwen/Zhipu/Doubao/MiniMax/Moonshot/MiMo/NVIDIA: GET {baseUrl}/models
+   * - Gemini: GET {baseUrl}/v1beta/models?key={apiKey}
+   * - Anthropic: GET {baseUrl}/models (x-api-key header)
+   * - PaddleOCR: 不支持 /models (使用 /api/v2/ocr/jobs)
+   */
   const fetchOpenAICompatible = async (doFetch: typeof fetch): Promise<FetchedModel[]> => {
     const baseUrl = vendor.baseUrl.replace(/\/+$/, '');
+
+    // NVIDIA NIM: 无需认证即可获取模型列表
+    const isNvidia = (vendor.providerType ?? '').toLowerCase() === 'nvidia';
+    const headers: Record<string, string> = {};
+    if (!isNvidia && resolvedApiKey) {
+      headers['Authorization'] = `Bearer ${resolvedApiKey}`;
+    }
+
     const response = await doFetch(`${baseUrl}/models`, {
       method: 'GET',
-      headers: { 'Authorization': `Bearer ${resolvedApiKey!}` },
+      headers,
     });
     if (!response.ok) {
       let detail: string;
-      try { detail = JSON.stringify(await response.json()); } catch { detail = response.statusText || `HTTP ${response.status}`; }
-      throw new Error(`${response.status}: ${detail}`);
+      try {
+        const errBody = await response.json();
+        // 尝试多种常见错误格式提取错误信息
+        detail = errBody?.error?.message
+          || errBody?.error?.type
+          || errBody?.message
+          || errBody?.detail
+          || errBody?.error_description
+          || errBody?.error?.message
+          || response.statusText
+          || `HTTP ${response.status}`;
+      } catch {
+        detail = response.statusText || `HTTP ${response.status}`;
+      }
+      throw new Error(detail);
     }
     let body: { data?: OpenAIModelItem[] };
     try {
@@ -228,6 +257,47 @@ export const VendorModelFetcher: React.FC<VendorModelFetcherProps> = ({
       .sort((a: FetchedModel, b: FetchedModel) => a.id.localeCompare(b.id));
   };
 
+  /** 获取 Anthropic API 的模型列表 */
+  const fetchAnthropic = async (doFetch: typeof fetch): Promise<FetchedModel[]> => {
+    const baseUrl = vendor.baseUrl.replace(/\/+$/, '');
+    const response = await doFetch(`${baseUrl}/models`, {
+      method: 'GET',
+      headers: {
+        'x-api-key': resolvedApiKey!,
+        'anthropic-version': '2023-06-01',
+      },
+    });
+    if (!response.ok) {
+      let detail: string;
+      try {
+        const errBody = await response.json();
+        detail = errBody?.error?.message
+          || errBody?.error?.type
+          || errBody?.message
+          || response.statusText
+          || `HTTP ${response.status}`;
+      } catch {
+        detail = response.statusText || `HTTP ${response.status}`;
+      }
+      throw new Error(detail);
+    }
+    let body: { data?: Array<{ id: string; display_name?: string }> };
+    try {
+      body = await response.json();
+    } catch (err: unknown) {
+      if (isStreamChannelError(err)) {
+        throw new Error('TAURI_HTTP_READ_BODY_FAILED');
+      }
+      throw err;
+    }
+    if (!body?.data || !Array.isArray(body.data)) {
+      throw new Error(t('settings:vendor_model_fetcher.invalid_response'));
+    }
+    return body.data
+      .map((m) => ({ id: m.id, label: m.display_name || m.id }))
+      .sort((a: FetchedModel, b: FetchedModel) => a.id.localeCompare(b.id));
+  };
+
   /** 获取 Google Gemini API 的模型列表 */
   const fetchGemini = async (doFetch: typeof fetch): Promise<FetchedModel[]> => {
     const baseUrl = vendor.baseUrl.replace(/\/+$/, '');
@@ -236,8 +306,17 @@ export const VendorModelFetcher: React.FC<VendorModelFetcherProps> = ({
     });
     if (!response.ok) {
       let detail: string;
-      try { detail = JSON.stringify(await response.json()); } catch { detail = response.statusText || `HTTP ${response.status}`; }
-      throw new Error(`${response.status}: ${detail}`);
+      try {
+        const errBody = await response.json();
+        detail = errBody?.error?.message
+          || errBody?.error?.status
+          || errBody?.message
+          || response.statusText
+          || `HTTP ${response.status}`;
+      } catch {
+        detail = response.statusText || `HTTP ${response.status}`;
+      }
+      throw new Error(detail);
     }
     let body: { models?: GeminiModelItem[] };
     try {
@@ -284,7 +363,7 @@ export const VendorModelFetcher: React.FC<VendorModelFetcherProps> = ({
     setIsFromCache(false);
 
     try {
-      const fetcher = isGemini ? fetchGemini : fetchOpenAICompatible;
+      const fetcher = isGemini ? fetchGemini : isAnthropic ? fetchAnthropic : fetchOpenAICompatible;
       let result: FetchedModel[];
       try {
         result = await fetcher(tauriFetch as typeof fetch);
@@ -302,11 +381,14 @@ export const VendorModelFetcher: React.FC<VendorModelFetcherProps> = ({
       showGlobalNotification('success', t('settings:vendor_model_fetcher.fetch_success', { count: result.length }));
     } catch (err: unknown) {
       console.error(`[VendorModelFetcher] fetch failed for ${vendor.id}:`, err);
-      showGlobalNotification('error', t('settings:vendor_model_fetcher.fetch_failed', { error: err instanceof Error ? err.message : 'Unknown error' }));
+      showGlobalNotification('error', t('settings:vendor_model_fetcher.fetch_failed', {
+        vendor: vendor.name || vendor.providerType || vendor.id,
+        error: err instanceof Error ? err.message : 'Unknown error'
+      }));
     } finally {
       setLoading(false);
     }
-  }, [hasApiKey, hasBaseUrl, isGemini, loadCache, saveCache, t, vendor.id, resolvedApiKey, vendor.baseUrl]);
+  }, [hasApiKey, hasBaseUrl, isGemini, isAnthropic, loadCache, saveCache, t, vendor.id, resolvedApiKey, vendor.baseUrl]);
 
   // 过滤 + 分组
   const existingSet = useMemo(() => new Set(existingModelIds.map(id => id.toLowerCase())), [existingModelIds]);

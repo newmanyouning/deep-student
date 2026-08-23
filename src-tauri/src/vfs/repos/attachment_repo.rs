@@ -35,9 +35,10 @@ use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
 use crate::vfs::ocr_utils::parse_ocr_pages_json;
 use crate::vfs::repos::{VfsBlobRepo, VfsFolderRepo, VfsResourceRepo};
+use crate::vfs::resource_kind::ResourceKind;
 use crate::vfs::types::VfsFolderItem;
 use crate::vfs::types::{
-    PdfPreviewJson, VfsAttachment, VfsResourceMetadata, VfsResourceType, VfsUploadAttachmentParams,
+    PdfPreviewJson, VfsAttachment, VfsResourceMetadata, VfsUploadAttachmentParams,
     VfsUploadAttachmentResult,
 };
 
@@ -1298,9 +1299,9 @@ impl VfsAttachmentRepo {
         let base64_data = STANDARD.encode(data);
 
         let resource_type = if attachment_type == "image" {
-            VfsResourceType::Image
+            ResourceKind::Image
         } else {
-            VfsResourceType::File
+            ResourceKind::File
         };
 
         let metadata = VfsResourceMetadata {
@@ -1346,9 +1347,9 @@ impl VfsAttachmentRepo {
         )?;
 
         let resource_type = if params.attachment_type.as_deref().unwrap_or("file") == "image" {
-            VfsResourceType::Image
+            ResourceKind::Image
         } else {
-            VfsResourceType::File
+            ResourceKind::File
         };
 
         let metadata = VfsResourceMetadata {

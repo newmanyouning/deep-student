@@ -78,9 +78,9 @@ export const BUILTIN_TOOLS: BuiltinToolSchema[] = [
           type: 'array',
           items: { 
             type: 'string',
-            enum: ['note', 'textbook', 'file', 'image', 'exam', 'essay', 'translation', 'mindmap'],
+            enum: ['note', 'textbook', 'file', 'image', 'exam', 'essay', 'translation', 'mindmap', 'card', 'retrieval', 'folder'],
           },
-          description: '可选：限制搜索的资源类型。支持 note/textbook/file/image/exam/essay/translation/mindmap',
+          description: '可选：限制搜索的资源类型。支持 note/textbook/file/image/exam/essay/translation/mindmap/card/retrieval/folder',
         },
         top_k: {
           type: 'integer',
@@ -185,7 +185,7 @@ export const BUILTIN_TOOLS: BuiltinToolSchema[] = [
           type: 'array',
           items: { 
             type: 'string',
-            enum: ['note', 'textbook', 'file', 'image', 'exam', 'essay', 'translation', 'mindmap'],
+            enum: ['note', 'textbook', 'file', 'image', 'exam', 'essay', 'translation', 'mindmap', 'card', 'retrieval', 'folder'],
           },
           description: '可选：限制搜索的资源类型',
         },
@@ -415,9 +415,9 @@ export const BUILTIN_TOOLS: BuiltinToolSchema[] = [
       properties: {
         type: {
           type: 'string',
-          enum: ['note', 'textbook', 'file', 'image', 'exam', 'essay', 'translation', 'mindmap', 'all'],
+          enum: ['note', 'textbook', 'file', 'image', 'exam', 'essay', 'translation', 'mindmap', 'card', 'retrieval', 'folder', 'all'],
           default: 'all',
-          description: '资源类型。支持 note/textbook/file/image/exam/essay/translation/mindmap/all',
+          description: '资源类型。支持 note/textbook/file/image/exam/essay/translation/mindmap/card/retrieval/folder/all',
         },
         folder_id: {
           type: 'string',
@@ -492,7 +492,7 @@ export const BUILTIN_TOOLS: BuiltinToolSchema[] = [
           type: 'array',
           items: {
             type: 'string',
-            enum: ['note', 'textbook', 'file', 'image', 'exam', 'essay', 'translation', 'mindmap'],
+            enum: ['note', 'textbook', 'file', 'image', 'exam', 'essay', 'translation', 'mindmap', 'card', 'retrieval', 'folder'],
           },
           description: '可选：限制搜索的资源类型。不指定则搜索所有类型。',
         },

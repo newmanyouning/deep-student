@@ -9,6 +9,7 @@ import {
 } from '@phosphor-icons/react';
 import {
   NoteIcon,
+  OcrNoteIcon,
   TextbookIcon,
   ExamIcon,
   EssayIcon,
@@ -58,6 +59,8 @@ interface FinderQuickAccessProps {
   createDisabled?: boolean;
   favoriteCount?: number;
   noteCount?: number;
+  /** ★ 2026-08-10 OCR 识别页笔记计数（笔记三分域） */
+  ocrNoteCount?: number;
   textbookCount?: number;
   examCount?: number;
   essayCount?: number;
@@ -90,6 +93,7 @@ export const FinderQuickAccess = React.memo(function FinderQuickAccess({
   createDisabled = false,
   favoriteCount,
   noteCount,
+  ocrNoteCount,
   textbookCount,
   examCount,
   essayCount,
@@ -110,6 +114,8 @@ export const FinderQuickAccess = React.memo(function FinderQuickAccess({
 
   const resourceTypeItems: { type: QuickAccessType; CustomIcon?: React.FC<ResourceIconProps>; icon?: any; label: string; count?: number; color?: string }[] = [
     { type: 'notes', CustomIcon: NoteIcon, label: t('finder.quickAccess.notes'), count: noteCount },
+    // ★ 2026-08-10 笔记三分域：OCR 识别页笔记独立分类（普通笔记/记忆笔记不再混入）
+    { type: 'ocrNotes', CustomIcon: OcrNoteIcon, label: t('finder.quickAccess.ocrNotes', 'OCR 识别'), count: ocrNoteCount },
     { type: 'textbooks', CustomIcon: TextbookIcon, label: t('finder.quickAccess.textbooks'), count: textbookCount },
     { type: 'exams', CustomIcon: ExamIcon, label: t('finder.quickAccess.exams'), count: examCount },
     { type: 'essays', CustomIcon: EssayIcon, label: t('finder.quickAccess.essays'), count: essayCount },

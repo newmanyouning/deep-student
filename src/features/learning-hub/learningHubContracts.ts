@@ -13,6 +13,7 @@ export type QuickAccessType =
   | 'allFiles'
   | 'favorites'
   | 'notes'
+  | 'ocrNotes'
   | 'textbooks'
   | 'exams'
   | 'essays'
@@ -26,10 +27,15 @@ export type QuickAccessType =
   | 'memory'
   | 'desktop';
 
+/** ★ 2026-08-10 笔记三分域：'normal' 普通笔记(排除OCR+记忆) | 'ocr' OCR识别页笔记 */
+export type NoteScope = 'normal' | 'ocr';
+
 export interface FinderPathLike {
   viewKind: FinderViewKind;
   folderId: string | null;
   typeFilter: DstuNodeType | null;
+  /** 仅 typeFilter='note' 时生效；undefined/null 由导航目标决定（notes 视图默认 'normal'） */
+  noteScope?: NoteScope | null;
 }
 
 export interface ViewCapabilities {
@@ -120,10 +126,13 @@ export const VIEW_CAPABILITY_MATRIX: Record<FinderViewKind, ViewCapabilities> = 
   },
 };
 
-const QUICK_ACCESS_TARGETS: Record<QuickAccessType, Pick<FinderPathLike, 'viewKind' | 'typeFilter'>> = {
+const QUICK_ACCESS_TARGETS: Record<QuickAccessType, Pick<FinderPathLike, 'viewKind' | 'typeFilter' | 'noteScope'>> = {
   allFiles: { viewKind: 'folder', typeFilter: null },
   favorites: { viewKind: 'favorites', typeFilter: null },
-  notes: { viewKind: 'folder', typeFilter: 'note' },
+  // ★ 2026-08-10: 全部笔记默认只显示普通笔记（排除 OCR 页笔记与记忆笔记）
+  notes: { viewKind: 'folder', typeFilter: 'note', noteScope: 'normal' },
+  // ★ 2026-08-10: OCR 识别页笔记独立分类
+  ocrNotes: { viewKind: 'folder', typeFilter: 'note', noteScope: 'ocr' },
   textbooks: { viewKind: 'folder', typeFilter: 'textbook' },
   exams: { viewKind: 'folder', typeFilter: 'exam' },
   essays: { viewKind: 'folder', typeFilter: 'essay' },
@@ -191,6 +200,8 @@ const QUICK_ACCESS_ALIAS_MAP: Record<string, QuickAccessType> = {
   file: 'files',
   mindmaps: 'mindmaps',
   mindmap: 'mindmaps',
+  ocrNotes: 'ocrNotes',
+  ocr: 'ocrNotes',
   recent: 'recent',
   trash: 'trash',
   indexStatus: 'indexStatus',
@@ -206,7 +217,7 @@ export function getViewCapabilities(viewKind: FinderViewKind): ViewCapabilities 
   return VIEW_CAPABILITY_MATRIX[viewKind];
 }
 
-export function getQuickAccessTarget(type: QuickAccessType): Pick<FinderPathLike, 'viewKind' | 'typeFilter'> {
+export function getQuickAccessTarget(type: QuickAccessType): Pick<FinderPathLike, 'viewKind' | 'typeFilter' | 'noteScope'> {
   return QUICK_ACCESS_TARGETS[type];
 }
 
@@ -228,6 +239,10 @@ export function getQuickAccessTypeFromPath(path: FinderPathLike): QuickAccessTyp
   }
 
   if (path.typeFilter) {
+    // ★ 2026-08-10: note 类型按 noteScope 区分 普通笔记/OCR 识别 两个分类
+    if (path.typeFilter === 'note') {
+      return path.noteScope === 'ocr' ? 'ocrNotes' : 'notes';
+    }
     return QUICK_ACCESS_BY_TYPE_FILTER[path.typeFilter];
   }
 
@@ -258,6 +273,12 @@ export function getFinderPathDisplayPath(path: FinderPathLike & { breadcrumbs?: 
   if (path.viewKind === 'desktop') return '/@desktop';
   if (path.breadcrumbs && path.breadcrumbs.length > 0) {
     return path.breadcrumbs[path.breadcrumbs.length - 1]?.dstuPath || '/';
+  }
+  // ★ 2026-08-10: 笔记三分域需在显示路径中区分（否则 普通笔记/OCR识别 两个分类
+  // 视图的 display path 相同, 依赖该值的加载 effect 不会重新触发）;
+  // normal 保持旧值 '/' 不变, 仅 OCR 视图使用专用路径。
+  if (path.typeFilter === 'note' && path.noteScope === 'ocr') {
+    return '/@notes/ocr';
   }
   return '/';
 }

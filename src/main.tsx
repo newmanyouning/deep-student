@@ -97,6 +97,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { OverlayCoordinatorProvider } from './components/shared/OverlayCoordinator';
 // 日志与错误上报初始化（跨平台）：结合 Tauri 日志插件与自定义上报
 import { disposeGlobalCacheManager } from './utils/cacheConsistencyManager';
+import { flushAllSync, flushAllAsync } from './features/learning-hub/progressFlush';
 import { DialogControlProvider } from './contexts/DialogControlContext';
 import i18n from './i18n';
 import { McpService, bootstrapMcpFromSettings } from './mcp/mcpService';
@@ -185,40 +186,12 @@ const installConsoleWarningFilter = () => {
 };
 
 installConsoleWarningFilter();
-// 动态初始化 Sentry（仅当配置存在且用户已同意）
-// 🆕 合规要求：Sentry 默认关闭，需用户在设置中主动开启
+// ★ 分支版本：移除 Sentry 遥测上报
 const SENTRY_CONSENT_KEY = 'sentry_error_reporting_enabled';
-let __sentryInit = false as boolean;
-async function initSentryIfConfigured() {
-  try {
-    const dsn = (import.meta as any).env?.VITE_SENTRY_DSN;
-    if (!dsn || __sentryInit) return;
-
-    // 检查用户是否同意了错误报告
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      const consent = await settingsApi.get(SENTRY_CONSENT_KEY ) as string | null;
-      if (consent !== 'true') return; // 默认不开启
-    } catch {
-      return; // 数据库未就绪或读取失败，不初始化
-    }
-
-    const Sentry: any = await import('@sentry/browser');
-    const { VERSION_INFO: vi } = await import('./version');
-    Sentry.init({
-      dsn,
-      integrations: [
-        Sentry.browserTracingIntegration?.() || undefined,
-      ].filter(Boolean),
-      tracesSampleRate: Number((import.meta as any).env?.VITE_SENTRY_TRACES_SAMPLE_RATE ?? 0.1),
-      environment: (import.meta as any).env?.MODE || 'production',
-      release: vi.SENTRY_RELEASE || (window as any).__APP_VERSION__ || '0.0.0',
-    });
-    __sentryInit = true;
-  } catch {}
+function initSentryIfConfigured() {
+  // No-op: 分支版本不连接主版服务器
 }
 
-/** 导出 Sentry 同意 key，供设置页面使用 */
 export { SENTRY_CONSENT_KEY };
 
 const root = ReactDOM.createRoot(document.getElementById("root") as HTMLElement);
@@ -373,13 +346,11 @@ const appTree = (
 // 在开发态移除 StrictMode，避免 effect/事件监听的二次执行造成噪声与性能影响；
 // 生产环境仍保留 StrictMode 以捕获潜在问题。
 if ((import.meta as any).env?.MODE === 'production') {
-  initSentryIfConfigured().finally(() => {
-    root.render(<React.StrictMode>{appTree}</React.StrictMode>);
-  });
+  initSentryIfConfigured();
+  root.render(<React.StrictMode>{appTree}</React.StrictMode>);
 } else {
-  initSentryIfConfigured().finally(() => {
-    root.render(appTree);
-  });
+  initSentryIfConfigured();
+  root.render(appTree);
 }
 
 
@@ -649,7 +620,9 @@ const triggerChatV2EmergencySave = () => {
 const handleBeforeUnload = () => {
   // 🆕 P1: 触发 Chat V2 紧急保存
   triggerChatV2EmergencySave();
-  
+  // ★★ 刷新所有待处理的阅读进度到 DSTU
+  flushAllSync();
+
   try {
     McpService.dispose();
   } catch {}
@@ -666,6 +639,8 @@ registerCleanup(() => window.removeEventListener('beforeunload', handleBeforeUnl
 const handleVisibilityChange = () => {
   if (document.visibilityState === 'hidden') {
     triggerChatV2EmergencySave();
+    // ★★ 刷新所有待处理的阅读进度（异步，不阻塞）
+    flushAllAsync();
   }
 };
 document.addEventListener('visibilitychange', handleVisibilityChange);

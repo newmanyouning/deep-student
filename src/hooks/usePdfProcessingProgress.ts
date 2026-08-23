@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { usePdfProcessingStore, type MediaType, type ProcessingStage } from '@/features/pdf/stores/pdfProcessingStore';
 import { invalidateResourceCache } from '@/features/chat/context/vfsRefApiEnhancements';
+import { showGlobalNotification } from '@/components/UnifiedNotification';
 import { debugLog } from '../debug-panel/debugMasterSwitch';
 
 const console = debugLog as Pick<typeof debugLog, 'log' | 'warn' | 'error' | 'info' | 'debug'>;
@@ -41,6 +42,8 @@ interface MediaProcessingCompletedPayload {
   readyModes: Array<'text' | 'image' | 'ocr'>;
   stage?: 'completed' | 'completed_with_issues';
   mediaType: MediaType;
+  /** OCR 完成后自动创建的笔记 ID（note_xxx） */
+  noteId?: string;
 }
 
 /**
@@ -142,21 +145,42 @@ export function usePdfProcessingProgress(): void {
     
     // 处理完成事件的通用处理器
     const handleCompleted = (payload: MediaProcessingCompletedPayload, source: 'unified' | 'legacy') => {
-      const { fileId, readyModes, mediaType, stage } = payload;
-      
+      const { fileId, readyModes, mediaType, stage, noteId } = payload;
+
       console.log(`[MediaProcessing] ✅ Completed (${source}):`, {
         fileId,
         mediaType,
         stage,
         readyModes,
+        noteId,
       });
-      
+
       usePdfProcessingStore.getState().setCompleted(fileId, readyModes, stage);
 
       // ★ N1 修复：处理完成时失效 resolveCache，防止后续发送使用旧的无 OCR/text 缓存
       const invalidated = invalidateResourceCache(fileId);
       console.log(`[MediaProcessing] 🗑️ Cache invalidated for ${fileId}: ${invalidated} entries`);
-      
+
+      // ★ OCR→笔记：如果后端创建了 OCR 笔记，通知用户并刷新学习资源库
+      if (noteId) {
+        console.log(`[MediaProcessing] 📝 OCR note created: ${noteId}`);
+        const title = 'OCR 识别完成';
+        const msg = '已自动生成笔记文件，可在学习资源库中查看';
+        showGlobalNotification('success', msg, title, {
+          action: {
+            label: '打开笔记',
+            onClick: () => {
+              window.dispatchEvent(new CustomEvent('learningHubOpenNote', {
+                detail: { noteId, title: msg },
+              }));
+            },
+          },
+        });
+        // ★★ 修复：用事件驱动刷新，比动态 import 更可靠
+        // dstu.watch 会自动监听后端变更事件，但加一次主动刷新作为保险
+        window.dispatchEvent(new CustomEvent('dstu:refresh', { detail: { source: 'ocr-note' } }));
+      }
+
       console.log(`[MediaProcessing] 📊 Store 完成状态:`, {
         fileId,
         state: usePdfProcessingStore.getState().get(fileId),

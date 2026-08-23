@@ -467,6 +467,32 @@ impl PromptBuilder {
         self
     }
 
+    /// 🔧 L1/L4 学习上下文注入：未完成承诺 + 当前话题
+    /// 受席恩 L1 (关系与约定) / L4 (工作上下文) 启发
+    /// 数据全部来自 vfs.db 记忆根文件夹（单一存储）
+    pub fn with_learning_context(mut self, promises: Vec<String>, topic: Option<String>) -> Self {
+        let mut parts: Vec<String> = Vec::new();
+        if !promises.is_empty() {
+            let list = promises.join("\n");
+            parts.push(format!(
+                "<learning_promises>\n以下是用户未完成的学习承诺，请主动提醒并帮助推进：\n{}\n</learning_promises>",
+                list
+            ));
+        }
+        if let Some(topic) = topic {
+            if !topic.trim().is_empty() {
+                parts.push(format!(
+                    "<current_topic>\n用户上次讨论的主题：{}\n若用户提及“继续上次讨论”或相关内容，请基于此主题续接。\n</current_topic>",
+                    topic.trim()
+                ));
+            }
+        }
+        if !parts.is_empty() {
+            self.context_blocks.push(parts.join("\n"));
+        }
+        self
+    }
+
     /// 添加网络搜索来源
     pub fn with_web_search_sources(mut self, sources: Option<&Vec<SourceInfo>>) -> Self {
         if let Some(src) = sources {
@@ -680,12 +706,15 @@ pub fn build_system_prompt_with_profile(
     sources: &MessageSources,
     canvas_note: Option<CanvasNoteInfo>,
     user_profile: Option<String>,
+    pending_promises: Vec<String>,
+    current_topic: Option<String>,
 ) -> String {
     PromptBuilder::new(options.system_prompt_override.as_deref())
         .with_message_sources(sources)
         .with_options(options)
         .with_canvas_note(canvas_note)
         .with_user_profile(user_profile)
+        .with_learning_context(pending_promises, current_topic)
         .build()
 }
 

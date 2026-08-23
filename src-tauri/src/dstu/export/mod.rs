@@ -28,7 +28,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::dstu::error::DstuError;
 use crate::dstu::handler_utils::extract_resource_info;
@@ -297,10 +297,14 @@ pub async fn dstu_export_formats(
 /// 执行资源导出
 #[tauri::command]
 pub async fn dstu_export(
+    app: tauri::AppHandle,
     path: String,
     format: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> Result<DstuExportResult, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    // 注: 本命令返回 Result<_, String>, 经 From<DstuError> for String 转换
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[DSTU::export] dstu_export: path={}, format={}",
         path,

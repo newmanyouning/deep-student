@@ -430,6 +430,19 @@ export function LearningHubSidebar({
     };
   }, [currentPath.viewKind, handleRefresh]);
 
+  // ★★ 监听 OCR 笔记创建后的刷新事件（dstu.watch 可能遗漏后端直接创建的资源）
+  useEffect(() => {
+    const handler = () => {
+      if (watchDebounceRef.current) clearTimeout(watchDebounceRef.current);
+      watchDebounceRef.current = setTimeout(() => {
+        watchDebounceRef.current = null;
+        handleRefresh();
+      }, 100); // 短防抖，单次事件快速刷新
+    };
+    window.addEventListener('dstu:refresh', handler);
+    return () => window.removeEventListener('dstu:refresh', handler);
+  }, [handleRefresh]);
+
   // Open create dialog
   const ensureCreatableView = useCallback(() => {
     if (canCreateInCurrentView) {

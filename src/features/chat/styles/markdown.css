@@ -436,6 +436,11 @@
   max-height: 80vh;
   width: 100%;
   min-width: 0;
+  /* 🔧 修复:超长代码块(内容高度 > 80vh)时,OverlayScrollbars 可能初始化失败
+     (os-content 缺失,viewport overflow:hidden,scrollTop 无效),导致内容被 max-height
+     裁剪且无法滚动。此处给 scroll-area 本身加原生纵向滚动作为兜底——OverlayScrollbars
+     正常工作时滚动发生在其 viewport 内,不受影响;失效时由本规则保证内容可滚动看全部。 */
+  overflow-y: auto;
 }
 
 /* Inner pre inside ScrollArea — let OverlayScrollbars manage overflow */

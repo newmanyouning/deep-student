@@ -1230,14 +1230,16 @@ const MessageItemInner: React.FC<MessageItemProps> = ({
                             </div>
                           )}
                           <UserMessageBubble>
-                            {displayBlockIds.map((blockId, idx) => (
-                              <BlockRendererWithStore
-                                key={blockId}
-                                store={store}
-                                blockId={blockId}
-                                pending={idx >= 20}
-                              />
-                            ))}
+                            {/* 🔧 修复：过滤幻影 blockId（块数据不存在），避免渲染骨架屏 */}
+                            {displayBlockIds
+                              .filter((blockId) => displayBlocks.some((b) => b.id === blockId))
+                              .map((blockId) => (
+                                <BlockRendererWithStore
+                                  key={blockId}
+                                  store={store}
+                                  blockId={blockId}
+                                />
+                              ))}
                           </UserMessageBubble>
                         </>
                       );
@@ -1336,10 +1338,6 @@ const MessageItemInner: React.FC<MessageItemProps> = ({
                       }
                     }
 
-                    // 构建块索引映射，用于骨架屏分页（20 个之后显示骨架）
-                    const blockIndexMap = new Map<string, number>();
-                    displayBlockIds.forEach((id, i) => blockIndexMap.set(id, i));
-
                     // 渲染所有段落
                     return segments.map((segment) => {
                       if (segment.type === 'timeline') {
@@ -1358,7 +1356,6 @@ const MessageItemInner: React.FC<MessageItemProps> = ({
                                 key={blockId}
                                 store={store}
                                 blockId={blockId}
-                                pending={(blockIndexMap.get(blockId) ?? 0) >= 20}
                               />
                             ))}
                           </React.Fragment>
@@ -1370,7 +1367,6 @@ const MessageItemInner: React.FC<MessageItemProps> = ({
                             key={blockId}
                             store={store}
                             blockId={blockId}
-                            pending={(blockIndexMap.get(blockId) ?? 0) >= 20}
                           />
                         ));
                       }

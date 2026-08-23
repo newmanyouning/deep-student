@@ -603,6 +603,20 @@ pub fn update_content_by_type(
             log::info!("[DSTU::content_helpers] update_content_by_type: SUCCESS - type=essay, id={}, content_size={}", id, content_bytes);
             Ok(())
         }
+        // ★ 2026-08-10 补齐：Card (题目卡片快照) 内容更新 → questions.content
+        "cards" | "card" => {
+            crate::vfs::repos::VfsQuestionRepo::update_question(
+                vfs_db,
+                id,
+                &crate::vfs::repos::UpdateQuestionParams {
+                    content: Some(content.to_string()),
+                    ..Default::default()
+                },
+            )
+            .map_err(|e| e.to_string())?;
+            log::info!("[DSTU::content_helpers] update_content_by_type: SUCCESS - type=card, id={}, content_size={}", id, content_bytes);
+            Ok(())
+        }
         _ => Err(DstuError::invalid_node_type(resource_type).to_string()),
     }
 }

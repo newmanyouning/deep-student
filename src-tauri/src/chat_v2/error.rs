@@ -98,6 +98,14 @@ pub enum ChatV2Error {
     /// 工具执行超时
     #[error("Tool execution timeout: {0}")]
     Timeout(String),
+
+    /// 同步进行中（同步写门被占）— 可重试, 前端提示"数据正在同步, 请稍后重试"
+    ///
+    /// [写门-接线] (2.3c)：业务写命令入口经 `check_chat_v2_write_gate` 命中时返回。
+    /// - `db`: 正在同步的数据库名（即写门持有者），通常为 "chat_v2"
+    /// - serde 序列化码 `SYNC_IN_PROGRESS`，与 DataGovernanceError 的既有约定一致
+    #[error("数据正在同步 (db={db}), 请稍后重试")]
+    SyncInProgress { db: String },
 }
 
 // 从 rusqlite::Error 转换
@@ -118,6 +126,23 @@ impl From<serde_json::Error> for ChatV2Error {
 impl From<anyhow::Error> for ChatV2Error {
     fn from(e: anyhow::Error) -> Self {
         ChatV2Error::Other(format!("{:#}", e))
+    }
+}
+
+// [写门-接线] 从 data_governance::sync::SyncError 转换（仅启用 data_governance feature 时）
+#[cfg(feature = "data_governance")]
+impl From<crate::data_governance::sync::SyncError> for ChatV2Error {
+    fn from(e: crate::data_governance::sync::SyncError) -> Self {
+        match e {
+            // 可重试权限错误: 保留独立变体与错误码 (SYNC_IN_PROGRESS),
+            // 前端据此提示"数据正在同步, 请稍后重试"
+            crate::data_governance::sync::SyncError::SyncInProgress { db } => {
+                ChatV2Error::SyncInProgress { db }
+            }
+            // SyncBusy（写门锁被瞬时占用）等其余变体: 保留消息
+            // （其 Display 仍含"可重试"语义文字）
+            other => ChatV2Error::Other(other.to_string()),
+        }
     }
 }
 
@@ -147,6 +172,8 @@ impl From<ChatV2Error> for String {
             ChatV2Error::InvalidInput(_) => "INVALID_INPUT",
             ChatV2Error::DatabaseCorrupted { .. } => "DATABASE_CORRUPTED",
             ChatV2Error::Timeout(_) => "TIMEOUT",
+            // [写门-接线] 同步写门拦截 → SYNC_IN_PROGRESS（可重试, 前端提示"稍后重试"）
+            ChatV2Error::SyncInProgress { .. } => "SYNC_IN_PROGRESS",
         };
         let message = e.to_string();
         serde_json::json!({ "code": code, "message": message }).to_string()

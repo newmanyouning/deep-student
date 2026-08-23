@@ -7,7 +7,7 @@
 
 use serde_json::Value;
 use std::sync::Arc;
-use tauri::{State, Window};
+use tauri::{Manager, State, Window};
 
 use crate::chat_v2::approval_manager::{ApprovalManager, ApprovalResponse};
 use crate::chat_v2::approval_scope;
@@ -38,6 +38,7 @@ use crate::database::Database;
 /// - `Err(String)`: 发送失败（如找不到对应的审批请求）
 #[tauri::command]
 pub async fn chat_v2_tool_approval_respond(
+    app: tauri::AppHandle,
     approval_manager: State<'_, Arc<ApprovalManager>>,
     db: State<'_, Arc<Database>>,
     window: Window,
@@ -49,6 +50,8 @@ pub async fn chat_v2_tool_approval_respond(
     remember: bool,
     arguments: Option<Value>,
 ) -> ChatV2Result<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::approval] Received approval response: session={}, tool_call_id={}, tool_name={}, approved={}, remember={}",
         session_id,
@@ -120,9 +123,12 @@ pub async fn chat_v2_tool_approval_respond(
 /// - `tool_call_id`: 工具调用 ID
 #[tauri::command]
 pub async fn chat_v2_tool_approval_cancel(
+    app: tauri::AppHandle,
     approval_manager: State<'_, Arc<ApprovalManager>>,
     tool_call_id: String,
 ) -> ChatV2Result<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::approval] Cancelling approval request: tool_call_id={}",
         tool_call_id
@@ -145,9 +151,12 @@ pub async fn chat_v2_tool_approval_cancel(
 /// 被删除的 DB 条目数
 #[tauri::command]
 pub async fn chat_v2_clear_approval_history(
+    app: tauri::AppHandle,
     approval_manager: State<'_, Arc<ApprovalManager>>,
     db: State<'_, Arc<Database>>,
 ) -> ChatV2Result<usize> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     // 1. 清内存
     approval_manager.clear_all_remembered();
 

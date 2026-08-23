@@ -6,11 +6,34 @@
 import { t } from './i18n';
 
 /**
+ * 检测"同步进行中"错误（[写门-接线] 前端配套，2026-08-10）
+ *
+ * 后端两种形态：
+ * 1. 结构化错误 JSON：{"code":"SYNC_IN_PROGRESS","message":"..."}（VfsError 等类型化错误）
+ * 2. commands.rs 遗留 AppError：message 带 "SYNC_IN_PROGRESS:" 前缀（AppError::conflict）
+ */
+export const isSyncInProgressError = (error: unknown): boolean => {
+  const probe = (text: string): boolean => text.includes('SYNC_IN_PROGRESS');
+  if (error instanceof Error) return probe(error.message);
+  if (typeof error === 'string') return probe(error);
+  if (error && typeof error === 'object') {
+    const obj = error as { code?: unknown; message?: unknown };
+    if (typeof obj.code === 'string' && probe(obj.code)) return true;
+    if (typeof obj.message === 'string' && probe(obj.message)) return true;
+  }
+  return false;
+};
+
+/**
  * 将任意错误对象转换为可读的错误消息字符串
  * @param error 错误对象
  * @returns 格式化的错误消息
  */
 export const getErrorMessage = (error: unknown): string => {
+  // ★ 同步写门命中：统一提示"数据正在同步，请稍后重试"（可重试语义，非故障）
+  if (isSyncInProgressError(error)) {
+    return t('utils.errors.sync_in_progress');
+  }
   // 标准 Error 对象（Tauri invoke 失败时会把后端 JSON 字符串包装在 Error.message 中）
   if (error instanceof Error) {
     const extracted = extractStructuredErrorMessage(error.message);

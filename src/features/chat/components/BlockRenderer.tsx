@@ -290,6 +290,13 @@ const BlockRendererWithStoreInner: React.FC<BlockRendererWithStoreProps> = ({
 
   // 块不存在或 pending 状态时显示骨架屏
   if (!block || pending) {
+    // 🔧 诊断：记录幻影块（blockId 存在但块数据不存在），便于排查"白色块占位"
+    if (!block && !pending) {
+      console.warn(
+        `[BlockRenderer] Phantom block detected: blockId=${blockId} has no data in store. ` +
+          `This may indicate message.blockIds references a non-existent block (data inconsistency).`
+      );
+    }
     return (
       <div className="block-renderer--skeleton animate-pulse flex items-center gap-2 p-3 rounded-lg bg-muted/20">
         <div className="w-4 h-4 rounded bg-muted/40" />

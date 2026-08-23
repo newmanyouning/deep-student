@@ -30,6 +30,15 @@ import { vfsFileApi } from '@/api/vfsFileApi';
 import { usePdfLoader } from '@/hooks/usePdfLoader';
 import { debugLog } from '@/debug-panel/debugMasterSwitch';
 import { classifyPdfError, PdfErrorType } from '@/features/pdf/types/pdfErrors';
+import {
+  setPendingOcrPage,
+  getLastOcrPage,
+  dispatchOcrPageSync,
+  OCR_PAGE_SYNC_EVENT,
+  saveLastOcrPage,
+  type OcrPageSyncEvent,
+} from '@/features/learning-hub/ocrPageSync';
+import { registerFlush } from '@/features/learning-hub/progressFlush';
 import type { PdfLoadError } from '@/features/pdf/types/pdfErrors';
 import {
   decodeBase64ToText,
@@ -43,6 +52,7 @@ import { resolveTextbookPreviewType } from './textbookPreviewResolver';
 import { RichDocumentPreview } from './RichDocumentPreview';
 import { usePdfFocusListener } from './usePdfFocusListener';
 import { usePdfProcessingStore, getProcessingHint, TERMINAL_STAGES } from '@/features/pdf/stores/pdfProcessingStore';
+import { MarkdownPreview } from '@/features/notes/preview/MarkdownPreview';
 import { getPdfProcessingStatus } from '@/api/vfsPdfProcessingApi';
 
 
@@ -57,7 +67,7 @@ const toToolbarPreviewType = (type: string | null): ToolbarPreviewType => {
  * 教材内容视图
  */
 const TextbookContentViewInner: React.FC<ContentViewProps> = ({
-  node,
+  node, isActive,
 }) => {
   const { t } = useTranslation(['textbook', 'common', 'learningHub']);
   const {
@@ -406,6 +416,7 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     }
     return undefined;
   }, [node.metadata?.readingProgress]);
+
   
   // 从 node.metadata 提取书签列表
   const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
@@ -424,7 +435,26 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
   }, [node.metadata?.bookmarks]);
   
   // 保存阅读进度到 DSTU
+  // ★★ per-page OCR: 跟踪当前 PDF 页码，按需加载单页 MD
+  // ★ 初始化当前页码：取 sessionStorage 和 DSTU 元数据中最新的值
+  const [currentPdfPage, setCurrentPdfPage] = useState<number>(() => {
+    const saved = node.sourceId ? getLastOcrPage(node.sourceId) : null;
+    const meta = readingProgress?.page || 1;
+    return saved && saved > meta ? saved : meta;
+  });
+  const [ocrPageMd, setOcrPageMd] = useState<string | null>(null);
+  const [ocrPageMdLoading, setOcrPageMdLoading] = useState(false);
+
+  // ★★ 实时阅读进度：currentPdfPage 覆盖过期保存值，确保切换视图/模式后定位准确
+  const liveReadingProgress = useMemo<ReadingProgress | undefined>(() => ({
+    page: currentPdfPage,
+    lastReadAt: readingProgress?.lastReadAt ?? Date.now(),
+  }), [currentPdfPage, readingProgress?.lastReadAt]);
+
   const handleProgressChange = useCallback((progress: ReadingProgress) => {
+    // ★ 立即更新当前页码（用于 per-page OCR 加载）
+    setCurrentPdfPage(progress.page);
+
     // ★ 记录 pending 值，供 unmount flush 使用
     pendingProgressRef.current = progress;
 
@@ -432,12 +462,12 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     if (saveProgressTimerRef.current) {
       window.clearTimeout(saveProgressTimerRef.current);
     }
-    
+
     // 延迟保存，避免频繁写入
     saveProgressTimerRef.current = window.setTimeout(async () => {
       saveProgressTimerRef.current = null;
       pendingProgressRef.current = null; // 已提交，清除 pending
-      
+
       // 构建新的元数据（保留原有字段）
       const newMetadata = {
         ...nodeMetadataRef.current,
@@ -536,6 +566,24 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     };
   }, []);
 
+  /** ★★ 全局 flush：应用关闭/后台时立即保存当前阅读进度到 DSTU */
+  useEffect(() => {
+    if (!isPdf || !node.sourceId) return;
+    const unregister = registerFlush(() => {
+      const page = currentPdfPage;
+      if (page < 1) return;
+      // 1) 同步保存到 sessionStorage（快速，不掉失）
+      saveLastOcrPage(node.sourceId!, page);
+      // 2) 保存到 DSTU 元数据（fire-and-forget，但 beforeunload 会同步等待）
+      const metadata = {
+        ...nodeMetadataRef.current,
+        readingProgress: { page, lastReadAt: Date.now() },
+      };
+      dstu.setMetadata(node.path, metadata).catch(() => {});
+    });
+    return unregister;
+  }, [isPdf, node.sourceId, currentPdfPage, node.path]);
+
   // ======== OCR 检测与处理流水线 ========
 
   /** 加载 OCR 文本（复用函数，避免 useEffect 闭包陷阱） */
@@ -565,19 +613,116 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     return () => { cancelled = true; };
   }, [isPdf]);
 
-  /** 简化后的 OCR 处理：由后端全权处理 OCR 流水线 */
+  // ★★ 修复：自动 OCR 不再限制 tb_ 前缀，支持 att_ / file_ / tb_ 所有 PDF
+  const [isOcrTriggering, setIsOcrTriggering] = useState(false);
+  const [ocrAutoEnabled, setOcrAutoEnabled] = useState(true);
+  // ★★ 调试诊断：OCR 笔记存在性检测
+  const [ocrNoteId, setOcrNoteId] = useState<string | null>(null);
+  const [ocrNoteLoading, setOcrNoteLoading] = useState(false);
+  const [ocrNoteError, setOcrNoteError] = useState<string | null>(null);
+  const ocrStatus = usePdfProcessingStore((s) => s.statusMap.get(node.sourceId));
+  const isOcrProcessing = ocrStatus?.stage === 'ocr_processing' || ocrStatus?.stage === 'page_compression' || ocrStatus?.stage === 'page_rendering';
+  const isOcrCompleted = ocrStatus?.stage === 'completed' || ocrStatus?.stage === 'completed_with_issues';
+  const ocrReady = ocrStatus?.readyModes?.includes('ocr');
+  // ★ OCR 内容已加载标记（ocrTextContent 非空即为已有 OCR 内容）
+  const hasOcrContent = Boolean(ocrTextContent);
+  // ★ 是否需要 OCR 且尚未执行：PDF 文件 + 无 OCR 内容 + 未在处理中
+  const needsOcr = isPdf && !hasOcrContent && !isOcrProcessing && !isOcrCompleted && !isOcrTriggering;
+
+  /** 手动触发 OCR 处理（用于非 tb_ 前缀的 PDF 或重试） */
+  const handleStartOcr = useCallback(async () => {
+    if (!node.sourceId || isOcrTriggering || isOcrProcessing) return;
+    setIsOcrTriggering(true);
+    try {
+      const response = await invoke<{ status: string; message?: string }>(
+        'vfs_ensure_ocr_pipeline',
+        { fileId: node.sourceId },
+      );
+
+      // ★ 根据后端返回状态给用户反馈
+      switch (response.status) {
+        case 'ocr_started':
+          showGlobalNotification('info', t('textbook:ocr.started', 'OCR 识别已启动，请等待处理完成'));
+          break;
+        case 'ocr_resumed':
+          showGlobalNotification('info', t('textbook:ocr.resumed', 'OCR 从检查点恢复，继续处理...'));
+          break;
+        case 'already_running':
+          showGlobalNotification('info', t('textbook:ocr.alreadyRunning', 'OCR 正在处理中，请稍候'));
+          break;
+        case 'note_created':
+          // ★ OCR 数据已存在但笔记缺失 → 已补建
+          showGlobalNotification('success', t('textbook:ocr.noteCreated', 'OCR 笔记已生成，可打开查看'));
+          // 重新触发笔记查询
+          ocrQueryKeyRef.current = null;
+          setOcrNoteId(null);
+          setOcrNoteLoading(false);
+          break;
+        case 'ocr_completed':
+          // OCR 已完成但笔记创建失败
+          if (response.message?.includes('笔记创建失败')) {
+            showGlobalNotification('warning', t('textbook:ocr.noteFailed', 'OCR 已完成但笔记创建失败，请重试'));
+          } else {
+            showGlobalNotification('info', t('textbook:ocr.completed', 'OCR 已处理完成'));
+          }
+          // 仍然尝试查询笔记（可能之前创建成功）
+          ocrQueryKeyRef.current = null;
+          setOcrNoteId(null);
+          setOcrNoteLoading(false);
+          break;
+        case 'text_sufficient':
+          showGlobalNotification('info', t('textbook:ocr.noNeed', '文本已足够，无需 OCR'));
+          break;
+        default:
+          break;
+      }
+
+      // 获取 OCR 文本内容
+      const ocrInfoResult = await invoke<{ hasOcr: boolean; ocrText: string | null }>(
+        'vfs_get_resource_ocr_info',
+        { resourceId: node.resourceId || node.sourceId },
+      );
+      if (ocrInfoResult.hasOcr && ocrInfoResult.ocrText) {
+        setOcrTextContent(ocrInfoResult.ocrText);
+      }
+    } catch (err: unknown) {
+      console.warn('[TextbookContentView] Manual OCR failed:', err);
+      // ★ 提取具体错误信息
+      let errMsg = String(err);
+      if (typeof err === 'string') {
+        errMsg = err;
+      } else if (err && typeof err === 'object' && 'message' in err) {
+        errMsg = String((err as { message: unknown }).message);
+      } else if (err && typeof err === 'object' && 'toString' in err) {
+        errMsg = String(err);
+      }
+      showGlobalNotification('error', `${t('textbook:ocr.failed', 'OCR 启动失败')}: ${errMsg}`);
+    } finally {
+      setIsOcrTriggering(false);
+    }
+  }, [node.sourceId, node.resourceId, isOcrTriggering, isOcrProcessing, t]);
+
+  /** 简化后的 OCR 处理：仅对传统 tb_ 教科书自动 OCR，file_/att_ PDF 由用户手动触发 */
   useEffect(() => {
-    if (!isPdf || !node.sourceId || !node.sourceId.startsWith('tb_')) return;
+    if (!isPdf || !node.sourceId) return;
+    // ★★ 修复：仅对 tb_ 前缀的教科书自动 OCR
+    // file_/att_ 前缀的 PDF 由用户通过"开始 OCR"按钮手动触发，避免竞态条件
+    const isLegacyTextbook = node.sourceId.startsWith('tb_');
+    if (!isLegacyTextbook) return;
+    if (!ocrAutoEnabled) return;
+    // 等待 OCR 可用性检查完成
+    if (ocrAvailability === null) return;
+    if (!ocrAvailability.configured) return;
+    // 如果已有 OCR 内容或正在处理中，跳过
+    if (hasOcrContent || isOcrProcessing || isOcrCompleted) return;
 
     let cancelled = false;
 
     const ensureOcr = async () => {
       try {
-        // 后端全权处理：检查配置、启动流水线、等待完成
         await invoke('vfs_ensure_ocr_pipeline', { fileId: node.sourceId });
         if (cancelled) return;
 
-        // 获取 OCR 文本
         const ocrInfo = await invoke<{ hasOcr: boolean; ocrText: string | null }>(
           'vfs_get_resource_ocr_info',
           { resourceId: node.resourceId || node.sourceId },
@@ -595,7 +740,99 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
 
     void ensureOcr();
     return () => { cancelled = true; };
-  }, [isPdf, node.sourceId, node.resourceId]);
+  }, [isPdf, node.sourceId, node.resourceId, ocrAutoEnabled, ocrAvailability, hasOcrContent, isOcrProcessing, isOcrCompleted]);
+
+  /** ★★ 调试：检测是否存在 OCR 笔记（通过文件名匹配查找 note_xxx）
+   *  使用 useRef 追踪查询 key，避免 ocrNoteId/ocrNoteLoading 在依赖数组中造成死锁 */
+  const ocrQueryKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isPdf || !node.sourceId || !isOcrCompleted) return;
+
+    const queryKey = `${node.sourceId}::${node.name}`;
+    // 同一个文件只查一次（除非 sourceId/name 变化导致 ref 被重置）
+    if (ocrQueryKeyRef.current === queryKey) return;
+    ocrQueryKeyRef.current = queryKey;
+
+    let cancelled = false;
+    setOcrNoteLoading(true);
+    setOcrNoteError(null);
+
+    const findOcrNote = async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        // ★ 优先搜索逐页笔记：source:<file_id> + page:<currentPdfPage>
+        let results = await invoke<Array<{ id: string; name: string; path: string }>>('dstu_list', {
+          path: '/',
+          options: {
+            typeFilter: 'note',
+            tags: [`source:${node.sourceId}`, `page:${currentPdfPage}`],
+            limit: 3,
+            offset: 0,
+          },
+        });
+        if (cancelled) return;
+        // 回退：搜索该文件的所有逐页笔记（不限页数）
+        if (results.length === 0) {
+          results = await invoke<Array<{ id: string; name: string; path: string }>>('dstu_list', {
+            path: '/',
+            options: {
+              typeFilter: 'note',
+              tags: [`source:${node.sourceId}`, 'page:'],
+              limit: 1,
+              offset: 0,
+            },
+          });
+          if (cancelled) return;
+        }
+        // 再回退：搜索旧版整体笔记（兼容未拆分的旧 OCR 笔记）
+        if (results.length === 0) {
+          results = await invoke<Array<{ id: string; name: string; path: string }>>('dstu_list', {
+            path: '/',
+            options: {
+              typeFilter: 'note',
+              tags: [`source:${node.sourceId}`],
+              limit: 1,
+              offset: 0,
+            },
+          });
+          if (cancelled) return;
+        }
+        if (!cancelled) {
+          setOcrNoteId(results.length > 0 ? (results[0].id) : null);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setOcrNoteError(err?.message || String(err));
+        }
+      } finally {
+        if (!cancelled) setOcrNoteLoading(false);
+      }
+    };
+
+    void findOcrNote();
+    return () => { cancelled = true; };
+  }, [isPdf, node.sourceId, node.name, isOcrCompleted, currentPdfPage]);
+
+  // 切换文件时重置查询状态
+  useEffect(() => {
+    ocrQueryKeyRef.current = null;
+    setOcrNoteId(null);
+    setOcrNoteLoading(false);
+    setOcrNoteError(null);
+  }, [node.sourceId, node.name]);
+
+  /** ★★ 打开 OCR 笔记（传递当前页码，MD 阅读器直接跳转） */
+  const handleOpenOcrNote = useCallback(() => {
+    if (!ocrNoteId) return;
+    // ★ 设置初始页码，NoteContentView 消费后跳转到对应页
+    if (node.sourceId) {
+      setPendingOcrPage(node.sourceId, currentPdfPage);
+    }
+    window.dispatchEvent(new CustomEvent('learningHubOpenNote', {
+      detail: { noteId: ocrNoteId, source: 'ocr-debug-bar' },
+    }));
+  }, [ocrNoteId, node.sourceId, currentPdfPage]);
 
   /** 监听处理状态变化：处理完成时加载 OCR 文本 */
   useEffect(() => {
@@ -607,7 +844,87 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     }
   }, [processingStatus, ocrTextContent, loadOcrText]);
 
-  // ★ 非 PDF 文件重试加载
+  /** ★★ per-page OCR: 按页加载 MD（避免全量加载卡死编辑器） */
+  useEffect(() => {
+    if (!isPdf || !node.sourceId || !isOcrCompleted) return;
+    if (viewMode !== 'ocr' && viewMode !== 'split') return;
+
+    let cancelled = false;
+    setOcrPageMdLoading(true);
+
+    const loadPageMd = async () => {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        // page_index is 0-based in backend, currentPdfPage is 1-based
+        const md = await invoke<string>('get_ocr_page_md', {
+          fileId: node.sourceId,
+          pageIndex: currentPdfPage - 1,
+        });
+        if (!cancelled) {
+          setOcrPageMd(md);
+          setOcrPageMdLoading(false);
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          console.warn('[TextbookContentView] Failed to load page MD:', err);
+          setOcrPageMd(null);
+          setOcrPageMdLoading(false);
+        }
+      }
+    };
+
+    void loadPageMd();
+    return () => { cancelled = true; };
+  }, [isPdf, node.sourceId, isOcrCompleted, viewMode, currentPdfPage]);
+
+  /** ★★ PDF → MD 页码同步：PDF 翻页时通知 MD 阅读器 */
+  useEffect(() => {
+    if (!isPdf || !node.sourceId) return;
+    dispatchOcrPageSync({ fileId: node.sourceId, pageNumber: currentPdfPage, source: 'pdf' });
+    saveLastOcrPage(node.sourceId, currentPdfPage);
+  }, [isPdf, node.sourceId, currentPdfPage]);
+
+  /** ★★ MD → PDF 页码同步：MD 阅读器翻页时同步回 PDF */
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<OcrPageSyncEvent>).detail;
+      if (!detail || detail.source !== 'md') return;
+      if (node.sourceId && detail.fileId !== node.sourceId) return;
+      if (detail.pageNumber > 0) {
+        setCurrentPdfPage(detail.pageNumber);
+      }
+    };
+    window.addEventListener(OCR_PAGE_SYNC_EVENT, handler);
+    return () => window.removeEventListener(OCR_PAGE_SYNC_EVENT, handler);
+  }, [node.sourceId]);
+
+  /** ★★ 标签页切换：失活时立即保存进度，激活时恢复最新页码 */
+  const prevActiveRef = useRef(isActive);
+  useEffect(() => {
+    const wasActive = prevActiveRef.current;
+    prevActiveRef.current = isActive;
+    // 标签页失活 → 立即保存当前进度（绕过 2 秒防抖）
+    if (wasActive && !isActive && node.sourceId && currentPdfPage > 0) {
+      saveLastOcrPage(node.sourceId, currentPdfPage);
+      // 立即提交 pending 进度到 DSTU
+      if (pendingProgressRef.current) {
+        dstu.setMetadata(node.path, {
+          ...nodeMetadataRef.current,
+          readingProgress: {
+            page: pendingProgressRef.current.page,
+            lastReadAt: pendingProgressRef.current.lastReadAt,
+          },
+        }).catch(() => {});
+      }
+    }
+    // 标签页重新激活 → 恢复最新页码
+    if (!wasActive && isActive && node.sourceId) {
+      const saved = getLastOcrPage(node.sourceId);
+      if (saved && saved > 0 && saved !== currentPdfPage) {
+        setCurrentPdfPage(saved);
+      }
+    }
+  }, [isActive, node.sourceId, node.path, currentPdfPage]);
   const retryContentLoad = useCallback(() => {
     setFileContent(null);
     setContentError(null);
@@ -855,6 +1172,33 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
       );
     }
 
+    // ★★ 新增状态 0：PDF 已加载，OCR 未开始 — 显示"开始 OCR"按钮
+    if (needsOcr && !processingStatus) {
+      return (
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-950/20 border-b border-blue-200 dark:border-blue-800/40">
+          <Scan className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+          <span className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed flex-1">
+            {t('textbook:ocr.notStarted', '此扫描件 PDF 尚未 OCR 识别，文字内容不可搜索。建议进行 OCR 处理以提取文字')}
+          </span>
+          <button
+            type="button"
+            onClick={handleStartOcr}
+            disabled={isOcrTriggering}
+            className="px-3 py-1 text-xs font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors disabled:opacity-50 shrink-0"
+          >
+            {isOcrTriggering ? (
+              <span className="flex items-center gap-1">
+                <CircleNotch className="h-3 w-3 animate-spin" />
+                {t('textbook:ocr.starting', '启动中...')}
+              </span>
+            ) : (
+              t('textbook:ocr.start', '开始 OCR 识别')
+            )}
+          </button>
+        </div>
+      );
+    }
+
     // ② 处理中 — 显示进度条
     if (processingStatus
       && processingStatus.stage !== 'completed'
@@ -934,6 +1278,20 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
             >
               {t('textbook:ocr.splitView', '分屏对比')}
             </button>
+            {/* ★★ 重试 OCR 按钮 */}
+            <button
+              type="button"
+              onClick={handleStartOcr}
+              disabled={isOcrTriggering}
+              className="px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-background transition-colors disabled:opacity-50"
+              title={t('textbook:ocr.retry', '重新 OCR 识别')}
+            >
+              {isOcrTriggering ? (
+                <CircleNotch className="h-3 w-3 animate-spin" />
+              ) : (
+                <ArrowClockwise className="h-3 w-3" />
+              )}
+            </button>
           </div>
         </div>
       );
@@ -958,7 +1316,7 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
       onExportSelectedPages={handleExportSelectedPages}
       focusRequest={focusRequest}
       onFocusHandled={handleFocusHandled}
-      readingProgress={readingProgress}
+      readingProgress={liveReadingProgress}
       onProgressChange={handleProgressChange}
       resourcePath={node.path}
       bookmarks={bookmarks}
@@ -966,13 +1324,24 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
     />
   );
 
+  // ★ per-page OCR display content: 优先用按页加载的 MD
+  const ocrDisplayContent = ocrPageMd || (viewMode !== 'ocr' && viewMode !== 'split' ? ocrTextContent : null);
+
   const renderOcrOnly = () => (
-    <div className="flex-1 overflow-hidden">
-      <CustomScrollArea className="h-full">
+    <div className="flex-1 overflow-hidden flex flex-col">
+      {isOcrCompleted && (
+        <div className="px-3 py-1 text-[10px] text-muted-foreground bg-muted/30 border-b">
+          📄 第 {currentPdfPage} 页 OCR
+          {ocrPageMdLoading && <span className="ml-2 inline-block animate-pulse">⏳</span>}
+        </div>
+      )}
+      <CustomScrollArea className="flex-1">
         <div className="p-4">
-          <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans text-foreground/90">
-            {ocrTextContent}
-          </pre>
+          <MarkdownPreview
+            content={ocrDisplayContent || ''}
+            loading={ocrPageMdLoading}
+            className="text-sm leading-relaxed"
+          />
         </div>
       </CustomScrollArea>
     </div>
@@ -990,32 +1359,113 @@ const TextbookContentViewInner: React.FC<ContentViewProps> = ({
           onExportSelectedPages={handleExportSelectedPages}
           focusRequest={focusRequest}
           onFocusHandled={handleFocusHandled}
-          readingProgress={readingProgress}
+          readingProgress={liveReadingProgress}
           onProgressChange={handleProgressChange}
           resourcePath={node.path}
           bookmarks={bookmarks}
           onBookmarksChange={handleBookmarksChange}
         />
       </div>
-      <div className="w-[40%] overflow-hidden">
-        <CustomScrollArea className="h-full">
+      <div className="w-[40%] overflow-hidden flex flex-col">
+        {isOcrCompleted && (
+          <div className="px-3 py-1 text-[10px] text-muted-foreground bg-muted/30 border-b">
+            📄 第 {currentPdfPage} 页 OCR
+            {ocrPageMdLoading && <span className="ml-2 inline-block animate-pulse">⏳</span>}
+          </div>
+        )}
+        <CustomScrollArea className="flex-1">
           <div className="p-4">
-            <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans text-foreground/90">
-              {ocrTextContent}
-            </pre>
+            <MarkdownPreview
+              content={ocrDisplayContent || ''}
+              loading={ocrPageMdLoading}
+              className="text-sm leading-relaxed"
+            />
           </div>
         </CustomScrollArea>
       </div>
     </div>
   );
 
-  // PDF 预览
+  // PDF 预览（含调试诊断栏）
   return (
     <div className="flex flex-col h-full bg-background">
+      {/* ★★ 调试诊断栏：始终显示 OCR 状态和 MD 笔记存在性 */}
+      {isPdf && (
+        <div className="flex flex-col bg-slate-50 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-700 text-[11px] font-mono text-slate-600 dark:text-slate-400 select-none">
+          {/* 主状态行 */}
+          <div className="flex items-center gap-2 px-3 py-1">
+            <span title={node.sourceId}>📄 {node.sourceId?.substring(0, 14) || '?'}...</span>
+            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <span>OCR:{' '}
+              <span className={
+                processingStatus?.stage === 'completed' || processingStatus?.stage === 'completed_with_issues'
+                  ? 'text-green-600 dark:text-green-400 font-medium'
+                  : processingStatus?.stage
+                    ? 'text-amber-600 dark:text-amber-400'
+                    : 'text-slate-400'
+              }>
+                {isOcrTriggering ? '⏳ 启动中...' : processingStatus?.stage || 'idle'}
+              </span>
+            </span>
+            {processingStatus?.readyModes?.length > 0 && (
+              <span className="text-slate-400">({processingStatus.readyModes.join('/')})</span>
+            )}
+            {isOcrProcessing && typeof processingStatus?.percent === 'number' && (
+              <span className="text-amber-600 dark:text-amber-400">{processingStatus.percent}%</span>
+            )}
+            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <span>MD:{' '}
+              {ocrNoteId ? (
+                <button
+                  onClick={handleOpenOcrNote}
+                  className="text-green-600 dark:text-green-400 hover:underline cursor-pointer"
+                  title={`第 ${currentPdfPage} 页笔记: ${ocrNoteId}`}
+                >
+                  ✅ 第{currentPdfPage}页
+                </button>
+              ) : ocrNoteLoading ? (
+                <span className="text-slate-400">⏳</span>
+              ) : (
+                <span className="text-slate-400">❌ 未创建</span>
+              )}
+            </span>
+            {ocrNoteError && <span className="text-red-400">({String(ocrNoteError)})</span>}
+            <span className="text-slate-300 dark:text-slate-600">|</span>
+            <span>页码:{' '}{(node.metadata?.pageCount as number | undefined) || processingStatus?.totalPages || '?'}</span>
+            <span className="flex-1" />
+            <button
+              onClick={handleStartOcr}
+              disabled={isOcrTriggering || isOcrProcessing}
+              className="px-2 py-0.5 rounded text-[10px] bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 disabled:opacity-40 transition-colors"
+              title={isOcrProcessing ? 'OCR 处理中...' : isOcrTriggering ? '正在启动...' : '重新 OCR'}
+            >
+              {(isOcrTriggering || isOcrProcessing) ? '⏳' : '🔄'} 重OCR
+            </button>
+            {ocrNoteId && (
+              <button
+                onClick={handleOpenOcrNote}
+                className="px-2 py-0.5 rounded text-[10px] bg-blue-100 dark:bg-blue-900 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                title="打开 OCR 笔记"
+              >
+                📝 打开笔记
+              </button>
+            )}
+          </div>
+          {/* ★ 进度条：OCR 处理中时显示 */}
+          {(isOcrProcessing || isOcrTriggering) && typeof processingStatus?.percent === 'number' && (
+            <div className="w-full h-1 bg-slate-200 dark:bg-slate-700">
+              <div
+                className="h-full bg-amber-500 dark:bg-amber-400 transition-all duration-500 ease-out"
+                style={{ width: `${Math.min(100, Math.max(0, processingStatus.percent))}%` }}
+              />
+            </div>
+          )}
+        </div>
+      )}
       {isPdf && renderOcrStatusBar()}
-      {viewMode === 'split' && ocrTextContent
+      {viewMode === 'split' && (ocrTextContent || ocrPageMd)
         ? renderSplitView()
-        : viewMode === 'ocr' && ocrTextContent
+        : viewMode === 'ocr' && (ocrTextContent || ocrPageMd)
           ? renderOcrOnly()
           : renderPdfOnly()}
     </div>

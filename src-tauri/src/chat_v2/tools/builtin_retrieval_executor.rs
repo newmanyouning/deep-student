@@ -236,9 +236,9 @@ impl BuiltinRetrievalExecutor {
                         .ok()
                         .flatten()
                         .and_then(|res| {
-                            use crate::vfs::types::VfsResourceType;
+                            use crate::vfs::resource_kind::ResourceKind;
                             let mime_type = res.metadata.as_ref().and_then(|m| m.mime_type.clone());
-                            if res.resource_type == VfsResourceType::Image {
+                            if res.resource_type == ResourceKind::Image {
                                 if let Some(hash) = res.external_hash.as_ref() {
                                     VfsBlobRepo::get_blob_path(vfs_db, hash)
                                         .ok()

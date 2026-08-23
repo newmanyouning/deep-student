@@ -87,6 +87,14 @@ pub enum VfsError {
     /// - `message`: 人类可读的英文描述
     Conflict { key: String, message: String },
 
+    /// 同步进行中（同步写门被占）— 可重试, 前端提示"数据正在同步, 请稍后重试"
+    ///
+    /// [写门-接线] (2.3c)：业务写命令入口经 `check_vfs_write_gate` 命中时返回。
+    /// - `db`: 正在同步的数据库名（即写门持有者），通常为 "vfs"
+    /// - serde 序列化码 `SYNC_IN_PROGRESS`，与 DataGovernanceError 的既有约定一致
+    #[serde(rename = "SYNC_IN_PROGRESS")]
+    SyncInProgress { db: String },
+
     /// 其他错误
     Other(String),
 }
@@ -162,6 +170,9 @@ impl fmt::Display for VfsError {
             VfsError::Conflict { key, message } => {
                 write!(f, "CONFLICT({}): {}", key, message)
             }
+            VfsError::SyncInProgress { db } => {
+                write!(f, "数据正在同步 (db={}), 请稍后重试", db)
+            }
             VfsError::Internal(msg) => write!(f, "Internal error: {}", msg),
             VfsError::Other(msg) => write!(f, "{}", msg),
         }
@@ -205,6 +216,26 @@ impl From<anyhow::Error> for VfsError {
 impl From<String> for VfsError {
     fn from(s: String) -> Self {
         VfsError::Other(s)
+    }
+}
+
+/// 同步写门错误 → VFS 错误（[写门-接线] 2.3c）
+///
+/// data_governance 为可选 feature（默认启用）：未启用时无同步写门，
+/// 此转换链不存在，`check_vfs_write_gate` 恒放行。
+#[cfg(feature = "data_governance")]
+impl From<crate::data_governance::sync::SyncError> for VfsError {
+    fn from(e: crate::data_governance::sync::SyncError) -> Self {
+        match e {
+            // 可重试权限错误: 保留独立变体与错误码 (SYNC_IN_PROGRESS),
+            // 前端据此提示"数据正在同步, 请稍后重试"
+            crate::data_governance::sync::SyncError::SyncInProgress { db } => {
+                VfsError::SyncInProgress { db }
+            }
+            // SyncBusy（写门锁被瞬时占用）等其余变体: 保留消息
+            // （其 Display 仍含"可重试"语义文字）
+            other => VfsError::Other(other.to_string()),
+        }
     }
 }
 

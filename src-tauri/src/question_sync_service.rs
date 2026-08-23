@@ -1931,6 +1931,8 @@ pub async fn qbank_resolve_sync_conflict(
     conflict_id: String,
     strategy: String,
 ) -> Result<crate::vfs::repos::question_repo::Question, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state).map_err(|e| e.to_string())?;
     let db = state
         .vfs_db
         .as_ref()
@@ -1946,6 +1948,8 @@ pub async fn qbank_batch_resolve_conflicts(
     exam_id: String,
     strategy: String,
 ) -> Result<Vec<crate::vfs::repos::question_repo::Question>, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state).map_err(|e| e.to_string())?;
     let db = state
         .vfs_db
         .as_ref()
@@ -1961,6 +1965,8 @@ pub async fn qbank_set_sync_enabled(
     exam_id: String,
     enabled: bool,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state).map_err(|e| e.to_string())?;
     let db = state
         .vfs_db
         .as_ref()
@@ -1975,6 +1981,8 @@ pub async fn qbank_update_sync_config(
     exam_id: String,
     config: SyncConfig,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state).map_err(|e| e.to_string())?;
     let db = state
         .vfs_db
         .as_ref()

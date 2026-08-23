@@ -687,6 +687,8 @@ export function createRestoreActions(
             sessionMetadata: session.metadata ?? null,
             sessionStatus: 'idle',
             isDataLoaded: true,
+            hasMoreMessages: false,  // 🆕 懒加载：初始全量加载，无更多历史
+            isLoadingMore: false,
             messageMap,
             messageOrder,
             blocks: blocksMap,
@@ -924,6 +926,124 @@ export function createRestoreActions(
               }
             });
           }
+        },
+
+        /**
+         * 🆕 懒加载：将更早的消息追加到现有消息列表前面
+         *
+         * 与 restoreFromBackend 不同，此方法：
+         * 1. 将消息插入到 messageOrder 开头（而非替换）
+         * 2. 合并 blocks 到现有 Map（去重）
+         * 3. 不改变 sessionStatus、isDataLoaded 等核心状态
+         * 4. 不重建 skill 状态、上下文引用等
+         */
+        appendOlderMessages: (response: LoadSessionResponseType): void => {
+          const { messages, blocks } = response;
+          const state = getState();
+
+          // 1. 按 timestamp 排序消息
+          const sortedMessages = [...messages].sort(
+            (a, b) => a.timestamp - b.timestamp
+          );
+
+          // 2. 转换块数据（与 restoreFromBackend 相同的逻辑）
+          const blocksMap = new Map<string, Block>();
+          for (const blk of blocks) {
+            try {
+              const block: Block = {
+                id: blk.id,
+                messageId: blk.messageId,
+                type: blk.type as BlockType,
+                status: blk.status as BlockStatus,
+                content: blk.content,
+                toolName: blk.toolName,
+                toolInput: blk.toolInput as Record<string, unknown> | undefined,
+                toolOutput: blk.toolOutput,
+                citations: blk.citations,
+                error: blk.error,
+                startedAt: blk.startedAt,
+                endedAt: blk.endedAt,
+                firstChunkAt: blk.firstChunkAt,
+              };
+              blocksMap.set(blk.id, block);
+            } catch (blockError) {
+              console.warn(
+                `[ChatStore] Skipping incompatible block during appendOlderMessages: id=${blk.id}, type=${blk.type}`,
+                blockError
+              );
+            }
+          }
+
+          // 3. 转换消息数据
+          const newMessages = new Map<string, Message>();
+          const newMessageIds: string[] = [];
+
+          for (const msg of sortedMessages) {
+            // 跳过已存在的消息（去重）
+            if (state.messageMap.has(msg.id)) continue;
+
+            const message: Message = {
+              id: msg.id,
+              role: msg.role,
+              blockIds: msg.blockIds,
+              timestamp: msg.timestamp,
+              persistentStableId: msg.persistentStableId,
+              attachments: msg.attachments,
+              _meta: msg._meta
+                ? {
+                    modelId: msg._meta.modelId,
+                    modelDisplayName: msg._meta.modelDisplayName,
+                    chatParams: msg._meta.chatParams,
+                    usage: msg._meta.usage,
+                    contextSnapshot: msg._meta.contextSnapshot,
+                    skillSnapshotBefore: msg._meta.skillSnapshotBefore,
+                    skillSnapshotAfter: msg._meta.skillSnapshotAfter,
+                    skillRuntimeBefore: msg._meta.skillRuntimeBefore,
+                    skillRuntimeAfter: msg._meta.skillRuntimeAfter,
+                    replaySource: msg._meta.replaySource,
+                  }
+                : undefined,
+              activeVariantId: msg.activeVariantId,
+              variants: msg.variants,
+              sharedContext: msg.sharedContext,
+            };
+            newMessages.set(msg.id, message);
+            newMessageIds.push(msg.id);
+          }
+
+          if (newMessageIds.length === 0) {
+            // 没有新消息（可能全部重复），标记为无更多历史
+            set({ hasMoreMessages: false, isLoadingMore: false });
+            return;
+          }
+
+          // 4. 以 Immer 风格合并到现有状态
+          // 新消息插入到 messageOrder 前面
+          set((s) => {
+            const mergedMessageOrder = [...newMessageIds, ...s.messageOrder];
+            const mergedMessageMap = new Map(s.messageMap);
+            for (const [id, msg] of newMessages) {
+              mergedMessageMap.set(id, msg);
+            }
+            const mergedBlocks = new Map(s.blocks);
+            for (const [id, block] of blocksMap) {
+              if (!mergedBlocks.has(id)) {
+                mergedBlocks.set(id, block);
+              }
+            }
+            return {
+              messageOrder: mergedMessageOrder,
+              messageMap: mergedMessageMap,
+              blocks: mergedBlocks,
+              isLoadingMore: false,
+              // 如果返回的消息少于请求的，说明没有更多了
+              hasMoreMessages: messages.length >= 50, // 默认 page size
+            };
+          });
+
+          console.log(
+            `[ChatStore] Appended ${newMessageIds.length} older messages, total: ${getState().messageOrder.length}`
+          );
         },
 
   };

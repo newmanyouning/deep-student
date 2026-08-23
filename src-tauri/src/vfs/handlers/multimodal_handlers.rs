@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use tauri::{Emitter, State};
+use tauri::{Emitter, Manager, State};
 
 use crate::llm_manager::LLMManager;
 use crate::vfs::database::VfsDatabase;
@@ -122,6 +122,9 @@ pub async fn vfs_multimodal_index(
     use crate::multimodal::types::IndexProgressEvent;
     use crate::vfs::multimodal_service::{VfsMultimodalPage, VfsMultimodalService};
     use tokio::sync::mpsc;
+
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
 
     let lance_store = Arc::clone(lance_store.inner());
 
@@ -247,11 +250,14 @@ pub async fn vfs_multimodal_stats(
 /// 删除资源的多模态索引
 #[tauri::command]
 pub async fn vfs_multimodal_delete(
+    app_handle: tauri::AppHandle,
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     llm_manager: State<'_, Arc<LLMManager>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     use crate::vfs::multimodal_service::VfsMultimodalService;
 
     let lance_store = Arc::clone(lance_store.inner());
@@ -283,6 +289,9 @@ pub async fn vfs_multimodal_index_resource(
     use crate::multimodal::types::IndexProgressEvent;
     use crate::vfs::multimodal_service::VfsMultimodalService;
     use tokio::sync::mpsc;
+
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
 
     let lance_store = Arc::clone(lance_store.inner());
 

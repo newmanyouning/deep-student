@@ -127,6 +127,8 @@ export interface FinderPath {
   folderId: string | null;
   /** 类型筛选（智能文件夹模式） */
   typeFilter: DstuNodeType | null;
+  /** ★ 2026-08-10 笔记三分域（仅 typeFilter='note' 生效）：'normal' 普通笔记 | 'ocr' OCR识别页笔记 */
+  noteScope?: 'normal' | 'ocr' | null;
 }
 
 /** 内联编辑状态 */
@@ -588,6 +590,7 @@ export const useFinderStore = create<FinderState>()(
             mindmap: 'mindmaps',
           };
 
+          // 🔧 修复：回收站搜索需要全量，避免后端默认 limit=100 截断导致搜不到/选不全
           const trashResult = currentPath.typeFilter && resourceTypeMap[currentPath.typeFilter]
             ? await dstu.listDeleted(resourceTypeMap[currentPath.typeFilter], options.limit, options.offset)
             : await trashApi.listTrash(options.limit, options.offset);
@@ -709,6 +712,7 @@ export const useFinderStore = create<FinderState>()(
           };
           if (currentPath.typeFilter && resourceTypeMap[currentPath.typeFilter]) {
             const resourceType = resourceTypeMap[currentPath.typeFilter];
+            // 🔧 修复：回收站列表需要全量，避免后端默认 limit=100 截断
             const result = await dstu.listDeleted(resourceType, options.limit, options.offset);
             if (result.ok) {
               items = result.value;
@@ -722,6 +726,7 @@ export const useFinderStore = create<FinderState>()(
               console.warn('[finderStore] Unknown typeFilter for trash:', currentPath.typeFilter, '- loading all items');
             }
             // 没有类型过滤或未知类型时，加载所有已删除项
+            // 🔧 修复：回收站列表需要全量，避免后端默认 limit=100 截断
             const result = await trashApi.listTrash(options.limit, options.offset);
             if (result.ok) {
               items = result.value;
@@ -790,6 +795,8 @@ export const useFinderStore = create<FinderState>()(
           breadcrumbs: [],
           folderId: null,
           typeFilter: target.typeFilter,
+          // ★ 2026-08-10 笔记三分域透传（ocrNotes → 'ocr', notes → 'normal', 其它 → null）
+          noteScope: target.noteScope ?? null,
         });
         get().navigateTo(newPath);
       },
@@ -800,6 +807,9 @@ export const useFinderStore = create<FinderState>()(
         const options: DstuListOptions = {
           sortBy: sortBy === 'type' ? 'name' : sortBy,
           sortOrder,
+          // 🔧 修复：文件夹/智能文件夹/收藏等浏览视图需要全量加载
+          // 用于文件网格/列表渲染、全选、批量操作计数，后端默认 limit=50 会截断
+          limit: 10000,
         };
 
         // 文件夹导航模式
@@ -810,6 +820,10 @@ export const useFinderStore = create<FinderState>()(
         // 智能文件夹模式（类型筛选）
         if (currentPath.typeFilter) {
           options.typeFilter = currentPath.typeFilter;
+          // ★ 2026-08-10 笔记三分域透传给后端（normal 排除 OCR/记忆, ocr 仅 OCR 页笔记）
+          if (currentPath.typeFilter === 'note' && currentPath.noteScope) {
+            options.noteScope = currentPath.noteScope;
+          }
         }
 
         if (currentPath.viewKind === 'favorites') {

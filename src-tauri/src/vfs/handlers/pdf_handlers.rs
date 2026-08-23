@@ -21,7 +21,7 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
@@ -485,12 +485,15 @@ pub async fn vfs_get_pdf_processing_status(
 /// - `bool`: 是否成功取消（false 表示没有正在运行的任务）
 #[tauri::command]
 pub async fn vfs_cancel_pdf_processing(
+    app_handle: tauri::AppHandle,
     file_id: String,
     pdf_processing_service: State<
         '_,
         Arc<PdfProcessingService>,
     >,
 ) -> VfsResult<bool> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_cancel_pdf_processing: file_id={}",
         file_id
@@ -509,12 +512,15 @@ pub async fn vfs_cancel_pdf_processing(
 /// - `file_id`: 文件 ID
 #[tauri::command]
 pub async fn vfs_retry_pdf_processing(
+    app_handle: tauri::AppHandle,
     file_id: String,
     pdf_processing_service: State<
         '_,
         Arc<PdfProcessingService>,
     >,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_retry_pdf_processing: file_id={}",
         file_id
@@ -542,6 +548,7 @@ pub async fn vfs_retry_pdf_processing(
 /// - `pdf-processing-error`: 处理错误
 #[tauri::command]
 pub async fn vfs_start_pdf_processing(
+    app_handle: tauri::AppHandle,
     file_id: String,
     start_from_stage: Option<String>,
     pdf_processing_service: State<
@@ -549,6 +556,8 @@ pub async fn vfs_start_pdf_processing(
         Arc<PdfProcessingService>,
     >,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_start_pdf_processing: file_id={}, start_from_stage={:?}",
         file_id,
@@ -735,10 +744,13 @@ pub async fn vfs_list_pending_pdf_processing(
 /// 不依赖 chat pipeline，直接下载 + 保存。
 #[tauri::command]
 pub async fn vfs_download_paper(
+    app_handle: tauri::AppHandle,
     params: VfsDownloadPaperParams,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     pdf_processing_service: State<'_, Arc<PdfProcessingService>>,
 ) -> VfsResult<VfsDownloadPaperResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::download_paper] Downloading '{}' from: {}",
         params.title,

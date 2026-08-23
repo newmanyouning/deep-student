@@ -14,6 +14,7 @@ use super::backup::{
 use super::schema_registry::DatabaseId;
 use super::sync::{
     classification::{sync_classification_registry, SyncCategory},
+    permit::{SyncGuardSlot, WritePermit},
     ChangeOperation, MergeStrategy, SyncChangeWithData, SyncManager,
 };
 use crate::backup_common::BACKUP_GLOBAL_LIMITER;
@@ -241,10 +242,16 @@ fn should_apply_change_by_strategy(
 /// - 将 `MergeStrategy` 映射为 `ConflictPolicy`
 /// - 冲突落败方进 `__sync_conflicts` 表（每库一份），前端可据此列出待处理冲突
 /// - Manual 策略特殊处理：回退到旧行为（仍用 LWW 门 + 策略过滤，不自动解决冲突）
+///
+/// **[P3 接线]** 新增 `write_guard` 参数（`AppState.sync_write_guard` 的共享句柄）：
+/// 每库应用前 acquire 写门、本库应用结束即释放（每库独立, 永不嵌套）,
+/// 使业务写命令入口的 `check_write_gate` 在应用事务期间返回 `SyncInProgress`（可重试）。
+/// 传 `None` 表示不启用写门（非同步场景可关闭）。
 pub(super) fn apply_downloaded_changes_to_databases(
     changes: &[SyncChangeWithData],
     active_dir: &std::path::Path,
     strategy: MergeStrategy,
+    write_guard: Option<SyncGuardSlot>,
 ) -> DataGovernanceResult<ApplyToDbsResult> {
     use crate::data_governance::sync::ConflictPolicy;
     use std::collections::HashMap;
@@ -296,8 +303,9 @@ pub(super) fn apply_downloaded_changes_to_databases(
             .into_iter()
             .find(|id| id.as_str() == db_name);
 
-        let db_path = match db_id {
-            Some(id) => resolve_database_path(&id, active_dir),
+        // 同步取出数据库标识（'static 名, 供写门 acquire 使用）与数据库路径
+        let (db_id_static, db_path) = match db_id {
+            Some(id) => (id.as_str(), resolve_database_path(&id, active_dir)),
             None => {
                 warn!(
                     "[data_governance] 未知数据库名称 '{}', 跳过 {} 条变更",
@@ -318,6 +326,16 @@ pub(super) fn apply_downloaded_changes_to_databases(
             agg.total_skipped += db_changes.len();
             continue;
         }
+
+        // [P3-接线] 同步写门: 本库应用前获取写权限, 本迭代结束 (应用完成/跳过/出错) 即释放。
+        // 每库独立 acquire/release, 永不嵌套 — 写门同一时刻只能被一个 db 持有,
+        // 业务写命令入口的 check_write_gate 在此期间返回 SyncInProgress (可重试)。
+        // 失败 (SyncBusy) 经 DataGovernanceError::From 转换链向上传播, 不吞错。
+        let _write_permit: Option<WritePermit> = match &write_guard {
+            // 注意: (*guard).clone() 克隆 Arc 本身, 而非克隆 &Arc 引用
+            Some(guard) => Some(WritePermit::acquire((*guard).clone(), db_id_static)?),
+            None => None,
+        };
 
         let conn = rusqlite::Connection::open(&db_path)?;
 

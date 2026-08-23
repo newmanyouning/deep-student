@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tauri::{State, Window};
+use tauri::{Manager, State, Window};
 
 use crate::chat_v2::database::ChatV2Database;
 use crate::chat_v2::pipeline::ChatV2Pipeline;
@@ -152,10 +152,13 @@ fn ensure_workspace_creator(
 /// 创建工作区
 #[tauri::command]
 pub async fn chat_v2_workspace_create(
+    app: tauri::AppHandle,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     request: CreateWorkspaceRequest,
 ) -> Result<CreateWorkspaceResponse, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let workspace = coordinator.create_workspace(&session_id, request.name)?;
 
     Ok(CreateWorkspaceResponse {
@@ -188,10 +191,13 @@ pub async fn chat_v2_workspace_get(
 /// 关闭工作区
 #[tauri::command]
 pub async fn chat_v2_workspace_close(
+    app: tauri::AppHandle,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     ensure_workspace_creator(coordinator.inner().as_ref(), &workspace_id, &session_id)?;
     coordinator.close_workspace(&workspace_id)
 }
@@ -199,10 +205,13 @@ pub async fn chat_v2_workspace_close(
 /// 删除工作区
 #[tauri::command]
 pub async fn chat_v2_workspace_delete(
+    app: tauri::AppHandle,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     ensure_workspace_creator(coordinator.inner().as_ref(), &workspace_id, &session_id)?;
     coordinator.delete_workspace(&workspace_id)
 }
@@ -210,10 +219,13 @@ pub async fn chat_v2_workspace_delete(
 /// 创建 Agent
 #[tauri::command]
 pub async fn chat_v2_workspace_create_agent(
+    app: tauri::AppHandle,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     db: State<'_, Arc<ChatV2Database>>,
     request: CreateAgentRequest,
 ) -> Result<CreateAgentResponse, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     coordinator.ensure_member_or_creator(&request.workspace_id, &request.requester_session_id)?;
     let role = match request.role.as_deref() {
         Some("coordinator") => AgentRole::Coordinator,
@@ -328,10 +340,13 @@ pub async fn chat_v2_workspace_list_agents(
 /// 发送消息到工作区
 #[tauri::command]
 pub async fn chat_v2_workspace_send_message(
+    app: tauri::AppHandle,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     request: WorkspaceSendMessageRequest,
 ) -> Result<SendMessageResponse, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let message_type = match request.message_type.as_deref() {
         Some("progress") => MessageType::Progress,
         Some("result") => MessageType::Result,
@@ -386,12 +401,15 @@ pub async fn chat_v2_workspace_list_messages(
 /// 设置工作区上下文
 #[tauri::command]
 pub async fn chat_v2_workspace_set_context(
+    app: tauri::AppHandle,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     session_id: String,
     workspace_id: String,
     key: String,
     value: serde_json::Value,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     coordinator.set_context(&workspace_id, &key, value, &session_id)
 }
 
@@ -503,6 +521,7 @@ pub async fn chat_v2_workspace_list_all(
 /// Worker 会自动处理 inbox 中的任务消息，并在空闲期继续检查新消息。
 #[tauri::command]
 pub async fn chat_v2_workspace_run_agent(
+    app: tauri::AppHandle,
     request: RunAgentRequest,
     window: Window,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
@@ -510,6 +529,8 @@ pub async fn chat_v2_workspace_run_agent(
     pipeline: State<'_, Arc<ChatV2Pipeline>>,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<RunAgentResponse, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let workspace_id = &request.workspace_id;
     let agent_session_id = &request.agent_session_id;
 
@@ -1045,12 +1066,15 @@ pub async fn chat_v2_workspace_run_agent(
 /// 取消 Worker Agent 执行（手动中止）
 #[tauri::command]
 pub async fn chat_v2_workspace_cancel_agent(
+    app: tauri::AppHandle,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
     session_id: String,
     workspace_id: String,
     agent_session_id: String,
 ) -> Result<bool, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
 
     let cancelled = chat_v2_state.cancel_stream(&agent_session_id);
@@ -1098,9 +1122,12 @@ pub struct ManualWakeResponse {
 /// 手动唤醒睡眠中的 Coordinator
 #[tauri::command]
 pub async fn chat_v2_workspace_manual_wake(
+    app: tauri::AppHandle,
     request: ManualWakeRequest,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
 ) -> Result<ManualWakeResponse, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     coordinator.ensure_member_or_creator(&request.workspace_id, &request.requester_session_id)?;
 
     let sleep_manager = coordinator.get_sleep_manager(&request.workspace_id)?;
@@ -1132,11 +1159,14 @@ pub async fn chat_v2_workspace_manual_wake(
 /// 取消睡眠
 #[tauri::command]
 pub async fn chat_v2_workspace_cancel_sleep(
+    app: tauri::AppHandle,
     session_id: String,
     workspace_id: String,
     sleep_id: String,
     coordinator: State<'_, Arc<WorkspaceCoordinator>>,
 ) -> Result<bool, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
 
     let sleep_manager = coordinator.get_sleep_manager(&workspace_id)?;
@@ -1180,6 +1210,7 @@ pub struct RestoreExecutionsResponse {
 /// 前端应该在检测到 interrupted 状态的消息时调用 chat_v2_continue_message
 #[tauri::command]
 pub async fn chat_v2_workspace_restore_executions(
+    app: tauri::AppHandle,
     session_id: String,
     workspace_id: String,
     window: Window,
@@ -1188,6 +1219,8 @@ pub async fn chat_v2_workspace_restore_executions(
     _pipeline: State<'_, Arc<ChatV2Pipeline>>,
     _db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<RestoreExecutionsResponse, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     coordinator.ensure_member_or_creator(&workspace_id, &session_id)?;
 
     log::info!(

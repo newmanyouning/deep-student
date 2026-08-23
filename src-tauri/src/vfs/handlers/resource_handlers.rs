@@ -12,12 +12,13 @@
 use std::sync::Arc;
 
 use serde::Deserialize;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::utils::unicode::sanitize_unicode;
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
 use crate::vfs::repos::VfsResourceRepo;
+use crate::vfs::resource_kind::ResourceKind;
 use crate::vfs::types::*;
 
 // ============================================================================
@@ -144,22 +145,25 @@ pub fn validate_id_format_any(id: &str, prefixes: &[&str], param_name: &str) -> 
 // ============================================================================
 
 /// 获取资源类型的大文件限制（字节）
-pub fn get_max_size_bytes(resource_type: &VfsResourceType) -> usize {
+pub fn get_max_size_bytes(resource_type: &ResourceKind) -> usize {
     match resource_type {
-        VfsResourceType::Image => 10 * 1024 * 1024,       // 10MB
-        VfsResourceType::File => 50 * 1024 * 1024,        // 50MB
-        VfsResourceType::Note => 50 * 1024 * 1024,        // 50MB
-        VfsResourceType::Retrieval => 10 * 1024 * 1024,   // 10MB
-        VfsResourceType::Exam => 50 * 1024 * 1024,        // 50MB
-        VfsResourceType::Textbook => 50 * 1024 * 1024,    // 50MB
-        VfsResourceType::Translation => 10 * 1024 * 1024, // 10MB
-        VfsResourceType::Essay => 10 * 1024 * 1024,       // 10MB
-        VfsResourceType::MindMap => 50 * 1024 * 1024,     // 50MB
+        ResourceKind::Image => 10 * 1024 * 1024,       // 10MB
+        ResourceKind::File => 50 * 1024 * 1024,        // 50MB
+        ResourceKind::Note => 50 * 1024 * 1024,        // 50MB
+        ResourceKind::Retrieval => 10 * 1024 * 1024,   // 10MB
+        ResourceKind::Exam => 50 * 1024 * 1024,        // 50MB
+        ResourceKind::Textbook => 50 * 1024 * 1024,    // 50MB
+        ResourceKind::Translation => 10 * 1024 * 1024, // 10MB
+        ResourceKind::Essay => 10 * 1024 * 1024,       // 10MB
+        ResourceKind::MindMap => 50 * 1024 * 1024,     // 50MB
+        // ★ 2026-08-07 迁移补充：Card（题目卡片快照 JSON）/Folder（虚拟节点）
+        // 无历史限制，按最保守的 10MB 处理
+        ResourceKind::Card | ResourceKind::Folder => 10 * 1024 * 1024,
     }
 }
 
 /// 验证大文件限制
-pub fn validate_file_size(resource_type: &VfsResourceType, data: &str) -> VfsResult<()> {
+pub fn validate_file_size(resource_type: &ResourceKind, data: &str) -> VfsResult<()> {
     let size = data.len();
     let max_size = get_max_size_bytes(resource_type);
 
@@ -204,9 +208,12 @@ pub fn compute_hash(data: &str) -> String {
 /// - `Err(String)`: 验证失败或数据库错误
 #[tauri::command]
 pub async fn vfs_create_or_reuse(
+    app_handle: tauri::AppHandle,
     params: CreateResourceInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<VfsCreateResourceResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_create_or_reuse: type={}, data_len={}, source_id={:?}",
         params.resource_type,
@@ -215,7 +222,7 @@ pub async fn vfs_create_or_reuse(
     );
 
     // 解析资源类型
-    let resource_type = VfsResourceType::from_str(&params.resource_type).ok_or_else(|| {
+    let resource_type = ResourceKind::from_str(&params.resource_type).ok_or_else(|| {
         VfsError::InvalidArgument {
             param: "type".to_string(),
             reason: format!("Invalid resource type: {}", params.resource_type),
@@ -307,9 +314,12 @@ pub async fn vfs_resource_exists(
 /// - `Err(String)`: 资源不存在或数据库错误
 #[tauri::command]
 pub async fn vfs_increment_ref(
+    app_handle: tauri::AppHandle,
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!("[VFS::handlers] vfs_increment_ref: id={}", resource_id);
 
     // 验证资源 ID 格式
@@ -332,9 +342,12 @@ pub async fn vfs_increment_ref(
 /// - `Err(String)`: 资源不存在或数据库错误
 #[tauri::command]
 pub async fn vfs_decrement_ref(
+    app_handle: tauri::AppHandle,
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!("[VFS::handlers] vfs_decrement_ref: id={}", resource_id);
 
     // 验证资源 ID 格式

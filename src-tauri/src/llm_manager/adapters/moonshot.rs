@@ -50,6 +50,23 @@ impl MoonshotAdapter {
             || model_lower.contains("k2.5")
     }
 
+    /// 检查是否是 K3 旗舰模型 (2026-07 新增)
+    /// K3 使用 reasoning_effort 而非 thinking.type，参数格式与 K2.5 不同
+    fn is_k3_model(model: &str) -> bool {
+        let model_lower = model.to_lowercase();
+        model_lower.contains("kimi-k3")
+    }
+
+    /// 检查是否是 K2.6/K2.7 模型 (2026-06 新增)
+    /// 与 K2.5 使用相同的 thinking.type 参数格式
+    fn is_k26_or_k27_model(model: &str) -> bool {
+        let model_lower = model.to_lowercase();
+        model_lower.contains("kimi-k2.6")
+            || model_lower.contains("kimi-k2.7")
+            || model_lower.contains("kimi-k2-6")
+            || model_lower.contains("kimi-k2-7")
+    }
+
     /// 检查是否是 Thinking 模型（K2 Thinking 或 K2.5）
     fn is_thinking_model(model: &str) -> bool {
         let model_lower = model.to_lowercase();
@@ -88,9 +105,43 @@ impl RequestAdapter for MoonshotAdapter {
         enable_thinking: Option<bool>,
     ) -> bool {
         let is_k25 = Self::is_k25_model(&config.model);
+        let is_k3 = Self::is_k3_model(&config.model);
+        let is_k26_or_k27 = Self::is_k26_or_k27_model(&config.model);
         let is_thinking = Self::is_thinking_model(&config.model);
 
-        if is_k25 {
+        // ========== K3 专用处理 (2026-07 新增旗舰) ==========
+        // K3 使用 reasoning_effort 顶级参数，不是 thinking.type
+        // K3 有固定参数: temperature=1.0, top_p=0.95, n=1, penalties=0 (不能修改)
+        if is_k3 {
+            // K3 固定参数处理：移除所有采样参数，让 API 使用内部默认值
+            body.remove("temperature");
+            body.remove("top_p");
+            body.remove("n");
+            body.remove("presence_penalty");
+            body.remove("frequency_penalty");
+
+            // K3 使用 reasoning_effort 而非 thinking.type
+            // 官方: reasoning_effort: "low" | "high" | "max" (默认 "max")
+            let effort = config.reasoning_effort.as_deref().unwrap_or("max");
+            body.insert("reasoning_effort".to_string(), json!(effort));
+
+            // K3 也使用 reasoning_content 回传思维链
+            body.remove("thinking");
+            body.remove("enable_thinking");
+
+            // K3 max_tokens 默认 131072 (推荐)，最大 1048576
+            let current_max_tokens =
+                body.get("max_tokens").and_then(|v| v.as_u64()).unwrap_or(0) as u32;
+            if current_max_tokens == 0 {
+                body.insert("max_tokens".to_string(), json!(131072));
+            }
+
+            return true;
+        }
+
+        // ========== K2.5 / K2.6 / K2.7 专用处理 ==========
+        // K2.5/K2.6/K2.7 使用 thinking 参数格式: {"type": "enabled"} 或 {"type": "disabled"}
+        if is_k25 || is_k26_or_k27 {
             // ========== K2.5 专用处理 ==========
             // K2.5 使用 thinking 参数格式: {"type": "enabled"} 或 {"type": "disabled"}
             let thinking_enabled = enable_thinking.unwrap_or(true); // K2.5 默认启用 thinking
@@ -160,17 +211,24 @@ impl RequestAdapter for MoonshotAdapter {
     }
 
     fn should_remove_sampling_params(&self, config: &ApiConfig) -> bool {
-        // K2.5 已在 apply_reasoning_config 中处理固定参数
+        // K2.5/K3/K2.6/K2.7 已在 apply_reasoning_config 中处理固定参数
         // K2 Thinking 需要特殊处理 temperature，不移除
-        if Self::is_k25_model(&config.model) {
-            return true; // K2.5 跳过默认移除逻辑（已在上面处理）
+        if Self::is_k25_model(&config.model)
+            || Self::is_k3_model(&config.model)
+            || Self::is_k26_or_k27_model(&config.model) {
+            return true;
         }
         false
     }
 
     fn get_passback_policy(&self, config: &ApiConfig) -> PassbackPolicy {
-        // Kimi 使用 reasoning_content 字段（DeepSeek 风格）
-        if Self::is_thinking_model(&config.model) || config.is_reasoning {
+        // K3 使用 reasoning_content (DeepSeek 风格)
+        // K2.5/K2.6/K2.7 也使用 reasoning_content
+        if Self::is_k3_model(&config.model)
+            || Self::is_k25_model(&config.model)
+            || Self::is_k26_or_k27_model(&config.model)
+            || Self::is_thinking_model(&config.model)
+            || config.is_reasoning {
             PassbackPolicy::DeepSeekStyle
         } else {
             PassbackPolicy::NoPassback

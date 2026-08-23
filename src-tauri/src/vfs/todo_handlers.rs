@@ -12,6 +12,7 @@ use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::VfsResult;
 use crate::vfs::repos::{VfsPomodoroRepo, VfsTodoRepo};
 use crate::vfs::types::*;
+use crate::vfs::write_gate::check_vfs_write_gate; // [写门-接线] 同步写门检查
 
 // ============================================================================
 // 前端输入类型
@@ -113,6 +114,8 @@ pub struct ReorderItemsInput {
 
 #[tauri::command]
 pub fn vfs_todo_create_list(app: AppHandle, input: CreateTodoListInput) -> VfsResult<VfsTodoList> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    check_vfs_write_gate(&app.state::<crate::commands::AppState>())?;
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     let params = VfsCreateTodoListParams {
         title: input.title,
@@ -139,6 +142,8 @@ pub fn vfs_todo_list_lists(app: AppHandle) -> VfsResult<Vec<VfsTodoList>> {
 
 #[tauri::command]
 pub fn vfs_todo_update_list(app: AppHandle, input: UpdateTodoListInput) -> VfsResult<VfsTodoList> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    check_vfs_write_gate(&app.state::<crate::commands::AppState>())?;
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     let params = VfsUpdateTodoListParams {
         title: input.title,
@@ -151,18 +156,24 @@ pub fn vfs_todo_update_list(app: AppHandle, input: UpdateTodoListInput) -> VfsRe
 
 #[tauri::command]
 pub fn vfs_todo_delete_list(app: AppHandle, list_id: String) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    check_vfs_write_gate(&app.state::<crate::commands::AppState>())?;
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     VfsTodoRepo::delete_todo_list(&vfs_db, &list_id)
 }
 
 #[tauri::command]
 pub fn vfs_todo_toggle_list_favorite(app: AppHandle, list_id: String) -> VfsResult<VfsTodoList> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    check_vfs_write_gate(&app.state::<crate::commands::AppState>())?;
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     VfsTodoRepo::toggle_todo_list_favorite(&vfs_db, &list_id)
 }
 
 #[tauri::command]
 pub fn vfs_todo_ensure_inbox(app: AppHandle) -> VfsResult<VfsTodoList> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    check_vfs_write_gate(&app.state::<crate::commands::AppState>())?;
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     VfsTodoRepo::ensure_default_inbox(&vfs_db)
 }
@@ -173,6 +184,8 @@ pub fn vfs_todo_ensure_inbox(app: AppHandle) -> VfsResult<VfsTodoList> {
 
 #[tauri::command]
 pub fn vfs_todo_create_item(app: AppHandle, input: CreateTodoItemInput) -> VfsResult<VfsTodoItem> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    check_vfs_write_gate(&app.state::<crate::commands::AppState>())?;
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     let params = VfsCreateTodoItemParams {
         todo_list_id: input.todo_list_id,
@@ -206,6 +219,8 @@ pub fn vfs_todo_list_items(
 
 #[tauri::command]
 pub fn vfs_todo_update_item(app: AppHandle, input: UpdateTodoItemInput) -> VfsResult<VfsTodoItem> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    check_vfs_write_gate(&app.state::<crate::commands::AppState>())?;
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     let params = VfsUpdateTodoItemParams {
         title: input.title,
@@ -227,18 +242,24 @@ pub fn vfs_todo_update_item(app: AppHandle, input: UpdateTodoItemInput) -> VfsRe
 
 #[tauri::command]
 pub fn vfs_todo_toggle_item(app: AppHandle, item_id: String) -> VfsResult<VfsTodoItem> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    check_vfs_write_gate(&app.state::<crate::commands::AppState>())?;
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     VfsTodoRepo::toggle_todo_item(&vfs_db, &item_id)
 }
 
 #[tauri::command]
 pub fn vfs_todo_delete_item(app: AppHandle, item_id: String) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    check_vfs_write_gate(&app.state::<crate::commands::AppState>())?;
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     VfsTodoRepo::delete_todo_item(&vfs_db, &item_id)
 }
 
 #[tauri::command]
 pub fn vfs_todo_reorder_items(app: AppHandle, input: ReorderItemsInput) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    check_vfs_write_gate(&app.state::<crate::commands::AppState>())?;
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     VfsTodoRepo::reorder_items(&vfs_db, &input.list_id, &input.item_ids)
 }
@@ -326,6 +347,8 @@ pub fn vfs_pomodoro_create_record(
     app: AppHandle,
     input: CreatePomodoroInput,
 ) -> VfsResult<PomodoroRecord> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    check_vfs_write_gate(&app.state::<crate::commands::AppState>())?;
     let vfs_db: State<Arc<VfsDatabase>> = app.state();
     let params = CreatePomodoroRecordParams {
         todo_item_id: input.todo_item_id,

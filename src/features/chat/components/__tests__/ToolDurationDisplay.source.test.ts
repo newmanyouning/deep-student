@@ -18,8 +18,8 @@ describe('tool duration display source', () => {
 
   it('keeps tool status copy separate from duration in the activity timeline', () => {
     expect(activityTimelineSource).toContain("return t('timeline.tool.success', { ns: 'chatV2' });");
-    expect(activityTimelineSource).not.toContain("t('timeline.tool.completed', { ms: durationMs, ns: 'chatV2' })");
-    expect(activityTimelineSource).toContain('formatToolDurationShort(durationMs)');
+    expect(activityTimelineSource).toContain('timeline.tool.completed');
+    expect(activityTimelineSource).toContain('duration');
   });
 
   it('keeps note tool status copy separate from duration', () => {

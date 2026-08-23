@@ -1,0 +1,205 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:  # 手动触发
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # =========================================================================
+  # Job 1: Rust 单元 + 集成测试
+  # =========================================================================
+  rust-tests:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: rust-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      - name: Cargo test (lib)
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib -- --test-threads=4
+
+      - name: Cargo test (integration)
+        run: cargo test --manifest-path src-tauri/Cargo.toml --tests -- --test-threads=2
+
+  # =========================================================================
+  # Job 2: 前端组件测试 (Playwright CT + Vitest)
+  # =========================================================================
+  component-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Vitest unit tests
+        run: npm run test:unit
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Playwright CT tests
+        run: npm run test-ct
+
+  # =========================================================================
+  # Job 3: E2E Smoke Tests (快速验证)
+  # =========================================================================
+  e2e-smoke:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    needs: [rust-tests, component-tests]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: rust-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      - run: npm ci
+
+      # ---- 构建 ----
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build Rust (debug)
+        run: cargo build --manifest-path src-tauri/Cargo.toml
+
+      # ---- 启动 Tauri app (CDP enabled) ----
+      - name: Start Tauri app
+        shell: pwsh
+        run: |
+          $env:WEBKIT_DEBUG_PORT="9222"
+          $process = Start-Process `
+            -FilePath "src-tauri/target/debug/deep-student.exe" `
+            -ArgumentList "--test-mode" `
+            -PassThru
+
+          # 等待 CDP 端口就绪 (最多 60s)
+          for ($i = 0; $i -lt 30; $i++) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:9222/json" -TimeoutSec 2 -UseBasicParsing
+              if ($response.StatusCode -eq 200) { break }
+            } catch {
+              Start-Sleep -Seconds 2
+            }
+          }
+
+          # 保存 PID 用于清理
+          $process.Id | Out-File -FilePath "tauri-app.pid"
+
+      # ---- 运行 E2E Smoke ----
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E smoke tests
+        run: |
+          npx playwright test `
+            tests/e2e/suites/01-app-startup.spec.ts `
+            --config=tests/playwright.e2e.config.ts
+
+      # ---- 清理 ----
+      - name: Stop Tauri app
+        if: always()
+        shell: pwsh
+        run: |
+          $pid = Get-Content "tauri-app.pid" -ErrorAction SilentlyContinue
+          if ($pid) { Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue }
+
+      # ---- 测试报告 ----
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-smoke-results
+          path: test-results/
+
+  # =========================================================================
+  # Job 4: 完整 E2E (仅 main 分支 push)
+  # =========================================================================
+  e2e-full:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    needs: [e2e-smoke]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src-tauri/target
+          key: rust-${{ runner.os }}-${{ hashFiles('src-tauri/Cargo.lock') }}
+
+      - run: npm ci
+      - run: npm run build
+      - run: cargo build --manifest-path src-tauri/Cargo.toml
+
+      - name: Start Tauri app
+        shell: pwsh
+        run: |
+          $env:WEBKIT_DEBUG_PORT="9222"
+          Start-Process -FilePath "src-tauri/target/debug/deep-student.exe" -ArgumentList "--test-mode" -PassThru
+          for ($i=0; $i -lt 30; $i++) {
+            try { Invoke-WebRequest http://localhost:9222/json -TimeoutSec 2 -UseBasicParsing | Out-Null; break }
+            catch { Start-Sleep -Seconds 2 }
+          }
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run full E2E suite
+        run: npx playwright test tests/e2e/ --config=tests/playwright.e2e.config.ts
+
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-full-report
+          path: |
+            test-results/
+            playwright-report/

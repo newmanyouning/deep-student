@@ -27,8 +27,9 @@ fn log_and_skip_err<T>(result: Result<T, rusqlite::Error>) -> Option<T> {
 use crate::vfs::ocr_utils::parse_ocr_pages_json;
 use crate::vfs::repos::folder_repo::VfsFolderRepo;
 use crate::vfs::repos::resource_repo::VfsResourceRepo;
+use crate::vfs::resource_kind::ResourceKind;
 use crate::vfs::types::{
-    ResourceLocation, VfsCreateExamSheetParams, VfsExamSheet, VfsFolderItem, VfsResourceType,
+    ResourceLocation, VfsCreateExamSheetParams, VfsExamSheet, VfsFolderItem,
 };
 
 /// 中断的导入会话信息（断点续导用）
@@ -259,7 +260,7 @@ impl VfsExamRepo {
             // 1. 将 preview_json 序列化为内容存入 resources（SSOT）
             let resource_result = VfsResourceRepo::create_or_reuse_with_conn(
                 conn,
-                VfsResourceType::Exam,
+                ResourceKind::Exam,
                 &preview_content,
                 None, // source_id 稍后更新
                 Some("exam_sheets"),

@@ -4,7 +4,7 @@
 
 use std::sync::Arc;
 
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::chat_v2::database::ChatV2Database;
 use crate::chat_v2::error::ChatV2Error;
@@ -14,9 +14,12 @@ use crate::chat_v2::types::{CreateGroupRequest, PersistStatus, SessionGroup, Upd
 /// 创建分组
 #[tauri::command]
 pub async fn chat_v2_create_group(
+    app: tauri::AppHandle,
     request: CreateGroupRequest,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<SessionGroup, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
 
     // 计算 sort_order（追加到末尾）
@@ -49,10 +52,13 @@ pub async fn chat_v2_create_group(
 /// 更新分组
 #[tauri::command]
 pub async fn chat_v2_update_group(
+    app: tauri::AppHandle,
     group_id: String,
     request: UpdateGroupRequest,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<SessionGroup, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
     let existing = ChatV2Repo::get_group_with_conn(&conn, &group_id)
         .map_err(|e| e.to_string())?
@@ -99,9 +105,12 @@ pub async fn chat_v2_update_group(
 /// 删除分组（软删除）
 #[tauri::command]
 pub async fn chat_v2_delete_group(
+    app: tauri::AppHandle,
     group_id: String,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let mut conn = db.get_conn_safe().map_err(|e| e.to_string())?;
     ChatV2Repo::soft_delete_group_with_conn(&mut conn, &group_id).map_err(|e| e.to_string())?;
     Ok(())
@@ -135,9 +144,12 @@ pub async fn chat_v2_list_groups(
 /// 批量更新分组排序
 #[tauri::command]
 pub async fn chat_v2_reorder_groups(
+    app: tauri::AppHandle,
     group_ids: Vec<String>,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let mut conn = db.get_conn_safe().map_err(|e| e.to_string())?;
     ChatV2Repo::reorder_groups_with_conn(&mut conn, &group_ids).map_err(|e| e.to_string())?;
     Ok(())
@@ -146,10 +158,13 @@ pub async fn chat_v2_reorder_groups(
 /// 移动会话到分组
 #[tauri::command]
 pub async fn chat_v2_move_session_to_group(
+    app: tauri::AppHandle,
     session_id: String,
     group_id: Option<String>,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
     let normalized_group_id =
         group_id.and_then(|g| if g.trim().is_empty() { None } else { Some(g) });

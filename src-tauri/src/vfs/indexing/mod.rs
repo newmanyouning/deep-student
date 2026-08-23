@@ -22,7 +22,8 @@ use crate::vfs::repos::{
     VfsIndexStateRepo, VfsIndexingConfigRepo, VfsNoteRepo, VfsResourceRepo, INDEX_STATE_INDEXED,
     INDEX_STATE_INDEXING, MODALITY_MULTIMODAL, MODALITY_TEXT,
 };
-use crate::vfs::types::{PdfPreviewJson, VfsResource, VfsResourceType};
+use crate::vfs::resource_kind::ResourceKind;
+use crate::vfs::types::{PdfPreviewJson, VfsResource};
 use crate::vfs::unit_builder::UnitBuildInput;
 
 pub mod types;
@@ -317,19 +318,22 @@ pub struct VfsContentExtractor;
 
 impl VfsContentExtractor {
     pub fn extract_indexable_content(
-        resource_type: &VfsResourceType,
+        resource_type: &ResourceKind,
         data: &str,
     ) -> Option<String> {
         match resource_type {
-            VfsResourceType::Note => Some(Self::extract_markdown_text(data)),
-            VfsResourceType::Translation => Self::extract_translation_text(data),
-            VfsResourceType::Exam => Self::extract_exam_text(data),
-            VfsResourceType::Textbook => Self::extract_textbook_text(data),
-            VfsResourceType::Essay => Some(data.to_string()),
-            VfsResourceType::File => Self::extract_file_text(data),
-            VfsResourceType::MindMap => Self::extract_mindmap_text(data),
+            ResourceKind::Note => Some(Self::extract_markdown_text(data)),
+            ResourceKind::Translation => Self::extract_translation_text(data),
+            ResourceKind::Exam => Self::extract_exam_text(data),
+            ResourceKind::Textbook => Self::extract_textbook_text(data),
+            ResourceKind::Essay => Some(data.to_string()),
+            ResourceKind::File => Self::extract_file_text(data),
+            ResourceKind::MindMap => Self::extract_mindmap_text(data),
             // Image/Retrieval：Image 内容为二进制（走 OCR），Retrieval 为临时搜索结果（不索引）
-            VfsResourceType::Image | VfsResourceType::Retrieval => None,
+            ResourceKind::Image | ResourceKind::Retrieval => None,
+            // ★ 2026-08-07 迁移补充：Card（题目卡片快照 JSON）/Folder（虚拟节点）
+            // 保持旧 9 类型行为不变，新增变体暂不索引
+            ResourceKind::Card | ResourceKind::Folder => None,
         }
     }
 
@@ -337,13 +341,13 @@ impl VfsContentExtractor {
     ///
     /// 返回 (pages, source_id)，pages 为按页的文本内容
     pub fn extract_indexable_pages(
-        resource_type: &VfsResourceType,
+        resource_type: &ResourceKind,
         resource_id: &str,
         data: &str,
     ) -> Option<Vec<PageText>> {
         match resource_type {
-            VfsResourceType::Exam => Self::extract_exam_pages(resource_id, data),
-            VfsResourceType::Textbook => Self::extract_textbook_pages(resource_id, data),
+            ResourceKind::Exam => Self::extract_exam_pages(resource_id, data),
+            ResourceKind::Textbook => Self::extract_textbook_pages(resource_id, data),
             _ => None,
         }
     }
@@ -740,7 +744,7 @@ fn resolve_indexable_content(
 
     // 3. 对于特定资源类型，从关联表获取额外内容
     match resource.resource_type {
-        VfsResourceType::Textbook => {
+        ResourceKind::Textbook => {
             // 教材：优先 ocr_pages_json，其次 extracted_text
             // ★ 2026-01 修复：同时支持 resource_id 和 source_id 查询
             // - resource_id: 资源 ID (res_xxx)
@@ -893,7 +897,7 @@ fn resolve_indexable_content(
             }
         }
 
-        VfsResourceType::Exam => {
+        ResourceKind::Exam => {
             // 题目集：从 exam_sheets.preview_json 获取
             let preview_json: Option<String> = conn
                 .query_row(
@@ -911,7 +915,7 @@ fn resolve_indexable_content(
             }
         }
 
-        VfsResourceType::File | VfsResourceType::Image => {
+        ResourceKind::File | ResourceKind::Image => {
             // ★ 2026-01 策略：选择 extracted_text 和 ocr_text 中内容更多的
             // 文件/图片：从 files.extracted_text 和 resources.ocr_text 获取，选择更长的
 
@@ -1027,11 +1031,13 @@ fn resolve_indexable_content(
         }
 
         // Note/Translation/Essay/MindMap/Retrieval/Todo：内容已在步骤 2 从 resources.data 提取
-        VfsResourceType::Note
-        | VfsResourceType::Translation
-        | VfsResourceType::Essay
-        | VfsResourceType::MindMap
-        | VfsResourceType::Retrieval => {}
+        ResourceKind::Note
+        | ResourceKind::Translation
+        | ResourceKind::Essay
+        | ResourceKind::MindMap
+        | ResourceKind::Retrieval => {}
+        // ★ 2026-08-07 迁移补充：Card/Folder 同 Note 组（内容在 resources.data）
+        ResourceKind::Card | ResourceKind::Folder => {}
     }
 
     None
@@ -1045,7 +1051,7 @@ fn resolve_indexable_pages(
     resource: &VfsResource,
 ) -> Option<Vec<PageText>> {
     match resource.resource_type {
-        VfsResourceType::Textbook => {
+        ResourceKind::Textbook => {
             // 从 textbooks.ocr_pages_json 获取按页 OCR 文本
             let textbook_id = resource
                 .source_id
@@ -1341,7 +1347,7 @@ fn resolve_indexable_pages(
             }
         }
 
-        VfsResourceType::Exam => {
+        ResourceKind::Exam => {
             // 从 exam_sheets.preview_json 获取按页内容
             let preview_json: Option<String> = conn
                 .query_row(
@@ -1370,7 +1376,7 @@ fn resolve_indexable_pages(
             }
         }
 
-        VfsResourceType::File | VfsResourceType::Image => {
+        ResourceKind::File | ResourceKind::Image => {
             // 从 files.ocr_pages_json 获取按页 OCR 文本
             // 优先通过 source_id 查找
             let attachment_id = resource
@@ -1428,11 +1434,13 @@ fn resolve_indexable_pages(
         }
 
         // Note/Translation/Essay/MindMap/Retrieval/Todo：无按页结构，跳过
-        VfsResourceType::Note
-        | VfsResourceType::Translation
-        | VfsResourceType::Essay
-        | VfsResourceType::MindMap
-        | VfsResourceType::Retrieval => {}
+        ResourceKind::Note
+        | ResourceKind::Translation
+        | ResourceKind::Essay
+        | ResourceKind::MindMap
+        | ResourceKind::Retrieval => {}
+        // ★ 2026-08-07 迁移补充：Card/Folder 无按页结构，跳过
+        ResourceKind::Card | ResourceKind::Folder => {}
     }
 
     // 回退：尝试从 resource.data 提取
@@ -1853,7 +1861,7 @@ impl VfsFullIndexingService {
 
         // 构建 UnitBuildInput（尽量补全资源信息）
         let input = match resource.resource_type {
-            VfsResourceType::File | VfsResourceType::Image => {
+            ResourceKind::File | ResourceKind::Image => {
                 let conn = self.db.get_conn_safe()?;
                 let (blob_hash, page_count, extracted_text, preview_json, ocr_pages_json): (
                     Option<String>,
@@ -1993,7 +2001,7 @@ impl VfsFullIndexingService {
         let conn = self.db.get_conn_safe()?;
 
         let mut resolved_folder_id = folder_id.map(|value| value.to_string());
-        if resource.resource_type == VfsResourceType::Note {
+        if resource.resource_type == ResourceKind::Note {
             if let Some(note_id) = resource.source_id.as_deref() {
                 match VfsNoteRepo::get_note_with_conn(&conn, note_id)? {
                     Some(note) if note.deleted_at.is_some() => {
@@ -2054,7 +2062,7 @@ impl VfsFullIndexingService {
         if (content.is_none() || content.as_ref().map(|c| c.is_empty()).unwrap_or(true))
             && matches!(
                 resource.resource_type,
-                VfsResourceType::Textbook | VfsResourceType::Image | VfsResourceType::File
+                ResourceKind::Textbook | ResourceKind::Image | ResourceKind::File
             )
         {
             info!(
@@ -2097,15 +2105,17 @@ impl VfsFullIndexingService {
 
             // 记录空内容原因（但不阻止索引）
             let reason = match resource.resource_type {
-                VfsResourceType::Textbook => "教材内容为空（OCR 未完成或无文字）",
-                VfsResourceType::Exam => "题目集内容为空",
-                VfsResourceType::Image => "图片内容为空（OCR 未完成或无文字）",
-                VfsResourceType::File => "文件内容为空",
-                VfsResourceType::Note => "笔记内容为空",
-                VfsResourceType::MindMap => "导图内容为空",
-                VfsResourceType::Translation => "翻译内容为空",
-                VfsResourceType::Essay => "作文内容为空",
-                VfsResourceType::Retrieval => "检索结果内容为空",
+                ResourceKind::Textbook => "教材内容为空（OCR 未完成或无文字）",
+                ResourceKind::Exam => "题目集内容为空",
+                ResourceKind::Image => "图片内容为空（OCR 未完成或无文字）",
+                ResourceKind::File => "文件内容为空",
+                ResourceKind::Note => "笔记内容为空",
+                ResourceKind::MindMap => "导图内容为空",
+                ResourceKind::Translation => "翻译内容为空",
+                ResourceKind::Essay => "作文内容为空",
+                ResourceKind::Retrieval => "检索结果内容为空",
+                // ★ 2026-08-07 迁移补充：Card/Folder 空内容提示
+                ResourceKind::Card | ResourceKind::Folder => "卡片/文件夹内容为空",
             };
 
             // 标记为 indexed，但 index_error 记录空内容信息
@@ -2618,7 +2628,7 @@ impl VfsFullIndexingService {
         use crate::llm_manager::ImagePayload;
 
         match resource.resource_type {
-            VfsResourceType::Image => {
+            ResourceKind::Image => {
                 // 图片 OCR：从 attachments 或 blobs 获取图片数据
                 let conn = self.db.get_conn_safe()?;
 
@@ -2702,19 +2712,21 @@ impl VfsFullIndexingService {
                 Ok(None)
             }
 
-            VfsResourceType::Textbook | VfsResourceType::File => {
+            ResourceKind::Textbook | ResourceKind::File => {
                 // ★ 2026-02-19：Textbook 和 File(PDF) 统一 OCR 实现
                 // 复用上传时已渲染的 preview_json 页面图片
                 self.try_auto_ocr_pdf_pages(resource).await
             }
 
             // Note/Translation/Essay/Exam/MindMap/Retrieval/Todo：无需 OCR
-            VfsResourceType::Note
-            | VfsResourceType::Translation
-            | VfsResourceType::Essay
-            | VfsResourceType::Exam
-            | VfsResourceType::MindMap
-            | VfsResourceType::Retrieval => Ok(None),
+            ResourceKind::Note
+            | ResourceKind::Translation
+            | ResourceKind::Essay
+            | ResourceKind::Exam
+            | ResourceKind::MindMap
+            | ResourceKind::Retrieval => Ok(None),
+            // ★ 2026-08-07 迁移补充：Card/Folder 无需 OCR
+            ResourceKind::Card | ResourceKind::Folder => Ok(None),
         }
     }
 
@@ -2834,7 +2846,7 @@ impl VfsFullIndexingService {
         let mime_type = mime_type_opt.unwrap_or_default();
 
         // 3. 对于 File 类型，检查 MIME 类型
-        if resource.resource_type == VfsResourceType::File {
+        if resource.resource_type == ResourceKind::File {
             let is_pdf = mime_type == "application/pdf";
             let is_image = mime_type.starts_with("image/");
 
@@ -4534,7 +4546,7 @@ mod tests {
     #[test]
     fn test_extract_markdown() {
         let md = "# Title\n\n**Bold** and *italic*\n\n![image](url)\n\n[link](url)";
-        let text = VfsContentExtractor::extract_indexable_content(&VfsResourceType::Note, md);
+        let text = VfsContentExtractor::extract_indexable_content(&ResourceKind::Note, md);
 
         assert!(text.is_some());
         let text = text.unwrap();
@@ -4546,7 +4558,7 @@ mod tests {
     fn test_extract_translation() {
         let json = r#"{"source": "Hello", "translated": "你好"}"#;
         let text =
-            VfsContentExtractor::extract_indexable_content(&VfsResourceType::Translation, json);
+            VfsContentExtractor::extract_indexable_content(&ResourceKind::Translation, json);
 
         assert!(text.is_some());
         let text = text.unwrap();

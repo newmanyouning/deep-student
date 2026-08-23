@@ -21,6 +21,7 @@ import type {
   DstuNodeExtended,
   ResourceInjectModes,
 } from './vfsRefTypes';
+import type { ResourceKind } from '@/types/resourceKind';
 
 // 重导出 VFS 类型供使用者方便访问
 export type {
@@ -50,10 +51,14 @@ export type {
  * | image       | 30     | 图片        |
  * | file        | 30     | 文件附件    |
  * | retrieval   | 50     | 检索结果    |
+ * | mindmap     | -      | 知识导图    |
  * | folder      | 100    | 文件夹 ★    |
  * | translation | -      | 翻译        |
+ *
+ * ★ 2026-08-07 资源类型统一：改为引用共享类型 ResourceKind（11 值），
+ *   与后端 src-tauri/src/vfs/resource_kind.rs 持久化契约对齐。
  */
-export type ResourceType = 'image' | 'file' | 'note' | 'card' | 'exam' | 'essay' | 'textbook' | 'retrieval' | 'folder' | 'translation';
+export type ResourceType = ResourceKind;
 
 /**
  * 资源元数据
@@ -446,7 +451,8 @@ export function mergeContextSnapshots(
  * 判断是否为有效的 VFS 资源类型
  */
 export function isValidVfsResourceType(type: string): type is VfsResourceType {
-  return ['note', 'textbook', 'exam', 'translation', 'essay', 'image', 'file'].includes(type);
+  // ★ 与 vfsRefTypes.ts 的 VfsResourceType（11 值）同步，守卫随联合放宽
+  return ['note', 'textbook', 'exam', 'translation', 'essay', 'image', 'file', 'retrieval', 'mindmap', 'card', 'folder'].includes(type);
 }
 
 /**

@@ -101,21 +101,19 @@ impl BuiltinResourceExecutor {
     }
 
     /// 将资源类型字符串转换为 DstuNodeType
+    ///
+    /// ★ 2026-08-10 收敛：直接委托 `ResourceKind::from_str`（唯一事实源），
+    /// 覆盖全部 11 个标准值 + 复数/中文别名（含 card/folder/retrieval），
+    /// 消除与 ResourceKind 的漂移。
     fn parse_resource_type(type_str: &str) -> Option<DstuNodeType> {
-        match type_str {
-            "note" | "notes" => Some(DstuNodeType::Note),
-            "textbook" | "textbooks" => Some(DstuNodeType::Textbook),
-            "exam" | "exams" => Some(DstuNodeType::Exam),
-            "essay" | "essays" => Some(DstuNodeType::Essay),
-            "translation" | "translations" => Some(DstuNodeType::Translation),
-            "image" | "images" => Some(DstuNodeType::Image),
-            "file" | "files" => Some(DstuNodeType::File),
-            "mindmap" | "mindmaps" => Some(DstuNodeType::MindMap),
-            _ => None,
-        }
+        crate::vfs::resource_kind::ResourceKind::from_str(type_str)
     }
 
     /// 从资源 ID 推断资源类型
+    ///
+    /// 与 `ResourceKind::from_id_prefix` 对齐，但保留两个读取路径特化：
+    /// - `tb_` → "files"（教材内容经 files 读取路径，见下方 1391 行附近注释）
+    /// - 返回复数路径段（resource_read 路由契约）
     fn infer_type_from_id(resource_id: &str) -> Option<&'static str> {
         if resource_id.starts_with("note_") {
             Some("notes")
@@ -135,6 +133,15 @@ impl BuiltinResourceExecutor {
             Some("translations")
         } else if resource_id.starts_with("mm_") {
             Some("mindmaps")
+        } else if resource_id.starts_with("img_") {
+            // ★ 2026-08-10 补齐：与 ResourceKind::from_id_prefix 对齐 (img_ → Image)
+            Some("images")
+        } else if resource_id.starts_with("card_") {
+            // ★ 2026-08-10 补齐：card_ → Card
+            Some("cards")
+        } else if resource_id.starts_with("fld_") {
+            // ★ 2026-08-10 补齐：fld_ → Folder
+            Some("folders")
         } else {
             None
         }
@@ -362,15 +369,19 @@ impl BuiltinResourceExecutor {
         resource: &crate::vfs::types::VfsResource,
     ) -> Option<&'static str> {
         match resource.resource_type {
-            crate::vfs::types::VfsResourceType::Note => Some("notes"),
-            crate::vfs::types::VfsResourceType::Textbook
-            | crate::vfs::types::VfsResourceType::Image
-            | crate::vfs::types::VfsResourceType::File => Some("files"),
-            crate::vfs::types::VfsResourceType::Exam => Some("exams"),
-            crate::vfs::types::VfsResourceType::Essay => Some("essays"),
-            crate::vfs::types::VfsResourceType::Translation => Some("translations"),
-            crate::vfs::types::VfsResourceType::MindMap => Some("mindmaps"),
-            crate::vfs::types::VfsResourceType::Retrieval => None,
+            crate::vfs::resource_kind::ResourceKind::Note => Some("notes"),
+            crate::vfs::resource_kind::ResourceKind::Textbook
+            | crate::vfs::resource_kind::ResourceKind::Image
+            | crate::vfs::resource_kind::ResourceKind::File => Some("files"),
+            crate::vfs::resource_kind::ResourceKind::Exam => Some("exams"),
+            crate::vfs::resource_kind::ResourceKind::Essay => Some("essays"),
+            crate::vfs::resource_kind::ResourceKind::Translation => Some("translations"),
+            crate::vfs::resource_kind::ResourceKind::MindMap => Some("mindmaps"),
+            crate::vfs::resource_kind::ResourceKind::Retrieval => None,
+            // ★ 2026-08-07 迁移补充：Card（题目卡片快照）/Folder（虚拟节点）
+            // 无对应 source 表，无法反查 source_id
+            crate::vfs::resource_kind::ResourceKind::Card
+            | crate::vfs::resource_kind::ResourceKind::Folder => None,
         }
     }
 

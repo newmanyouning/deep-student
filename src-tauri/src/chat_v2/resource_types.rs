@@ -16,73 +16,26 @@ use serde_json::Value;
 use crate::vfs::types::ResourceInjectModes;
 
 // ============================================================================
-// 资源类型枚举
+// 资源类型（已收编为 ResourceKind 别名）
 // ============================================================================
 
-/// 资源类型枚举
+/// 资源类型（已收编为统一枚举 `ResourceKind` 的类型别名）
 ///
-/// 定义资源库支持的资源类型，序列化为小写字符串。
-/// 迁移 006 后数据库已移除 CHECK 约束，支持任意类型。
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum ResourceType {
-    /// 图片资源
-    Image,
-    /// 文件附件
-    File,
-    /// 笔记快照
-    Note,
-    /// 题目卡片快照
-    Card,
-    /// 检索结果
-    Retrieval,
-    /// 题目集识别结果
-    Exam,
-    /// 教材页面
-    Textbook,
-    /// 作文批改
-    Essay,
-    /// 翻译
-    Translation,
-    /// 文件夹（包含多个资源的引用）
-    Folder,
-}
-
-impl std::fmt::Display for ResourceType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ResourceType::Image => write!(f, "image"),
-            ResourceType::File => write!(f, "file"),
-            ResourceType::Note => write!(f, "note"),
-            ResourceType::Card => write!(f, "card"),
-            ResourceType::Retrieval => write!(f, "retrieval"),
-            ResourceType::Exam => write!(f, "exam"),
-            ResourceType::Textbook => write!(f, "textbook"),
-            ResourceType::Essay => write!(f, "essay"),
-            ResourceType::Translation => write!(f, "translation"),
-            ResourceType::Folder => write!(f, "folder"),
-        }
-    }
-}
-
-impl ResourceType {
-    /// 从字符串解析资源类型
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s.to_lowercase().as_str() {
-            "image" => Some(ResourceType::Image),
-            "file" => Some(ResourceType::File),
-            "note" => Some(ResourceType::Note),
-            "card" => Some(ResourceType::Card),
-            "retrieval" => Some(ResourceType::Retrieval),
-            "exam" => Some(ResourceType::Exam),
-            "textbook" => Some(ResourceType::Textbook),
-            "essay" => Some(ResourceType::Essay),
-            "translation" => Some(ResourceType::Translation),
-            "folder" => Some(ResourceType::Folder),
-            _ => None,
-        }
-    }
-}
+/// 「三个资源枚举统一」第四步：chat_v2 原 `ResourceType`（11 变体）是尸体代码，
+/// 生产代码中变体只在自身单元测试内构造（resource_repo / resource_handlers /
+/// adapters 已于 2026-05-30 删除，功能迁移至 VFS），故删除原枚举定义与自定义
+/// from_str / Display，收编为 `vfs::ResourceKind`（唯一事实源，11 变体）。
+///
+/// # 序列化契约 ⚠️
+/// 别名即 `ResourceKind`，序列化输出 12 个小写字符串（持久化契约，禁止修改）：
+/// `note` / `textbook` / `exam` / `translation` / `essay` / `image` / `file` /
+/// `retrieval` / `mindmap` / `card` / `folder`。
+/// 与原 11 变体序列化值完全一致，`MindMap`（`mindmap`）为统一后新增变体。
+///
+/// # 解析语义
+/// `from_str` 走 `ResourceKind` 的宽容超集（复数 / 中文 / `img` / 附件别名），
+/// 覆盖原自定义 from_str 的全部 11 个单数 lowercase 值。
+pub type ResourceType = crate::vfs::ResourceKind;
 
 // ============================================================================
 // 资源元数据
@@ -452,7 +405,7 @@ mod tests {
 
     #[test]
     fn test_resource_type_serialization() {
-        // 验证 ResourceType 序列化为小写字符串
+        // 验证 ResourceType（= ResourceKind 别名）序列化为小写字符串，共 11 个变体
         assert_eq!(
             serde_json::to_string(&ResourceType::Image).unwrap(),
             "\"image\""
@@ -493,11 +446,16 @@ mod tests {
             serde_json::to_string(&ResourceType::Folder).unwrap(),
             "\"folder\""
         );
+        // ★ 统一后新增变体：MindMap
+        assert_eq!(
+            serde_json::to_string(&ResourceType::MindMap).unwrap(),
+            "\"mindmap\""
+        );
     }
 
     #[test]
     fn test_resource_type_deserialization() {
-        // 验证从小写字符串反序列化
+        // 验证从小写字符串反序列化（走 ResourceKind 的 serde 契约）
         assert_eq!(
             serde_json::from_str::<ResourceType>("\"image\"").unwrap(),
             ResourceType::Image
@@ -506,6 +464,30 @@ mod tests {
             serde_json::from_str::<ResourceType>("\"note\"").unwrap(),
             ResourceType::Note
         );
+        assert_eq!(
+            serde_json::from_str::<ResourceType>("\"mindmap\"").unwrap(),
+            ResourceType::MindMap
+        );
+    }
+
+    #[test]
+    fn test_resource_type_from_str_aliases() {
+        // 验证 from_str 走 ResourceKind 的宽容超集（复数 / 中文 / img / 附件别名）
+        assert_eq!(ResourceType::from_str("notes"), Some(ResourceType::Note));
+        assert_eq!(ResourceType::from_str("笔记"), Some(ResourceType::Note));
+        assert_eq!(ResourceType::from_str("教材"), Some(ResourceType::Textbook));
+        assert_eq!(ResourceType::from_str("题目集"), Some(ResourceType::Exam));
+        assert_eq!(ResourceType::from_str("作文批改"), Some(ResourceType::Essay));
+        assert_eq!(ResourceType::from_str("img"), Some(ResourceType::Image));
+        assert_eq!(ResourceType::from_str("附件"), Some(ResourceType::Image));
+        assert_eq!(ResourceType::from_str("知识导图"), Some(ResourceType::MindMap));
+        assert_eq!(ResourceType::from_str("文件夹"), Some(ResourceType::Folder));
+        // 大小写不敏感 + 标准值
+        assert_eq!(ResourceType::from_str("NOTE"), Some(ResourceType::Note));
+        assert_eq!(ResourceType::from_str("card"), Some(ResourceType::Card));
+        // 未知值
+        assert_eq!(ResourceType::from_str("unknown"), None);
+        assert_eq!(ResourceType::from_str(""), None);
     }
 
     #[test]

@@ -428,10 +428,29 @@ export function createMessageActions(
             });
           }
 
+          // 🔧 修复：编辑前清理旧消息的 running 块，防止残留加载动画
+          const oldMessageForCleanup = currentState.messageMap.get(messageId);
+          if (oldMessageForCleanup) {
+            set((s) => {
+              const newBlocks = new Map(s.blocks);
+              for (const blockId of oldMessageForCleanup.blockIds) {
+                const block = newBlocks.get(blockId);
+                if (block && block.status === 'running') {
+                  newBlocks.set(blockId, {
+                    ...block,
+                    status: 'error',
+                    error: 'aborted_by_edit',
+                    endedAt: Date.now(),
+                  });
+                }
+              }
+              return { blocks: newBlocks };
+            });
+          }
+
           // 设置状态为流式中
           set({ sessionStatus: 'streaming' });
 
-          // 🔧 调试日志：记录流式开始
           logChatV2('message', 'store', 'editAndResend_streaming_started', {
             messageId,
             newContentLength: newContent.length,
@@ -1064,7 +1083,7 @@ export function createMessageActions(
             });
 
             return {
-              sessionStatus: 'idle',
+              sessionStatus: 'idle', // 立即恢复 idle，防止 aborting 状态导致用户无法发送新消息
               currentStreamingMessageId: null,
               activeBlockIds: new Set(),
               blocks: newBlocks,

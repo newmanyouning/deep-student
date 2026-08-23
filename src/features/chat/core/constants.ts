@@ -11,8 +11,8 @@
 
 // ==================== 流式处理配置 ====================
 
-/** Chunk 缓冲窗口时间（毫秒），约 60fps */
-export const CHUNK_BUFFER_WINDOW_MS = 16;
+/** Chunk 缓冲窗口时间（毫秒），约 240fps 等效 — 几乎直通以减少流式延迟 */
+export const CHUNK_BUFFER_WINDOW_MS = 4;
 
 /** Chunk 最大缓冲大小（字符数），超过则立即刷新 */
 export const CHUNK_MAX_BUFFER_SIZE = 4096;

@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::database::Database;
 use crate::llm_manager::LLMManager;
@@ -33,6 +33,7 @@ use crate::vfs::repos::{
     VfsTextbookRepo, VfsTranslationRepo, INDEX_STATE_DISABLED, INDEX_STATE_PENDING,
     MODALITY_TEXT,
 };
+use crate::vfs::resource_kind::ResourceKind;
 use crate::vfs::types::*;
 
 use super::resource_handlers::{ListInput, SearchAllInput};
@@ -289,7 +290,7 @@ pub async fn vfs_search_all(
             results.extend(notes.into_iter().map(|n| VfsListItem {
                 id: n.id,
                 resource_id: n.resource_id,
-                resource_type: VfsResourceType::Note,
+                resource_type: ResourceKind::Note,
                 title: n.title,
                 preview_type: PreviewType::Markdown,
                 created_at: parse_timestamp(&n.created_at),
@@ -305,7 +306,7 @@ pub async fn vfs_search_all(
             results.extend(exams.into_iter().map(|e| VfsListItem {
                 id: e.id,
                 resource_id: e.resource_id.unwrap_or_default(),
-                resource_type: VfsResourceType::Exam,
+                resource_type: ResourceKind::Exam,
                 title: e.exam_name.unwrap_or_else(|| "未命名题目集".to_string()),
                 preview_type: PreviewType::Card,
                 created_at: parse_timestamp(&e.created_at),
@@ -321,7 +322,7 @@ pub async fn vfs_search_all(
             results.extend(translations.into_iter().map(|t| VfsListItem {
                 id: t.id,
                 resource_id: t.resource_id,
-                resource_type: VfsResourceType::Translation,
+                resource_type: ResourceKind::Translation,
                 title: format!("翻译 ({}→{})", t.src_lang, t.tgt_lang),
                 preview_type: PreviewType::Card,
                 created_at: parse_timestamp(&t.created_at),
@@ -337,7 +338,7 @@ pub async fn vfs_search_all(
             results.extend(essays.into_iter().map(|e| VfsListItem {
                 id: e.id,
                 resource_id: e.resource_id,
-                resource_type: VfsResourceType::Essay,
+                resource_type: ResourceKind::Essay,
                 title: e.title.unwrap_or_else(|| "未命名作文".to_string()),
                 preview_type: PreviewType::Markdown,
                 created_at: parse_timestamp(&e.created_at),
@@ -410,6 +411,9 @@ pub async fn vfs_reindex_resource(
     lance_store: State<'_, Arc<VfsLanceStore>>,
 ) -> VfsResult<usize> {
     log::info!("[VFS::handlers] vfs_reindex_resource: id={}", resource_id);
+
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
 
     if !resource_id.starts_with("res_") {
         return Err(VfsError::Other(format!("Invalid resource ID format: {}", resource_id)));
@@ -537,9 +541,12 @@ pub async fn vfs_get_index_status(
 /// - 如果当前不是 disabled，则设置为 disabled
 #[tauri::command]
 pub async fn vfs_toggle_index_disabled(
+    app_handle: AppHandle,
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_toggle_index_disabled: id={}",
         resource_id
@@ -625,6 +632,7 @@ pub async fn vfs_get_pending_resources(
 /// 如果该维度是当前的默认嵌入维度，会同步更新 settings 中的模型配置ID
 #[tauri::command]
 pub async fn vfs_assign_dimension_model(
+    app_handle: AppHandle,
     dimension: i32,
     modality: String,
     model_config_id: String,
@@ -632,6 +640,8 @@ pub async fn vfs_assign_dimension_model(
     database: State<'_, Arc<Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<bool> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_assign_dimension_model: dim={}, modality={}, model={}",
         dimension,
@@ -688,12 +698,15 @@ pub async fn vfs_assign_dimension_model(
 
 #[tauri::command]
 pub async fn vfs_create_dimension(
+    app_handle: AppHandle,
     dimension: i32,
     modality: String,
     model_config_id: Option<String>,
     model_name: Option<String>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<embedding_dim_repo::VfsEmbeddingDim> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_create_dimension: dim={}, modality={}, model={:?}",
         dimension,
@@ -721,12 +734,15 @@ pub struct DeleteDimensionResult {
 
 #[tauri::command]
 pub async fn vfs_delete_dimension(
+    app_handle: AppHandle,
     dimension: i32,
     modality: String,
     database: State<'_, Arc<Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
 ) -> VfsResult<DeleteDimensionResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_delete_dimension: dim={}, modality={}",
         dimension,
@@ -831,11 +847,14 @@ pub async fn vfs_get_dimension_range() -> VfsResult<(i32, i32)> {
 /// 同时保存维度值和绑定的模型配置ID，供 LLMManager 直接读取
 #[tauri::command]
 pub async fn vfs_set_default_embedding_dimension(
+    app_handle: AppHandle,
     dimension: i32,
     modality: String,
     database: State<'_, Arc<Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<bool> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_set_default_embedding_dimension: dim={}, modality={}",
         dimension,
@@ -951,9 +970,12 @@ pub async fn vfs_get_default_embedding_dimension(
 /// 清除默认嵌入维度设置
 #[tauri::command]
 pub async fn vfs_clear_default_embedding_dimension(
+    app_handle: AppHandle,
     modality: String,
     database: State<'_, Arc<Database>>,
 ) -> VfsResult<bool> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_clear_default_embedding_dimension: modality={}",
         modality
@@ -1008,6 +1030,9 @@ pub async fn vfs_batch_index_pending(
         "[VFS::handlers] vfs_batch_index_pending: batch_size={}",
         batch_size
     );
+
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
 
     let indexing_service = VfsIndexingService::new(Arc::clone(&vfs_db));
     log::info!("[VFS::handlers] vfs_batch_index_pending: 获取索引配置...");
@@ -1183,10 +1208,13 @@ pub async fn vfs_batch_index_pending(
 
 #[tauri::command]
 pub async fn vfs_set_indexing_config(
+    app_handle: AppHandle,
     key: String,
     value: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!("[VFS::handlers] vfs_set_indexing_config: {}={}", key, value);
     Ok(VfsIndexingConfigRepo::set_config(&vfs_db, &key, &value)?)
 }

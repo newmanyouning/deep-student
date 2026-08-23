@@ -11,7 +11,7 @@ use crate::llm_manager::{
 #[cfg(feature = "mcp")]
 use crate::mcp::McpConfig;
 use crate::models::{
-    AnkiDocumentGenerationRequest, AnkiDocumentGenerationResponse, AnkiGenerationOptions, AppError,
+    AppError,
     AppErrorType, CreateTemplateRequest, CustomAnkiTemplate, ExamSheetSessionDetail,
     ExamSheetSessionDetailRequest, ExamSheetSessionDetailResponse, ExamSheetSessionListRequest,
     ExamSheetSessionListResponse, ModelAssignments, PdfOcrRequest, PdfOcrResult,
@@ -40,6 +40,24 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 type Result<T> = std::result::Result<T, AppError>;
+
+/// 同步写门检查（commands.rs 遗留命令适配，[写门-接线] P2 收尾 2026-08-10）
+///
+/// 与 vfs/chat_v2/dstu/qbank 的 write_gate 同语义：云同步 apply 期间
+/// `AppState.sync_write_guard` 持有正在同步的 db，业务写命令命中时返回
+/// `AppError::conflict`，消息带 `SYNC_IN_PROGRESS` 前缀便于前端识别并提示重试。
+/// 未启用 data_governance feature 时恒放行。
+#[cfg(feature = "data_governance")]
+fn check_commands_write_gate(state: &AppState, db: &'static str) -> Result<()> {
+    crate::data_governance::sync::permit::check_write_gate(&state.sync_write_guard, db)
+        .map_err(|e| AppError::conflict(format!("SYNC_IN_PROGRESS: {}", e)))
+}
+
+/// 未启用 data_governance feature 时：无同步写门，恒放行。
+#[cfg(not(feature = "data_governance"))]
+fn check_commands_write_gate(_state: &AppState, _db: &'static str) -> Result<()> {
+    Ok(())
+}
 
 // Re-export from split modules
 pub use crate::cmd::anki_cards::*;
@@ -327,6 +345,8 @@ pub async fn pin_images(
     images: Vec<String>,
     state: State<'_, AppState>,
 ) -> Result<bool> {
+    // [写门-接线] pin 状态持久化到 mistakes 库 settings 表
+    check_commands_write_gate(state.inner(), "mistakes")?;
     let pinned = if images.is_empty() {
         None
     } else {
@@ -351,6 +371,8 @@ pub async fn pin_images(
 /// B4: 取消会话 Pin 图片
 #[tauri::command]
 pub async fn unpin_images(temp_id: String, state: State<'_, AppState>) -> Result<bool> {
+    // [写门-接线] pin 状态持久化到 mistakes 库 settings 表
+    check_commands_write_gate(state.inner(), "mistakes")?;
     modify_temp_session(state.inner(), &temp_id, |session| {
         session.pinned_images = None;
     })
@@ -581,6 +603,43 @@ pub struct AppState {
         Arc<tokio::sync::Mutex<HashMap<String, std::collections::HashSet<usize>>>>,
     pub app_handle: tauri::AppHandle,
     pub active_database: RwLock<ActiveDatabaseKind>,
+    /// 云同步写门 (同步期间占用): `Some(db_name)` = 该 db 正在同步, 业务写命令应被拦截。
+    ///
+    /// 由 `data_governance::sync::permit::WritePermit` 通过 acquire/release 维护,
+    /// Drop 自动回收 (RAII)。**只挡业务写, 不挡同步自身** — 同步内部写不经过命令层,
+    /// 不受此检查影响。业务写命令入口调用 `check_write_gate(&state.sync_write_guard, db)?`。
+    pub sync_write_guard: Arc<tokio::sync::Mutex<Option<String>>>,
+}
+
+impl AppState {
+    /// 当前同步写门持有者 (`None` = 无同步在进行)。
+    /// 业务写命令入口可据此判断是否返回"数据正在同步, 请稍后重试"。
+    /// 锁被瞬时占用时保守返回 `None` (调用方应重试)。
+    pub fn sync_write_guard(&self) -> Option<String> {
+        self.sync_write_guard.try_lock().ok().and_then(|g| g.clone())
+    }
+
+    /// 尝试获取同步写门 (仅当槽位空闲且锁可获取时成功; 失败返回 false, 调用方可重试)。
+    /// 由同步命令链在应用阶段调用; 业务写命令**不**调用此方法。
+    pub fn acquire_sync_write_guard(&self, db: &str) -> bool {
+        let Ok(mut slot) = self.sync_write_guard.try_lock() else {
+            return false; // 锁被瞬时占用 → 视为获取失败
+        };
+        if slot.is_some() {
+            return false; // 已有其他 db 正在同步 (写门同一时刻只能被一个 db 持有)
+        }
+        *slot = Some(db.to_string());
+        true
+    }
+
+    /// 释放同步写门 (仅在槽位仍指向 db 时清空, 防嵌套错乱)。
+    pub fn release_sync_write_guard(&self, db: &str) {
+        if let Ok(mut slot) = self.sync_write_guard.try_lock() {
+            if slot.as_deref() == Some(db) {
+                *slot = None;
+            }
+        }
+    }
 }
 
 /// 获取模板配置（从数据库获取，支持内置和自定义模板）
@@ -941,6 +1000,8 @@ pub async fn import_question_bank(
 ) -> Result<ExamSheetSessionDetail> {
     use crate::question_import_service::{ImportRequest, QuestionImportService};
 
+    // [写门-接线] 题目导入写 vfs 库
+    check_commands_write_gate(state.inner(), "vfs")?;
     let vfs_db = state
         .vfs_db
         .as_ref()
@@ -981,6 +1042,8 @@ pub async fn import_question_bank_stream(
         ImportRequest, QuestionImportProgress, QuestionImportService,
     };
 
+    // [写门-接线] 题目导入写 vfs 库
+    check_commands_write_gate(state.inner(), "vfs")?;
     let vfs_db = state
         .vfs_db
         .as_ref()
@@ -1048,6 +1111,8 @@ pub async fn resume_question_import(
 ) -> Result<ExamSheetSessionDetail> {
     use crate::question_import_service::{QuestionImportProgress, QuestionImportService};
 
+    // [写门-接线] 断点续导写 vfs 库
+    check_commands_write_gate(state.inner(), "vfs")?;
     let vfs_db = state
         .vfs_db
         .as_ref()
@@ -1161,6 +1226,8 @@ pub async fn import_questions_csv(
         CsvDuplicateStrategy, CsvImportProgress, CsvImportRequest, CsvImportService,
     };
 
+    // [写门-接线] CSV 导入写 vfs 库
+    check_commands_write_gate(state.inner(), "vfs")?;
     let vfs_db = state
         .vfs_db
         .as_ref()
@@ -1243,6 +1310,9 @@ pub async fn import_questions_csv(
 /// 导出题目集为 CSV 文件
 ///
 /// 支持选择导出字段、筛选条件、编码格式
+///
+/// [写门-接线] 2026-08-10 判定：本命令对 vfs 库**只读**（导出到文件系统），
+/// 与 P3a-c 批次的"纯读不接门"口径一致，不接写门。
 #[tauri::command]
 pub async fn export_questions_csv(
     request: CsvExportCommandRequest,
@@ -2059,144 +2129,6 @@ pub fn get_default_model_adapter_options() -> Vec<serde_json::Value> {
             })
         })
         .collect()
-}
-
-/// 生成 Anki 卡片
-#[tauri::command]
-pub async fn generate_anki_cards_from_document(
-    request: AnkiDocumentGenerationRequest,
-    state: State<'_, AppState>,
-) -> Result<AnkiDocumentGenerationResponse> {
-    info!(
-        "开始生成 Anki 卡片: 文档长度={}",
-        request.document_content.len()
-    );
-
-    // 调用 LLM Manager 的 Anki 制卡功能
-    match state
-        .llm_manager
-        .generate_anki_cards_from_document(
-            &request.document_content,
-            "通用",
-            request.options.as_ref(),
-        )
-        .await
-    {
-        Ok(cards) => {
-            info!("Anki 卡片生成成功: {} 张卡片", cards.len());
-            Ok(AnkiDocumentGenerationResponse {
-                success: true,
-                cards,
-                error_message: None,
-            })
-        }
-        Err(e) => {
-            error!("ANKI卡片生成失败: {}", e);
-            Ok(AnkiDocumentGenerationResponse {
-                success: false,
-                cards: vec![],
-                error_message: Some(e.to_string()),
-            })
-        }
-    }
-}
-/// 从DOCX/PDF文档文件生成ANKI卡片
-#[tauri::command]
-pub async fn generate_anki_cards_from_document_file(
-    file_path: String,
-    options: Option<AnkiGenerationOptions>,
-    state: State<'_, AppState>,
-) -> Result<AnkiDocumentGenerationResponse> {
-    info!("开始从文档文件生成ANKI卡片: 文件={}", file_path);
-
-    // 1. 首先解析文档内容
-    let document_content = match parse_document_from_path(file_path.clone()).await {
-        Ok(content) => content,
-        Err(e) => {
-            error!("文档解析失败: {}", e);
-            return Ok(AnkiDocumentGenerationResponse {
-                success: false,
-                cards: vec![],
-                error_message: Some(format!("文档解析失败: {}", e)),
-            });
-        }
-    };
-
-    debug!("文档解析成功，提取文本长度: {}", document_content.len());
-
-    // 2. 调用ANKI卡片生成
-    match state
-        .llm_manager
-        .generate_anki_cards_from_document(&document_content, "通用学习材料", options.as_ref())
-        .await
-    {
-        Ok(cards) => {
-            info!("ANKI卡片生成成功: {} 张卡片", cards.len());
-            Ok(AnkiDocumentGenerationResponse {
-                success: true,
-                cards,
-                error_message: None,
-            })
-        }
-        Err(e) => {
-            error!("ANKI卡片生成失败: {}", e);
-            Ok(AnkiDocumentGenerationResponse {
-                success: false,
-                cards: vec![],
-                error_message: Some(e.to_string()),
-            })
-        }
-    }
-}
-/// 从Base64编码的DOCX/PDF文档生成ANKI卡片
-#[tauri::command]
-pub async fn generate_anki_cards_from_document_base64(
-    file_name: String,
-    base64_content: String,
-    options: Option<AnkiGenerationOptions>,
-    state: State<'_, AppState>,
-) -> Result<AnkiDocumentGenerationResponse> {
-    info!("开始从Base64文档生成ANKI卡片: 文件={}", file_name);
-
-    // 1. 首先解析文档内容
-    let document_content = match parse_document_from_base64(file_name.clone(), base64_content).await
-    {
-        Ok(content) => content,
-        Err(e) => {
-            error!("文档解析失败: {}", e);
-            return Ok(AnkiDocumentGenerationResponse {
-                success: false,
-                cards: vec![],
-                error_message: Some(format!("文档解析失败: {}", e)),
-            });
-        }
-    };
-
-    debug!("文档解析成功，提取文本长度: {}", document_content.len());
-
-    // 2. 调用ANKI卡片生成
-    match state
-        .llm_manager
-        .generate_anki_cards_from_document(&document_content, "通用学习材料", options.as_ref())
-        .await
-    {
-        Ok(cards) => {
-            info!("ANKI卡片生成成功: {} 张卡片", cards.len());
-            Ok(AnkiDocumentGenerationResponse {
-                success: true,
-                cards,
-                error_message: None,
-            })
-        }
-        Err(e) => {
-            error!("ANKI卡片生成失败: {}", e);
-            Ok(AnkiDocumentGenerationResponse {
-                success: false,
-                cards: vec![],
-                error_message: Some(e.to_string()),
-            })
-        }
-    }
 }
 
 /// CardForge 2.0 - LLM 定界命令
@@ -4314,7 +4246,11 @@ pub async fn research_export_all_reports_zip(
                 .to_rfc3339()
                 .replace(":", "-")
                 .replace("T", "-");
-            let subject_val = "通用";
+            // 报告主题：历史行无 subject 时回退为 "通用"
+            let subject_val = full
+                .subject
+                .clone()
+                .unwrap_or_else(|| "通用".to_string());
             let base = format!(
                 "研究报告-{}-{}",
                 subject_val,
@@ -4336,7 +4272,7 @@ pub async fn research_export_all_reports_zip(
                     .map_err(|e| AppError::file_system(e.to_string()))?;
             } else {
                 let obj = serde_json::json!({
-                    "id": full.id, "subject": "通用", "created_at": full.created_at.to_rfc3339(),
+                    "id": full.id, "subject": subject_val, "created_at": full.created_at.to_rfc3339(),
                     "segments": full.segments, "context_window": full.context_window, "report": full.report
                 });
                 let filename = format!("{}.json", base);
@@ -4905,6 +4841,8 @@ pub async fn qbank_search_questions(
 /// 用于数据修复，重建全文搜索索引
 #[tauri::command]
 pub async fn qbank_rebuild_fts_index(state: State<'_, AppState>) -> Result<u64> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -4948,6 +4886,8 @@ pub async fn qbank_create_question(
     params: CreateQuestionParams,
     state: State<'_, AppState>,
 ) -> Result<Question> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -4962,6 +4902,8 @@ pub async fn qbank_batch_create_questions(
     params_list: Vec<CreateQuestionParams>,
     state: State<'_, AppState>,
 ) -> Result<Vec<Question>> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -4984,6 +4926,8 @@ pub async fn qbank_update_question(
     request: UpdateQuestionRequest,
     state: State<'_, AppState>,
 ) -> Result<Question> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5008,6 +4952,8 @@ pub async fn qbank_batch_update_questions(
     request: BatchUpdateQuestionsRequest,
     state: State<'_, AppState>,
 ) -> Result<BatchResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5019,6 +4965,8 @@ pub async fn qbank_batch_update_questions(
 /// 删除题目
 #[tauri::command]
 pub async fn qbank_delete_question(question_id: String, state: State<'_, AppState>) -> Result<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5033,6 +4981,8 @@ pub async fn qbank_batch_delete_questions(
     question_ids: Vec<String>,
     state: State<'_, AppState>,
 ) -> Result<BatchResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5057,6 +5007,8 @@ pub async fn qbank_submit_answer(
     request: SubmitAnswerRequest,
     state: State<'_, AppState>,
 ) -> Result<SubmitAnswerResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5083,6 +5035,8 @@ pub async fn qbank_toggle_favorite(
     question_id: String,
     state: State<'_, AppState>,
 ) -> Result<Question> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5111,6 +5065,8 @@ pub async fn qbank_refresh_stats(
     exam_id: String,
     state: State<'_, AppState>,
 ) -> Result<QuestionBankStats> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5155,6 +5111,8 @@ pub async fn qbank_reset_progress(
     exam_id: String,
     state: State<'_, AppState>,
 ) -> Result<QuestionBankStats> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5169,6 +5127,8 @@ pub async fn qbank_reset_questions_progress(
     question_ids: Vec<String>,
     state: State<'_, AppState>,
 ) -> Result<BatchResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5296,6 +5256,8 @@ pub async fn qbank_start_timed_practice(
     request: StartTimedPracticeRequest,
     state: State<'_, AppState>,
 ) -> Result<crate::question_bank_service::TimedPracticeSession> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5321,6 +5283,8 @@ pub async fn qbank_generate_mock_exam(
     request: GenerateMockExamRequest,
     state: State<'_, AppState>,
 ) -> Result<crate::question_bank_service::MockExamSession> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5341,6 +5305,8 @@ pub async fn qbank_submit_mock_exam(
     request: SubmitMockExamRequest,
     state: State<'_, AppState>,
 ) -> Result<crate::question_bank_service::MockExamScoreCard> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     let service = state
         .question_bank_service
         .as_ref()
@@ -5794,6 +5760,8 @@ pub async fn qbank_crop_source_image(
     request: CropSourceImageRequest,
     state: State<'_, AppState>,
 ) -> Result<crate::vfs::repos::QuestionImage> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     use crate::vfs::repos::{
         QuestionImage, UpdateQuestionParams, VfsBlobRepo, VfsFileRepo, VfsQuestionRepo,
     };
@@ -5901,6 +5869,8 @@ pub async fn qbank_remove_question_image(
     imageId: String,
     state: State<'_, AppState>,
 ) -> Result<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     use crate::vfs::repos::{UpdateQuestionParams, VfsQuestionRepo};
 
     let vfs_db = state

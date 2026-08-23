@@ -14,8 +14,9 @@ use tracing::{debug, info, warn};
 
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
+use crate::vfs::resource_kind::ResourceKind;
 use crate::vfs::types::{
-    StorageMode, VfsCreateResourceResult, VfsResource, VfsResourceMetadata, VfsResourceType,
+    StorageMode, VfsCreateResourceResult, VfsResource, VfsResourceMetadata,
 };
 
 /// Log row-parse errors instead of silently discarding them.
@@ -53,7 +54,7 @@ impl VfsResourceRepo {
     ///
     pub fn create_or_reuse(
         db: &VfsDatabase,
-        resource_type: VfsResourceType,
+        resource_type: ResourceKind,
         data: &str,
         source_id: Option<&str>,
         source_table: Option<&str>,
@@ -94,7 +95,7 @@ impl VfsResourceRepo {
     ///
     pub fn create_or_reuse_with_conn(
         conn: &Connection,
-        resource_type: VfsResourceType,
+        resource_type: ResourceKind,
         data: &str,
         source_id: Option<&str>,
         source_table: Option<&str>,
@@ -117,7 +118,7 @@ impl VfsResourceRepo {
     /// 用于需要自定义 hash 策略的资源（如笔记使用 note_id 作为盐值）。
     pub fn create_or_reuse_with_conn_and_hash(
         conn: &Connection,
-        resource_type: VfsResourceType,
+        resource_type: ResourceKind,
         data: &str,
         hash: &str,
         source_id: Option<&str>,
@@ -212,7 +213,7 @@ impl VfsResourceRepo {
     /// - hash 使用内容哈希（如附件 content_hash）
     pub fn create_or_reuse_external(
         db: &VfsDatabase,
-        resource_type: VfsResourceType,
+        resource_type: ResourceKind,
         content_hash: &str,
         external_hash: &str,
         source_id: Option<&str>,
@@ -233,7 +234,7 @@ impl VfsResourceRepo {
 
     pub fn create_or_reuse_external_with_conn(
         conn: &Connection,
-        resource_type: VfsResourceType,
+        resource_type: ResourceKind,
         content_hash: &str,
         external_hash: &str,
         source_id: Option<&str>,
@@ -498,7 +499,7 @@ impl VfsResourceRepo {
     ///
     pub fn list_by_type(
         db: &VfsDatabase,
-        resource_type: Option<VfsResourceType>,
+        resource_type: Option<ResourceKind>,
         limit: u32,
         offset: u32,
     ) -> VfsResult<Vec<VfsResource>> {
@@ -509,7 +510,7 @@ impl VfsResourceRepo {
     /// 按类型列出资源（使用现有连接）
     pub fn list_by_type_with_conn(
         conn: &Connection,
-        resource_type: Option<VfsResourceType>,
+        resource_type: Option<ResourceKind>,
         limit: u32,
         offset: u32,
     ) -> VfsResult<Vec<VfsResource>> {
@@ -553,7 +554,7 @@ impl VfsResourceRepo {
     pub fn search(
         db: &VfsDatabase,
         query: &str,
-        types: Option<Vec<VfsResourceType>>,
+        types: Option<Vec<ResourceKind>>,
         limit: u32,
         offset: u32,
     ) -> VfsResult<Vec<VfsResource>> {
@@ -565,7 +566,7 @@ impl VfsResourceRepo {
     pub fn search_with_conn(
         conn: &Connection,
         query: &str,
-        types: Option<Vec<VfsResourceType>>,
+        types: Option<Vec<ResourceKind>>,
         limit: u32,
         offset: u32,
     ) -> VfsResult<Vec<VfsResource>> {
@@ -717,7 +718,7 @@ impl VfsResourceRepo {
                 .unwrap_or(0)
         });
 
-        let resource_type = VfsResourceType::from_str(&type_str).unwrap_or(VfsResourceType::File);
+        let resource_type = ResourceKind::from_str(&type_str).unwrap_or(ResourceKind::File);
 
         let storage_mode = StorageMode::from_str(&storage_mode_str).unwrap_or(StorageMode::Inline);
 
@@ -841,7 +842,7 @@ mod tests {
         // 创建第一个资源
         let result1 = VfsResourceRepo::create_or_reuse(
             &db,
-            VfsResourceType::Note,
+            ResourceKind::Note,
             "test content",
             Some("note_123"),
             Some("notes"),
@@ -854,7 +855,7 @@ mod tests {
         // 使用相同内容创建第二个资源（应该复用）
         let result2 = VfsResourceRepo::create_or_reuse(
             &db,
-            VfsResourceType::Note,
+            ResourceKind::Note,
             "test content",
             Some("note_456"),
             Some("notes"),
@@ -877,7 +878,7 @@ mod tests {
         // 创建资源
         let result = VfsResourceRepo::create_or_reuse(
             &db,
-            VfsResourceType::Note,
+            ResourceKind::Note,
             "test content",
             Some("note_123"),
             Some("notes"),
@@ -902,7 +903,7 @@ mod tests {
         // 创建资源
         let result = VfsResourceRepo::create_or_reuse(
             &db,
-            VfsResourceType::Note,
+            ResourceKind::Note,
             "test content",
             None,
             None,
@@ -949,7 +950,7 @@ mod tests {
         // 创建不同类型的资源
         VfsResourceRepo::create_or_reuse(
             &db,
-            VfsResourceType::Note,
+            ResourceKind::Note,
             "math content",
             None,
             None,
@@ -959,7 +960,7 @@ mod tests {
 
         VfsResourceRepo::create_or_reuse(
             &db,
-            VfsResourceType::Note,
+            ResourceKind::Note,
             "physics content",
             None,
             None,
@@ -969,7 +970,7 @@ mod tests {
 
         VfsResourceRepo::create_or_reuse(
             &db,
-            VfsResourceType::Translation,
+            ResourceKind::Translation,
             "translation content",
             None,
             None,
@@ -983,7 +984,7 @@ mod tests {
         assert_eq!(all_resources.len(), 3);
 
         // 按类型过滤
-        let notes = VfsResourceRepo::list_by_type(&db, Some(VfsResourceType::Note), 10, 0)
+        let notes = VfsResourceRepo::list_by_type(&db, Some(ResourceKind::Note), 10, 0)
             .expect("List should succeed");
         assert_eq!(notes.len(), 2);
     }
@@ -1022,7 +1023,7 @@ mod tests {
                 thread::spawn(move || {
                     VfsResourceRepo::create_or_reuse(
                         &db_clone,
-                        VfsResourceType::Note,
+                        ResourceKind::Note,
                         &content,
                         Some(&format!("note_{}", i)),
                         Some("notes"),

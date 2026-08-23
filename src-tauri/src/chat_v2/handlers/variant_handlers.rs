@@ -15,7 +15,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::sync::Arc;
-use tauri::{Emitter, State, Window};
+use tauri::{Emitter, Manager, State, Window};
 use tracing::{debug, info, warn};
 
 use crate::chat_v2::database::ChatV2Database;
@@ -154,11 +154,14 @@ fn resolve_retry_options(
 /// - `variant_id`: 目标变体 ID
 #[tauri::command]
 pub async fn chat_v2_switch_variant(
+    app: tauri::AppHandle,
     db: State<'_, Arc<ChatV2Database>>,
     session_id: String,
     message_id: String,
     variant_id: String,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[ChatV2::VariantHandler] switch_variant: session_id={}, message_id={}, variant_id={}",
         session_id, message_id, variant_id
@@ -224,12 +227,15 @@ async fn switch_variant_impl(
 /// - `variant_id`: 要删除的变体 ID
 #[tauri::command]
 pub async fn chat_v2_delete_variant(
+    app: tauri::AppHandle,
     db: State<'_, Arc<ChatV2Database>>,
     window: Window,
     session_id: String,
     message_id: String,
     variant_id: String,
 ) -> Result<DeleteVariantResult, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[ChatV2::VariantHandler] delete_variant: session_id={}, message_id={}, variant_id={}",
         session_id, message_id, variant_id
@@ -401,6 +407,7 @@ async fn delete_variant_impl(
 /// - `model_override`: 可选的模型覆盖（用于切换模型重试）
 #[tauri::command]
 pub async fn chat_v2_retry_variant(
+    app: tauri::AppHandle,
     db: State<'_, Arc<ChatV2Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
@@ -412,6 +419,8 @@ pub async fn chat_v2_retry_variant(
     model_override: Option<String>,
     options: Option<SendOptions>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[ChatV2::VariantHandler] retry_variant: session_id={}, message_id={}, variant_id={}, model_override={:?}",
         session_id, message_id, variant_id, model_override
@@ -443,6 +452,7 @@ pub async fn chat_v2_retry_variant(
 /// - `variant_ids`: 要重试的变体 ID 列表
 #[tauri::command]
 pub async fn chat_v2_retry_variants(
+    app: tauri::AppHandle,
     db: State<'_, Arc<ChatV2Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
@@ -453,6 +463,8 @@ pub async fn chat_v2_retry_variants(
     variant_ids: Vec<String>,
     options: Option<SendOptions>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[ChatV2::VariantHandler] retry_variants: session_id={}, message_id={}, variant_count={}",
         session_id,
@@ -1046,12 +1058,15 @@ async fn retry_variants_impl(
 /// - `variant_id`: 要取消的变体 ID
 #[tauri::command]
 pub async fn chat_v2_cancel_variant(
+    app: tauri::AppHandle,
     db: State<'_, Arc<ChatV2Database>>,
     state: State<'_, Arc<ChatV2State>>,
     llm_manager: State<'_, Arc<LLMManager>>,
     session_id: String,
     variant_id: String,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[ChatV2::VariantHandler] cancel_variant: session_id={}, variant_id={}",
         session_id, variant_id

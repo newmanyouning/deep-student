@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/utils/cn';
 import { NotionButton } from '@/components/ui/NotionButton';
 import { Square, CircleNotch } from '@phosphor-icons/react';
+import { ExpandableText } from '../renderers/ExpandableText';
 import type { Variant } from '../../core/types/message';
 import type { Block } from '../../core/types/block';
 
@@ -47,17 +48,15 @@ function defaultGetModelDisplayName(modelId: string): string {
 }
 
 /**
- * 获取变体的预览内容
+ * 获取变体的完整内容
+ *
+ * 🔧 修复：不再做 200 字符硬截断。完整内容交给 ExpandableText，
+ * 由它根据实际高度决定折叠/展开，保证显示完整不截断。
  */
-function getVariantPreview(blocks: Block[], maxLength = 200): string {
+function getVariantFullContent(blocks: Block[]): string {
   // 只取 content 类型的块内容
   const contentBlocks = blocks.filter((b) => b.type === 'content');
-  const content = contentBlocks.map((b) => b.content || '').join('\n');
-  
-  if (content.length <= maxLength) {
-    return content;
-  }
-  return content.slice(0, maxLength) + '...';
+  return contentBlocks.map((b) => b.content || '').join('\n');
 }
 
 /**
@@ -97,7 +96,7 @@ const VariantCard: React.FC<VariantCardProps> = ({
   onStop,
 }) => {
   const { t } = useTranslation('chatV2');
-  const preview = useMemo(() => getVariantPreview(blocks), [blocks]);
+  const fullContent = useMemo(() => getVariantFullContent(blocks), [blocks]);
   const progress = useMemo(
     () => getVariantProgress(variant, blocks),
     [variant, blocks]
@@ -142,12 +141,14 @@ const VariantCard: React.FC<VariantCardProps> = ({
         </div>
       )}
 
-      {/* 预览内容 */}
-      <div className="px-3 py-2 min-h-[80px] max-h-[120px] overflow-hidden">
-        {preview ? (
-          <p className="text-sm text-foreground/80 whitespace-pre-wrap break-words line-clamp-4">
-            {preview}
-          </p>
+      {/* 预览内容：ExpandableText 根据实际高度判断，超阈值可展开看全部 */}
+      <div className="px-3 py-2 min-h-[80px]">
+        {fullContent ? (
+          <ExpandableText
+            content={fullContent}
+            maxHeight={120}
+            textClassName="text-sm text-foreground/80"
+          />
         ) : isStreaming ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <CircleNotch size={16} className="animate-spin" />

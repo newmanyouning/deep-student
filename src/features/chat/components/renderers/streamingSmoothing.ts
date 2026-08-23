@@ -46,7 +46,10 @@ export interface UseSmoothedStreamingContentOptions {
 
 // 行业最优解（2026）：默认 balanced。
 // 既保留流式即时感，也把碎 chunk 适度合并，配合块级渐显更像“内容长出来”。
-const DEFAULT_STREAMING_SMOOTHING_PRESET: StreamingSmoothingPreset = 'balanced';
+// 🔧 2026-06-13: 从 balanced 改为 realtime（900cps, 16ms commit）
+// 解决流式返回分段更新的问题：balanced(480cps, 32ms) 合并过度导致停顿感
+// realtime 保留逐词渐入动画但每 16ms 提交一次，肉眼无感知延迟
+const DEFAULT_STREAMING_SMOOTHING_PRESET: StreamingSmoothingPreset = 'realtime';
 
 /**
  * Preset 设计说明（rAF + 时间预算 + commit gate）

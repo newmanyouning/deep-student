@@ -40,16 +40,18 @@ export function createBlockActions(
         updateBlockContent: (blockId: string, chunk: string): void => {
           // ✅ P0-006: 使用 immer 优化，避免每次都复制整个 Map
           set(updateSingleBlock(blockId, (draft) => {
+            // 🛡️ 防止 race condition：流式 chunk 延迟到达时覆盖已完成块的终态
+            // 若块已标记为 'success' 或 'error'，丢弃此 chunk
+            if (draft.status === 'success' || draft.status === 'error') {
+              console.warn(`[BlockActions] Ignoring late chunk for completed block: ${blockId} (status=${draft.status})`);
+              return;
+            }
             // 🔧 记录第一个有效 chunk 到达时间（用于排序）
             if (!draft.firstChunkAt && chunk.length > 0) {
               draft.firstChunkAt = Date.now();
             }
             draft.content = (draft.content || '') + chunk;
-            // 🛡️ 防止 race condition：流式 chunk 延迟到达时覆盖已完成块的终态
-            // 若块已标记为 'success' 或 'error'，保留终态不回退为 'running'
-            if (draft.status !== 'success' && draft.status !== 'error') {
-              draft.status = 'running';
-            }
+            draft.status = 'running';
           }));
         },
 

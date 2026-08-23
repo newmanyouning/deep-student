@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::chat_v2::database::ChatV2Database;
 use crate::chat_v2::error::{ChatV2Error, ChatV2Result};
@@ -48,12 +48,15 @@ pub struct CopyBlockContentResponse {
 /// - `chat_v2_messages` 表中的消息记录
 #[tauri::command]
 pub async fn chat_v2_delete_message(
+    app: AppHandle,
     session_id: String,
     message_id: String,
     db: State<'_, Arc<ChatV2Database>>,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
 ) -> ChatV2Result<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_delete_message: session_id={}, message_id={}",
         session_id,
@@ -289,11 +292,14 @@ fn get_block_content_from_db(
 /// - `Err(String)`: 块不存在或更新失败
 #[tauri::command]
 pub async fn chat_v2_update_block_content(
+    app: AppHandle,
     block_id: String,
     content: String,
     db: State<'_, Arc<ChatV2Database>>,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
 ) -> ChatV2Result<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_update_block_content: block_id={}, content_len={}",
         block_id,
@@ -339,10 +345,13 @@ pub async fn chat_v2_update_block_content(
 /// 防止后续 pipeline 重保存消息时丢失用户编辑。
 #[tauri::command]
 pub async fn chat_v2_update_block_tool_output(
+    app: AppHandle,
     block_id: String,
     tool_output_json: String,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> ChatV2Result<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_update_block_tool_output: block_id={}, len={}",
         block_id,
@@ -475,6 +484,7 @@ fn update_block_content_in_db(
 /// - `Err(String)`: 保存失败
 #[tauri::command]
 pub async fn chat_v2_upsert_streaming_block(
+    app: AppHandle,
     block_id: String,
     message_id: String,
     session_id: Option<String>,
@@ -487,6 +497,8 @@ pub async fn chat_v2_upsert_streaming_block(
     tool_output_json: Option<String>,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> ChatV2Result<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_upsert_streaming_block: block_id={}, message_id={}, session_id={:?}, type={}, content_len={}, has_tool={}",
         block_id,
@@ -811,6 +823,8 @@ pub async fn chat_v2_anki_cards_result(
     db: State<'_, Arc<ChatV2Database>>,
     app: AppHandle,
 ) -> ChatV2Result<String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     use tauri::Emitter;
 
     log::info!(

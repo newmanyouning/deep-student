@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use serde::Serialize;
 use serde_json::{json, Value};
-use tauri::{Emitter, State, Window};
+use tauri::{Emitter, Manager, State, Window};
 
 use crate::chat_v2::database::ChatV2Database;
 use crate::chat_v2::error::ChatV2Error;
@@ -282,12 +282,15 @@ fn apply_replay_mode_overrides(mut options: SendOptions) -> SendOptions {
 /// - `chat_v2_session_{session_id}`: stream_complete/stream_error 事件
 #[tauri::command]
 pub async fn chat_v2_send_message(
+    app: tauri::AppHandle,
     request: SendMessageRequest,
     window: Window,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
     pipeline: State<'_, Arc<ChatV2Pipeline>>,
     llm_manager: State<'_, Arc<LLMManager>>,
 ) -> Result<String, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_send_message: session_id={}, content_len={}",
         request.session_id,
@@ -453,11 +456,14 @@ pub async fn chat_v2_send_message(
 /// - `Err(String)`: 没有活跃的流式生成
 #[tauri::command]
 pub async fn chat_v2_cancel_stream(
+    app: tauri::AppHandle,
     session_id: String,
     message_id: String,
     _window: Window,
     chat_v2_state: State<'_, Arc<ChatV2State>>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_cancel_stream: session_id={}, message_id={}",
         session_id,
@@ -499,6 +505,7 @@ pub async fn chat_v2_cancel_stream(
 /// - `Err(String)`: 错误信息
 #[tauri::command]
 pub async fn chat_v2_retry_message(
+    app: tauri::AppHandle,
     session_id: String,
     message_id: String,
     options: Option<SendOptions>,
@@ -511,6 +518,8 @@ pub async fn chat_v2_retry_message(
     // ★ 2026-01-26：用于判断模型是否支持多模态
     llm_manager: State<'_, Arc<LLMManager>>,
 ) -> Result<RetryMessageResult, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_retry_message: session_id={}, message_id={}",
         session_id,
@@ -845,6 +854,7 @@ pub async fn chat_v2_retry_message(
 /// - `Err(String)`: 错误信息
 #[tauri::command]
 pub async fn chat_v2_edit_and_resend(
+    app: tauri::AppHandle,
     session_id: String,
     message_id: String,
     new_content: String,
@@ -862,6 +872,8 @@ pub async fn chat_v2_edit_and_resend(
     // ★ 2026-01-26：用于判断模型是否支持多模态
     llm_manager: State<'_, Arc<LLMManager>>,
 ) -> Result<EditAndResendResult, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_edit_and_resend: session_id={}, message_id={}, new_content_len={}",
         session_id,
@@ -1549,6 +1561,7 @@ fn restore_context_refs_from_snapshot(
 /// - 必须有持久化的未完成 TODO 列表
 #[tauri::command]
 pub async fn chat_v2_continue_message(
+    app: tauri::AppHandle,
     session_id: String,
     message_id: String,
     variant_id: Option<String>,
@@ -1561,6 +1574,8 @@ pub async fn chat_v2_continue_message(
     // ★ 2026-01-26：用于判断模型是否支持多模态
     llm_manager: State<'_, Arc<LLMManager>>,
 ) -> Result<String, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::handlers] chat_v2_continue_message: session_id={}, message_id={}, variant_id={:?}",
         session_id,

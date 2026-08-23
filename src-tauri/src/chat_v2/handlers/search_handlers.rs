@@ -1,7 +1,7 @@
 //! 内容搜索与标签管理命令处理器
 
 use std::sync::Arc;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::chat_v2::database::ChatV2Database;
 use crate::chat_v2::repo::ChatV2Repo;
@@ -42,10 +42,13 @@ pub async fn chat_v2_get_tags_batch(
 /// 添加手动标签
 #[tauri::command]
 pub async fn chat_v2_add_tag(
+    app: tauri::AppHandle,
     session_id: String,
     tag: String,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
     ChatV2Repo::add_manual_tag(&conn, &session_id, &tag).map_err(|e| e.to_string())
 }
@@ -53,10 +56,13 @@ pub async fn chat_v2_add_tag(
 /// 删除标签
 #[tauri::command]
 pub async fn chat_v2_remove_tag(
+    app: tauri::AppHandle,
     session_id: String,
     tag: String,
     db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let conn = db.get_conn_safe().map_err(|e| e.to_string())?;
     ChatV2Repo::remove_tag(&conn, &session_id, &tag).map_err(|e| e.to_string())
 }

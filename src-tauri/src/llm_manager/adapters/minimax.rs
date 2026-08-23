@@ -19,6 +19,16 @@ use serde_json::{json, Map, Value};
 /// - 使用 `reasoning_split` 控制思维链分离
 pub struct MiniMaxAdapter;
 
+impl MiniMaxAdapter {
+    /// 检查是否是 MiniMax M3 模型 (2026-06 发布)
+    /// M3 使用 thinking: { type: "off" | "adaptive" | "enabled" } 格式
+    /// 与 M2.x 的 reasoning_split 格式不同
+    fn is_m3_model(model: &str) -> bool {
+        let model_lower = model.to_lowercase();
+        model_lower.contains("minimax-m3") || model_lower.contains("minimax/m3")
+    }
+}
+
 impl RequestAdapter for MiniMaxAdapter {
     fn id(&self) -> &'static str {
         "minimax"
@@ -29,27 +39,64 @@ impl RequestAdapter for MiniMaxAdapter {
     }
 
     fn description(&self) -> &'static str {
-        "MiniMax 系列，支持 reasoning_split 参数"
+        "MiniMax 系列，M3 使用 thinking.type，M2.x 使用 reasoning_split"
     }
 
     fn apply_reasoning_config(
         &self,
         body: &mut Map<String, Value>,
-        _config: &ApiConfig,
+        config: &ApiConfig,
         _enable_thinking: Option<bool>,
     ) -> bool {
+        let is_m3 = Self::is_m3_model(&config.model);
+
         // MiniMax 特性：
         // 1. 不发送 enable_thinking（API 不支持，必须移除！）
         // 2. 不移除 temperature/top_p（MiniMax 支持这些参数）
-        // 3. 使用 reasoning_split 控制思维链分离
+        // 3. M3 使用 thinking.type 格式，M2.x 使用 reasoning_split
 
         // ⚠️ 关键：MiniMax API 不支持这些参数，必须移除
         body.remove("enable_thinking");
         body.remove("thinking_budget");
         body.remove("include_thoughts");
-        body.remove("thinking");
 
-        // reasoning_split 会在 apply_common_params 中处理
+        if is_m3 {
+            // ========== M3 专用处理 (2026-06 发布) ==========
+            // M3 使用 thinking: { type: "off" | "adaptive" | "enabled" } 格式
+            // M3 使用 reasoning_effort 替代 thinking_budget
+            body.remove("thinking");
+            body.remove("reasoning_split");
+
+            // M3 thinking 参数（根据官方文档）
+            // M3 thinking.type 默认为 "adaptive"，用户可通过 reasoning_effort 控制
+            if let Some(effort) = config.reasoning_effort.as_deref() {
+                match effort.trim().to_lowercase().as_str() {
+                    "none" | "off" => {
+                        body.insert("thinking".to_string(), json!({"type": "off"}));
+                    }
+                    "enabled" | "on" => {
+                        body.insert("thinking".to_string(), json!({"type": "enabled"}));
+                    }
+                    _ => {
+                        body.insert("thinking".to_string(), json!({"type": "adaptive"}));
+                    }
+                }
+            } else {
+                // 默认 adaptive
+                body.insert("thinking".to_string(), json!({"type": "adaptive"}));
+            }
+
+            // M3 使用 reasoning_effort 顶级参数（与 M2.x 的 reasoning_split 不同）
+            if let Some(effort) = config.reasoning_effort.as_deref() {
+                if !matches!(effort.trim().to_lowercase().as_str(), "none" | "off" | "enabled" | "on") {
+                    body.insert("reasoning_effort".to_string(), json!(effort));
+                }
+            }
+        } else {
+            // ========== M2.x 处理 (legacy) ==========
+            // M2.x 不支持 thinking 参数，只支持 reasoning_split
+            body.remove("thinking");
+        }
 
         true // 提前返回，阻止后续代码添加 enable_thinking
     }

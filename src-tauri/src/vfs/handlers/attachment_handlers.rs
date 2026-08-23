@@ -17,7 +17,7 @@ use std::sync::Arc;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::vfs::attachment_config::AttachmentConfig;
 use crate::vfs::database::VfsDatabase;
@@ -75,10 +75,13 @@ pub struct VfsAttachmentContentResult {
 
 #[tauri::command]
 pub async fn vfs_upload_attachment(
+    app_handle: tauri::AppHandle,
     params: VfsUploadAttachmentParamsExt,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     pdf_processing_service: State<'_, Arc<PdfProcessingService>>,
 ) -> VfsResult<VfsUploadAttachmentResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_upload_attachment: name={}, mime_type={}, folder_id={:?}",
         params.name,
@@ -302,9 +305,12 @@ pub async fn vfs_get_attachment_config(
 
 #[tauri::command]
 pub async fn vfs_set_attachment_root_folder(
+    app_handle: tauri::AppHandle,
     folder_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     if !VfsFolderRepo::folder_exists(&vfs_db, &folder_id)? {
         return Err(VfsError::Other(format!("Folder not found: {}", folder_id)));
     }
@@ -316,17 +322,23 @@ pub async fn vfs_set_attachment_root_folder(
 
 #[tauri::command]
 pub async fn vfs_create_attachment_root_folder(
+    app_handle: tauri::AppHandle,
     title: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     let config = AttachmentConfig::new(vfs_db.inner().clone());
     Ok(config.create_root_folder(&title)?)
 }
 
 #[tauri::command]
 pub async fn vfs_get_or_create_attachment_root_folder(
+    app_handle: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     let config = AttachmentConfig::new(vfs_db.inner().clone());
     config
         .get_or_create_root_folder()
@@ -544,9 +556,12 @@ pub async fn vfs_get_attachment(
 /// 用于清理测试产生的废弃附件等场景。
 #[tauri::command]
 pub async fn vfs_delete_attachment(
+    app_handle: tauri::AppHandle,
     attachment_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_delete_attachment: id={}",
         attachment_id

@@ -45,10 +45,7 @@ export const LazySettings = React.lazy(() =>
 
 // ★ 2026-02：批量分析已废弃（旧错题系统已移除）
 
-// 仪表盘
-export const LazyDashboard = React.lazy(() =>
-  import('./components/Dashboard').then(m => ({ default: m.Dashboard }))
-);
+// ★ 2026-08-10 清理：LazyDashboard (旧 Dashboard.tsx) 无任何使用点，已随死代码删除
 
 // SOTA 仪表盘
 export const LazySOTADashboard = React.lazy(() =>

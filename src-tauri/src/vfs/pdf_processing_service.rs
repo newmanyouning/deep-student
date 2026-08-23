@@ -62,8 +62,8 @@ use crate::vfs::error::{VfsError, VfsResult};
 use crate::vfs::index_service::VfsIndexService;
 use crate::vfs::indexing::types::{OcrPageResult, OcrPagesJson};
 use crate::vfs::repos::pdf_preview::{render_pdf_preview_with_progress, PdfPreviewConfig};
-use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo};
-use crate::vfs::types::PdfPreviewJson;
+use crate::vfs::repos::{VfsBlobRepo, VfsFileRepo, VfsFolderRepo, VfsNoteRepo};
+use crate::vfs::types::{PdfPreviewJson, VfsCreateNoteParams, VfsFolder, VfsFolderItem};
 use crate::vfs::unit_builder::UnitBuildInput;
 
 // ============================================================================
@@ -329,6 +329,8 @@ pub struct MediaProcessingCompletedEvent {
     pub ready_modes: Vec<String>,
     pub stage: String,
     pub media_type: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note_id: Option<String>,
 }
 
 /// 错误事件（统一媒体处理事件）
@@ -702,7 +704,8 @@ impl PdfProcessingService {
     /// 检测媒体类型
     fn detect_media_type(&self, file_id: &str) -> VfsResult<MediaType> {
         let conn = self.db.get_conn_safe()?;
-        let mime_type: String = conn
+        // ★ 使用 Option<String> 处理 NULL mime_type
+        let mime_type: Option<String> = conn
             .query_row(
                 "SELECT mime_type FROM files WHERE id = ?1",
                 params![file_id],
@@ -710,11 +713,59 @@ impl PdfProcessingService {
             )
             .map_err(|e| VfsError::Database(format!("Failed to get mime_type: {}", e)))?;
 
-        MediaType::from_mime(&mime_type).ok_or_else(|| VfsError::InvalidArgument {
+        // 如果 mime_type 存在且可识别，直接使用
+        if let Some(ref mime) = mime_type {
+            if let Some(mt) = MediaType::from_mime(mime) {
+                return Ok(mt);
+            }
+        }
+
+        // ★ 回退：从文件名推断媒体类型
+        let file_name: String = conn
+            .query_row(
+                "SELECT file_name FROM files WHERE id = ?1",
+                params![file_id],
+                |row| row.get(0),
+            )
+            .map_err(|e| VfsError::Database(format!("Failed to get file_name: {}", e)))?;
+
+        let lower = file_name.to_lowercase();
+        if lower.ends_with(".pdf") {
+            info!(
+                "[MediaProcessingService] Inferred PDF type from extension for file {} (mime_type was {:?})",
+                file_id, mime_type
+            );
+            return Ok(MediaType::Pdf);
+        }
+        if lower.ends_with(".png") || lower.ends_with(".jpg") || lower.ends_with(".jpeg")
+            || lower.ends_with(".gif") || lower.ends_with(".bmp") || lower.ends_with(".webp")
+        {
+            return Ok(MediaType::Image);
+        }
+
+        // ★ 最后回退：如果 file_type 列标记为 document，默认视为 PDF
+        let file_type: Option<String> = conn
+            .query_row(
+                "SELECT file_type FROM files WHERE id = ?1",
+                params![file_id],
+                |row| row.get(0),
+            )
+            .ok();
+        if let Some(ref ft) = file_type {
+            if ft == "document" {
+                info!(
+                    "[MediaProcessingService] Defaulting to PDF for file {} (file_type=document, mime_type={:?})",
+                    file_id, mime_type
+                );
+                return Ok(MediaType::Pdf);
+            }
+        }
+
+        Err(VfsError::InvalidArgument {
             param: "mime_type".to_string(),
             reason: format!(
-                "Unsupported media type: {} for file: {}",
-                mime_type, file_id
+                "Unsupported media type: {:?} for file: {} (name: {})",
+                mime_type, file_id, file_name
             ),
         })
     }
@@ -924,6 +975,8 @@ impl PdfProcessingService {
         }
 
         // Stage 3: OCR 处理（如果需要）
+        // ★ FIX 1: Track note_id from OCR for completed event
+        let mut ocr_note_id: Option<String> = None;
         // ★ Fix 2: 检查是否被标记为强制 OCR（前端手动触发），绕过配置检查
         let is_force_ocr = self.force_ocr_set.contains(file_id);
         let should_run_pdf_ocr = is_force_ocr
@@ -1160,7 +1213,8 @@ impl PdfProcessingService {
                         )
                         .await
                     {
-                        Ok(_) => {
+                        Ok((_ocr_json, note_id)) => {
+                            ocr_note_id = note_id;
                             info!(
                                 "[PdfProcessingService] OCR processing completed for file: {}",
                                 file_id
@@ -1287,6 +1341,7 @@ impl PdfProcessingService {
             },
             MediaType::Pdf,
             Some(generation),
+            ocr_note_id,
         )
         .await;
 
@@ -1739,6 +1794,7 @@ impl PdfProcessingService {
             },
             MediaType::Image,
             Some(generation),
+            None,
         )
         .await;
 
@@ -2868,6 +2924,7 @@ impl PdfProcessingService {
         stage: ProcessingStage,
         media_type: MediaType,
         generation: Option<u64>,
+        note_id: Option<String>,
     ) {
         if self.skip_stale_task_side_effects(file_id, generation, "emit_completed") {
             return;
@@ -2879,6 +2936,7 @@ impl PdfProcessingService {
                 ready_modes: ready_modes.clone(),
                 stage: stage.as_str().to_string(),
                 media_type: media_type.as_str().to_string(),
+                note_id: note_id.clone(),
             };
 
             // 发送新统一事件
@@ -3217,13 +3275,13 @@ impl PdfProcessingService {
         ready_modes: &mut Vec<String>,
         cancel_token: &CancellationToken,
         generation: u64,
-    ) -> VfsResult<String> {
+    ) -> VfsResult<(String, Option<String>)> {
         if self.skip_stale_task_side_effects(
             file_id,
             Some(generation),
             "stage_ocr_processing:start",
         ) {
-            return Ok("{}".to_string());
+            return Ok(("{}".to_string(), None));
         }
 
         info!(
@@ -3243,7 +3301,7 @@ impl PdfProcessingService {
                 "[PdfProcessingService] No pages in preview_json for file: {}",
                 file_id
             );
-            return Ok("{}".to_string());
+            return Ok(("{}".to_string(), None));
         }
 
         // 2. 获取 blob 目录
@@ -3311,7 +3369,9 @@ impl PdfProcessingService {
             if !ready_modes.contains(&"ocr".to_string()) {
                 ready_modes.push("ocr".to_string());
             }
-            return Ok(ocr_json_str);
+            // Try to create OCR note for already-processed content
+            let note_id = self.create_ocr_note(file_id, &ocr_json).await;
+            return Ok((ocr_json_str, note_id));
         }
 
         // 4. 并发处理 OCR（仅处理未完成的页面）
@@ -3558,7 +3618,17 @@ impl PdfProcessingService {
             );
         }
 
-        Ok(ocr_json_str)
+        // ★ FIX 1: Auto-create note with OCR text
+        // Always try to create note — even if ocr_usable=false, the partial text is still valuable
+        let note_id = self.create_ocr_note(file_id, &ocr_json).await;
+        if note_id.is_none() && ocr_usable {
+            warn!(
+                "[PdfProcessingService] OCR was usable but note creation failed for file {}",
+                file_id
+            );
+        }
+
+        Ok((ocr_json_str, note_id))
     }
 
     /// 从数据库加载已有的 OCR 结果（用于断点恢复）
@@ -3772,6 +3842,261 @@ impl PdfProcessingService {
                 Err(e)
             }
         }
+    }
+
+    /// ★★ 创建 OCR 逐页笔记文件夹
+    ///
+    /// 每页创建一个独立笔记，存放在一个文件夹中，避免巨型 MD 文件导致编辑器卡死。
+    /// 返回第一页的 note_id（兼容旧调用方），或 None 如果创建失败。
+    async fn create_ocr_note(
+        &self,
+        file_id: &str,
+        ocr_json: &OcrPagesJson,
+    ) -> Option<String> {
+        // 1. Get file name from database
+        let file_name = match (|| -> VfsResult<String> {
+            let conn = self.db.get_conn_safe()?;
+            let name: String = conn
+                .query_row(
+                    "SELECT file_name FROM files WHERE id = ?1",
+                    params![file_id],
+                    |row| row.get(0),
+                )
+                .map_err(|e| VfsError::Database(format!("Failed to get file name: {}", e)))?;
+            Ok(name)
+        })() {
+            Ok(name) => name,
+            Err(e) => {
+                warn!("[PdfProcessingService] Failed to get file name: {}", e);
+                return None;
+            }
+        };
+
+        if ocr_json.pages.is_empty() {
+            warn!("[PdfProcessingService] No OCR pages for file: {}", file_id);
+            return None;
+        }
+
+        let total_pages = ocr_json.pages.len();
+        info!(
+            "[PdfProcessingService] Creating per-page OCR notes for file {} ({} pages)",
+            file_id, total_pages
+        );
+
+        // 2. Create folder for per-page notes
+        let folder = VfsFolder::new(
+            format!("{} (OCR)", file_name),
+            None, // root level
+            Some("📖".to_string()),
+            Some("#4A90D9".to_string()),
+        );
+        let folder_id = folder.id.clone();
+
+        let conn = match self.db.get_conn_safe() {
+            Ok(c) => c,
+            Err(e) => {
+                warn!("[PdfProcessingService] Failed to get DB connection: {}", e);
+                return None;
+            }
+        };
+
+        if let Err(e) = VfsFolderRepo::create_folder_with_conn(&conn, &folder) {
+            warn!("[PdfProcessingService] Failed to create OCR folder: {}", e);
+            // Continue anyway — folder is optional
+        }
+
+        // 3. Create per-page notes
+        let mut first_note_id: Option<String> = None;
+        let mut created_count = 0u32;
+
+        for page in &ocr_json.pages {
+            let page_num = page.page_index + 1;
+            let mut content = format!("# Page {}\n\n> 📄 来源: {} | 页码: {}/{}\n\n",
+                page_num, file_name, page_num, total_pages);
+
+            let mut has_text = false;
+            for block in &page.blocks {
+                if !block.text.trim().is_empty() {
+                    content.push_str(&block.text);
+                    content.push('\n');
+                    has_text = true;
+                }
+            }
+
+            if !has_text {
+                content.push_str("*(此页未识别到文字)*\n");
+            }
+
+            let params = VfsCreateNoteParams {
+                title: format!("第 {} 页", page_num),
+                content,
+                tags: vec![
+                    "ocr".to_string(),
+                    "auto-generated".to_string(),
+                    format!("source:{}", file_id),
+                    format!("page:{}", page_num),
+                    format!("folder:{}", folder_id),
+                ],
+            };
+
+            match VfsNoteRepo::create_note_with_conn(&conn, params) {
+                Ok(note) => {
+                    // Add note to folder
+                    let folder_item = VfsFolderItem::new(
+                        Some(folder_id.clone()),
+                        "note".to_string(),
+                        note.id.clone(),
+                    );
+                    let _ = VfsFolderRepo::add_item_to_folder_with_conn(&conn, &folder_item);
+
+                    if first_note_id.is_none() {
+                        first_note_id = Some(note.id.clone());
+                    }
+                    created_count += 1;
+                }
+                Err(e) => {
+                    warn!(
+                        "[PdfProcessingService] Failed to create page {} note: {}",
+                        page_num, e
+                    );
+                }
+            }
+        }
+
+        // Drop conn before async operations
+        drop(conn);
+
+        info!(
+            "[PdfProcessingService] Created {}/{} per-page OCR notes for file {} in folder {}",
+            created_count, total_pages, file_id, folder_id
+        );
+
+        // 4. Emit DSTU watch events for folder and first note
+        if let Some(app_handle) = self.get_app_handle().await {
+            use crate::dstu::types::{DstuWatchEvent, DstuWatchEventType};
+            // Emit folder creation
+            let folder_event = DstuWatchEvent {
+                event_type: DstuWatchEventType::Created,
+                path: format!("/{}", folder_id),
+                old_path: None,
+                node: None,
+            };
+            let _ = app_handle.emit("dstu:change", &folder_event);
+            // Emit first note creation
+            if let Some(ref nid) = first_note_id {
+                let note_event = DstuWatchEvent {
+                    event_type: DstuWatchEventType::Created,
+                    path: format!("/{}", nid),
+                    old_path: None,
+                    node: None,
+                };
+                let _ = app_handle.emit("dstu:change", &note_event);
+            }
+        }
+
+        first_note_id
+    }
+
+    /// ★★ 公开方法：确保 OCR 逐页笔记存在（供 vfs_ensure_ocr_pipeline 调用）
+    /// 先检查是否已有逐页笔记，有则返回第一页 ID；否则创建逐页文件夹。
+    /// 返回 note_id（第一页）如果成功或已存在，否则返回 None。
+    pub async fn ensure_ocr_note(&self, file_id: &str) -> Option<String> {
+        // 0. 先检查是否已有逐页笔记（搜索带 source: 和 page: 标签的笔记）
+        {
+            let conn = self.db.get_conn_safe().ok()?;
+            let count: i64 = conn
+                .query_row(
+                    "SELECT COUNT(*) FROM notes n
+                     WHERE n.deleted_at IS NULL
+                       AND n.tags LIKE ?1
+                       AND n.tags LIKE ?2",
+                    rusqlite::params![format!("%source:{}%", file_id), "%page:%"],
+                    |row| row.get(0),
+                )
+                .unwrap_or(0);
+            if count > 0 {
+                // 已有逐页笔记，返回第一页的 ID
+                let first_id: String = conn
+                    .query_row(
+                        "SELECT n.id FROM notes n
+                         WHERE n.deleted_at IS NULL
+                           AND n.tags LIKE ?1
+                           AND n.tags LIKE ?2
+                         ORDER BY n.created_at ASC LIMIT 1",
+                        rusqlite::params![format!("%source:{}%", file_id), "%page:1%"],
+                        |row| row.get(0),
+                    )
+                    .ok()?;
+                info!(
+                    "[PdfProcessingService] OCR notes already exist for file {} (found {} notes), returning first: {}",
+                    file_id, count, first_id
+                );
+                return Some(first_id);
+            }
+        }
+
+        // 1. 加载 ocr_pages_json
+        let ocr_json_str = {
+            let conn = self.db.get_conn_safe().ok()?;
+            let json_str: String = conn
+                .query_row(
+                    "SELECT ocr_pages_json FROM files WHERE id = ?1",
+                    rusqlite::params![file_id],
+                    |row| row.get(0),
+                )
+                .ok()?;
+            if json_str.is_empty() || json_str == "{}" {
+                return None;
+            }
+            json_str
+        };
+
+        // 2. 解析 OCR 数据
+        let ocr_json: OcrPagesJson = serde_json::from_str(&ocr_json_str).ok()?;
+        if ocr_json.pages.is_empty() {
+            return None;
+        }
+
+        // 3. 创建逐页笔记
+        info!(
+            "[PdfProcessingService] ensure_ocr_note: creating per-page notes for file {} ({} pages)",
+            file_id,
+            ocr_json.pages.len()
+        );
+        self.create_ocr_note(file_id, &ocr_json).await
+    }
+
+    /// ★ FIX 2: Find PDF files that have not yet been OCR-processed.
+    ///
+    /// Queries the files table for PDFs where `ocr_pages_json IS NULL`,
+    /// filtered by optional limit. Returns file IDs that can be passed
+    /// to `start_pipeline()` for re-processing.
+    pub fn find_unprocessed_pdfs(&self, limit: usize) -> VfsResult<Vec<String>> {
+        let conn = self.db.get_conn_safe()?;
+        let mut stmt = conn
+            .prepare(
+                r#"SELECT id FROM files
+                   WHERE mime_type = 'application/pdf'
+                     AND ocr_pages_json IS NULL
+                     AND preview_json IS NOT NULL
+                   LIMIT ?1"#,
+            )
+            .map_err(|e| VfsError::Database(format!("Failed to prepare unprocessed PDF query: {}", e)))?;
+
+        let rows = stmt
+            .query_map(params![limit as i64], |row| {
+                let id: String = row.get(0)?;
+                Ok(id)
+            })
+            .map_err(|e| VfsError::Database(format!("Failed to query unprocessed PDFs: {}", e)))?;
+
+        let file_ids: Vec<String> = rows.filter_map(log_and_skip_err).collect();
+        debug!(
+            "[PdfProcessingService] Found {} unprocessed PDFs (limit={})",
+            file_ids.len(),
+            limit
+        );
+        Ok(file_ids)
     }
 
     /// Backfill preview_json for historical PDFs that lack it.

@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::VfsResult;
@@ -559,8 +559,11 @@ pub async fn vfs_debug_index_status(
 /// 用于在修复后重新触发索引
 #[tauri::command]
 pub async fn vfs_reset_disabled_to_pending(
+    app_handle: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<i32> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!("[VFS::handlers] vfs_reset_disabled_to_pending");
 
     let conn = vfs_db.get_conn_safe()?;
@@ -581,8 +584,11 @@ pub async fn vfs_reset_disabled_to_pending(
 /// 重置所有 indexed 但无 embeddings 的资源为 pending 状态
 #[tauri::command]
 pub async fn vfs_reset_indexed_without_embeddings(
+    app_handle: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<i32> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!("[VFS::handlers] vfs_reset_indexed_without_segments");
 
     let conn = vfs_db.get_conn_safe()?;
@@ -616,9 +622,12 @@ pub async fn vfs_reset_indexed_without_embeddings(
 /// 将所有资源的索引状态重置为 pending，并清空 segments、units、维度统计和 LanceDB 向量数据
 #[tauri::command]
 pub async fn vfs_reset_all_index_state(
+    app_handle: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
 ) -> VfsResult<i32> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     use crate::vfs::repos::{MODALITY_MULTIMODAL, MODALITY_TEXT};
 
     log::info!("[VFS::handlers] vfs_reset_all_index_state - 重置所有索引状态");
@@ -867,9 +876,12 @@ pub async fn vfs_get_media_cache_stats(
 /// 清理媒体缓存
 #[tauri::command]
 pub async fn vfs_clear_media_cache(
+    app_handle: tauri::AppHandle,
     params: ClearMediaCacheParams,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<ClearMediaCacheResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_clear_media_cache: pdf={}, compressed={}, ocr={}, vector={}",
         params.clear_pdf_preview,

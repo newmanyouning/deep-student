@@ -810,6 +810,34 @@ export interface ChatStore {
   /** 从后端响应恢复状态（适配器调用） */
   restoreFromBackend(response: LoadSessionResponseType): void;
 
+  // ========== 🆕 懒加载支持 ==========
+
+  /** 是否还有更早的消息未加载 */
+  hasMoreMessages: boolean;
+
+  /** 是否正在加载更早的消息 */
+  isLoadingMore: boolean;
+
+  /**
+   * 加载更早的消息（向上滚动触发）
+   * 合并到 messageOrder 前面，保持当前滚动位置
+   */
+  loadMoreMessages(): Promise<void>;
+
+  /**
+   * 将更早的消息追加到现有消息列表前面
+   * 由适配器在获取到数据后调用
+   */
+  appendOlderMessages(response: LoadSessionResponseType): void;
+
+  /**
+   * 设置加载更多消息回调
+   * @param callback 加载回调
+   */
+  setLoadMoreMessagesCallback(
+    callback: ((oldestMessageId: string) => Promise<LoadSessionResponseType>) | null
+  ): void;
+
   // ========== 辅助方法（O(1) 查找） ==========
 
   /** 获取消息 */

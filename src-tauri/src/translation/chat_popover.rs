@@ -170,6 +170,15 @@ fn emit_event(window: &Window, event: &str, payload: ChatTranslationEvent) {
 }
 
 /// 通用入口：解析模型 → 流式调用 → 转发事件
+pub(crate) async fn run_chat_translation_public(
+    request: ChatTranslationRequest,
+    mode: ChatTranslationMode,
+    window: Window,
+    state: State<'_, AppState>,
+) -> Result<(), AppError> {
+    run_chat_translation(request, mode, window, state).await
+}
+
 async fn run_chat_translation(
     request: ChatTranslationRequest,
     mode: ChatTranslationMode,

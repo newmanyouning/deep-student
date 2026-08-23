@@ -192,6 +192,34 @@
    工具类 - Utilities
    ============================================================================ */
 
+/* 聊天消息列表原生滚动条 — 始终可见，宽轨道，方便拖拽定位 */
+.chat-v2 .chat-message-scrollarea {
+  scrollbar-width: auto;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+}
+
+.chat-v2 .chat-message-scrollarea::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.chat-v2 .chat-message-scrollarea::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--surface-panel) 50%, transparent);
+  border-radius: 999px;
+}
+
+.chat-v2 .chat-message-scrollarea::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.chat-v2 .chat-message-scrollarea::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  background-clip: padding-box;
+}
+
 /* 隐藏滚动条但保留滚动功能（用于移动端横向滚动） */
 .chat-v2 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */

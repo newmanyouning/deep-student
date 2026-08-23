@@ -1,19 +1,33 @@
 {
-  "schema_version": "1.0",
-  "updated_at": "2026-05-22",
+  "schema_version": "1.1",
+  "updated_at": "2026-07-25",
   "purpose": "Google Gemini 内置供应商与模型目录，后端读取后注入默认模型配置与静态默认参数。",
   "vendor": {
     "id": "builtin-gemini",
     "name": "Google Gemini",
     "provider_type": "gemini",
     "base_url": "https://generativelanguage.googleapis.com",
-    "notes": "Google Gemini API (原生模式)。推荐模型: gemini-3.5-flash, gemini-3.1-pro-preview, gemini-3.1-flash-lite, gemini-2.5-pro, gemini-2.5-flash, gemini-2.5-flash-lite。启用 thinking / systemInstruction / thoughtSignature 相关能力时建议走 v1beta。",
+    "notes": "Google Gemini API (原生模式)。当前推荐: gemini-3.5-flash (最新GA, 1M上下文), gemini-3.1-pro-preview (旗舰), gemini-3.1-flash-lite (轻量), gemini-omni-flash-preview (视频生成预览)。gemini-3.5-pro 尚未发布。注意: gemini-3-pro-preview 已于 2026-03-09 下线并重定向至 gemini-3.1-pro-preview。启用 thinking / systemInstruction 相关能力时建议走 v1beta。",
     "max_tokens_limit": null,
     "website_url": "https://aistudio.google.com"
   },
   "models": [
     {
-      "id": "builtin-gemini-3-pro",
+      "id": "builtin-gemini-3.5-flash",
+      "label": "Gemini 3.5 Flash (最新GA, 1M上下文)",
+      "model": "gemini-3.5-flash",
+      "is_multimodal": true,
+      "is_reasoning": true,
+      "supports_tools": true,
+      "max_output_tokens": 65536,
+      "temperature": 0.7,
+      "reasoning_effort": "low",
+      "thinking_enabled": true,
+      "include_thoughts": true,
+      "gemini_api_version": "v1beta"
+    },
+    {
+      "id": "builtin-gemini-3.1-pro-preview",
       "label": "Gemini 3.1 Pro Preview (旗舰)",
       "model": "gemini-3.1-pro-preview",
       "is_multimodal": true,
@@ -27,9 +41,9 @@
       "gemini_api_version": "v1beta"
     },
     {
-      "id": "builtin-gemini-3-flash",
-      "label": "Gemini 3.5 Flash (最新稳定)",
-      "model": "gemini-3.5-flash",
+      "id": "builtin-gemini-3.1-flash-lite",
+      "label": "Gemini 3.1 Flash-Lite (轻量, 2026-05-07 GA)",
+      "model": "gemini-3.1-flash-lite",
       "is_multimodal": true,
       "is_reasoning": true,
       "supports_tools": true,
@@ -41,9 +55,9 @@
       "gemini_api_version": "v1beta"
     },
     {
-      "id": "builtin-gemini-3.1-flash-lite",
-      "label": "Gemini 3.1 Flash-Lite (轻量)",
-      "model": "gemini-3.1-flash-lite",
+      "id": "builtin-gemini-omni-flash-preview",
+      "label": "Gemini Omni Flash Preview (视频生成预览)",
+      "model": "gemini-omni-flash-preview",
       "is_multimodal": true,
       "is_reasoning": true,
       "supports_tools": true,

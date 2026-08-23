@@ -67,6 +67,26 @@ interface AnkiStats {
   totalDocuments: number;
   errorCards: number;
   templateCount: number;
+  /** 🔧 后端聚合的任务/会话状态统计（不受 list_document_sessions 的 limit 截断影响） */
+  taskStats: {
+    totalTasks: number;
+    failedTasks: number;
+    activeSessions: number;
+    attentionSessions: number;
+    completedSessions: number;
+  };
+  /** 🔧 后端聚合的近期制卡趋势（基于全量会话 createdAt） */
+  cardTrends: {
+    todayCards: number;
+    weekCards: number;
+    avgCardsPerDoc: number;
+  };
+  /** 🔧 后端返回的文档卡片排行（Top 20），供横向柱状图使用 */
+  topDocs: Array<{
+    documentId: string;
+    documentName: string;
+    totalCards: number;
+  }>;
 }
 
 type SessionGroup = 'active' | 'attention' | 'completed';
@@ -79,7 +99,11 @@ const POLL_ACTIVE = 5_000;
 const POLL_IDLE = 30_000;
 /** 卡片列表首次显示条数 */
 const CARDS_PAGE_SIZE = 20;
-/** 任务列表单次拉取上限（避免旧任务被分页截断） */
+/**
+ * 任务列表单次拉取上限，仅用于列表展示（最近 N 条）。
+ * 统计、分组计数、图表已全部下沉到后端 enhanced_anki_get_stats，
+ * 因此列表截断不再影响 Dashboard 聚合指标。
+ */
 const DASHBOARD_SESSION_LIMIT = 500;
 
 // ============================================================================
@@ -848,6 +872,7 @@ export const TaskDashboardPage: React.FC<TaskDashboardPageProps> = ({
 
   const load = useCallback(async () => {
     try {
+      // 🔧 修复：列表用 limit 只控制展示，聚合统计/分组/图表全部走 enhanced_anki_get_stats（后端全量聚合）
       const [s, st] = await Promise.all([
         invoke<DocumentSession[]>('enhanced_anki_list_document_sessions', { limit: DASHBOARD_SESSION_LIMIT }),
         invoke<AnkiStats>('enhanced_anki_get_stats'),
@@ -928,59 +953,45 @@ export const TaskDashboardPage: React.FC<TaskDashboardPageProps> = ({
     return { active: a, attention: at, completed: c };
   }, [sessions]);
 
-  // 同步 hasActiveRef
+  // 同步 hasActiveRef（优先使用后端全量聚合的活跃会话数，避免 limit=500 截断导致轮询间隔判断不准）
   useEffect(() => {
-    hasActiveRef.current = groups.active.length > 0;
-  }, [groups.active.length]);
+    hasActiveRef.current = (stats?.taskStats?.activeSessions ?? 0) > 0;
+  }, [stats?.taskStats?.activeSessions]);
 
-  // 聚合指标
+  // 聚合指标（优先使用后端全量聚合 stats；sessions 仅用于行级展示与单会话操作）
   const metrics = useMemo(() => {
     const totalCards = stats?.totalCards ?? 0;
     const totalDocs = stats?.totalDocuments ?? 0;
-    const totalTasks = sessions.reduce((s, d) => s + d.totalTasks, 0);
-    const failedTasks = sessions.reduce((s, d) => s + d.failedTasks, 0);
+    const totalTasks = stats?.taskStats?.totalTasks ?? 0;
+    const failedTasks = stats?.taskStats?.failedTasks ?? 0;
     const errorRate = totalTasks > 0 ? ((failedTasks / totalTasks) * 100).toFixed(1) : '0.0';
-    const avgCards = totalDocs > 0 ? Math.round(totalCards / totalDocs) : 0;
-
-    // P0: 使用 createdAt（任务创建时间）而非 lastUpdated
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const weekStart = todayStart - 6 * 86_400_000; // 最近 7 天
-    let todayCards = 0;
-    let weekCards = 0;
-    for (const s of sessions) {
-      try {
-        const created = new Date(s.createdAt).getTime();
-        if (created >= todayStart) todayCards += s.totalCards;
-        if (created >= weekStart) weekCards += s.totalCards;
-      } catch {
-        /* skip */
-      }
-    }
+    const avgCards = stats?.cardTrends?.avgCardsPerDoc ?? 0;
+    const todayCards = stats?.cardTrends?.todayCards ?? 0;
+    const weekCards = stats?.cardTrends?.weekCards ?? 0;
 
     return { totalCards, totalDocs, totalTasks, failedTasks, errorRate, avgCards, todayCards, weekCards };
-  }, [sessions, stats]);
+  }, [stats]);
 
   // 环形图（使用主题安全的颜色 —— Tailwind 默认色在明暗模式下均可）
+  // 🔧 修复：状态分布改用后端全量聚合的会话计数，避免 list_document_sessions limit=500 截断导致分布不准
   const donutData = useMemo(
     () => [
-      { label: t('taskDashboard.statusDone'), value: groups.completed.length, color: 'hsl(var(--success))' },
-      { label: t('taskDashboard.statusActive'), value: groups.active.length, color: 'hsl(var(--info))' },
-      { label: t('taskDashboard.statusFailed'), value: groups.attention.length, color: 'hsl(var(--warning))' },
+      { label: t('taskDashboard.statusDone'), value: stats?.taskStats?.completedSessions ?? 0, color: 'hsl(var(--success))' },
+      { label: t('taskDashboard.statusActive'), value: stats?.taskStats?.activeSessions ?? 0, color: 'hsl(var(--info))' },
+      { label: t('taskDashboard.statusFailed'), value: stats?.taskStats?.attentionSessions ?? 0, color: 'hsl(var(--warning))' },
     ],
-    [groups, t],
+    [stats, t],
   );
 
   // 柱状图
+  // 🔧 修复：改用后端返回的全量 Top 20 文档排行，避免 sessions limit=500 截断导致排行缺失
   const barData = useMemo(
     () =>
-      sessions
-        .filter(s => s.totalCards > 0)
-        .map(s => ({
-          label: s.documentName || s.documentId.slice(0, 12),
-          value: s.totalCards,
-        })),
-    [sessions],
+      (stats?.topDocs ?? []).map(d => ({
+        label: d.documentName || d.documentId.slice(0, 12),
+        value: d.totalCards,
+      })),
+    [stats],
   );
 
   // P2: 排序
@@ -1016,14 +1027,15 @@ export const TaskDashboardPage: React.FC<TaskDashboardPageProps> = ({
   }, [sessions, filter, search, sortKey]);
 
   // Tab 计数
+  // 🔧 修复：计数改用后端全量聚合，避免 list_document_sessions limit=500 截断导致 Tab 计数不准
   const tabCounts = useMemo(
     () => ({
-      all: sessions.length,
-      active: groups.active.length,
-      attention: groups.attention.length,
-      completed: groups.completed.length,
+      all: stats?.totalDocuments ?? sessions.length,
+      active: stats?.taskStats?.activeSessions ?? 0,
+      attention: stats?.taskStats?.attentionSessions ?? 0,
+      completed: stats?.taskStats?.completedSessions ?? 0,
     }),
-    [sessions, groups],
+    [stats, sessions.length],
   );
 
   // P2: 排序循环

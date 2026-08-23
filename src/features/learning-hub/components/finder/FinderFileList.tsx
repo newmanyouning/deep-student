@@ -150,7 +150,15 @@ export function FinderFileList({
 }: FinderFileListProps) {
   const { t } = useTranslation('learningHub');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
+  // ★ 2026-08-10 修复（分类点击列表空白，右键才显示）：
+  // OverlayScrollbars 在 initialized 事件里异步回写 viewport（scroll-area.tsx assignRef），
+  // ref 赋值不触发 React 重渲染，useVirtualizer 的 getScrollElement 永远拿到 null
+  // → getVirtualItems() 为空 → 列表不渲染，直到任意无关状态变化（如右键菜单）触发重渲染。
+  // 修复：viewport 用 state 承载（TanStack Virtual 官方推荐），赋值即触发重渲染。
+  const [viewportElement, setViewportElement] = useState<HTMLDivElement | null>(null);
+  const viewportRef = useCallback((el: HTMLDivElement | null) => {
+    setViewportElement(el);
+  }, []);
   const containerRef = useRef<HTMLDivElement>(null);
   const gridContainerRef = useRef<HTMLDivElement>(null);
   const [activeId, setActiveId] = React.useState<UniqueIdentifier | null>(null);
@@ -258,7 +266,7 @@ export function FinderFileList({
   // ★ 列表模式虚拟滚动配置
   const listVirtualizer = useVirtualizer({
     count: viewMode === 'list' ? items.length : 0,
-    getScrollElement: () => viewportRef.current,
+    getScrollElement: () => viewportElement,
     estimateSize: () => LIST_ITEM_HEIGHT,
     overscan: 5,
   });
@@ -271,7 +279,7 @@ export function FinderFileList({
   
   const gridVirtualizer = useVirtualizer({
     count: viewMode === 'grid' ? gridRowCount : 0,
-    getScrollElement: () => viewportRef.current,
+    getScrollElement: () => viewportElement,
     estimateSize: () => GRID_ROW_HEIGHT + GRID_GAP,
     overscan: 2,
   });
@@ -475,6 +483,7 @@ export function FinderFileList({
           className="flex-1 bg-background h-full"
           onClick={handleContainerClick}
           onContextMenu={handleContainerContextMenu}
+          hideTrackWhenIdle={false}
         >
           <SortableContext
             items={items.map(item => item.id)}
@@ -579,6 +588,7 @@ export function FinderFileList({
         onDoubleClick={handleContainerDoubleClick}
         onContextMenu={handleContainerContextMenu}
         onMouseDown={handleMouseDown}
+        hideTrackWhenIdle={false}
       >
         <SortableContext
           items={items.map(item => item.id)}

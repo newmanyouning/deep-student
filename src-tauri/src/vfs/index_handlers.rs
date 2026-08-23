@@ -11,7 +11,7 @@ use crate::vfs::indexing::{VfsFullIndexingService, VfsIndexingService};
 use crate::vfs::lance_store::VfsLanceStore;
 use crate::vfs::unit_builder::UnitBuildInput;
 use std::sync::Arc;
-use tauri::State;
+use tauri::{Manager, State};
 use crate::vfs::error::{VfsError, VfsResult};
 
 /// 获取索引状态总览
@@ -36,10 +36,13 @@ pub async fn vfs_get_resource_units(
 /// 重新索引 Unit
 #[tauri::command]
 pub async fn vfs_reindex_unit(
+    app_handle: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     unit_id: String,
     mode: String, // "text" | "mm" | "both"
 ) -> VfsResult<bool> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     let service = VfsIndexService::new(vfs_db.inner().clone());
     service.reset_unit_index(&unit_id, &mode)?;
     Ok(true)
@@ -50,12 +53,15 @@ pub async fn vfs_reindex_unit(
 /// ★ 2026-01 修复：集成 VfsFullIndexingService 实现真正的批量索引
 #[tauri::command]
 pub async fn vfs_unified_batch_index(
+    app_handle: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     llm_manager: State<'_, Arc<LLMManager>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     mode: String, // "text" | "mm" | "both"
     batch_size: Option<i32>,
 ) -> VfsResult<BatchIndexResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     let raw_limit = batch_size.unwrap_or(10);
     let limit = raw_limit.clamp(1, 100) as u32;
 
@@ -143,6 +149,7 @@ pub struct DeleteIndexResult {
 /// 同步资源的 Units
 #[tauri::command]
 pub async fn vfs_sync_resource_units(
+    app_handle: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     resource_id: String,
     resource_type: String,
@@ -154,6 +161,8 @@ pub async fn vfs_sync_resource_units(
     extracted_text: Option<String>,
     preview_json: Option<String>,
 ) -> VfsResult<Vec<UnitIndexStatus>> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     let service = VfsIndexService::new(vfs_db.inner().clone());
 
     let input = UnitBuildInput {
@@ -179,10 +188,13 @@ pub async fn vfs_sync_resource_units(
 /// ★ P1-2 修复：返回结构化的部分失败结果，而非简单的 bool
 #[tauri::command]
 pub async fn vfs_delete_resource_index(
+    app_handle: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
     resource_id: String,
 ) -> VfsResult<DeleteIndexResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::index_handlers] vfs_delete_resource_index: resource_id={}",
         resource_id

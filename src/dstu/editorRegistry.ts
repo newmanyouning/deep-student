@@ -292,6 +292,26 @@ export const editorRegistry: Record<DstuNodeType, EditorRegistryEntry> = {
     displayName: 'dstu:types.mindmap',
   },
 
+  // ========== 题目卡片 ==========
+  card: {
+    type: 'card',
+    editor: lazyNoteEditor, // 题目卡片快照使用笔记编辑器显示
+    defaultMode: 'view',
+    defaultLocation: 'panel',
+    capabilities: {
+      editable: false,
+      deletable: true,
+      movable: true,
+      copyable: true,
+      shareable: false,
+      versionable: false,
+      referenceable: true,
+      exportable: false, // 题目卡片不可导出
+    },
+    icon: 'ClipboardList',
+    displayName: 'dstu:types.card',
+  },
+
 };
 
 // ============================================================================

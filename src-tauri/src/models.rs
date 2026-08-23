@@ -751,6 +751,9 @@ pub struct UnifiedExportOptions {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResearchReport {
     pub id: String,
+    // 报告主题（老库历史行可能为 NULL）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject: Option<String>,
     pub created_at: DateTime<Utc>,
     pub segments: i32,
     pub context_window: i32,
@@ -761,6 +764,9 @@ pub struct ResearchReport {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResearchReportSummary {
     pub id: String,
+    // 报告主题（老库历史行可能为 NULL）
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subject: Option<String>,
     pub created_at: DateTime<Utc>,
     pub segments: i32,
     pub context_window: i32,
@@ -1757,14 +1763,6 @@ pub struct AnkiDocumentGenerationRequest {
     #[serde(default)]
     pub original_document_name: Option<String>,
     pub options: Option<AnkiGenerationOptions>,
-}
-
-// 新增：ANKI文档制卡响应结构
-#[derive(Debug, Serialize)]
-pub struct AnkiDocumentGenerationResponse {
-    pub success: bool,
-    pub cards: Vec<AnkiCard>,
-    pub error_message: Option<String>,
 }
 
 // ==================== 智能记忆提取相关 ====================

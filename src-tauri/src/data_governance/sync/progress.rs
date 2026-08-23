@@ -6,22 +6,38 @@ use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
 /// 同步阶段
+///
+/// ## 阶段语义（设计文档 §3.5 六阶段生命周期）
+/// 命令链事件序列对齐为 6 个阶段命名，前端对未知阶段名降级显示（向后兼容）：
+/// - `preflight` — 预检：维护模式检查 → 全局锁(60s) → 云凭据校验（命令开头发射）
+/// - `export` — 导出：读 pending changes + 整行数据快照（只读）
+/// - `transfer` — 传输：上传/下载变更 + 冲突检测
+/// - `apply` — 应用：下载变更本地事务回放
+/// - `finalize` — 收尾：mark_synced + manifest 上传 + prune + 审计写入
+/// - `ended` — 会话结束：同步会话收尾后的最终事件（终态）
+///
+/// ## 向后兼容保留
+/// `completed` / `failed` 为保留的旧终态阶段：旧前端以 `phase === 'completed'` /
+/// `phase === 'failed'` 触发完成/失败回调，事件序列末尾始终以二者收尾（最后一个事件），
+/// `ended` 在二者之前发出——若 `ended` 落在末尾，旧前端会因未知终态卡在"运行中"UI。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SyncPhase {
-    /// 准备中
-    Preparing,
-    /// 检测变更
-    DetectingChanges,
-    /// 上传中
-    Uploading,
-    /// 下载中
-    Downloading,
-    /// 应用变更
-    Applying,
-    /// 已完成
+    /// 预检阶段（命令入口）
+    Preflight,
+    /// 导出阶段（读 pending + 整行数据快照）
+    Export,
+    /// 传输阶段（上传/下载 + 冲突检测）
+    Transfer,
+    /// 应用阶段（下载变更本地回放）
+    Apply,
+    /// 收尾阶段（mark_synced + manifest 上传 + prune + 审计）
+    Finalize,
+    /// 会话结束（终态，在 completed/failed 之前发出）
+    Ended,
+    /// 已完成（终态，保留兼容：旧前端以 completed 判定完成回调）
     Completed,
-    /// 失败
+    /// 失败（终态，保留兼容：旧前端以 failed 判定错误回调）
     Failed,
 }
 
@@ -29,11 +45,12 @@ impl SyncPhase {
     /// 获取阶段的显示名称
     pub fn display_name(&self) -> &'static str {
         match self {
-            SyncPhase::Preparing => "准备中",
-            SyncPhase::DetectingChanges => "检测变更",
-            SyncPhase::Uploading => "上传中",
-            SyncPhase::Downloading => "下载中",
-            SyncPhase::Applying => "应用变更",
+            SyncPhase::Preflight => "预检",
+            SyncPhase::Export => "导出",
+            SyncPhase::Transfer => "传输",
+            SyncPhase::Apply => "应用",
+            SyncPhase::Finalize => "收尾",
+            SyncPhase::Ended => "会话结束",
             SyncPhase::Completed => "已完成",
             SyncPhase::Failed => "失败",
         }
@@ -41,7 +58,10 @@ impl SyncPhase {
 
     /// 判断是否为终止状态
     pub fn is_terminal(&self) -> bool {
-        matches!(self, SyncPhase::Completed | SyncPhase::Failed)
+        matches!(
+            self,
+            SyncPhase::Ended | SyncPhase::Completed | SyncPhase::Failed
+        )
     }
 }
 
@@ -69,7 +89,7 @@ pub struct SyncProgress {
 impl Default for SyncProgress {
     fn default() -> Self {
         Self {
-            phase: SyncPhase::Preparing,
+            phase: SyncPhase::Preflight,
             percent: 0.0,
             current: 0,
             total: 0,
@@ -82,10 +102,10 @@ impl Default for SyncProgress {
 }
 
 impl SyncProgress {
-    /// 创建准备中状态的进度
-    pub fn preparing() -> Self {
+    /// 创建预检阶段（命令入口）的进度
+    pub fn preflight() -> Self {
         Self {
-            phase: SyncPhase::Preparing,
+            phase: SyncPhase::Preflight,
             percent: 0.0,
             current: 0,
             total: 0,
@@ -96,10 +116,10 @@ impl SyncProgress {
         }
     }
 
-    /// 创建检测变更状态的进度
-    pub fn detecting_changes() -> Self {
+    /// 创建导出阶段（读 pending + 整行数据快照）的进度
+    pub fn export() -> Self {
         Self {
-            phase: SyncPhase::DetectingChanges,
+            phase: SyncPhase::Export,
             percent: 5.0,
             current: 0,
             total: 0,
@@ -110,8 +130,8 @@ impl SyncProgress {
         }
     }
 
-    /// 创建上传中状态的进度
-    pub fn uploading(current: u64, total: u64) -> Self {
+    /// 创建传输阶段（上传/下载 + 冲突检测）的进度
+    pub fn transfer(current: u64, total: u64) -> Self {
         let percent = if total > 0 {
             10.0 + (current as f32 / total as f32) * 40.0 // 10% - 50%
         } else {
@@ -119,7 +139,7 @@ impl SyncProgress {
         };
 
         Self {
-            phase: SyncPhase::Uploading,
+            phase: SyncPhase::Transfer,
             percent,
             current,
             total,
@@ -130,28 +150,8 @@ impl SyncProgress {
         }
     }
 
-    /// 创建下载中状态的进度
-    pub fn downloading(current: u64, total: u64) -> Self {
-        let percent = if total > 0 {
-            50.0 + (current as f32 / total as f32) * 30.0 // 50% - 80%
-        } else {
-            50.0
-        };
-
-        Self {
-            phase: SyncPhase::Downloading,
-            percent,
-            current,
-            total,
-            current_item: None,
-            speed_bytes_per_sec: None,
-            eta_seconds: None,
-            error: None,
-        }
-    }
-
-    /// 创建应用变更状态的进度
-    pub fn applying(current: u64, total: u64) -> Self {
+    /// 创建应用阶段（下载变更本地回放）的进度
+    pub fn apply(current: u64, total: u64) -> Self {
         let percent = if total > 0 {
             80.0 + (current as f32 / total as f32) * 18.0 // 80% - 98%
         } else {
@@ -159,10 +159,24 @@ impl SyncProgress {
         };
 
         Self {
-            phase: SyncPhase::Applying,
+            phase: SyncPhase::Apply,
             percent,
             current,
             total,
+            current_item: None,
+            speed_bytes_per_sec: None,
+            eta_seconds: None,
+            error: None,
+        }
+    }
+
+    /// 创建收尾阶段（mark_synced + manifest 上传 + prune + 审计）的进度
+    pub fn finalizing() -> Self {
+        Self {
+            phase: SyncPhase::Finalize,
+            percent: 99.0,
+            current: 0,
+            total: 0,
             current_item: None,
             speed_bytes_per_sec: None,
             eta_seconds: None,
@@ -195,6 +209,20 @@ impl SyncProgress {
             speed_bytes_per_sec: None,
             eta_seconds: None,
             error: Some(error),
+        }
+    }
+
+    /// 创建会话结束状态的进度（终态，在 completed/failed 之前发出）
+    pub fn ended() -> Self {
+        Self {
+            phase: SyncPhase::Ended,
+            percent: 100.0,
+            current: 0,
+            total: 0,
+            current_item: None,
+            speed_bytes_per_sec: None,
+            eta_seconds: None,
+            error: None,
         }
     }
 
@@ -335,7 +363,7 @@ impl ProgressTracker {
     /// 创建新的进度跟踪器
     pub fn new() -> Self {
         Self {
-            progress: SyncProgress::preparing(),
+            progress: SyncProgress::preflight(),
             speed_calculator: SpeedCalculator::default_window(),
             start_time: Instant::now(),
             total_bytes: 0,
@@ -415,30 +443,48 @@ mod tests {
 
     #[test]
     fn test_sync_phase_display_name() {
-        assert_eq!(SyncPhase::Preparing.display_name(), "准备中");
-        assert_eq!(SyncPhase::Uploading.display_name(), "上传中");
+        assert_eq!(SyncPhase::Preflight.display_name(), "预检");
+        assert_eq!(SyncPhase::Transfer.display_name(), "传输");
+        assert_eq!(SyncPhase::Finalize.display_name(), "收尾");
         assert_eq!(SyncPhase::Completed.display_name(), "已完成");
     }
 
     #[test]
     fn test_sync_phase_is_terminal() {
-        assert!(!SyncPhase::Preparing.is_terminal());
-        assert!(!SyncPhase::Uploading.is_terminal());
+        assert!(!SyncPhase::Preflight.is_terminal());
+        assert!(!SyncPhase::Transfer.is_terminal());
+        assert!(SyncPhase::Ended.is_terminal());
         assert!(SyncPhase::Completed.is_terminal());
         assert!(SyncPhase::Failed.is_terminal());
     }
 
     #[test]
     fn test_sync_progress_builders() {
-        let preparing = SyncProgress::preparing();
-        assert_eq!(preparing.phase, SyncPhase::Preparing);
-        assert_eq!(preparing.percent, 0.0);
+        let preflight = SyncProgress::preflight();
+        assert_eq!(preflight.phase, SyncPhase::Preflight);
+        assert_eq!(preflight.percent, 0.0);
 
-        let uploading = SyncProgress::uploading(50, 100);
-        assert_eq!(uploading.phase, SyncPhase::Uploading);
-        assert_eq!(uploading.current, 50);
-        assert_eq!(uploading.total, 100);
-        assert!(uploading.percent >= 10.0 && uploading.percent <= 50.0);
+        let export = SyncProgress::export();
+        assert_eq!(export.phase, SyncPhase::Export);
+        assert_eq!(export.percent, 5.0);
+
+        let transfer = SyncProgress::transfer(50, 100);
+        assert_eq!(transfer.phase, SyncPhase::Transfer);
+        assert_eq!(transfer.current, 50);
+        assert_eq!(transfer.total, 100);
+        assert!(transfer.percent >= 10.0 && transfer.percent <= 50.0);
+
+        let apply = SyncProgress::apply(50, 100);
+        assert_eq!(apply.phase, SyncPhase::Apply);
+        assert!(apply.percent >= 80.0 && apply.percent <= 98.0);
+
+        let finalizing = SyncProgress::finalizing();
+        assert_eq!(finalizing.phase, SyncPhase::Finalize);
+        assert_eq!(finalizing.percent, 99.0);
+
+        let ended = SyncProgress::ended();
+        assert_eq!(ended.phase, SyncPhase::Ended);
+        assert_eq!(ended.percent, 100.0);
 
         let completed = SyncProgress::completed();
         assert_eq!(completed.phase, SyncPhase::Completed);
@@ -451,7 +497,7 @@ mod tests {
 
     #[test]
     fn test_sync_progress_with_methods() {
-        let progress = SyncProgress::uploading(10, 100)
+        let progress = SyncProgress::transfer(10, 100)
             .with_current_item("file.txt")
             .with_speed(1024, Some(60))
             .with_percent(25.0);
@@ -519,12 +565,12 @@ mod tests {
         let mut tracker = ProgressTracker::new();
 
         tracker.set_total_bytes(10000);
-        tracker.set_phase(SyncPhase::Uploading);
+        tracker.set_phase(SyncPhase::Transfer);
         tracker.update_items(0, 10);
         tracker.set_current_item("test.txt");
 
         let progress = tracker.get_progress();
-        assert_eq!(progress.phase, SyncPhase::Uploading);
+        assert_eq!(progress.phase, SyncPhase::Transfer);
         assert_eq!(progress.total, 10);
         assert_eq!(progress.current_item, Some("test.txt".to_string()));
 

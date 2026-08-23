@@ -103,26 +103,25 @@ pub fn create_type_folder(node_type: DstuNodeType) -> DstuNode {
         DstuNodeType::Folder => "文件夹",
         DstuNodeType::Retrieval => "检索结果",
         DstuNodeType::MindMap => "知识导图",
+        // ★ 2026-08-07 迁移补充：DstuNodeType 收编为 ResourceKind 后新增 Card 变体
+        DstuNodeType::Card => "卡片",
     };
 
     DstuNode::folder(format!("type_{}", type_segment), path, name)
 }
 
 /// 生成资源 ID
+///
+/// ★ 已收敛：前缀唯一事实源为 `ResourceKind::id_prefix()`（vfs/resource_kind.rs），
+/// 与 `from_id_prefix` 互逆，保证生成的 ID 可解析回原类型。
+/// 设计内变更：Folder 原生成 "folder_"（无法被 from_id_prefix 解析）现为 "fld_"；
+/// Retrieval 原生成 "ret_" 现为通用 "res_"（类型需查库解析）。
 pub fn generate_resource_id(node_type: &DstuNodeType) -> String {
-    let prefix = match node_type {
-        DstuNodeType::Note => "note",
-        DstuNodeType::Textbook => "tb",
-        DstuNodeType::Exam => "exam",
-        DstuNodeType::Translation => "tr",
-        DstuNodeType::Essay => "essay",
-        DstuNodeType::Image => "img",
-        DstuNodeType::File => "file",
-        DstuNodeType::Folder => "folder",
-        DstuNodeType::Retrieval => "ret",
-        DstuNodeType::MindMap => "mm",
-    };
-    format!("{}_{}", prefix, nanoid::nanoid!(10))
+    match node_type.id_prefix() {
+        Some(prefix) => format!("{}_{}", prefix, nanoid::nanoid!(10)),
+        // Retrieval 无专用前缀：使用 VFS 通用 res_ ID（类型需查库解析）
+        None => format!("res_{}", nanoid::nanoid!(10)),
+    }
 }
 
 /// 发射 DSTU 监听事件
@@ -143,6 +142,9 @@ pub fn emit_watch_event(window: &Window, event: DstuWatchEvent) {
 }
 
 /// 将 item_type 字符串转换为 DstuNodeType
+///
+/// ★ 已收敛：与 `ResourceKind::from_str` 的单数语义保持一致
+/// （"retrieval" 检索结果、"attachment" 附件 → Image 为补充臂）。
 pub fn item_type_to_dstu_node_type(item_type: &str) -> Option<DstuNodeType> {
     match item_type {
         "note" => Some(DstuNodeType::Note),
@@ -154,6 +156,11 @@ pub fn item_type_to_dstu_node_type(item_type: &str) -> Option<DstuNodeType> {
         "file" => Some(DstuNodeType::File),
         "folder" => Some(DstuNodeType::Folder),
         "mindmap" => Some(DstuNodeType::MindMap),
+        // ★ 2026-08-10 补齐：card (题目卡片快照, card_ 前缀, 存 questions 表)
+        "card" => Some(DstuNodeType::Card),
+        // ★ 补充：与 ResourceKind::from_str 一致（attachment 按图片附件语义处理）
+        "retrieval" => Some(DstuNodeType::Retrieval),
+        "attachment" => Some(DstuNodeType::Image),
         _ => None,
     }
 }
@@ -276,9 +283,43 @@ pub fn translation_to_dstu_node(translation: &VfsTranslation) -> DstuNode {
     }))
 }
 
+/// 将 Question (题目卡片快照, card_ 前缀) 转换为 DstuNode
+///
+/// ★ 2026-08-10 新增：questions 表无独立 resources 行, resource_id 用 res_{id} 兜底
+/// (与 exam_to_dstu_node 的兜底策略一致)。
+pub fn question_to_dstu_node(question: &crate::vfs::repos::Question) -> DstuNode {
+    let path = build_simple_resource_path(&question.id);
+
+    let created_at = parse_timestamp(&question.created_at);
+    let updated_at = parse_timestamp(&question.updated_at);
+
+    let name = question
+        .question_label
+        .clone()
+        .filter(|l| !l.trim().is_empty())
+        .unwrap_or_else(|| {
+            let trimmed = question.content.trim();
+            trimmed.chars().take(30).collect::<String>()
+        });
+
+    DstuNode::resource(
+        &question.id,
+        &path,
+        &name,
+        DstuNodeType::Card,
+        format!("res_{}", question.id),
+    )
+    .with_timestamps(created_at, updated_at)
+    .with_metadata(serde_json::json!({
+        "examId": question.exam_id,
+        "questionType": question.question_type,
+        "difficulty": question.difficulty,
+        "isFavorite": question.is_favorite,
+    }))
+}
+
 /// 将 VfsExamSheet 转换为 DstuNode
-pub fn exam_to_dstu_node(exam: &VfsExamSheet) -> DstuNode {
-    let path = build_simple_resource_path(&exam.id);
+pub fn exam_to_dstu_node(exam: &VfsExamSheet) -> DstuNode {    let path = build_simple_resource_path(&exam.id);
 
     let created_at = parse_timestamp(&exam.created_at);
     let updated_at = parse_timestamp(&exam.updated_at);
@@ -623,6 +664,15 @@ mod tests {
             item_type_to_dstu_node_type("mindmap"),
             Some(DstuNodeType::MindMap)
         );
+        // ★ 补充臂（与 ResourceKind::from_str 一致）
+        assert_eq!(
+            item_type_to_dstu_node_type("retrieval"),
+            Some(DstuNodeType::Retrieval)
+        );
+        assert_eq!(
+            item_type_to_dstu_node_type("attachment"),
+            Some(DstuNodeType::Image)
+        );
         assert_eq!(item_type_to_dstu_node_type("unknown"), None);
         assert_eq!(item_type_to_dstu_node_type(""), None);
     }
@@ -658,6 +708,16 @@ mod tests {
         let id = generate_resource_id(&DstuNodeType::MindMap);
         assert!(id.starts_with("mm_"));
         assert_eq!(id.len(), 13); // "mm_" (3) + nanoid (10)
+
+        // ★ 已收敛：Folder 使用 fld_（原 "folder_" 无法被 from_id_prefix 解析）
+        let id = generate_resource_id(&DstuNodeType::Folder);
+        assert!(id.starts_with("fld_"));
+        assert_eq!(id.len(), 13); // "fld_" (4) + nanoid (10)
+
+        // ★ 已收敛：Retrieval 使用通用 res_（原 "ret_" 无法被解析，类型需查库）
+        let id = generate_resource_id(&DstuNodeType::Retrieval);
+        assert!(id.starts_with("res_"));
+        assert_eq!(id.len(), 13); // "res_" (4) + nanoid (10)
 
         // 确保每次生成的 ID 不同
         let id1 = generate_resource_id(&DstuNodeType::Note);

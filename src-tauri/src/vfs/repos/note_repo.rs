@@ -18,9 +18,9 @@ use crate::vfs::error::{VfsError, VfsResult};
 use crate::vfs::repos::embedding_repo::VfsIndexStateRepo;
 use crate::vfs::repos::folder_repo::VfsFolderRepo;
 use crate::vfs::repos::resource_repo::VfsResourceRepo;
+use crate::vfs::resource_kind::ResourceKind;
 use crate::vfs::types::{
-    ResourceLocation, VfsCreateNoteParams, VfsFolderItem, VfsNote, VfsResourceType,
-    VfsUpdateNoteParams,
+    ResourceLocation, VfsCreateNoteParams, VfsFolderItem, VfsNote, VfsUpdateNoteParams,
 };
 
 /// VFS 笔记表 Repo
@@ -75,7 +75,7 @@ impl VfsNoteRepo {
             // 2. 创建或复用资源（note_id 作为盐值，确保资源仅在本笔记内复用）
             let resource_result = VfsResourceRepo::create_or_reuse_with_conn_and_hash(
                 conn,
-                VfsResourceType::Note,
+                ResourceKind::Note,
                 &params.content,
                 &resource_hash,
                 Some(&note_id),
@@ -230,7 +230,7 @@ impl VfsNoteRepo {
                     // 内容变化，创建新资源
                     let new_resource_result = VfsResourceRepo::create_or_reuse_with_conn_and_hash(
                         conn,
-                        VfsResourceType::Note,
+                        ResourceKind::Note,
                         new_content,
                         &new_hash,
                         Some(note_id),
@@ -551,6 +551,102 @@ impl VfsNoteRepo {
 
         let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
         let mut param_idx = 1;
+
+        // 搜索过滤 - CRITICAL-001修复: 转义LIKE通配符
+        if let Some(q) = search {
+            sql.push_str(&format!(
+                " AND (n.title LIKE ?{} ESCAPE '\\' OR EXISTS (SELECT 1 FROM resources r WHERE r.id = n.resource_id AND r.data LIKE ?{} ESCAPE '\\'))",
+                param_idx, param_idx + 1
+            ));
+            let escaped = Self::escape_like_pattern(q);
+            let search_pattern = format!("%{}%", escaped);
+            params_vec.push(Box::new(search_pattern.clone()));
+            params_vec.push(Box::new(search_pattern));
+            param_idx += 2;
+        }
+
+        sql.push_str(&format!(
+            " ORDER BY n.updated_at DESC LIMIT ?{} OFFSET ?{}",
+            param_idx,
+            param_idx + 1
+        ));
+        params_vec.push(Box::new(limit));
+        params_vec.push(Box::new(offset));
+
+        let mut stmt = conn.prepare(&sql)?;
+        let params_refs: Vec<&dyn rusqlite::ToSql> =
+            params_vec.iter().map(|p| p.as_ref()).collect();
+        let rows = stmt.query_map(params_refs.as_slice(), Self::row_to_note)?;
+        let notes: Vec<VfsNote> = rows.collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(notes)
+    }
+
+    /// ★ 2026-08-10 笔记三分域查询（md 区分规则的数据级实现）
+    ///
+    /// 区分规则：
+    /// - **OCR 笔记**: `tags` JSON 数组含 `"ocr"`（唯一创建点
+    ///   `pdf_processing_service.rs` 的逐页笔记, 配套 auto-generated/source:/page: 标签）
+    /// - **记忆笔记**: 挂载在记忆根文件夹子树内（由调用方传入 `memory_note_ids`,
+    ///   本层不感知 memory_config）
+    /// - **普通笔记**: 以上两者之外
+    ///
+    /// `note_scope`: `"ocr"` 仅 OCR 笔记; `"normal"` 普通笔记（排除 OCR + 记忆）;
+    /// `None`/其它值 = 全部（兼容旧行为）。
+    pub fn list_notes_scoped(
+        db: &VfsDatabase,
+        search: Option<&str>,
+        note_scope: Option<&str>,
+        memory_note_ids: &[String],
+        limit: u32,
+        offset: u32,
+    ) -> VfsResult<Vec<VfsNote>> {
+        let conn = db.get_conn_safe()?;
+        Self::list_notes_scoped_with_conn(&conn, search, note_scope, memory_note_ids, limit, offset)
+    }
+
+    /// 列出笔记（带三分域过滤，使用现有连接）
+    pub fn list_notes_scoped_with_conn(
+        conn: &Connection,
+        search: Option<&str>,
+        note_scope: Option<&str>,
+        memory_note_ids: &[String],
+        limit: u32,
+        offset: u32,
+    ) -> VfsResult<Vec<VfsNote>> {
+        let mut sql = String::from(
+            r#"
+            SELECT n.id, n.resource_id, n.title, n.tags, n.is_favorite, n.created_at, n.updated_at, n.deleted_at
+            FROM notes n
+            WHERE n.deleted_at IS NULL
+            "#,
+        );
+
+        let mut params_vec: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();
+        let mut param_idx = 1;
+
+        // 三分域过滤（tags 是 JSON 数组字符串, 带引号匹配 "ocr" 避免误伤 "ocrxxx"）
+        match note_scope {
+            Some("ocr") => {
+                sql.push_str(" AND n.tags LIKE '%\"ocr\"%'");
+            }
+            Some("normal") => {
+                sql.push_str(" AND n.tags NOT LIKE '%\"ocr\"%'");
+                if !memory_note_ids.is_empty() {
+                    let placeholders = memory_note_ids
+                        .iter()
+                        .enumerate()
+                        .map(|(i, _)| format!("?{}", param_idx + i as usize))
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    sql.push_str(&format!(" AND n.id NOT IN ({})", placeholders));
+                    for id in memory_note_ids {
+                        params_vec.push(Box::new(id.clone()));
+                    }
+                    param_idx += memory_note_ids.len();
+                }
+            }
+            _ => {}
+        }
 
         // 搜索过滤 - CRITICAL-001修复: 转义LIKE通配符
         if let Some(q) = search {

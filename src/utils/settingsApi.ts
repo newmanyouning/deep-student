@@ -1,5 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { isTauriRuntime, withSessionId } from './shared';
+// Research 共享类型（与后端 src-tauri/src/research/types.rs 对齐，见 src/types/research.ts）
+import type { ResearchArtifact, ResearchRound } from '../types/research';
 
 export async function saveSetting(key: string, value: string): Promise<void> {
   try {
@@ -85,9 +87,15 @@ export async function testMcpConnection(command: string, args: string[], env?: R
 // TODOs (2026-06-01): 以下 ~26 个 research_* 命令在 Rust 后端尚未实现。
 // 后端桩函数定义在 src-tauri/src/cmd/research_stubs.rs，返回 "not yet implemented" 错误。
 // 逐项实现后请移除对应桩函数，并更新 lib.rs 中的 generate_handler! 注册为真实命令。
-export async function researchGetRound(sessionId: string, roundNo: number): Promise<any> {
+//
+// 返回类型已统一为共享类型 src/types/research.ts（与后端 src-tauri/src/research/types.rs 对齐）。
+// 参数仍采用「snake_case + camelCase 双键」传参：这是运行时兼容策略，
+// 待引擎实现后统一清理为单键（以后端命令签名为准）。
+export async function researchGetRound(sessionId: string, roundNo: number): Promise<ResearchRound | null> {
   return await invoke('research_get_round', { ...withSessionId(sessionId), round_no: roundNo, roundNo });
 }
+// 前端专有视觉摘要（visualSummary：plan/queries/retrieved/citations/metrics 等聚合），
+// 后端无对应共享类型，保持 any 待引擎落地后收敛。
 export async function researchGetRoundVisualSummary(sessionId: string, roundNo: number): Promise<any> {
   return await invoke('research_get_round_visual_summary', { ...withSessionId(sessionId), round_no: roundNo, roundNo });
 }
@@ -101,10 +109,11 @@ export async function researchGenerateRoundReport(sessionId: string, roundNo: nu
 export async function researchSetRoundNote(sessionId: string, roundNo: number, note: string, tags?: string[]): Promise<string> {
   return await invoke('research_set_round_note', { ...withSessionId(sessionId), round_no: roundNo, roundNo, note, tags: tags || null });
 }
-export async function researchGetRoundNote(sessionId: string, roundNo: number): Promise<{ note?: string; tags?: string[] }> {
+// Partial: 保持旧内联类型「note/tags 均可选」语义（ResearchRound.note/tags 后端可为空）
+export async function researchGetRoundNote(sessionId: string, roundNo: number): Promise<Partial<Pick<ResearchRound, 'note' | 'tags'>>> {
   return await invoke('research_get_round_note', { ...withSessionId(sessionId), round_no: roundNo, roundNo });
 }
-export async function researchGetRoundNotes(sessionId: string): Promise<{ items: Array<{ round_no: number; note?: string; tags?: string[] }> }> {
+export async function researchGetRoundNotes(sessionId: string): Promise<{ items: Array<Partial<Pick<ResearchRound, 'round_no' | 'note' | 'tags'>>> }> {
   return await invoke('research_get_round_notes', { ...withSessionId(sessionId) });
 }
 export async function researchGenerateSessionReport(sessionId: string, format?: string, options?: { include_plan?: boolean; include_summary?: boolean; include_citations?: boolean; include_metrics?: boolean; include_subagents?: boolean }, rounds?: number[]): Promise<string> {
@@ -118,6 +127,8 @@ export async function researchGetChunkText(documentId: string, chunkIndex: numbe
   return res?.text ?? null;
 }
 
+// 请求参数对应共享类型 ResearchChunkRef（document_id / chunk_index / before / after）；
+// 响应 {chunk_index, text} 为引擎内部格式，无后端共享类型，保持内联。
 export async function researchGetChunkContext(documentId: string, chunkIndex: number, before: number, after: number, sessionId: string): Promise<Array<{chunk_index: number; text: string}>> {
   const res = await invoke<{ items: Array<{chunk_index: number; text: string}> }>('research_get_chunk_context', { ...withSessionId(sessionId), document_id: documentId, documentId, chunk_index: chunkIndex, chunkIndex, before, after });
   return res?.items || [];
@@ -139,6 +150,8 @@ export async function saveTextToFile(path: string, content: string): Promise<voi
   await invoke('save_text_to_file', { path, content });
 }
 
+// 参数对应共享类型 ResearchRunOptions（maxRounds / minSelected / silentApproval），
+// 参数形状保持（双键传参见区块注释），引擎落地后收敛。
 export async function researchRunUntil(sessionId: string, maxRounds?: number, minSelected?: number, silentApproval?: boolean): Promise<string> {
   return await invoke('research_run_until', { 
     ...withSessionId(sessionId), 
@@ -203,7 +216,8 @@ export async function researchDeleteSetting(key: string): Promise<string> {
   return await invoke('research_delete_setting', { key });
 }
 
-export async function researchListArtifacts(sessionId: string, roundNo?: number): Promise<{items: Array<{id:number;round_no:number;agent:string;artifact_type:string;payload_json:string;size:number;created_at:string}>}> {
+// 返回共享类型 ResearchArtifact（id 为 string，与后端 ra_{nanoid} 一致；旧内联类型 id 为 number 已废弃）
+export async function researchListArtifacts(sessionId: string, roundNo?: number): Promise<{ items: ResearchArtifact[] }> {
   return await invoke('research_list_artifacts', { ...withSessionId(sessionId), round_no: typeof roundNo === 'number' ? roundNo : null, roundNo: typeof roundNo === 'number' ? roundNo : null });
 }
 

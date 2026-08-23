@@ -4,7 +4,7 @@
 
 use rusqlite::params;
 use std::sync::Arc;
-use tauri::{State, Window};
+use tauri::{Manager, State, Window};
 use tracing::{error, info, warn};
 
 use crate::vfs::database::VfsDatabase;
@@ -111,12 +111,15 @@ async fn cleanup_vector_index(lance_store: &VfsLanceStore, resource_id: &str) {
 /// 根据类型调用对应的软删除函数。
 #[tauri::command]
 pub async fn dstu_soft_delete(
+    app: tauri::AppHandle,
     id: String,
     item_type: String,
     window: Window,
     db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::trash] dstu_soft_delete: id={}, type={}",
         id, item_type
@@ -177,11 +180,14 @@ pub async fn dstu_soft_delete(
 /// 恢复软删除的资源或文件夹
 #[tauri::command]
 pub async fn dstu_trash_restore(
+    app: tauri::AppHandle,
     id: String,
     item_type: String,
     window: Window,
     db: State<'_, Arc<VfsDatabase>>,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!("[DSTU::trash] dstu_restore: id={}, type={}", id, item_type);
 
     let result = match item_type.as_str() {
@@ -500,10 +506,13 @@ pub async fn dstu_list_trash(
 /// 永久删除所有已软删除的资源。
 #[tauri::command]
 pub async fn dstu_empty_trash(
+    app: tauri::AppHandle,
     window: Window,
     db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
 ) -> DstuResult<usize> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!("[DSTU::trash] dstu_empty_trash");
 
     // ★ P1 修复：在 purge 之前收集所有待清理的 resource_ids
@@ -684,12 +693,15 @@ pub async fn dstu_empty_trash(
 /// 永久删除单个资源
 #[tauri::command]
 pub async fn dstu_permanently_delete(
+    app: tauri::AppHandle,
     id: String,
     item_type: String,
     window: Window,
     db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<VfsLanceStore>>,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::trash] dstu_permanently_delete: id={}, type={}",
         id, item_type

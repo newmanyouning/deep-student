@@ -130,7 +130,7 @@ export const knowledgeRetrievalSkill: SkillDefinition = {
             type: 'array',
             items: {
               type: 'string',
-              enum: ['note', 'textbook', 'file', 'image', 'exam', 'essay', 'translation', 'mindmap'],
+              enum: ['note', 'textbook', 'file', 'image', 'exam', 'essay', 'translation', 'mindmap', 'card', 'retrieval', 'folder'],
             },
             description: '限制搜索的资源类型列表（可选）',
           },

@@ -256,6 +256,16 @@ const fixCjkAdjacentBoldSyntaxSafely = (content: string): string => {
 const preprocessContent = (content: string, isStreaming = false): string => {
   if (!content) return '';
 
+  // ★ 性能优化：超大静态内容（如 OCR 笔记）跳过重 regex 处理
+  const LARGE_CONTENT_THRESHOLD = 200_000; // 200KB
+  if (!isStreaming && content.length > LARGE_CONTENT_THRESHOLD) {
+    // 仅做基本规范化：统一换行 + 去首尾空行
+    return content
+      .replace(/\r\n/g, '\n')
+      .replace(/^\n+/, '')
+      .replace(/\n+$/, '');
+  }
+
   let processedContent = content;
 
   // 流式期间自动闭合未配对的 markdown 标记（**bold / [link / `` ` `` 等）

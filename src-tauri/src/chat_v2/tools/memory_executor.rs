@@ -688,6 +688,12 @@ impl MemoryToolExecutor {
                 MemoryType::Note => {
                     format!("经验笔记内容过长（超过 {} 字）。请精简内容。", max_chars)
                 }
+                MemoryType::Promise => {
+                    format!("学习承诺内容过长（超过 {} 字）。请精简到 500 字以内。", max_chars)
+                }
+                MemoryType::Preference => {
+                    format!("学习偏好内容过长（超过 {} 字）。请精简到 300 字以内。", max_chars)
+                }
             };
             return Ok(json!({
                 "note_id": "",

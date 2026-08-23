@@ -18,7 +18,7 @@
 
 use std::sync::Arc;
 
-use tauri::State;
+use tauri::{Manager, State};
 use tracing::{error, info, warn};
 
 use super::error::{DstuError, DstuResult};
@@ -135,12 +135,15 @@ fn is_valid_color(color_str: &str) -> bool {
 /// - 文件夹数不超过 500 个
 #[tauri::command]
 pub async fn dstu_folder_create(
+    app: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     title: String,
     parent_id: Option<String>,
     icon: Option<String>,
     color: Option<String>,
 ) -> DstuResult<VfsFolder> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::folder_handlers] dstu_folder_create: title={}, parent_id={:?}",
         title, parent_id
@@ -264,10 +267,13 @@ pub async fn dstu_folder_get(
 /// - `title`: 新标题
 #[tauri::command]
 pub async fn dstu_folder_rename(
+    app: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: String,
     title: String,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::folder_handlers] dstu_folder_rename: folder_id={}, title={}",
         folder_id, title
@@ -324,9 +330,12 @@ pub async fn dstu_folder_rename(
 /// - `folder_id`: 文件夹 ID
 #[tauri::command]
 pub async fn dstu_folder_delete(
+    app: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: String,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::folder_handlers] dstu_folder_delete: folder_id={}",
         folder_id
@@ -370,10 +379,13 @@ pub async fn dstu_folder_delete(
 /// - 移动后深度不能超过 10 层
 #[tauri::command]
 pub async fn dstu_folder_move(
+    app: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: String,
     new_parent_id: Option<String>,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::folder_handlers] dstu_folder_move: folder_id={}, new_parent_id={:?}",
         folder_id, new_parent_id
@@ -412,10 +424,13 @@ pub async fn dstu_folder_move(
 /// - `is_expanded`: 是否展开
 #[tauri::command]
 pub async fn dstu_folder_set_expanded(
+    app: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: String,
     is_expanded: bool,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::folder_handlers] dstu_folder_set_expanded: folder_id={}, is_expanded={}",
         folder_id, is_expanded
@@ -459,11 +474,14 @@ pub async fn dstu_folder_set_expanded(
 /// - 同一资源只能存在于一个文件夹中
 #[tauri::command]
 pub async fn dstu_folder_add_item(
+    app: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: Option<String>,
     item_type: String,
     item_id: String,
 ) -> DstuResult<VfsFolderItem> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::folder_handlers] dstu_folder_add_item: folder_id={:?}, item_type={}, item_id={}",
         folder_id, item_type, item_id
@@ -541,10 +559,13 @@ pub async fn dstu_folder_add_item(
 /// - `item_id`: 资源 ID
 #[tauri::command]
 pub async fn dstu_folder_remove_item(
+    app: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     item_type: String,
     item_id: String,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::folder_handlers] dstu_folder_remove_item: item_type={}, item_id={}",
         item_type, item_id
@@ -576,11 +597,14 @@ pub async fn dstu_folder_remove_item(
 /// - `new_folder_id`: 新文件夹 ID（NULL 表示移动到根级）
 #[tauri::command]
 pub async fn dstu_folder_move_item(
+    app: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     item_type: String,
     item_id: String,
     new_folder_id: Option<String>,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::folder_handlers] dstu_folder_move_item: item_type={}, item_id={}, new_folder_id={:?}",
         item_type, item_id, new_folder_id
@@ -805,9 +829,12 @@ pub async fn dstu_folder_get_all_resources(
 /// - `folder_ids`: 文件夹 ID 列表（按期望顺序排列）
 #[tauri::command]
 pub async fn dstu_folder_reorder(
+    app: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_ids: Vec<String>,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::folder_handlers] dstu_folder_reorder: folder_ids={:?}",
         folder_ids
@@ -846,10 +873,13 @@ pub async fn dstu_folder_reorder(
 /// - `item_ids`: 内容项 ID 列表（按期望顺序排列）
 #[tauri::command]
 pub async fn dstu_folder_reorder_items(
+    app: tauri::AppHandle,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     folder_id: Option<String>,
     item_ids: Vec<String>,
 ) -> DstuResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::dstu::write_gate::check_dstu_write_gate(&app.state::<crate::commands::AppState>())?;
     info!(
         "[DSTU::folder_handlers] dstu_folder_reorder_items: folder_id={:?}, item_ids={:?}",
         folder_id, item_ids

@@ -79,26 +79,33 @@ pub fn is_uuid_format(s: &str) -> bool {
 
 /// 根据 ID 前缀推断资源类型（复数形式）
 ///
-/// 使用 `DstuNodeType::from_id_prefix` 作为规范源。
+/// ★ 已收敛：委托 `ResourceKind::from_id_prefix`（vfs/resource_kind.rs，
+/// ID 前缀推断的唯一事实源），返回复数形式。
+/// 保留 UUID / res_ 前缀特判（非 ID 前缀场景）。
 ///
 /// ## 返回
 /// 资源类型复数形式，如 "notes", "textbooks"；无法识别返回 "unknown"
 pub fn infer_resource_type_from_id(id: &str) -> &'static str {
-    use crate::dstu::types::DstuNodeType;
-    match DstuNodeType::from_id_prefix(id) {
-        Some(DstuNodeType::Note) => "notes",
-        Some(DstuNodeType::Textbook) => "textbooks",
-        Some(DstuNodeType::Exam) => "exams",
-        Some(DstuNodeType::Translation) => "translations",
-        Some(DstuNodeType::Essay) => "essays",
-        Some(DstuNodeType::Folder) => "folders",
-        Some(DstuNodeType::MindMap) => "mindmaps",
-        // file_ att_ img_ 均映射到 files
-        _ if id.starts_with("img_") => "images",
-        Some(DstuNodeType::File) | _ if id.starts_with("file_") || id.starts_with("att_") => "files",
-        _ if is_uuid_format(id) => "folders",
-        _ if id.starts_with("res_") => "resources",
-        _ => "unknown",
+    use crate::vfs::ResourceKind;
+    match ResourceKind::from_id_prefix(id) {
+        Some(ResourceKind::Note) => "notes",
+        Some(ResourceKind::Textbook) => "textbooks",
+        Some(ResourceKind::Exam) => "exams",
+        Some(ResourceKind::Translation) => "translations",
+        Some(ResourceKind::Essay) => "essays",
+        Some(ResourceKind::Folder) => "folders",
+        Some(ResourceKind::MindMap) => "mindmaps",
+        // img_/file_/att_ 现由 from_id_prefix 直接返回 Image/File
+        Some(ResourceKind::Image) => "images",
+        Some(ResourceKind::File) => "files",
+        // ★ 收编后新增：card_ 前缀由 from_id_prefix 识别（设计内变更）
+        Some(ResourceKind::Card) => "cards",
+        // Retrieval 无专用前缀（res_ 通用 ID），此处不可达；兜底返回 "unknown"
+        Some(ResourceKind::Retrieval) => "unknown",
+        // 非 ID 前缀特判（保留原有行为）
+        None if is_uuid_format(id) => "folders",
+        None if id.starts_with("res_") => "resources",
+        None => "unknown",
     }
 }
 

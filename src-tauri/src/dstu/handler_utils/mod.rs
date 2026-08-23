@@ -27,8 +27,8 @@ pub use path_utils::{
 pub use node_converters::{
     attachment_to_dstu_node, create_type_folder, emit_watch_event, essay_to_dstu_node,
     exam_to_dstu_node, file_to_dstu_node, generate_resource_id, item_type_to_dstu_node_type,
-    mindmap_to_dstu_node, note_to_dstu_node, parse_timestamp, session_to_dstu_node,
-    textbook_to_dstu_node, translation_to_dstu_node,
+    mindmap_to_dstu_node, note_to_dstu_node, parse_timestamp, question_to_dstu_node,
+    session_to_dstu_node, textbook_to_dstu_node, translation_to_dstu_node,
 };
 
 // 重导出 CRUD 辅助函数
@@ -40,7 +40,8 @@ pub use crud::{
 // 重导出列表辅助函数
 pub use list_helpers::{
     list_resources_by_type_with_folder_path, list_unassigned_essays, list_unassigned_exams,
-    list_unassigned_notes, list_unassigned_textbooks, list_unassigned_translations,
+    list_unassigned_files, list_unassigned_images, list_unassigned_notes,
+    list_unassigned_textbooks, list_unassigned_translations,
 };
 
 // 重导出删除辅助函数

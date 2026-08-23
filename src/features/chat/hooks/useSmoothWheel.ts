@@ -142,6 +142,11 @@ export function useSmoothWheel(
         (e.deltaY < 0 && el.scrollTop <= 0) ||
         (e.deltaY > 0 && el.scrollTop >= max)
       ) {
+        // 仍然 preventDefault 阻止默认的页面滚动行为
+        // 但将 target clamp 到合法范围，让缓动自然停止
+        e.preventDefault();
+        target = Math.max(0, Math.min(max, target));
+        lastApplied = el.scrollTop;
         return;
       }
 

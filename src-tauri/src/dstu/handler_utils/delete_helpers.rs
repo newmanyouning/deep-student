@@ -8,8 +8,9 @@ use rusqlite::Connection;
 
 use crate::dstu::error::{DstuError, DstuResult};
 use crate::vfs::{
-    repos::VfsMindMapRepo, VfsDatabase, VfsEssayRepo, VfsExamRepo, VfsFileRepo, VfsFolderRepo,
-    VfsNoteRepo, VfsTextbookRepo, VfsTranslationRepo,
+    repos::{VfsMindMapRepo, VfsQuestionRepo},
+    VfsDatabase, VfsEssayRepo, VfsExamRepo, VfsFileRepo, VfsFolderRepo, VfsNoteRepo,
+    VfsTextbookRepo, VfsTranslationRepo,
 };
 
 fn helper_error(action: &str, resource_type: &str, id: &str, error: impl ToString) -> DstuError {
@@ -100,6 +101,15 @@ pub fn delete_resource_by_type(
                 .map_err(|e| helper_error("delete", resource_type, id, e))?;
             log::info!(
                 "[DSTU::delete_helpers] delete_resource_by_type: SUCCESS - type=mindmap, id={}",
+                id
+            );
+        }
+        // ★ 2026-08-10 补齐：Card (题目卡片快照) 存于 questions 表 (card_ 前缀 ID)
+        "cards" | "card" => {
+            VfsQuestionRepo::delete_question(vfs_db, id)
+                .map_err(|e| helper_error("delete", resource_type, id, e))?;
+            log::info!(
+                "[DSTU::delete_helpers] delete_resource_by_type: SUCCESS - type=card, id={}",
                 id
             );
         }

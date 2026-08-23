@@ -53,6 +53,15 @@ pub enum DstuError {
     #[error("IO error: {0}")]
     IoError(String),
 
+    /// 同步进行中（同步写门被占）— 可重试, 前端提示"数据正在同步, 请稍后重试"
+    ///
+    /// [写门-接线] (2.3c)：业务写命令入口经 `check_dstu_write_gate` 命中时返回。
+    /// - `db`: 正在同步的数据库名（即写门持有者），通常为 "vfs"
+    /// - serde 序列化码 `SYNC_IN_PROGRESS`，与 DataGovernanceError 的既有约定一致
+    #[serde(rename = "SYNC_IN_PROGRESS")]
+    #[error("数据正在同步 (db={db}), 请稍后重试")]
+    SyncInProgress { db: String },
+
     /// 内部错误
     #[error("Internal error: {0}")]
     Internal(String),
@@ -146,6 +155,26 @@ impl From<rusqlite::Error> for DstuError {
 impl From<crate::vfs::error::VfsError> for DstuError {
     fn from(err: crate::vfs::error::VfsError) -> Self {
         DstuError::VfsError(err.to_string())
+    }
+}
+
+// 同步写门错误 → DSTU 错误（[写门-接线] 2.3c）
+///
+/// data_governance 为可选 feature（默认启用）：未启用时无同步写门，
+/// 此转换链不存在，`check_dstu_write_gate` 恒放行。
+#[cfg(feature = "data_governance")]
+impl From<crate::data_governance::sync::SyncError> for DstuError {
+    fn from(e: crate::data_governance::sync::SyncError) -> Self {
+        match e {
+            // 可重试权限错误: 保留独立变体与错误码 (SYNC_IN_PROGRESS),
+            // 前端据此提示"数据正在同步, 请稍后重试"
+            crate::data_governance::sync::SyncError::SyncInProgress { db } => {
+                DstuError::SyncInProgress { db }
+            }
+            // SyncBusy（写门锁被瞬时占用）等其余变体: 保留消息
+            // （其 Display 仍含"可重试"语义文字）
+            other => DstuError::Internal(other.to_string()),
+        }
     }
 }
 

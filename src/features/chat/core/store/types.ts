@@ -118,6 +118,9 @@ export interface StoreCallbacks {
 
   /** 🔧 P0 修复：继续执行消息回调 */
   _continueMessageCallback?: ((messageId: string, variantId?: string) => Promise<void>) | null;
+
+  /** 🆕 加载更多消息回调（懒加载历史消息） */
+  _loadMoreMessagesCallback?: ((oldestMessageId: string) => Promise<import('../types/store').LoadSessionResponseType>) | null;
 }
 
 // Re-export BlockingInteraction from public types
@@ -160,6 +163,12 @@ export interface ChatStoreState extends StoreCallbacks {
    * - false: 需要从后端加载数据
    */
   isDataLoaded: boolean;
+
+  /** 🆕 是否还有更早的消息未加载 */
+  hasMoreMessages: boolean;
+
+  /** 🆕 是否正在加载更早的消息 */
+  isLoadingMore: boolean;
 
   /** 消息 Map */
   messageMap: Map<string, Message>;
@@ -283,6 +292,8 @@ export function createInitialState(sessionId: string, title?: string, descriptio
     sessionMetadata: null,
     sessionStatus: 'idle',
     isDataLoaded: false, // 🔧 性能优化：新会话尚未加载数据
+    hasMoreMessages: false, // 🆕 懒加载：初始无更多历史消息
+    isLoadingMore: false,   // 🆕 懒加载：初始未在加载
     messageMap: new Map(),
     messageOrder: [],
     blocks: new Map(),
@@ -322,5 +333,6 @@ export function createInitialState(sessionId: string, title?: string, descriptio
     _retryAllVariantsCallback: null,
     _cancelVariantCallback: null,
     _continueMessageCallback: null,
+    _loadMoreMessagesCallback: null,
   };
 }

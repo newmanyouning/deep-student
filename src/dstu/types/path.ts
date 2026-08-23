@@ -193,6 +193,11 @@ export interface BatchMoveResult {
  * 资源 ID 前缀到类型的映射
  *
  * 用于从 ID 前缀推断资源类型
+ *
+ * ★ 与 src/types/resourceKind.ts 的 resourceKindFromIdPrefix 对齐：
+ * - card_ → card（题目卡片持久化 ID 格式 card_{nanoid}）
+ * - es_ / essay_session_ → essay（作文会话 ID 别名，essay_ 已收录）
+ * - retrieval 无专用前缀（VFS resources 表通用 res_ ID 不携带类型信息），不收录
  */
 export const RESOURCE_ID_PREFIX_MAP: Record<string, string> = {
   note_: 'note',
@@ -201,14 +206,21 @@ export const RESOURCE_ID_PREFIX_MAP: Record<string, string> = {
   tr_: 'translation',
   essay_: 'essay',
   fld_: 'folder',
-  att_: 'attachment',
+  att_: 'file',
   img_: 'image',
   file_: 'file',
   mm_: 'mindmap',
+  card_: 'card',
+  es_: 'essay',
+  essay_session_: 'essay',
 } as const;
 
 /**
  * 资源类型到 ID 前缀的映射
+ *
+ * ★ 补齐 card → 'card_'（题目卡片持久化 ID）
+ * ★ 注意：retrieval 无专用前缀（VFS resources 通用 res_ ID 不携带类型信息），
+ *   不收录，与 resourceKindFromIdPrefix 行为一致
  */
 export const RESOURCE_TYPE_TO_PREFIX: Record<string, string> = {
   note: 'note_',
@@ -221,6 +233,7 @@ export const RESOURCE_TYPE_TO_PREFIX: Record<string, string> = {
   image: 'img_',
   file: 'file_',
   mindmap: 'mm_',
+  card: 'card_',
 } as const;
 
 // ============================================================================

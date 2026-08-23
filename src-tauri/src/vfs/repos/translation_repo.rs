@@ -19,8 +19,9 @@ use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
 use crate::vfs::repos::folder_repo::VfsFolderRepo;
 use crate::vfs::repos::resource_repo::VfsResourceRepo;
+use crate::vfs::resource_kind::ResourceKind;
 use crate::vfs::types::{
-    ResourceLocation, VfsCreateTranslationParams, VfsFolderItem, VfsResourceType, VfsTranslation,
+    ResourceLocation, VfsCreateTranslationParams, VfsFolderItem, VfsTranslation,
 };
 
 /// Log row-parse errors instead of silently discarding them.
@@ -274,7 +275,7 @@ impl VfsTranslationRepo {
             // 2. 创建或复用资源
             let resource_result = VfsResourceRepo::create_or_reuse_with_conn(
                 conn,
-                VfsResourceType::Translation,
+                ResourceKind::Translation,
                 &content_str,
                 None,
                 Some("translations"),

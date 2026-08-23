@@ -7,13 +7,15 @@ use std::sync::Arc;
 use crate::dstu::error::{DstuError, DstuResult};
 use crate::dstu::types::DstuNode;
 use crate::vfs::{
-    repos::VfsMindMapRepo, VfsDatabase, VfsEssayRepo, VfsExamRepo, VfsFileRepo, VfsNoteRepo,
-    VfsTextbookRepo, VfsTranslationRepo,
+    repos::{VfsMindMapRepo, VfsQuestionRepo},
+    VfsDatabase, VfsEssayRepo, VfsExamRepo, VfsFileRepo, VfsNoteRepo, VfsTextbookRepo,
+    VfsTranslationRepo,
 };
 
 use super::{
     essay_to_dstu_node, exam_to_dstu_node, file_to_dstu_node, mindmap_to_dstu_node,
-    note_to_dstu_node, session_to_dstu_node, textbook_to_dstu_node, translation_to_dstu_node,
+    note_to_dstu_node, question_to_dstu_node, session_to_dstu_node, textbook_to_dstu_node,
+    translation_to_dstu_node,
 };
 
 // ============================================================================
@@ -133,6 +135,20 @@ pub async fn get_resource_by_type_and_id(
                 Err(DstuError::from(e.to_string()))
             }
         },
+        // ★ 2026-08-10 补齐：Card (题目卡片快照) → questions 表
+        "cards" => match VfsQuestionRepo::get_question(vfs_db, id) {
+            Ok(question) => {
+                log::info!(
+                    "[DSTU::crud] get_resource_by_type_and_id: SUCCESS - type=card, id={}",
+                    id
+                );
+                Ok(question.map(|q| question_to_dstu_node(&q)))
+            }
+            Err(e) => {
+                log::error!("[DSTU::crud] get_resource_by_type_and_id: FAILED - type=card, id={}, error={}", id, e);
+                Err(DstuError::from(e.to_string()))
+            }
+        },
         _ => {
             log::error!(
                 "[DSTU::crud] get_resource_by_type_and_id: unsupported type={}",
@@ -186,6 +202,12 @@ pub async fn fetch_resource_as_dstu_node(
         },
         "mindmap" => match VfsMindMapRepo::get_mindmap(vfs_db, &item.item_id) {
             Ok(Some(m)) => Ok(Some(mindmap_to_dstu_node(&m))),
+            Ok(None) => Ok(None),
+            Err(e) => Err(DstuError::from(e.to_string())),
+        },
+        // ★ 2026-08-10 补齐：Card (题目卡片快照) → questions 表
+        "card" => match VfsQuestionRepo::get_question(vfs_db, &item.item_id) {
+            Ok(Some(q)) => Ok(Some(question_to_dstu_node(&q))),
             Ok(None) => Ok(None),
             Err(e) => Err(DstuError::from(e.to_string())),
         },

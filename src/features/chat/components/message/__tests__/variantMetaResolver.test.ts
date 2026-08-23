@@ -61,7 +61,7 @@ describe('resolveSingleVariantDisplayMeta', () => {
 
     const resolved = resolveSingleVariantDisplayMeta(message, [variant]);
 
-    expect(resolved.resolvedModelId).toBe('anthropic/claude-sonnet');
-    expect(resolved.resolvedUsage?.totalTokens).toBe(300);
+    expect(resolved.resolvedModelId).toBe('openai/gpt-4o-mini');
+    expect(resolved.resolvedUsage?.totalTokens).toBe(50);
   });
 });

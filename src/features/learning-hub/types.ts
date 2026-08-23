@@ -48,6 +48,12 @@ export type DataView = 'folder' | 'resource';
  * 注意：mistake 类型已移除，因为是旧版聊天记录
  * ★ 2025-12-07: 添加 translation 和 essay 以支持内置文件夹
  * ★ 2025-12-09: 添加 image 和 file 以支持附件资源
+ *
+ * ★ 与 ResourceKind 的关系（src/types/resourceKind.ts，11 值契约）：
+ * 本类型是 UI 筛选枚举 = ResourceKind 的可浏览子集 + UI 专用值 'all'。
+ * 未收录 card（题目卡片快照）/retrieval（RAG 检索结果）——两者不参与学习中心
+ * 资源浏览；folder 由独立的文件夹数据视图（DataView='folder'）承载，不做类型筛选。
+ * 资源类型的持久化契约以 ResourceKind 为准，勿在本筛选枚举上扩展契约值。
  */
 export type ResourceType = 'note' | 'textbook' | 'exam' | 'translation' | 'essay' | 'image' | 'file' | 'mindmap' | 'all';
 
@@ -451,7 +457,10 @@ export function inferFilePreviewTypeFromName(fileName: string): ResourceListItem
   if (['xlsx', 'xls', 'xlsb', 'ods'].includes(ext)) return 'xlsx';
   if (ext === 'pptx' || ext === 'ppt') return 'pptx';
 
-  if (['txt', 'md', 'markdown', 'html', 'htm', 'csv', 'json', 'xml', 'rtf', 'epub'].includes(ext)) {
+  if (['md', 'markdown'].includes(ext)) {
+    return 'markdown';
+  }
+  if (['txt', 'html', 'htm', 'csv', 'json', 'xml', 'rtf', 'epub'].includes(ext)) {
     return 'text';
   }
 

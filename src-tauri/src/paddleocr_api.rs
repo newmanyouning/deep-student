@@ -18,6 +18,7 @@
 //! 当前 `reqwest::Client::bearer_auth()` 使用大写 "Bearer"，如果 API 返回 401 请确认此问题。
 //! 若需要，可改用 `header("Authorization", "bearer <token>")` 手动设置。
 
+use crate::paddleocr_split;
 use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
 
@@ -204,6 +205,10 @@ pub enum PaddleOcrApiError {
 // --- Service ---
 
 /// PaddleOCR REST API 客户端
+///
+/// 无状态（仅持有 `reqwest::Client` + token，两者均可 Clone），
+/// 分片并发任务按分片克隆实例，跨线程安全共享。
+#[derive(Clone)]
 pub struct PaddleOcrApiClient {
     client: reqwest::Client,
     token: String,
@@ -238,7 +243,45 @@ impl PaddleOcrApiClient {
     }
 
     /// 提交在线文件 URL 进行 OCR 解析（URL 模式，JSON 请求）
+    ///
+    /// 自动分片入口：PDF URL 先下载到本地评估是否需要分片——
+    /// - 大 PDF → 分片后逐片 multipart 上传，合并返回
+    /// - 小 PDF / 非 PDF 内容 → 回退原始 URL 提交（服务器自行下载，行为不变）
     pub async fn ocr_url(&self, file_url: &str, model: &str) -> Result<PaddleOcrResult, PaddleOcrApiError> {
+        if file_url.ends_with(".pdf") || file_url.contains(".pdf?") {
+            // 下载 PDF 以评估分片（仅当内容确为 PDF 时才走分片流程）
+            let resp = self.client.get(file_url).send().await?;
+            let bytes = resp.bytes().await?;
+
+            if bytes.starts_with(b"%PDF-") {
+                let file_name = std::path::Path::new(file_url)
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("remote.pdf");
+
+                let temp_dir = paddleocr_split::create_temp_dir()?;
+                let outcome = paddleocr_split::maybe_split_and_ocr(
+                    self, &bytes, file_name, model, &temp_dir,
+                )
+                .await;
+                // 会话级临时目录清理（分片文件已由任务内逐个删除）
+                let _ = std::fs::remove_dir_all(&temp_dir);
+                if let paddleocr_split::SplitOutcome::Completed(result) = outcome? {
+                    return Ok(result);
+                }
+                // FallbackToOriginal（小 PDF / pdfium 不可用）→ 走下方原始 URL 提交
+            } else {
+                tracing::debug!(
+                    "[PaddleOCR-Split] URL 内容不是 PDF（{}），走原始 URL 提交",
+                    file_url
+                );
+            }
+        }
+        self.ocr_url_inner(file_url, model).await
+    }
+
+    /// 原始 URL 提交实现（无自动分片）：JSON 提交，服务器自行下载文件
+    async fn ocr_url_inner(&self, file_url: &str, model: &str) -> Result<PaddleOcrResult, PaddleOcrApiError> {
         let is_v5 = model.contains("PP-OCRv5");
 
         let optional_payload = OcrOptionalPayload {
@@ -302,7 +345,38 @@ impl PaddleOcrApiClient {
     }
 
     /// 提交文件字节进行 OCR 解析（multipart 上传）— 可取消
+    ///
+    /// 自动分片入口：PDF 且无取消语义时，大文件自动按页分片并并发提交（对调用方透明，
+    /// 返回类型不变）；带取消语义或非 PDF 的请求保持原始逻辑零变化。
+    /// `ocr_file` / `ocr_bytes` 均汇聚到此方法，一处入口覆盖全部文件上传路径。
     pub async fn ocr_bytes_cancellable(
+        &self,
+        file_bytes: &[u8],
+        file_name: &str,
+        model: &str,
+        cancel_rx: Option<watch::Receiver<bool>>,
+    ) -> Result<PaddleOcrResult, PaddleOcrApiError> {
+        // 自动分片：仅 PDF 且无取消语义（分片并发任务不支持中途取消）
+        if cancel_rx.is_none() && file_name.ends_with(".pdf") {
+            let temp_dir = paddleocr_split::create_temp_dir()?;
+            let outcome = paddleocr_split::maybe_split_and_ocr(
+                self, file_bytes, file_name, model, &temp_dir,
+            )
+            .await;
+            // 会话级临时目录清理（分片文件已由任务内逐个删除）
+            let _ = std::fs::remove_dir_all(&temp_dir);
+            if let paddleocr_split::SplitOutcome::Completed(result) = outcome? {
+                return Ok(result);
+            }
+            // FallbackToOriginal（小 PDF / pdfium 不可用）→ 走下方原始上传路径
+        }
+        self.ocr_bytes_inner(file_bytes, file_name, model, cancel_rx).await
+    }
+
+    /// 原始 multipart 上传实现（无自动分片）
+    ///
+    /// 分片模块的回退路径与分片文件提交均直接调用此方法（避免再次进入分片判定）。
+    pub(crate) async fn ocr_bytes_inner(
         &self,
         file_bytes: &[u8],
         file_name: &str,

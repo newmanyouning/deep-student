@@ -336,6 +336,7 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
     resolvedApiConfigs,
     loading: vendorLoading,
     saving: vendorSaving,
+    loadAll,
     upsertVendor,
     deleteVendor,
     upsertModelProfile,
@@ -344,6 +345,8 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
     persistModelProfiles,
     persistVendors,
   } = useVendorModels();
+  const refreshVendors = useCallback(async () => { await loadAll(); }, []);
+  const refreshProfiles = useCallback(async () => { await loadAll(); }, []);
   // 注意：模型分配页面使用 config.apiConfigs（从后端 get_api_configurations 获取，enabled 状态正确）
   // resolvedApiConfigs 仅用于 API 配置页面的编辑功能
   // 当供应商/模型配置变更时，从后端刷新 ApiConfig 列表（作为“单一事实来源”）
@@ -492,9 +495,9 @@ export const Settings: React.FC<SettingsProps> = ({ onBack, mobilePresentation =
   const { handleZoomChange, handleZoomReset, handleFontChange, handleFontReset, handleFontSizeChange, handleFontSizeReset, normalizedMcpServers } = useSettingsZoomFont({ isTauriEnvironment, setZoomLoading, setUiZoom, setZoomSaving, setZoomStatus, t, setFontLoading, setUiFont, setFontSaving, setFontSizeLoading, setUiFontSize, setFontSizeSaving, config });
 
   const updateIndicatorRafRef = useRef<((tabId: string) => void) | null>(null);
-  const { loadConfig, handleSave, saveSingleAssignmentField, handleTabChange } = useSettingsConfig({ setLoading, configLoadedRef, setExtra, setActiveTab, activeTab, modelAssignments, vendors, modelProfiles, resolvedApiConfigs, refreshVendors: undefined, refreshProfiles: undefined, refreshApiConfigsFromBackend, persistAssignments, saving, setSaving, t, config, setConfig, loading, updateIndicatorRaf: (tabId: string) => updateIndicatorRafRef.current?.(tabId) });
+  const { loadConfig, handleSave, saveSingleAssignmentField, handleTabChange } = useSettingsConfig({ setLoading, configLoadedRef, setExtra, setActiveTab, activeTab, modelAssignments, vendors, modelProfiles, resolvedApiConfigs, refreshVendors, refreshProfiles, refreshApiConfigsFromBackend, persistAssignments, saving, setSaving, t, config, setConfig, loading, updateIndicatorRaf: (tabId: string) => updateIndicatorRafRef.current?.(tabId) });
 
-  const vendorState = useSettingsVendorState({ resolvedApiConfigs, vendorLoading, vendorSaving, vendors, modelProfiles, modelAssignments, config, t, loading, upsertVendor, upsertModelProfile, deleteModelProfile, persistAssignments, persistModelProfiles, persistVendors, closeRightPanel, refreshVendors: undefined, refreshProfiles: undefined, refreshApiConfigsFromBackend, isSmallScreen: effectiveMobilePanelMode, setScreenPosition, setRightPanelType, activeTab, deleteVendorById: deleteVendor });
+  const vendorState = useSettingsVendorState({ resolvedApiConfigs, vendorLoading, vendorSaving, vendors, modelProfiles, modelAssignments, config, t, loading, upsertVendor, upsertModelProfile, deleteModelProfile, persistAssignments, persistModelProfiles, persistVendors, closeRightPanel, refreshVendors, refreshProfiles, refreshApiConfigsFromBackend, isSmallScreen: effectiveMobilePanelMode, setScreenPosition, setRightPanelType, activeTab, deleteVendorById: deleteVendor });
   const { selectedVendorId, setSelectedVendorId, vendorModalOpen, setVendorModalOpen, editingVendor, setEditingVendor, isEditingVendor, vendorFormData, setVendorFormData, modelEditor, setModelEditor, inlineEditState, setInlineEditState, isAddingNewModel, setIsAddingNewModel, modelDeleteDialog, setModelDeleteDialog, vendorDeleteDialog, setVendorDeleteDialog, testingApi, vendorBusy, sortedVendors, selectedVendor, selectedVendorModels, profileCountByVendor, selectedVendorIsSiliconflow, testApiConnection, handleOpenVendorModal, handleStartEditVendor, handleCancelEditVendor, handleSaveEditVendor, handleSaveVendorModal, handleDeleteVendor, handleSaveVendorApiKey, handleSaveVendorBaseUrl, handleReorderVendors, confirmDeleteVendor, handleOpenModelEditor, handleSaveModelProfile, handleSaveInlineEdit, handleAddModelInline, handleCloseModelEditor, handleSaveModelProfileAndClose, handleDeleteModelProfile, confirmDeleteModelProfile, handleToggleModelProfile, handleToggleFavorite, handleSiliconFlowConfig, handleAddVendorModels, getAllEnabledApis, getEmbeddingApis, getRerankerApis, getAsrApis, getImageGenerationApis, toUnifiedModelInfo, handleBatchCreateConfigs, handleApplyPreset, handleBatchConfigsCreated, handleClearVendorApiKey, isSensitiveKey, maskApiKey, apiConfigsForApisTab } = vendorState;
 
   const voiceInputAssignedModel = useMemo(

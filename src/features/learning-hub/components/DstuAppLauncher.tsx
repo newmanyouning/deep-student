@@ -20,6 +20,7 @@ import { NotionButton } from '@/components/ui/NotionButton';
 import { CustomScrollArea } from '@/components/custom-scroll-area';
 import {
   NoteIcon,
+  OcrNoteIcon,
   TextbookIcon,
   ExamIcon,
   EssayIcon,
@@ -132,6 +133,8 @@ export const DstuAppLauncher: React.FC<DstuAppLauncherProps> = React.memo(({
 
   const resourceTypeItems = [
     { type: 'notes', CustomIcon: NoteIcon, label: t('learningHub:resourceType.note') },
+    // ★ 2026-08-10 笔记三分域：OCR 识别页笔记独立分类
+    { type: 'ocrNotes', CustomIcon: OcrNoteIcon, label: t('learningHub:finder.quickAccess.ocrNotes', 'OCR 识别') },
     { type: 'textbooks', CustomIcon: TextbookIcon, label: t('learningHub:resourceType.textbook') },
     { type: 'exams', CustomIcon: ExamIcon, label: t('learningHub:resourceType.exam') },
     { type: 'essays', CustomIcon: EssayIcon, label: t('learningHub:resourceType.essay') },

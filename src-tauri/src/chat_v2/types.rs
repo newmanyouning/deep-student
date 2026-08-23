@@ -743,8 +743,19 @@ impl ReplaySkillPayloadSnapshot {
     /// Skill bodies are transient request data and must not be persisted in
     /// message metadata. Keep the lightweight replay affordances, but drop the
     /// full instruction text before writing a snapshot to history.
+    ///
+    /// 🔧 修复:同时清空大体积的工具 schema 字段,避免多变体场景的 variants_json
+    /// 超过 256KB 硬上限(repo.rs VARIANTS_JSON_LIMIT_BYTES)导致最旧变体被截断删除
+    /// (数据丢失)。清空是安全的,因为前端重放时有完整 fallback:
+    /// - `skill_embedded_tools` → 前端从 `skillRegistry.get(skillId)` 重新构建
+    ///   (TauriAdapter.ts:3530-3549)
+    /// - `mcp_tool_schemas` → 前端从 `McpService.getCachedToolsFor(serverId)` 重新获取,
+    ///   依赖保留的 `selected_mcp_servers`(TauriAdapter.ts:3486-3492, 3564-3581)
+    /// 注意:`selected_mcp_servers` 是上述 fallback 的必要依据,**必须保留**,不可清空。
     pub fn without_skill_contents(mut self) -> Self {
         self.skill_contents.clear();
+        self.skill_embedded_tools.clear();
+        self.mcp_tool_schemas.clear();
         self
     }
 
@@ -3620,12 +3631,33 @@ mod tests {
                 "manual-a".to_string(),
                 vec!["dep-a".to_string()],
             )]),
-            ..Default::default()
+            // 🔧 覆盖新增的清空字段:大体积工具 schema 应在持久化时被清除
+            skill_embedded_tools: std::collections::HashMap::from([(
+                "manual-a".to_string(),
+                vec![McpToolSchema {
+                    name: "tool-x".to_string(),
+                    server_id: Some("srv-1".to_string()),
+                    description: Some("d".to_string()),
+                    input_schema: Some(serde_json::json!({"type": "object"})),
+                }],
+            )]),
+            mcp_tool_schemas: vec![McpToolSchema {
+                name: "ext-tool".to_string(),
+                server_id: Some("srv-2".to_string()),
+                description: None,
+                input_schema: Some(serde_json::json!({"type": "object", "properties": {}})),
+            }],
+            selected_mcp_servers: vec!["srv-2".to_string()],
         };
 
         let redacted = snapshot.without_skill_contents();
         assert!(redacted.skill_contents.is_empty());
+        // 🔧 大字段(工具 schema)应被清空,避免 variants_json 超 256KB 截断删除变体
+        assert!(redacted.skill_embedded_tools.is_empty());
+        assert!(redacted.mcp_tool_schemas.is_empty());
+        // 轻量字段必须保留:selected_mcp_servers 是前端重放 fallback 的依据
         assert_eq!(redacted.active_skill_ids, vec!["manual-a".to_string()]);
+        assert_eq!(redacted.selected_mcp_servers, vec!["srv-2".to_string()]);
         assert_eq!(
             redacted
                 .skill_dependencies
@@ -3634,6 +3666,7 @@ mod tests {
                 .unwrap(),
             vec!["dep-a".to_string()]
         );
+        // 清空大字段后,active_skill_ids/dependencies/selected_mcp_servers 仍满足重放元数据判定
         assert!(redacted.has_replay_metadata());
     }
 

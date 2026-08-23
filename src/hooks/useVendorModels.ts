@@ -306,6 +306,8 @@ export const useVendorModels = () => {
     saving,
     error,
     loadAll,
+    refreshVendors: loadAll,
+    refreshProfiles: loadAll,
     upsertVendor,
     deleteVendor,
     upsertModelProfile,

@@ -28,9 +28,10 @@ use crate::chat_v2::ContentBlock;
 use crate::document_parser::DocumentParser;
 use crate::vfs::ocr_utils::parse_ocr_pages_json;
 use crate::vfs::repos::VfsFileRepo;
+use crate::vfs::resource_kind::ResourceKind;
 use crate::vfs::types::{
     resolve_image_inject_modes, resolve_pdf_inject_modes, PdfPreviewJson, VfsContextRefData,
-    VfsResourceRef, VfsResourceType,
+    VfsResourceRef,
 };
 
 /// 解析后的资源内容
@@ -113,14 +114,14 @@ pub fn resolve_vfs_ref_to_blocks(
     is_multimodal: bool,
 ) -> Vec<ContentBlock> {
     match &vfs_ref.resource_type {
-        VfsResourceType::Image => resolve_image(conn, blobs_dir, vfs_ref, is_multimodal),
-        VfsResourceType::File => resolve_file(conn, blobs_dir, vfs_ref, is_multimodal),
-        VfsResourceType::Note => resolve_note(conn, vfs_ref),
-        VfsResourceType::Essay => resolve_essay(conn, vfs_ref),
-        VfsResourceType::Translation => resolve_translation(conn, vfs_ref),
-        VfsResourceType::Textbook => resolve_textbook(conn, blobs_dir, vfs_ref, is_multimodal),
-        VfsResourceType::Exam => resolve_exam(conn, blobs_dir, vfs_ref, is_multimodal),
-        VfsResourceType::Retrieval => {
+        ResourceKind::Image => resolve_image(conn, blobs_dir, vfs_ref, is_multimodal),
+        ResourceKind::File => resolve_file(conn, blobs_dir, vfs_ref, is_multimodal),
+        ResourceKind::Note => resolve_note(conn, vfs_ref),
+        ResourceKind::Essay => resolve_essay(conn, vfs_ref),
+        ResourceKind::Translation => resolve_translation(conn, vfs_ref),
+        ResourceKind::Textbook => resolve_textbook(conn, blobs_dir, vfs_ref, is_multimodal),
+        ResourceKind::Exam => resolve_exam(conn, blobs_dir, vfs_ref, is_multimodal),
+        ResourceKind::Retrieval => {
             // Retrieval 优先注入可用片段，避免退化为占位符导致上下文丢失。
             let text = vfs_ref
                 .snippet
@@ -134,7 +135,10 @@ pub fn resolve_vfs_ref_to_blocks(
                 ),
             }]
         }
-        VfsResourceType::MindMap => resolve_mindmap(conn, vfs_ref),
+        ResourceKind::MindMap => resolve_mindmap(conn, vfs_ref),
+        // ★ 2026-08-07 迁移补充：Card（题目卡片快照）/Folder（虚拟文件夹节点）
+        // 无独立解析函数，不产生内容块（引用按类型过滤后不会到达此处）
+        ResourceKind::Card | ResourceKind::Folder => vec![],
     }
 }
 

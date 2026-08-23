@@ -889,6 +889,10 @@ function handleBlockEventWithVariant(
           return;
         }
 
+        // 🔧 修复：end 事件到达时先 flush chunkBuffer，确保缓冲的 chunk 先落地，
+        // 再标记 success — 避免 updateBlockContent 因 status 已是 success 而丢弃内容
+        chunkBuffer.flushSession(store.sessionId);
+
         handler.onEnd(store, effectiveBlockId, mergeEndResultWithMeta(event));
         variantBlockIdMap.delete(type);
         autoSave.scheduleAutoSave(store);
@@ -1019,9 +1023,13 @@ export function handleBackendEvent(store: ChatStore, event: BackendEvent): void 
         const effectiveBlockId = blockId ?? context.blockIdMap.get(type);
 
         if (!effectiveBlockId) {
+          // 🔧 诊断增强：start 事件丢失/乱序时记录详细上下文，便于排查"内容不显示"
+          // 常见诱因：大量工具调用导致 eventBridge 乱序缓冲 skipGapAndFlush 跳过 start 事件
           console.warn(
             `[EventBridge] Cannot process 'chunk' event without blockId. ` +
-              `Event type: "${type}". Make sure 'start' event was processed first.`
+              `Event type: "${type}", messageId: ${effectiveMessageId || 'unknown'}, ` +
+              `blockIdMap keys: [${Array.from(context.blockIdMap.keys()).join(', ')}]. ` +
+              `Make sure 'start' event was processed first.`
           );
           return;
         }
@@ -1070,6 +1078,11 @@ export function handleBackendEvent(store: ChatStore, event: BackendEvent): void 
           );
           return;
         }
+
+        // 🔧 修复：end 事件到达时先 flush chunkBuffer，确保缓冲的 chunk 先落地，
+        // 再标记 success — 避免 updateBlockContent 因 status 已是 success 而丢弃内容
+        // （大量工具调用场景下，4ms 缓冲窗口的 chunk 可能在 end 事件之后才 flush）
+        chunkBuffer.flushSession(store.sessionId);
 
         handler.onEnd(store, effectiveBlockId, mergeEndResultWithMeta(event));
 

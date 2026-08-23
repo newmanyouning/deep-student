@@ -30,9 +30,9 @@ fn log_and_skip_err<T>(result: Result<T, rusqlite::Error>) -> Option<T> {
 use crate::vfs::repos::embedding_repo::VfsIndexStateRepo;
 use crate::vfs::repos::folder_repo::VfsFolderRepo;
 use crate::vfs::repos::resource_repo::VfsResourceRepo;
+use crate::vfs::resource_kind::ResourceKind;
 use crate::vfs::types::{
-    VfsCreateMindMapParams, VfsFolderItem, VfsMindMap, VfsMindMapVersion, VfsResourceType,
-    VfsUpdateMindMapParams,
+    VfsCreateMindMapParams, VfsFolderItem, VfsMindMap, VfsMindMapVersion, VfsUpdateMindMapParams,
 };
 
 /// VFS 知识导图表 Repo
@@ -269,7 +269,7 @@ impl VfsMindMapRepo {
         let normalized_content = Self::normalize_mindmap_content(&params.content)?;
         let resource_result = VfsResourceRepo::create_or_reuse_with_conn(
             conn,
-            VfsResourceType::MindMap,
+            ResourceKind::MindMap,
             &normalized_content,
             Some(&mindmap_id),
             Some("mindmaps"),
@@ -474,7 +474,7 @@ impl VfsMindMapRepo {
                     if shared_count > 1 {
                         let resource_result = VfsResourceRepo::create_or_reuse_with_conn(
                             conn,
-                            VfsResourceType::MindMap,
+                            ResourceKind::MindMap,
                             &normalized_content,
                             Some(mindmap_id),
                             Some("mindmaps"),
@@ -1207,7 +1207,7 @@ impl VfsMindMapRepo {
         // 为旧内容创建独立的 resource 记录（基于 hash 去重）
         let snapshot_resource = VfsResourceRepo::create_or_reuse_with_conn(
             conn,
-            VfsResourceType::MindMap,
+            ResourceKind::MindMap,
             old_content,
             Some(&version_id),
             Some("mindmap_versions"),

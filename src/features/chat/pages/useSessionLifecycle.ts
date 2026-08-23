@@ -231,7 +231,7 @@ export function useSessionLifecycle(deps: UseSessionLifecycleDeps) {
   // - deferredSessionId 延迟更新（ChatContainer 重渲染在后台进行）
   const loadSessions = useCallback(async () => {
     try {
-      // 并行获取：所有已分组会话 + 未分组首页 + 计数
+      // 并行获取：所有已分组会话 + 未分组全量会话 + 计数
       const [groupedResult, ungroupedResult, totalCount, ungroupedCount] = await Promise.all([
         // groupId="*" 表示 group_id IS NOT NULL，一次性加载所有已分组会话
         invoke<ChatSession[]>('chat_v2_list_sessions', {
@@ -240,11 +240,13 @@ export function useSessionLifecycle(deps: UseSessionLifecycleDeps) {
           limit: 10000,
           offset: 0,
         }),
-        // 未分组会话分页加载
+        // 🔧 修复：未分组会话也全量加载（groupId='' 表示 group_id IS NULL），
+        // 供侧边栏"未分类"、搜索、计数、浏览器渲染使用，避免被 limit=PAGE_SIZE 截断。
+        // 未分组会话数量通常有限，全量加载可控；若未来量级增大，应做后端聚合/真分页。
         invoke<ChatSession[]>('chat_v2_list_sessions', {
           status: 'active',
           groupId: '',
-          limit: PAGE_SIZE,
+          limit: 10000,
           offset: 0,
         }),
         invoke<number>('chat_v2_count_sessions', { status: 'active' }),
@@ -257,8 +259,8 @@ export function useSessionLifecycle(deps: UseSessionLifecycleDeps) {
       emitSessionListUpdated();
       setTotalSessionCount(totalCount);
       setUngroupedSessionCount(ungroupedCount);
-      // "加载更多"只针对未分组会话
-      setHasMoreSessions(ungroupedResult.length >= PAGE_SIZE);
+      // "加载更多"只针对未分组会话；初始已加载全量（上限 10000），达到上限时保留 loadMore 兜底
+      setHasMoreSessions(ungroupedResult.length >= 10000);
 
       // 启动行为：进入一个隐藏 draft。它不进入左侧列表，只有首条消息后才转正。
       let sessionToSelect: string | null = null;

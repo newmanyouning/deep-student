@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use tauri::{State, Window};
+use tauri::{Manager, State, Window};
 
 use crate::chat_v2::migration::{
     check_migration_status, migrate_legacy_chat, rollback_migration, MigrationCheckResult,
@@ -31,10 +31,13 @@ pub async fn chat_v2_check_migration_status(
 /// 迁移过程中会通过 `chat_v2_migration` 事件通道发送进度
 #[tauri::command]
 pub async fn chat_v2_migrate_legacy_chat(
+    app: tauri::AppHandle,
     window: Window,
     database: State<'_, Arc<Database>>,
     chat_v2_db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<MigrationReport, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let data_conn = database.get_conn_safe().map_err(|e| e.to_string())?;
     let chat_v2_conn = chat_v2_db.get_conn_safe().map_err(|e| e.to_string())?;
 
@@ -46,10 +49,13 @@ pub async fn chat_v2_migrate_legacy_chat(
 /// 删除 Chat V2 中迁移的会话，重置旧表的迁移标记
 #[tauri::command]
 pub async fn chat_v2_rollback_migration(
+    app: tauri::AppHandle,
     window: Window,
     database: State<'_, Arc<Database>>,
     chat_v2_db: State<'_, Arc<ChatV2Database>>,
 ) -> Result<MigrationReport, String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     let data_conn = database.get_conn_safe().map_err(|e| e.to_string())?;
     let chat_v2_conn = chat_v2_db.get_conn_safe().map_err(|e| e.to_string())?;
 

@@ -110,6 +110,7 @@ const TYPE_CUSTOM_ICONS: Record<DstuNodeType, React.FC<ResourceIconProps>> = {
   file: GenericFileIcon,
   retrieval: GenericFileIcon,
   mindmap: MindmapIcon,
+  card: GenericFileIcon, // ★ 题目卡片快照（暂无专属图标，使用通用文件图标）
 };
 
 /**

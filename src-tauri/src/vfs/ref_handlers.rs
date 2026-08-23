@@ -22,10 +22,10 @@ use crate::vfs::error::VfsResult;
 use crate::vfs::indexing::VfsContentExtractor;
 use crate::vfs::ocr_utils::{join_ocr_pages_text, parse_ocr_pages_json};
 use crate::vfs::repos::{VfsFileRepo, VfsFolderRepo};
+use crate::vfs::resource_kind::ResourceKind;
 use crate::vfs::types::{
     resolve_image_inject_modes, resolve_pdf_inject_modes, GetResourceRefsInput,
     MultimodalContentBlock, ResolvedResource, VfsContextRefData, VfsFolderItem, VfsResourceRef,
-    VfsResourceType,
 };
 
 /// 最大批量处理资源数（契约 F）
@@ -433,7 +433,7 @@ fn get_essay_session_ref_with_conn(
     Ok(Some(VfsResourceRef {
         source_id: session_id.to_string(),
         resource_hash: hash,
-        resource_type: VfsResourceType::Essay,
+        resource_type: ResourceKind::Essay,
         name: title,
         resource_id: None,
         snippet: None,
@@ -522,7 +522,7 @@ fn resolve_single_ref_with_conn(
                 "[OCR_DIAG] get_source_id_type returned None for source_id={}, normalized_source_id={}",
                 r.source_id, normalized_source_id
             );
-            if r.resource_type == VfsResourceType::Retrieval {
+            if r.resource_type == ResourceKind::Retrieval {
                 let fallback_content = r
                     .snippet
                     .as_deref()
@@ -623,7 +623,7 @@ fn resolve_single_ref_with_conn(
     let pdf_resolved_modes = if is_pdf
         && matches!(
             r.resource_type,
-            VfsResourceType::File | VfsResourceType::Textbook
+            ResourceKind::File | ResourceKind::Textbook
         ) {
         let pdf_modes = r
             .inject_modes
@@ -640,7 +640,7 @@ fn resolve_single_ref_with_conn(
     };
 
     let (content, warning) = match &r.resource_type {
-        VfsResourceType::Image => {
+        ResourceKind::Image => {
             // ★ 图片：根据 inject_modes 决定返回内容
             let image_modes = r
                 .inject_modes
@@ -714,7 +714,7 @@ fn resolve_single_ref_with_conn(
                 (Some(content_parts.join("\n\n")), None)
             }
         }
-        VfsResourceType::File | VfsResourceType::Textbook => {
+        ResourceKind::File | ResourceKind::Textbook => {
             // ★ 文件/教材：根据是否是 PDF 和 inject_modes 决定返回内容
             if is_pdf {
                 // PDF 文件：根据 inject_modes.pdf 决定返回内容
@@ -804,7 +804,7 @@ fn resolve_single_ref_with_conn(
                 }
             }
         }
-        VfsResourceType::MindMap => {
+        ResourceKind::MindMap => {
             // ★ 2026-02-10 修复：MindMap 内容为 JSON 结构，需提取节点纯文本后注入
             // 避免将原始 JSON 语法噪声发送给 LLM
             info!(
@@ -833,11 +833,11 @@ fn resolve_single_ref_with_conn(
                 (None, None)
             }
         }
-        VfsResourceType::Note
-        | VfsResourceType::Translation
-        | VfsResourceType::Essay
-        | VfsResourceType::Exam
-        | VfsResourceType::Retrieval => {
+        ResourceKind::Note
+        | ResourceKind::Translation
+        | ResourceKind::Essay
+        | ResourceKind::Exam
+        | ResourceKind::Retrieval => {
             // Note/Translation/Essay/Exam/Retrieval：直接使用 resources.data 内容
             info!(
                 "[PDF_DEBUG] {:?} type: using raw_content directly, has_content={}",
@@ -846,6 +846,9 @@ fn resolve_single_ref_with_conn(
             );
             (raw_content, None)
         }
+        // ★ 2026-08-07 迁移补充：Card（题目卡片快照）/Folder（虚拟节点）
+        // 无专门分支，与 Note 组一致直接使用 resources.data 内容
+        ResourceKind::Card | ResourceKind::Folder => (raw_content, None),
     };
 
     info!(
@@ -858,10 +861,10 @@ fn resolve_single_ref_with_conn(
     // ★ 获取多模态内容块（用于多模态模型直接传按页图片）
     // 根据 inject_modes 决定是否返回图片块
     let multimodal_blocks = match &r.resource_type {
-        VfsResourceType::Exam => {
+        ResourceKind::Exam => {
             get_exam_multimodal_blocks_with_conn(conn, blobs_dir, &r.source_id)
         }
-        VfsResourceType::File | VfsResourceType::Textbook => {
+        ResourceKind::File | ResourceKind::Textbook => {
             // PDF 文件：根据 inject_modes.pdf 是否包含 Image 决定是否返回多模态块
             if is_pdf {
                 // ★ P2-1 修复（二轮审阅）：复用提前解析的 pdf_resolved_modes，不再重复调用
@@ -886,12 +889,14 @@ fn resolve_single_ref_with_conn(
             }
         }
         // Note/Translation/Essay/MindMap/Image/Retrieval：无多模态块
-        VfsResourceType::Note
-        | VfsResourceType::Translation
-        | VfsResourceType::Essay
-        | VfsResourceType::MindMap
-        | VfsResourceType::Image
-        | VfsResourceType::Retrieval => None,
+        ResourceKind::Note
+        | ResourceKind::Translation
+        | ResourceKind::Essay
+        | ResourceKind::MindMap
+        | ResourceKind::Image
+        | ResourceKind::Retrieval => None,
+        // ★ 2026-08-07 迁移补充：Card/Folder 无多模态块
+        ResourceKind::Card | ResourceKind::Folder => None,
     };
 
     Ok(ResolvedResource {
@@ -913,7 +918,7 @@ fn resolve_single_ref_with_conn(
 fn get_resource_path_with_conn(
     conn: &Connection,
     source_id: &str,
-    resource_type: &VfsResourceType,
+    resource_type: &ResourceKind,
 ) -> VfsResult<String> {
     // ★ FIX: 使用 source_id 作为路径末段而非标题
     // 之前使用标题（如 "有机合成完整笔记"）会导致前端 dstu.get(path) 时
@@ -976,7 +981,7 @@ fn get_resource_content_with_conn(
     conn: &Connection,
     blobs_dir: &std::path::Path,
     source_id: &str,
-    resource_type: &VfsResourceType,
+    resource_type: &ResourceKind,
 ) -> VfsResult<Option<String>> {
     info!(
         "[PDF_DEBUG] get_resource_content_with_conn: source_id={}, resource_type={:?}",
@@ -1049,7 +1054,7 @@ fn get_resource_content_with_conn(
 
     // 特殊处理某些类型
     match resource_type {
-        VfsResourceType::Exam => {
+        ResourceKind::Exam => {
             // 题目集返回 preview_json
             info!("[PDF_DEBUG] Exam branch: returning preview_json");
             let preview: Option<String> = conn
@@ -1065,7 +1070,7 @@ fn get_resource_content_with_conn(
             );
             Ok(preview)
         }
-        VfsResourceType::Image | VfsResourceType::File | VfsResourceType::Textbook => {
+        ResourceKind::Image | ResourceKind::File | ResourceKind::Textbook => {
             // ★ 修复：Textbook 类型也需要从 blob 读取 PDF 内容
             info!("[PDF_DEBUG] Image/File/Textbook branch: calling VfsFileRepo::get_content_with_conn");
             let result = VfsFileRepo::get_content_with_conn(conn, blobs_dir, source_id);
@@ -1079,7 +1084,7 @@ fn get_resource_content_with_conn(
             }
             result
         }
-        VfsResourceType::MindMap => {
+        ResourceKind::MindMap => {
             // MindMap 内容在 resources.data 中（JSON 格式），此处返回 None 走上层逻辑
             info!(
                 "[PDF_DEBUG] MindMap branch: returning None (content should be in resources.data)"
@@ -1087,16 +1092,18 @@ fn get_resource_content_with_conn(
             Ok(None)
         }
         // Note/Translation/Essay/Retrieval：内容在 resources.data 中，此处返回 None 走上层逻辑
-        VfsResourceType::Note
-        | VfsResourceType::Translation
-        | VfsResourceType::Essay
-        | VfsResourceType::Retrieval => {
+        ResourceKind::Note
+        | ResourceKind::Translation
+        | ResourceKind::Essay
+        | ResourceKind::Retrieval => {
             info!(
                 "[PDF_DEBUG] {:?} branch: returning None (content should be in resources.data)",
                 resource_type
             );
             Ok(None)
         }
+        // ★ 2026-08-07 迁移补充：Card/Folder 同 Note 组，内容在 resources.data
+        ResourceKind::Card | ResourceKind::Folder => Ok(None),
     }
 }
 
@@ -1405,7 +1412,7 @@ pub fn get_ocr_pages_text_with_conn(conn: &Connection, source_id: &str) -> Optio
 fn get_resource_title_with_conn(
     conn: &Connection,
     source_id: &str,
-    _resource_type: &VfsResourceType,
+    _resource_type: &ResourceKind,
 ) -> VfsResult<Option<String>> {
     let (_, table_name, title_column) = match get_source_id_type(source_id) {
         Some(info) => info,
@@ -1426,30 +1433,30 @@ fn get_resource_title_with_conn(
 
 /// 根据 sourceId 前缀获取资源类型信息
 ///
-/// 返回 (VfsResourceType, 表名, 标题列名)
+/// 返回 (ResourceKind, 表名, 标题列名)
 ///
 /// ★ 注意：附件类型 (att_) 需要查询数据库才能确定是 Image 还是 File
 /// ★ 2026-02-09 修复：essay_session_ 必须在 essay_ 之前检查，否则会被错误匹配到 essays 表
-fn get_source_id_type(source_id: &str) -> Option<(VfsResourceType, &'static str, &'static str)> {
+fn get_source_id_type(source_id: &str) -> Option<(ResourceKind, &'static str, &'static str)> {
     if source_id.starts_with("note_") {
-        Some((VfsResourceType::Note, "notes", "title"))
+        Some((ResourceKind::Note, "notes", "title"))
     } else if source_id.starts_with("mm_") {
-        Some((VfsResourceType::MindMap, "mindmaps", "title"))
+        Some((ResourceKind::MindMap, "mindmaps", "title"))
     } else if source_id.starts_with("tb_") {
         // ★ 2026-02-09 修复：tb_ 映射为 Textbook（与前端 inferTypeFromSourceId 一致）
         // 数据仍存储在 files 表（Migration032 后教材统一到 files 表）
-        Some((VfsResourceType::Textbook, "files", "file_name"))
+        Some((ResourceKind::Textbook, "files", "file_name"))
     } else if source_id.starts_with("file_") || source_id.starts_with("att_") {
-        Some((VfsResourceType::File, "files", "file_name"))
+        Some((ResourceKind::File, "files", "file_name"))
     } else if source_id.starts_with("exam_") {
         Some((
-            VfsResourceType::Exam,
+            ResourceKind::Exam,
             "exam_sheets",
             "COALESCE(exam_name, id)",
         ))
     } else if source_id.starts_with("tr_") {
         Some((
-            VfsResourceType::Translation,
+            ResourceKind::Translation,
             "translations",
             "COALESCE(title, id)",
         ))
@@ -1457,12 +1464,12 @@ fn get_source_id_type(source_id: &str) -> Option<(VfsResourceType, &'static str,
         // ★ 2026-02-09: essay_session_ 必须在 essay_ 之前检查！
         // essay_sessions 表没有 resource_id 列，需要在调用方做特殊处理
         Some((
-            VfsResourceType::Essay,
+            ResourceKind::Essay,
             "essay_sessions",
             "COALESCE(title, id)",
         ))
     } else if source_id.starts_with("essay_") {
-        Some((VfsResourceType::Essay, "essays", "COALESCE(title, id)"))
+        Some((ResourceKind::Essay, "essays", "COALESCE(title, id)"))
     } else {
         None
     }
@@ -1484,7 +1491,7 @@ fn resolve_source_id_by_resource_id(conn: &Connection, resource_id: &str) -> Opt
 /// 查询附件的实际类型（image 或 file）
 ///
 /// 从 files 表的 type 字段获取精确类型
-fn get_attachment_type_with_conn(conn: &Connection, source_id: &str) -> VfsResourceType {
+fn get_attachment_type_with_conn(conn: &Connection, source_id: &str) -> ResourceKind {
     let result: Option<String> = conn
         .query_row(
             "SELECT type FROM files WHERE id = ?1 AND deleted_at IS NULL",
@@ -1496,9 +1503,9 @@ fn get_attachment_type_with_conn(conn: &Connection, source_id: &str) -> VfsResou
         .flatten();
 
     match result.as_deref() {
-        Some("image") => VfsResourceType::Image,
-        Some("file") => VfsResourceType::File,
-        _ => VfsResourceType::File, // 默认当作文档
+        Some("image") => ResourceKind::Image,
+        Some("file") => ResourceKind::File,
+        _ => ResourceKind::File, // 默认当作文档
     }
 }
 
@@ -2257,41 +2264,41 @@ mod tests {
     fn test_get_source_id_type() {
         // 笔记
         let (t, table, col) = get_source_id_type("note_abc123").unwrap();
-        assert_eq!(t, VfsResourceType::Note);
+        assert_eq!(t, ResourceKind::Note);
         assert_eq!(table, "notes");
         assert_eq!(col, "title");
 
         // 教材（★ 2026-02-09：tb_ 映射为 Textbook，与前端一致；数据仍在 files 表）
         let (t, table, col) = get_source_id_type("tb_xyz789").unwrap();
-        assert_eq!(t, VfsResourceType::Textbook);
+        assert_eq!(t, ResourceKind::Textbook);
         assert_eq!(table, "files");
         assert_eq!(col, "file_name");
 
         // 题目集
         let (t, table, _) = get_source_id_type("exam_def456").unwrap();
-        assert_eq!(t, VfsResourceType::Exam);
+        assert_eq!(t, ResourceKind::Exam);
         assert_eq!(table, "exam_sheets");
 
         // 翻译（★ 2026-02-09 改进：title_column 改为 COALESCE(title, id)）
         let (t, table, col) = get_source_id_type("tr_ghi789").unwrap();
-        assert_eq!(t, VfsResourceType::Translation);
+        assert_eq!(t, ResourceKind::Translation);
         assert_eq!(table, "translations");
         assert_eq!(col, "COALESCE(title, id)");
 
         // ★ 2026-02-09 修复：作文会话必须映射到 essay_sessions 表
         let (t, table, col) = get_source_id_type("essay_session_abc123").unwrap();
-        assert_eq!(t, VfsResourceType::Essay);
+        assert_eq!(t, ResourceKind::Essay);
         assert_eq!(table, "essay_sessions");
         assert_eq!(col, "COALESCE(title, id)");
 
         // 作文轮次仍然映射到 essays 表
         let (t, table, _) = get_source_id_type("essay_jkl012").unwrap();
-        assert_eq!(t, VfsResourceType::Essay);
+        assert_eq!(t, ResourceKind::Essay);
         assert_eq!(table, "essays");
 
         // 附件（默认返回 File，实际类型需通过 get_attachment_type_with_conn 查询）
         let (t, table, col) = get_source_id_type("att_mno345").unwrap();
-        assert_eq!(t, VfsResourceType::File);
+        assert_eq!(t, ResourceKind::File);
         assert_eq!(table, "files");
         assert_eq!(col, "file_name");
 
@@ -2305,17 +2312,17 @@ mod tests {
     fn test_get_source_id_type_essay_session_priority() {
         // essay_session_ 必须匹配到 essay_sessions 表
         let (t, table, _) = get_source_id_type("essay_session_e8ZwCj4Og_").unwrap();
-        assert_eq!(t, VfsResourceType::Essay);
+        assert_eq!(t, ResourceKind::Essay);
         assert_eq!(table, "essay_sessions");
 
         // 普通 essay_ 仍然匹配到 essays 表
         let (t, table, _) = get_source_id_type("essay_abc123").unwrap();
-        assert_eq!(t, VfsResourceType::Essay);
+        assert_eq!(t, ResourceKind::Essay);
         assert_eq!(table, "essays");
 
         // essay_session_ 后面带各种字符
         let (t, table, _) = get_source_id_type("essay_session_XyZ_123").unwrap();
-        assert_eq!(t, VfsResourceType::Essay);
+        assert_eq!(t, ResourceKind::Essay);
         assert_eq!(table, "essay_sessions");
     }
 
@@ -2367,7 +2374,7 @@ mod tests {
         // exam_name 为空时应回退到 id，且 SQL 不应报语法错误
         assert_eq!(resource_ref.name, "exam_test_1");
         assert_eq!(resource_ref.resource_hash, "hash_exam_1");
-        assert_eq!(resource_ref.resource_type, VfsResourceType::Exam);
+        assert_eq!(resource_ref.resource_type, ResourceKind::Exam);
     }
 
     #[test]
@@ -2416,7 +2423,7 @@ mod tests {
 
         assert_eq!(resource_ref.name, "tr_test_1");
         assert_eq!(resource_ref.resource_hash, "hash_tr_1");
-        assert_eq!(resource_ref.resource_type, VfsResourceType::Translation);
+        assert_eq!(resource_ref.resource_type, ResourceKind::Translation);
     }
 
     #[test]
@@ -2466,7 +2473,7 @@ mod tests {
 
         assert_eq!(resource_ref.name, "essay_test_1");
         assert_eq!(resource_ref.resource_hash, "hash_essay_1");
-        assert_eq!(resource_ref.resource_type, VfsResourceType::Essay);
+        assert_eq!(resource_ref.resource_type, ResourceKind::Essay);
     }
 
     #[test]
@@ -2482,7 +2489,7 @@ mod tests {
         let ref_data = VfsResourceRef {
             source_id: "note_abc123".to_string(),
             resource_hash: "sha256hash".to_string(),
-            resource_type: VfsResourceType::Note,
+            resource_type: ResourceKind::Note,
             name: "Test Note".to_string(),
             resource_id: None,
             snippet: None,
@@ -2501,7 +2508,7 @@ mod tests {
         let resolved = ResolvedResource {
             source_id: "note_abc123".to_string(),
             resource_hash: "sha256hash".to_string(),
-            resource_type: VfsResourceType::Note,
+            resource_type: ResourceKind::Note,
             name: "Test Note".to_string(),
             path: "高考复习/函数/Test Note".to_string(),
             content: Some("note content".to_string()),

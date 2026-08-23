@@ -47,12 +47,16 @@ const TAG_REF_PREFIX: &str = "_ref:";
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MemoryType {
-    /// 原子事实（默认）：关于用户的简短陈述句，≤80 字
+    /// 原子事实（默认）：关于用户的简短陈述句，≤200 字
     Fact,
-    /// 学习记忆：用户明确要求保存的词汇/知识点/错题要点等学习内容
+    /// 学习记忆：用户明确要求保存的词汇/知识点/错题要点等学习内容，≤4000 字
     Study,
     /// 经验笔记：用户明确要求保存的方法论、经验、技巧等，≤2000 字
     Note,
+    /// 学习承诺：用户的学习计划/目标/打卡承诺，永不删除，只能"完成"或"变更"
+    Promise,
+    /// 学习偏好：从用户行为中提取的个性化学习特征（需证据绑定）
+    Preference,
 }
 
 impl Default for MemoryType {
@@ -67,6 +71,8 @@ impl MemoryType {
             Self::Fact => "fact",
             Self::Study => "study",
             Self::Note => "note",
+            Self::Promise => "promise",
+            Self::Preference => "preference",
         }
     }
 
@@ -74,6 +80,8 @@ impl MemoryType {
         match s.to_lowercase().as_str() {
             "study" => Self::Study,
             "note" => Self::Note,
+            "promise" => Self::Promise,
+            "preference" => Self::Preference,
             _ => Self::Fact,
         }
     }
@@ -94,6 +102,8 @@ impl MemoryType {
             Self::Fact => 200,
             Self::Study => 4000,
             Self::Note => 2000,
+            Self::Promise => 500,
+            Self::Preference => 300,
         }
     }
 }
@@ -174,6 +184,76 @@ const TAG_HITS_PREFIX: &str = "_hits:";
 const TAG_LAST_HIT_PREFIX: &str = "_last_hit:";
 /// 时间衰减半衰期（天）：超过此天数的记忆搜索分数减半
 const TIME_DECAY_HALF_LIFE_DAYS: f64 = 60.0;
+/// Promise 承诺的半衰期更长（学习计划不应被遗忘衰减）
+const PROMISE_TIME_DECAY_HALF_LIFE_DAYS: f64 = 365.0;
+/// 学习偏好记忆的标签前缀
+const TAG_PREFERENCE_PREFIX: &str = "_pref:";
+/// 承诺状态标签前缀
+const TAG_PROMISE_STATUS_PREFIX: &str = "_promise:";
+
+/// 学习承诺状态
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PromiseStatus {
+    /// 待完成
+    Pending,
+    /// 已完成
+    Completed,
+    /// 已变更（新约定替代旧约定）
+    Changed,
+}
+
+impl PromiseStatus {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Completed => "completed",
+            Self::Changed => "changed",
+        }
+    }
+
+    pub fn to_tag(&self) -> String {
+        format!("{}{}", TAG_PROMISE_STATUS_PREFIX, self.as_str())
+    }
+}
+
+/// 会话工作上下文 — 受席恩 L4 层启发
+/// 跟踪当前会话的关键状态，会话开始时注入，结束时提炼
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
+pub struct LearningSessionContext {
+    /// 当前学习主题
+    pub current_topic: Option<String>,
+    /// 上次讨论的资源 ID（教材/笔记/题库）
+    pub last_resource_id: Option<String>,
+    /// 未完成的承诺 ID 列表
+    pub pending_promises: Vec<String>,
+    /// 本次会话的学习进度摘要
+    pub session_progress: Option<String>,
+    /// 用户当前情绪/状态（来自对话分析）
+    pub user_state: Option<String>,
+    /// 会话开始时间
+    pub started_at: Option<String>,
+    /// 最后更新时间
+    pub updated_at: Option<String>,
+}
+
+/// 学习偏好特征 — 受用户特征提取架构启发
+/// 每个特征必须绑定证据（用户原话引用），禁止无证据断言
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct LearningPreference {
+    /// 偏好维度
+    pub dimension: String,
+    /// 提取的偏好结论
+    pub conclusion: String,
+    /// 证据：用户原话引用（至少 1 条）
+    pub evidence: Vec<String>,
+    /// 置信度 0.0-1.0
+    pub confidence: f32,
+    /// 首次提取时间
+    pub extracted_at: String,
+    /// 最后验证时间
+    pub last_verified_at: Option<String>,
+}
 
 fn should_downgrade_smart_mutation(event: &MemoryEvent, confidence: f32) -> bool {
     matches!(
@@ -399,7 +479,7 @@ impl MemoryService {
 
     fn non_fact_type_tag(memory_type: MemoryType) -> Option<String> {
         match memory_type {
-            MemoryType::Fact => None,
+            MemoryType::Fact => None,  // Fact 类型不需要额外标签
             _ => Some(memory_type.to_tag()),
         }
     }
@@ -976,24 +1056,38 @@ impl MemoryService {
         match memory_type {
             MemoryType::Note => {
                 let result = self.write_typed(
-                    folder_path,
-                    title,
-                    content,
-                    WriteMode::Create,
-                    MemoryType::Note,
-                    purpose,
+                    folder_path, title, content, WriteMode::Create,
+                    MemoryType::Note, purpose,
                 )?;
                 Ok(SmartWriteOutput {
-                    note_id: result.note_id,
-                    event: "ADD".to_string(),
-                    is_new: true,
-                    confidence: 1.0,
-                    reason: "经验笔记类型，直接写入".to_string(),
-                    resource_id: Some(result.resource_id),
-                    downgraded: false,
+                    note_id: result.note_id, event: "ADD".to_string(), is_new: true,
+                    confidence: 1.0, reason: "笔记类型，直接写入".to_string(),
+                    resource_id: Some(result.resource_id), downgraded: false,
                 })
             }
             MemoryType::Study => self.upsert_study_memory(folder_path, title, content, purpose),
+            MemoryType::Promise => {
+                let result = self.write_typed(
+                    folder_path, title, content, WriteMode::Create,
+                    MemoryType::Promise, purpose,
+                )?;
+                Ok(SmartWriteOutput {
+                    note_id: result.note_id, event: "ADD".to_string(), is_new: true,
+                    confidence: 1.0, reason: "学习承诺，直接写入".to_string(),
+                    resource_id: Some(result.resource_id), downgraded: false,
+                })
+            }
+            MemoryType::Preference => {
+                let result = self.write_typed(
+                    folder_path, title, content, WriteMode::Create,
+                    MemoryType::Preference, purpose,
+                )?;
+                Ok(SmartWriteOutput {
+                    note_id: result.note_id, event: "ADD".to_string(), is_new: true,
+                    confidence: 1.0, reason: "学习偏好，直接写入".to_string(),
+                    resource_id: Some(result.resource_id), downgraded: false,
+                })
+            }
             MemoryType::Fact => Err(MemoryError::Validation(
                 "fact 不是显式学习内容写入类型".to_string(),
             )),
@@ -1138,6 +1232,62 @@ impl MemoryService {
                 &output,
                 timer.elapsed_ms(),
                 session_id,
+            );
+            if let Some(key) = idempotency_key {
+                self.finalize_idempotency_result(key, &output);
+            }
+            return Ok(output);
+        }
+
+        if memory_type == MemoryType::Study {
+            let output = self.write_explicit_memory(
+                folder_path,
+                title,
+                content,
+                MemoryType::Study,
+                purpose,
+            )?;
+            if let Some(resource_id) = &output.resource_id {
+                self.index_immediately(resource_id).await;
+            }
+            self.audit_logger.log_write_smart_result(
+                source,
+                title,
+                content,
+                folder_path,
+                &output,
+                timer.elapsed_ms(),
+                session_id,
+            );
+            if let Some(key) = idempotency_key {
+                self.finalize_idempotency_result(key, &output);
+            }
+            return Ok(output);
+        }
+
+        if memory_type == MemoryType::Promise {
+            let output =
+                self.write_explicit_memory(folder_path, title, content, MemoryType::Promise, purpose)?;
+            if let Some(resource_id) = &output.resource_id {
+                self.index_immediately(resource_id).await;
+            }
+            self.audit_logger.log_write_smart_result(
+                source, title, content, folder_path, &output, timer.elapsed_ms(), session_id,
+            );
+            if let Some(key) = idempotency_key {
+                self.finalize_idempotency_result(key, &output);
+            }
+            return Ok(output);
+        }
+
+        if memory_type == MemoryType::Preference {
+            let output =
+                self.write_explicit_memory(folder_path, title, content, MemoryType::Preference, purpose)?;
+            if let Some(resource_id) = &output.resource_id {
+                self.index_immediately(resource_id).await;
+            }
+            self.audit_logger.log_write_smart_result(
+                source, title, content, folder_path, &output, timer.elapsed_ms(), session_id,
             );
             if let Some(key) = idempotency_key {
                 self.finalize_idempotency_result(key, &output);
@@ -2964,6 +3114,118 @@ impl MemoryService {
                 .partial_cmp(&a.score)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
+    }
+
+    // ========================================================================
+    // L1: 学习承诺 (Learning Promise) — 受席恩 L1 层启发
+    // ========================================================================
+
+    /// 写入学习承诺。Promise 永不删除，只能"完成"或"变更"
+    pub async fn write_promise(
+        &self, folder_path: Option<&str>, title: &str, content: &str,
+    ) -> MemoryResult<SmartWriteOutput> {
+        self.write_smart_with_source(
+            folder_path, title, content,
+            MemoryOpSource::Handler, None,
+            MemoryType::Promise, None, None,
+        ).await
+    }
+
+    /// 完成一个学习承诺
+    pub fn complete_promise(&self, note_id: &str) -> MemoryResult<()> {
+        let note = self.storage.get_note(note_id)?
+            .ok_or_else(|| MemoryError::NotFound(format!("承诺 {} 不存在", note_id)))?;
+        let mut tags = note.tags;
+        tags.retain(|t| !t.starts_with(TAG_PROMISE_STATUS_PREFIX));
+        tags.push(PromiseStatus::Completed.to_tag());
+        self.storage.update_note(note_id, VfsUpdateNoteParams {
+            title: None, content: None, tags: Some(tags), expected_updated_at: None,
+        })?;
+        Ok(())
+    }
+
+    /// 变更学习承诺
+    pub fn change_promise(&self, note_id: &str, new_content: &str) -> MemoryResult<()> {
+        let note = self.storage.get_note(note_id)?
+            .ok_or_else(|| MemoryError::NotFound(format!("承诺 {} 不存在", note_id)))?;
+        let mut tags = note.tags;
+        tags.retain(|t| !t.starts_with(TAG_PROMISE_STATUS_PREFIX));
+        tags.push(PromiseStatus::Changed.to_tag());
+        self.storage.update_note(note_id, VfsUpdateNoteParams {
+            title: None, content: Some(new_content.to_string()), tags: Some(tags), expected_updated_at: None,
+        })?;
+        Ok(())
+    }
+
+    /// 获取所有未完成的学习承诺 (is_stale 为 false 的 promise 即为 pending)
+    pub fn get_pending_promises(&self) -> MemoryResult<Vec<MemoryListItem>> {
+        let all = self.list(None, 100, 0)?;
+        Ok(all.into_iter().filter(|m| {
+            m.memory_type == "promise" && !m.is_stale
+        }).collect())
+    }
+
+    // ========================================================================
+    // L2 增强: 学习偏好 — 受用户特征提取架构启发 (证据绑定)
+    // ========================================================================
+
+    /// 写入学习偏好（需证据绑定）
+    pub async fn write_preference(
+        &self, folder_path: Option<&str>, title: &str, content: &str,
+    ) -> MemoryResult<SmartWriteOutput> {
+        self.write_smart_with_source(
+            folder_path, title, content,
+            MemoryOpSource::Handler, None,
+            MemoryType::Preference, None, None,
+        ).await
+    }
+
+    /// 获取所有学习偏好
+    pub fn get_learning_preferences(&self) -> MemoryResult<Vec<MemoryListItem>> {
+        let all = self.list(None, 50, 0)?;
+        Ok(all.into_iter().filter(|m| m.memory_type == "preference").collect())
+    }
+
+    // ========================================================================
+    // L4: 会话工作上下文 — 受席恩 L4 层启发
+    // ========================================================================
+
+    fn get_or_create_session_ctx_note_id(&self) -> MemoryResult<String> {
+        let sys_id = self.get_or_create_system_folder_id()?;
+        const SESSION_CTX_TITLE: &str = "__session_context__";
+        if let Some(note) = self.find_note_by_title(Some(&sys_id), SESSION_CTX_TITLE)? {
+            return Ok(note.id);
+        }
+        let note = self.storage.create_note_in_folder(
+            VfsCreateNoteParams {
+                title: SESSION_CTX_TITLE.to_string(),
+                content: serde_json::to_string(&LearningSessionContext::default()).unwrap_or_default(),
+                tags: vec!["_system".to_string()],
+            },
+            Some(&sys_id),
+        )?;
+        Ok(note.id)
+    }
+
+    /// 获取当前会话工作上下文
+    pub fn get_session_context(&self) -> MemoryResult<LearningSessionContext> {
+        let note_id = self.get_or_create_session_ctx_note_id()?;
+        let content = self.storage.get_note_content(&note_id)?.unwrap_or_default();
+        serde_json::from_str(&content).map_err(|e| {
+            MemoryError::Other(format!("解析会话上下文失败: {}", e))
+        })
+    }
+
+    /// 更新会话工作上下文
+    pub fn update_session_context(&self, ctx: &LearningSessionContext) -> MemoryResult<()> {
+        let note_id = self.get_or_create_session_ctx_note_id()?;
+        let content = serde_json::to_string(ctx).map_err(|e| {
+            MemoryError::Other(format!("序列化会话上下文失败: {}", e))
+        })?;
+        self.storage.update_note(&note_id, VfsUpdateNoteParams {
+            title: None, content: Some(content), tags: None, expected_updated_at: None,
+        })?;
+        Ok(())
     }
 }
 

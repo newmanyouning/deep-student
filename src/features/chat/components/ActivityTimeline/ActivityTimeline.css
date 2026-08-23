@@ -20,6 +20,7 @@
 button.timeline-node-dot {
   padding: 0 !important;
   border: none;
+  cursor: pointer;
 }
 
 .thinking-summary-sticky {
@@ -60,4 +61,5 @@ button.timeline-node-dot {
 .thinking-summary-trigger:hover,
 .thinking-summary-trigger:focus-visible {
   background: transparent;
+  cursor: pointer;
 }

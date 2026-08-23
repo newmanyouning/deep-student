@@ -212,6 +212,13 @@ impl Default for ParsedPath {
 // ============================================================================
 
 /// 资源 ID 前缀映射表
+///
+/// ★ 已收敛：本表是 `ResourceKind::id_prefix` / `from_id_prefix`
+/// （vfs/resource_kind.rs，ID 前缀推断的唯一事实源）的镜像常量，
+/// 仅保留以兼容既有 re-export（path_parser.rs / dstu/mod.rs），
+/// 业务代码应直接调用 `ResourceKind` 方法。
+/// 新增前缀请修改 `ResourceKind`，一致性由 `test_resource_id_prefixes_match_resource_kind`
+/// 单元测试保证。
 pub const RESOURCE_ID_PREFIXES: &[(&str, &str)] = &[
     ("note_", "note"),
     ("tb_", "textbook"),
@@ -219,16 +226,18 @@ pub const RESOURCE_ID_PREFIXES: &[(&str, &str)] = &[
     ("tr_", "translation"),
     ("essay_", "essay"),
     ("fld_", "folder"),
-    ("att_", "attachment"),
-    ("img_", "image"),
+    ("att_", "file"), // att_ 是遗留 file 实体（设计内修复：原为 "attachment"）
+    ("img_", "image"), // img_ 修复为 image（原被归为 file）
     ("file_", "file"),
     ("mm_", "mindmap"),
+    ("card_", "card"), // ★ 补充：题目卡片快照前缀
 ];
 
 /// 从资源 ID 推断资源类型
 ///
-/// 使用 `DstuNodeType::from_id_prefix` 作为规范源。
-/// 保留此函数用于向后兼容（返回 Option<String> 而非 DstuNodeType）。
+/// ★ 已收敛：委托 `ResourceKind::from_id_prefix`（vfs/resource_kind.rs，
+/// ID 前缀推断的唯一事实源），返回单数字符串。
+/// 行为与旧实现一致（img_ → image、att_ → file、card_ → card 为设计内修复）。
 ///
 /// # 参数
 /// - `id`: 资源 ID，如 "note_abc123"
@@ -236,20 +245,7 @@ pub const RESOURCE_ID_PREFIXES: &[(&str, &str)] = &[
 /// # 返回
 /// 资源类型字符串，如 Some("note")；无法识别返回 None
 pub fn get_resource_type_from_id(id: &str) -> Option<String> {
-    use crate::dstu::types::DstuNodeType;
-    DstuNodeType::from_id_prefix(id).map(|t| match t {
-        DstuNodeType::Note => "note",
-        DstuNodeType::Textbook => "textbook",
-        DstuNodeType::Exam => "exam",
-        DstuNodeType::Translation => "translation",
-        DstuNodeType::Essay => "essay",
-        DstuNodeType::Folder => "folder",
-        DstuNodeType::MindMap => "mindmap",
-        DstuNodeType::File if id.starts_with("img_") => "image",
-        DstuNodeType::File => "file",
-        DstuNodeType::Image => "image",
-        DstuNodeType::Retrieval => "retrieval",
-    }.to_string())
+    crate::vfs::ResourceKind::from_id_prefix(id).map(|k| k.to_type_string().to_string())
 }
 
 /// 检查字符串是否是有效的资源 ID（符合前缀规范和长度限制）
@@ -357,8 +353,52 @@ mod tests {
             get_resource_type_from_id("fld_folder1"),
             Some("folder".to_string())
         );
+        // ★ 设计内修复断言（与 ResourceKind::from_id_prefix 一致）
+        assert_eq!(get_resource_type_from_id("img_123"), Some("image".to_string()));
+        assert_eq!(get_resource_type_from_id("att_123"), Some("file".to_string()));
+        assert_eq!(get_resource_type_from_id("card_abc"), Some("card".to_string()));
+        assert_eq!(get_resource_type_from_id("es_123"), Some("essay".to_string()));
+        assert_eq!(
+            get_resource_type_from_id("essay_session_123"),
+            Some("essay".to_string())
+        );
+        assert_eq!(get_resource_type_from_id("mm_123"), Some("mindmap".to_string()));
+        // res_ 是 VFS 通用 ID（类型需查库解析），不属于前缀推断范围
+        assert_eq!(get_resource_type_from_id("res_123"), None);
         assert_eq!(get_resource_type_from_id("unknown_id"), None);
         assert_eq!(get_resource_type_from_id("abc123"), None);
+    }
+
+    #[test]
+    fn test_resource_id_prefixes_match_resource_kind() {
+        // RESOURCE_ID_PREFIXES 是 ResourceKind（唯一事实源）的镜像常量
+        use crate::vfs::ResourceKind;
+
+        // 1) 表中每项都能被 from_id_prefix 解析为相同类型
+        for (prefix, type_str) in RESOURCE_ID_PREFIXES.iter() {
+            let kind = ResourceKind::from_id_prefix(prefix)
+                .unwrap_or_else(|| panic!("RESOURCE_ID_PREFIXES 含无法解析的前缀: {}", prefix));
+            assert_eq!(
+                kind.to_type_string(),
+                *type_str,
+                "前缀 {} 的类型与 ResourceKind 不一致",
+                prefix
+            );
+        }
+
+        // 2) 每个有规范前缀的变体都必须出现在表中（生成侧与解析侧互逆）
+        for kind in ResourceKind::all() {
+            if let Some(prefix) = kind.id_prefix() {
+                assert!(
+                    RESOURCE_ID_PREFIXES
+                        .iter()
+                        .any(|(p, t)| *p == prefix && *t == kind.to_type_string()),
+                    "缺少变体 {:?} 的规范前缀 {}",
+                    kind,
+                    prefix
+                );
+            }
+        }
     }
 
     #[test]

@@ -144,22 +144,22 @@ mod tests {
     };
     use super::note_handlers::{CreateNoteInput, UpdateNoteInput};
     use super::resource_handlers::{ListInput, SearchAllInput};
-    use crate::vfs::types::VfsResourceType;
+    use crate::vfs::resource_kind::ResourceKind;
 
     #[test]
     fn test_file_size_validation() {
         let small_data = "x".repeat(1024);
-        assert!(validate_file_size(&VfsResourceType::Image, &small_data).is_ok());
+        assert!(validate_file_size(&ResourceKind::Image, &small_data).is_ok());
 
         let large_data = "x".repeat(11 * 1024 * 1024);
-        assert!(validate_file_size(&VfsResourceType::Image, &large_data).is_err());
+        assert!(validate_file_size(&ResourceKind::Image, &large_data).is_err());
 
         let medium_data = "x".repeat(20 * 1024 * 1024);
-        assert!(validate_file_size(&VfsResourceType::File, &medium_data).is_ok());
+        assert!(validate_file_size(&ResourceKind::File, &medium_data).is_ok());
 
         // 但 File 也有上限
         let very_large_data = "x".repeat(51 * 1024 * 1024); // 51MB
-        assert!(validate_file_size(&VfsResourceType::File, &very_large_data).is_err());
+        assert!(validate_file_size(&ResourceKind::File, &very_large_data).is_err());
     }
 
     #[test]
@@ -179,13 +179,13 @@ mod tests {
     #[test]
     fn test_max_size_bytes() {
         assert_eq!(
-            get_max_size_bytes(&VfsResourceType::Image),
+            get_max_size_bytes(&ResourceKind::Image),
             10 * 1024 * 1024
         );
-        assert_eq!(get_max_size_bytes(&VfsResourceType::File), 50 * 1024 * 1024);
-        assert_eq!(get_max_size_bytes(&VfsResourceType::Note), 50 * 1024 * 1024);
+        assert_eq!(get_max_size_bytes(&ResourceKind::File), 50 * 1024 * 1024);
+        assert_eq!(get_max_size_bytes(&ResourceKind::Note), 50 * 1024 * 1024);
         assert_eq!(
-            get_max_size_bytes(&VfsResourceType::Translation),
+            get_max_size_bytes(&ResourceKind::Translation),
             10 * 1024 * 1024
         );
     }

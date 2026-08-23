@@ -27,6 +27,8 @@
 //! - `merge`: 合并策略
 //! - `progress`: 同步进度管理
 //! - `emitter`: 进度事件发射器
+//! - `permit`: 读写权限分配/回收 (RAII)
+//! - `envelope`: v3 云端变更信封 (SyncEnvelope, 读取兼容)
 //!
 //! ## 云存储集成
 //!
@@ -40,6 +42,7 @@
 pub mod classification;
 pub mod conflict_resolver;
 pub mod emitter;
+pub mod envelope;
 pub mod field_merge;
 pub mod hlc;
 pub mod progress;
@@ -48,6 +51,7 @@ pub mod retry;
 pub mod manifest;
 pub mod orchestrator;
 pub mod changeset;
+pub mod permit;
 
 #[cfg(test)]
 mod tests;
@@ -58,12 +62,15 @@ pub use manifest::{
     AssetFileEntry, AssetSyncOutcome, BlobEntry, BlobSyncOutcome, BlobsManifest, ChangeLogEntry,
     ChangeLogStats, ChangeOperation, ConflictDetectionResult, ConflictRecord, ConflictResolution,
     DatabaseConflict, DatabaseConflictType, DatabaseSyncState, DownloadChangesResult,
-    MergeApplicationResult, MergeStrategy, PendingChanges, RecordSnapshot, ResolvedRecord,
-    SyncChangeWithData, SyncChangesPayload, SyncDirection, SyncError, SyncExecutionResult,
-    SyncManifest, SyncResult, SyncTransactionStatus, SYNC_FIELDS_SQL, WorkspaceEntry,
-    WorkspacesManifest,
+    MergeApplicationResult, MergeStrategy, PendingChanges, QuarantineRow, RecordSnapshot,
+    ResolvedRecord, SyncChangeWithData, SyncChangesPayload, SyncDirection, SyncError,
+    SyncExecutionResult, SyncManifest, SyncResult, SyncTransactionStatus, SYNC_FIELDS_SQL,
+    WorkspaceEntry, WorkspacesManifest,
 };
+// 重新导出 v3 信封类型（格式层）
+pub use envelope::{validate_change_payload, EnvelopeChange, ObjectRef, SyncEnvelope};
 pub use orchestrator::SyncManager;
+pub use permit::{check_write_gate, ReadPermit, SyncGuardSlot, SyncSession, WritePermit};
 
 // 重新导出子模块常用类型
 pub use conflict_resolver::{

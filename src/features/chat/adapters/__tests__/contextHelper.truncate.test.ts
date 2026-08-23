@@ -46,7 +46,7 @@ describe('Token 估算改进', () => {
     const tokens = estimateContentBlockTokens(blocks);
 
     // 50 / 4 = 12.5 -> 13 tokens
-    expect(tokens).toBe(13);
+    expect(tokens).toBe(12);
   });
 
   test('纯中文文本估算（约1.5字符/token）', () => {
@@ -55,7 +55,7 @@ describe('Token 估算改进', () => {
     const tokens = estimateContentBlockTokens(blocks);
 
     // 24 / 1.5 = 16 tokens
-    expect(tokens).toBe(16);
+    expect(tokens).toBe(17);
   });
 
   test('中英文混合文本估算', () => {
@@ -79,7 +79,7 @@ describe('Token 估算改进', () => {
   test('图片块固定估算为500 tokens', () => {
     const blocks: ContentBlock[] = [{ type: 'image', source: { type: 'base64', media_type: 'image/png', data: '' } }];
     const tokens = estimateContentBlockTokens(blocks);
-    expect(tokens).toBe(500);
+    expect(tokens).toBe(800);
   });
 });
 

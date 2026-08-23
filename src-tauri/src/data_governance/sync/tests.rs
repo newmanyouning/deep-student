@@ -1070,6 +1070,85 @@ fn test_apply_mixed_data_none_and_valid() {
 }
 
 #[test]
+fn test_apply_insert_with_data_none_and_database_name_is_skipped() {
+    // v1 旧格式 + database_name 有值（多库同步路径）：data=None 也应跳过而非报错
+    let conn = create_test_db_with_business_table();
+
+    let changes = vec![SyncChangeWithData {
+        table_name: "test_records".to_string(),
+        record_id: "rec-2".to_string(),
+        operation: ChangeOperation::Insert,
+        data: None, // 旧格式：无数据
+        changed_at: "2024-01-01T10:00:00Z".to_string(),
+        change_log_id: None,
+        database_name: Some("chat_v2".to_string()),
+        suppress_change_log: None,
+    }];
+
+    let result = SyncManager::apply_downloaded_changes(&conn, &changes, None).unwrap();
+
+    assert_eq!(result.success_count, 0);
+    assert_eq!(
+        result.skipped_count, 1,
+        "data=None INSERT with database_name should be skipped, not error"
+    );
+    assert_eq!(result.failure_count, 0);
+
+    // 验证记录不存在
+    let count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM test_records WHERE id = 'rec-2'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(count, 0);
+}
+
+#[test]
+fn test_apply_update_with_data_none_and_database_name_is_skipped() {
+    // v1 旧格式 + database_name 有值（多库同步路径）：data=None 也应跳过而非报错
+    let conn = create_test_db_with_business_table();
+
+    // 先插入一条记录
+    conn.execute(
+        "INSERT INTO test_records (id, content) VALUES ('existing-2', 'original')",
+        [],
+    )
+    .unwrap();
+
+    let changes = vec![SyncChangeWithData {
+        table_name: "test_records".to_string(),
+        record_id: "existing-2".to_string(),
+        operation: ChangeOperation::Update,
+        data: None, // 旧格式：无数据
+        changed_at: "2024-01-01T10:00:00Z".to_string(),
+        change_log_id: None,
+        database_name: Some("vfs".to_string()),
+        suppress_change_log: None,
+    }];
+
+    let result = SyncManager::apply_downloaded_changes(&conn, &changes, None).unwrap();
+
+    assert_eq!(result.success_count, 0);
+    assert_eq!(
+        result.skipped_count, 1,
+        "data=None UPDATE with database_name should be skipped, not error"
+    );
+    assert_eq!(result.failure_count, 0);
+
+    // 验证记录未被修改
+    let content: String = conn
+        .query_row(
+            "SELECT content FROM test_records WHERE id = 'existing-2'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(content, "original");
+}
+
+#[test]
 fn test_get_record_data_llm_usage_daily_with_json_record_id() {
     let conn = Connection::open_in_memory().unwrap();
     conn.execute_batch(

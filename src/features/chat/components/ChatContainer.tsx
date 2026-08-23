@@ -349,6 +349,8 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         'bg-[color:var(--shell-workspace-panel)]',
         'relative',
         'overflow-hidden',
+        // 阻止滚动链：防止聊天区域滚动穿透到窗口
+        '[overscroll-behavior:none]',
         className
       )}
     >

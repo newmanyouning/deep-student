@@ -717,6 +717,9 @@ impl DatabaseManager {
             "ALTER TABLE chat_messages ADD COLUMN reply_to_msg_id INTEGER",
             "ALTER TABLE chat_messages ADD COLUMN message_kind TEXT",
             "ALTER TABLE chat_messages ADD COLUMN lifecycle TEXT",
+            // MIGRATION_DEBT: research_reports 表 subject 字段 → 主数据库 Refinery 脚本
+            // 老库兼容：已有 research_reports 表的库通过此处补列（错误忽略，幂等）
+            "ALTER TABLE research_reports ADD COLUMN subject TEXT",
         ];
 
         for sql in compatibility_updates {
@@ -729,6 +732,7 @@ impl DatabaseManager {
             r#"CREATE TABLE IF NOT EXISTS research_reports (
                    id TEXT PRIMARY KEY,
                    created_at TEXT NOT NULL,
+                   subject TEXT,
                    segments INTEGER NOT NULL,
                    context_window INTEGER NOT NULL,
                    report TEXT NOT NULL,

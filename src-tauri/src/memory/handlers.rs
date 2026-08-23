@@ -11,8 +11,8 @@ use crate::vfs::lance_store::VfsLanceStore;
 use super::audit_log::{self, MemoryAuditLogItem};
 use super::error::{MemoryError, MemoryResult};
 use super::service::{
-    MemoryConfigOutput, MemoryListItem, MemorySearchResult, MemoryService, MemoryWriteOutput,
-    SmartWriteOutput, WriteMode,
+    LearningSessionContext, MemoryConfigOutput, MemoryListItem, MemorySearchResult, MemoryService,
+    MemoryWriteOutput, SmartWriteOutput, WriteMode,
 };
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -317,7 +317,7 @@ pub async fn memory_list(
     llm_manager: State<'_, Arc<LLMManager>>,
 ) -> MemoryResult<Vec<MemoryListItem>> {
     let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
-    let safe_limit = limit.unwrap_or(100).clamp(1, 500);
+    let safe_limit = limit.unwrap_or(100).clamp(1, 10000);
     Ok(service.list(folder_path.as_deref(), safe_limit, offset.unwrap_or(0))?)
 }
 
@@ -692,6 +692,103 @@ pub async fn memory_write_smart(
     }
 
     Ok(result)
+}
+
+/// 写入学习承诺 (L1 层)
+#[tauri::command]
+pub async fn memory_write_promise(
+    folder_path: Option<String>,
+    title: String,
+    content: String,
+    vfs_db: State<'_, Arc<VfsDatabase>>,
+    lance_store: State<'_, Arc<VfsLanceStore>>,
+    llm_manager: State<'_, Arc<LLMManager>>,
+) -> MemoryResult<SmartWriteOutput> {
+    let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
+    let result = service
+        .write_promise(folder_path.as_deref(), &title, &content)
+        .await?;
+    if result.event != "NONE" && result.event != "FILTERED" {
+        service.spawn_post_write_maintenance();
+    }
+    Ok(result)
+}
+
+/// 完成一个学习承诺
+#[tauri::command]
+pub fn memory_complete_promise(
+    note_id: String,
+    vfs_db: State<'_, Arc<VfsDatabase>>,
+    lance_store: State<'_, Arc<VfsLanceStore>>,
+    llm_manager: State<'_, Arc<LLMManager>>,
+) -> MemoryResult<()> {
+    let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
+    service.complete_promise(&note_id)
+}
+
+/// 获取所有未完成的学习承诺
+#[tauri::command]
+pub fn memory_get_pending_promises(
+    vfs_db: State<'_, Arc<VfsDatabase>>,
+    lance_store: State<'_, Arc<VfsLanceStore>>,
+    llm_manager: State<'_, Arc<LLMManager>>,
+) -> MemoryResult<Vec<MemoryListItem>> {
+    let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
+    service.get_pending_promises()
+}
+
+/// 写入学习偏好 (L2 层，需证据绑定)
+#[tauri::command]
+pub async fn memory_write_preference(
+    folder_path: Option<String>,
+    title: String,
+    content: String,
+    vfs_db: State<'_, Arc<VfsDatabase>>,
+    lance_store: State<'_, Arc<VfsLanceStore>>,
+    llm_manager: State<'_, Arc<LLMManager>>,
+) -> MemoryResult<SmartWriteOutput> {
+    let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
+    let result = service
+        .write_preference(folder_path.as_deref(), &title, &content)
+        .await?;
+    if result.event != "NONE" && result.event != "FILTERED" {
+        service.spawn_post_write_maintenance();
+    }
+    Ok(result)
+}
+
+/// 获取所有学习偏好
+#[tauri::command]
+pub fn memory_get_learning_preferences(
+    vfs_db: State<'_, Arc<VfsDatabase>>,
+    lance_store: State<'_, Arc<VfsLanceStore>>,
+    llm_manager: State<'_, Arc<LLMManager>>,
+) -> MemoryResult<Vec<MemoryListItem>> {
+    let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
+    service.get_learning_preferences()
+}
+
+/// 获取会话工作上下文 (L4 层)
+#[tauri::command]
+pub fn memory_get_session_context(
+    vfs_db: State<'_, Arc<VfsDatabase>>,
+    lance_store: State<'_, Arc<VfsLanceStore>>,
+    llm_manager: State<'_, Arc<LLMManager>>,
+) -> MemoryResult<LearningSessionContext> {
+    let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
+    service.get_session_context()
+}
+
+/// 更新会话工作上下文 (L4 层)
+#[tauri::command]
+pub fn memory_update_session_context(
+    ctx: LearningSessionContext,
+    vfs_db: State<'_, Arc<VfsDatabase>>,
+    lance_store: State<'_, Arc<VfsLanceStore>>,
+    llm_manager: State<'_, Arc<LLMManager>>,
+) -> MemoryResult<()> {
+    let service = get_memory_service(&vfs_db, &lance_store, &llm_manager);
+    service.update_session_context(&ctx)
 }
 
 #[tauri::command]

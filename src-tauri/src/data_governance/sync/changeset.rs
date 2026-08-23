@@ -2129,8 +2129,8 @@ impl SyncManager {
     ///
     /// # 返回
     /// * `Ok(true)` - 成功应用
-    /// * `Ok(false)` - 跳过（保留兼容语义，当前分支通常不使用）
-    /// * `Err` - 应用失败
+    /// * `Ok(false)` - 跳过（v1 旧格式缺数据 / LWW 保护 / 时间戳漂移等非致命场景，计入 skipped_count）
+    /// * `Err` - 应用失败（致命错误，调用方会回滚整个批次）
     fn apply_single_change(
         conn: &Connection,
         change: &SyncChangeWithData,
@@ -2291,22 +2291,18 @@ impl SyncManager {
                 let data = match &change.data {
                     Some(d) => d,
                     None => {
-                        // 兼容旧版下载格式（v1）：仅含变更元数据，不含完整行数据。
-                        // 对这类历史数据跳过而非失败，避免旧云端数据导致整次同步回滚。
-                        if change.database_name.is_none() {
-                            tracing::warn!(
-                                "[sync] INSERT/UPDATE 缺少数据（旧格式兼容），跳过: {}.{} = {}",
-                                change.table_name,
-                                id_column,
-                                change.record_id
-                            );
-                            return Ok(false);
-                        }
-
-                        return Err(SyncError::Database(format!(
-                            "INSERT/UPDATE 缺少 data 字段: {}.{} = {}",
-                            change.table_name, id_column, change.record_id
-                        )));
+                        // v1 旧格式（PendingChanges 转换 / from_entry 构造）的 INSERT/UPDATE
+                        // 仅含变更元数据，不含完整行数据。无论 database_name 是否有值，统一
+                        // 跳过而非报错——消除"格式差异导致整次同步失败"的路径；建议在源设备
+                        // 重新执行完整同步以补齐数据。
+                        tracing::warn!(
+                            "[sync] INSERT/UPDATE 缺少行数据（v1 旧格式兼容），跳过: {}.{} = {} (database={})",
+                            change.table_name,
+                            id_column,
+                            change.record_id,
+                            change.database_name.as_deref().unwrap_or("<None>")
+                        );
+                        return Ok(false);
                     }
                 };
 

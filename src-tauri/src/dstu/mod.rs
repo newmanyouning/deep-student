@@ -3,6 +3,23 @@
 //! DSTU 是 VFS 与上层应用之间的统一访问接口，类似于操作系统的文件管理器协议。
 //! 提供文件系统语义的统一接口，使所有模块（笔记、教材、题目集等）可以通过相同的 API 访问资源。
 //!
+//! ## 架构位置 (分层关系)
+//!
+//! ```
+//! 前端 (Learning Hub / Adapters)
+//!   ↓ 唯一 CRUD 协议入口
+//! DSTU (本模块) — Finder 协议层
+//!   ↓ 全部委托给 VFS 仓库
+//! VFS (crate::vfs) — 内部服务层
+//! ```
+//!
+//! **DSTU 不拥有自己的存储或索引系统。** 所有操作最终调用 VFS 仓库
+//! (`VfsNoteRepo`, `VfsFileRepo`, `VfsMindMapRepo`, `VfsTextbookRepo` 等)。
+//! DSTU 在 VFS 之上提供: 文件夹管理、路径路由、Watch 事件、回收站、导出。
+//!
+//! **VFS 专门服务** (OCR、PDF处理、索引、RAG、Todo/Pomodoro) 不经过 DSTU，
+//! 由前端通过 `vfs_*` Tauri 命令直接调用。
+//!
 //! ## 设计目标
 //! 1. **统一访问接口**：所有模块通过 DSTU 访问资源，消除各模块直接访问不同数据库的混乱
 //! 2. **文件系统语义**：使用路径（path）定位资源，支持目录遍历、移动、复制等操作
@@ -21,7 +38,7 @@
 //! ```
 //!
 //! ## 模块结构
-//! - `types` - DSTU 类型定义（DstuNode、DstuNodeType 等）
+//! - `types` - DSTU 类型定义（DstuNode、DstuNodeType（ResourceKind 别名）等）
 //! - `error` - 错误类型（DstuError、DstuResult）
 //! - `path_parser` - 路径解析器
 //! - `handlers` - Tauri 命令处理器（Prompt 5 实现）
@@ -36,6 +53,7 @@ pub mod path_parser;
 pub mod path_types; // 新增：契约 C1 类型定义
 pub mod trash_handlers;
 pub mod types;
+pub mod write_gate; // [写门-接线] 业务写命令的同步写门检查封装
 
 // ============================================================================
 // 重导出核心类型

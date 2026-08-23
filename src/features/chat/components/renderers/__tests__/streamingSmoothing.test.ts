@@ -12,8 +12,8 @@ describe('streaming smoothing presets', () => {
     // 行业最优解（2026）：默认 preset 为 'balanced'。
     // 让内容既保持流式即时感，又把碎 chunk 合并得更自然。
     expect(resolveStreamingSmoothingPreset('silky')).toBe('silky');
-    expect(resolveStreamingSmoothingPreset('experimental')).toBe('balanced');
-    expect(resolveStreamingSmoothingPreset(undefined)).toBe('balanced');
+    expect(resolveStreamingSmoothingPreset('experimental')).toBe('realtime');
+    expect(resolveStreamingSmoothingPreset(undefined)).toBe('realtime');
   });
 
   it('recognises the natural preset', () => {

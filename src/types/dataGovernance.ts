@@ -711,6 +711,16 @@ export interface CloudStorageConfig {
   encryptionPassword?: string;
 }
 
+/** 被隔离的违规记录（v3 SyncEnvelope 单条格式校验失败，跳过应用，非致命） */
+export interface QuarantineRow {
+  /** 表名 */
+  table_name: string;
+  /** 记录 ID */
+  record_id: string;
+  /** 隔离原因（格式校验错误信息） */
+  reason: string;
+}
+
 /** 同步执行响应 */
 export interface SyncExecutionResponse {
   /** 是否成功 */
@@ -731,6 +741,10 @@ export interface SyncExecutionResponse {
   error_message: string | null;
   /** 被跳过的变更数量（如旧格式数据不完整），0 表示全部成功 */
   skipped_changes: number;
+  /** 下载/应用过程中被隔离的违规记录（v3 格式校验失败，跳过应用，非致命） */
+  quarantined_records: QuarantineRow[];
+  /** 同步会话 ID（贯穿日志与审计，用于问题排查关联） */
+  sync_session_id: string;
 }
 
 /** 同步导出响应 */

@@ -111,6 +111,11 @@ pub struct Database {
     /// 维护模式标志：当备份/恢复等数据治理操作进行时设为 true，
     /// 用于阻止同步命令等并发操作绕过维护模式直接访问数据库文件。
     maintenance_mode: std::sync::atomic::AtomicBool,
+    /// ★ 2026-08-10 settings 单一存储迁移：vfs.db 的设置存储句柄。
+    /// 注入后 settings 读写路由到 vfs.app_settings（vfs 优先 + 本地回退 + 双写过渡），
+    /// 未注入时（测试/旧路径）保持原 mistakes.db settings 行为。
+    /// 见 docs/DATA_STORAGE_SINGLE_SOURCE_AUDIT.md 迁移 1。
+    settings_store: RwLock<Option<std::sync::Arc<crate::vfs::database::VfsDatabase>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -697,8 +702,98 @@ impl Database {
             db_path: RwLock::new(db_path.to_path_buf()),
             secure_store,
             maintenance_mode: std::sync::atomic::AtomicBool::new(false),
+            settings_store: RwLock::new(None),
         };
         Ok(db)
+    }
+
+    /// ★ 2026-08-10 settings 单一存储迁移：注入 vfs 设置存储并做一次性复制。
+    ///
+    /// 在 AppState 初始化（vfs_db 就绪）后调用。复制策略 `INSERT OR IGNORE`：
+    /// 已存在的 key 以 vfs 为准（幂等，可重复调用）。失败仅记日志不影响启动
+    /// （读取路径仍有 mistakes 回退兜底，零丢失）。
+    pub fn set_settings_store(
+        &self,
+        vfs_db: std::sync::Arc<crate::vfs::database::VfsDatabase>,
+    ) {
+        // 一次性批量复制：legacy settings → vfs.app_settings
+        match (vfs_db.get_conn_safe(), self.get_conn_safe()) {
+            (Ok(vfs_conn), Ok(legacy_conn)) => {
+                let mut stmt = match legacy_conn
+                    .prepare("SELECT key, value, updated_at FROM settings")
+                {
+                    Ok(s) => s,
+                    Err(e) => {
+                        log::warn!("[settings-migration] 读取 legacy settings 失败（跳过复制）: {}", e);
+                        // 仍注入 store：后续写入以 vfs 为准，读取回退 legacy
+                        if let Ok(mut guard) = self.settings_store.write() {
+                            *guard = Some(vfs_db);
+                        }
+                        return;
+                    }
+                };
+                let rows = stmt
+                    .query_map([], |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, String>(2)?,
+                        ))
+                    })
+                    .map(|r| r.filter_map(std::result::Result::ok).collect::<Vec<_>>());
+                match rows {
+                    Ok(rows) => {
+                        let mut copied = 0usize;
+                        for (key, value, updated_at) in &rows {
+                            match vfs_conn.execute(
+                                "INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?1, ?2, ?3)",
+                                params![key, value, updated_at],
+                            ) {
+                                Ok(n) => copied += n,
+                                Err(e) => log::warn!(
+                                    "[settings-migration] 复制 key={} 失败（跳过）: {}",
+                                    key, e
+                                ),
+                            }
+                        }
+                        log::info!(
+                            "[settings-migration] legacy settings → vfs.app_settings: 新增 {} / 总 {} 行",
+                            copied,
+                            rows.len()
+                        );
+                    }
+                    Err(e) => log::warn!("[settings-migration] 遍历 legacy settings 失败: {}", e),
+                }
+            }
+            (v, l) => {
+                log::warn!(
+                    "[settings-migration] 连接不可用（vfs={:?} legacy={:?}），跳过一次性复制",
+                    v.is_ok(),
+                    l.is_ok()
+                );
+            }
+        }
+        if let Ok(mut guard) = self.settings_store.write() {
+            *guard = Some(vfs_db);
+        }
+    }
+
+    /// settings 路由：vfs.app_settings 连接（已注入时）
+    fn settings_vfs_conn(
+        &self,
+    ) -> Option<crate::vfs::database::VfsPooledConnection> {
+        let vfs = self
+            .settings_store
+            .read()
+            .ok()
+            .and_then(|guard| guard.as_ref().cloned())?;
+        match vfs.get_conn_safe() {
+            Ok(conn) => Some(conn),
+            Err(e) => {
+                log::warn!("[settings-migration] vfs 连接不可用，回退 legacy: {}", e);
+                None
+            }
+        }
     }
 
     fn initialize_schema(&self) -> Result<()> {
@@ -3445,7 +3540,34 @@ impl Database {
     }
 
     /// 保存设置
+    ///
+    /// ★ 2026-08-10 settings 单一存储迁移：vfs.app_settings 为主存储（已注入时），
+    /// 同时 best-effort 双写 legacy mistakes.settings 保证旧版本回滚可读。
     pub fn save_setting(&self, key: &str, value: &str) -> Result<()> {
+        let now = Utc::now().to_rfc3339();
+        if let Some(vfs_conn) = self.settings_vfs_conn() {
+            match vfs_conn.execute(
+                "INSERT OR REPLACE INTO app_settings (key, value, updated_at) VALUES (?1, ?2, ?3)",
+                params![key, value, &now],
+            ) {
+                Ok(_) => {
+                    // 双写 legacy（best-effort，失败不影响主路径）
+                    if let Ok(legacy) = self.get_conn_safe() {
+                        if let Err(e) = legacy.execute(
+                            "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)",
+                            params![key, value, &now],
+                        ) {
+                            log::warn!("[settings-migration] legacy 双写失败 key={}: {}", key, e);
+                        }
+                    }
+                    return Ok(());
+                }
+                Err(e) => {
+                    // vfs 侧失败（如迁移未执行表不存在）：降级 legacy，不丢写入
+                    log::warn!("[settings-migration] vfs 写入失败 key={}，降级 legacy: {}", key, e);
+                }
+            }
+        }
         let conn = self.get_conn_safe()?;
         conn.execute(
             "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?1, ?2, ?3)",
@@ -3455,7 +3577,46 @@ impl Database {
     }
 
     /// 获取设置
+    ///
+    /// ★ 2026-08-10 settings 单一存储迁移：vfs.app_settings 优先；未命中回退
+    /// legacy mistakes.settings，命中时写穿复制到 vfs（懒惰收敛）。
     pub fn get_setting(&self, key: &str) -> Result<Option<String>> {
+        if let Some(vfs_conn) = self.settings_vfs_conn() {
+            let vfs_result: std::result::Result<Option<String>, rusqlite::Error> = vfs_conn
+                .query_row(
+                    "SELECT value FROM app_settings WHERE key = ?1",
+                    params![key],
+                    |row| row.get(0),
+                )
+                .optional();
+            match vfs_result {
+                Ok(Some(value)) => return Ok(Some(value)),
+                Ok(None) => {
+                    // vfs 未命中 → 回退 legacy + 写穿
+                    let conn = self.get_conn_safe()?;
+                    let legacy_hit: Option<String> = conn
+                        .query_row(
+                            "SELECT value FROM settings WHERE key = ?1",
+                            params![key],
+                            |row| row.get(0),
+                        )
+                        .optional()?;
+                    if let Some(ref value) = legacy_hit {
+                        if let Err(e) = vfs_conn.execute(
+                            "INSERT OR IGNORE INTO app_settings (key, value, updated_at) VALUES (?1, ?2, ?3)",
+                            params![key, value, Utc::now().to_rfc3339()],
+                        ) {
+                            log::warn!("[settings-migration] 写穿失败 key={}: {}", key, e);
+                        }
+                    }
+                    return Ok(legacy_hit);
+                }
+                Err(e) => {
+                    // vfs 查询失败（如表不存在）：降级 legacy
+                    log::warn!("[settings-migration] vfs 查询失败 key={}，降级 legacy: {}", key, e);
+                }
+            }
+        }
         let conn = self.get_conn_safe()?;
         conn.query_row(
             "SELECT value FROM settings WHERE key = ?1",
@@ -3466,21 +3627,102 @@ impl Database {
         .map_err(Into::into)
     }
 
-    /// 删除设置
+    /// 删除设置（vfs + legacy 双侧删除；vfs 失败降级 legacy）
     pub fn delete_setting(&self, key: &str) -> Result<bool> {
+        if let Some(vfs_conn) = self.settings_vfs_conn() {
+            match vfs_conn.execute("DELETE FROM app_settings WHERE key = ?1", params![key]) {
+                Ok(changes) => {
+                    if let Ok(legacy) = self.get_conn_safe() {
+                        if let Err(e) =
+                            legacy.execute("DELETE FROM settings WHERE key = ?1", params![key])
+                        {
+                            log::warn!("[settings-migration] legacy 删除失败 key={}: {}", key, e);
+                        }
+                    }
+                    return Ok(changes > 0);
+                }
+                Err(e) => {
+                    log::warn!("[settings-migration] vfs 删除失败 key={}，降级 legacy: {}", key, e);
+                }
+            }
+        }
         let conn = self.get_conn_safe()?;
         let changes = conn.execute("DELETE FROM settings WHERE key = ?1", params![key])?;
         Ok(changes > 0)
     }
 
     /// 按前缀查询设置（用于工具权限管理等批量查询场景）
+    ///
+    /// ★ 2026-08-10：合并 vfs + legacy 两侧结果，同 key 以 vfs 为准。
     pub fn get_settings_by_prefix(&self, prefix: &str) -> Result<Vec<(String, String, String)>> {
+        let pattern = format!("{}%", prefix);
+        if let Some(vfs_conn) = self.settings_vfs_conn() {
+            let mut merged: std::collections::HashMap<String, (String, String)> =
+                std::collections::HashMap::new();
+            // legacy 先入（低优先级）
+            if let Ok(legacy) = self.get_conn_safe() {
+                if let Ok(mut stmt) = legacy.prepare(
+                    "SELECT key, value, updated_at FROM settings WHERE key LIKE ?1 ORDER BY updated_at DESC",
+                ) {
+                    if let Ok(rows) = stmt.query_map(params![&pattern], |row| {
+                        Ok((
+                            row.get::<_, String>(0)?,
+                            row.get::<_, String>(1)?,
+                            row.get::<_, String>(2)?,
+                        ))
+                    }) {
+                        for row in rows.flatten() {
+                            merged.entry(row.0).or_insert((row.1, row.2));
+                        }
+                    }
+                }
+            }
+            // vfs 覆盖（高优先级）
+            match vfs_conn.prepare(
+                "SELECT key, value, updated_at FROM app_settings WHERE key LIKE ?1 ORDER BY updated_at DESC",
+            ) {
+                Ok(mut stmt) => match stmt.query_map(params![&pattern], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                    ))
+                }) {
+                    Ok(rows) => {
+                        for row in rows {
+                            let (k, v, u) = row?;
+                            merged.insert(k, (v, u));
+                        }
+                        let mut out: Vec<(String, String, String)> = merged
+                            .into_iter()
+                            .map(|(k, (v, u))| (k, v, u))
+                            .collect();
+                        out.sort_by(|a, b| b.2.cmp(&a.2));
+                        return Ok(out);
+                    }
+                    Err(e) => {
+                        log::warn!("[settings-migration] vfs 前缀查询失败 {}: {}", prefix, e)
+                    }
+                },
+                Err(e) => {
+                    log::warn!("[settings-migration] vfs 前缀查询准备失败 {}: {}", prefix, e)
+                }
+            }
+            // vfs 查询失败：若 merged 有 legacy 数据则返回之，否则走 legacy 主路径
+            if !merged.is_empty() {
+                let mut out: Vec<(String, String, String)> = merged
+                    .into_iter()
+                    .map(|(k, (v, u))| (k, v, u))
+                    .collect();
+                out.sort_by(|a, b| b.2.cmp(&a.2));
+                return Ok(out);
+            }
+        }
         let conn = self.get_conn_safe()?;
         let mut stmt = conn.prepare(
             "SELECT key, value, updated_at FROM settings WHERE key LIKE ?1 ORDER BY updated_at DESC",
         )?;
-        let pattern = format!("{}%", prefix);
-        let rows = stmt.query_map(params![pattern], |row| {
+        let rows = stmt.query_map(params![&pattern], |row| {
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
@@ -3494,10 +3736,29 @@ impl Database {
         Ok(out)
     }
 
-    /// 按前缀批量删除设置
+    /// 按前缀批量删除设置（vfs + legacy 双侧删除；vfs 失败降级 legacy）
     pub fn delete_settings_by_prefix(&self, prefix: &str) -> Result<usize> {
-        let conn = self.get_conn_safe()?;
         let pattern = format!("{}%", prefix);
+        if let Some(vfs_conn) = self.settings_vfs_conn() {
+            match vfs_conn
+                .execute("DELETE FROM app_settings WHERE key LIKE ?1", params![&pattern])
+            {
+                Ok(changes) => {
+                    if let Ok(legacy) = self.get_conn_safe() {
+                        if let Err(e) = legacy
+                            .execute("DELETE FROM settings WHERE key LIKE ?1", params![&pattern])
+                        {
+                            log::warn!("[settings-migration] legacy 前缀删除失败 {}: {}", prefix, e);
+                        }
+                    }
+                    return Ok(changes);
+                }
+                Err(e) => {
+                    log::warn!("[settings-migration] vfs 前缀删除失败 {}，降级 legacy: {}", prefix, e);
+                }
+            }
+        }
+        let conn = self.get_conn_safe()?;
         let changes = conn.execute("DELETE FROM settings WHERE key LIKE ?1", params![pattern])?;
         Ok(changes)
     }
@@ -3673,6 +3934,7 @@ impl Database {
                     .map_err(|_| rusqlite::Error::InvalidQuery)?;
                 Ok(crate::models::ResearchReportSummary {
                     id: row.get(0)?,
+                    subject: row.get(1)?,
                     created_at,
                     segments: row.get(3)?,
                     context_window: row.get(4)?,
@@ -3697,6 +3959,7 @@ impl Database {
                 let metadata_str: Option<String> = row.get(6).ok();
                 Ok(crate::models::ResearchReport {
                     id: row.get(0)?,
+                    subject: row.get(1)?,
                     created_at,
                     segments: row.get(3)?,
                     context_window: row.get(4)?,
@@ -5378,31 +5641,17 @@ impl DatabaseManager {
 
 impl Database {
     /// 设置默认模板ID
+    ///
+    /// ★ 2026-08-10：改走 save_setting 路由（vfs.app_settings 优先 + legacy 双写）
     pub fn set_default_template(&self, template_id: &str) -> Result<()> {
-        let conn = self.get_conn_safe()?;
-        let now = Utc::now().to_rfc3339();
-
-        conn.execute(
-            "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('default_template_id', ?1, ?2)",
-            params![template_id, now]
-        )?;
-
-        Ok(())
+        self.save_setting("default_template_id", template_id)
     }
 
     /// 获取默认模板ID
+    ///
+    /// ★ 2026-08-10：改走 get_setting 路由（vfs 优先 + legacy 回退）
     pub fn get_default_template(&self) -> Result<Option<String>> {
-        let conn = self.get_conn_safe()?;
-
-        match conn.query_row(
-            "SELECT value FROM settings WHERE key = 'default_template_id'",
-            [],
-            |row| row.get::<_, String>(0),
-        ) {
-            Ok(template_id) => Ok(Some(template_id)),
-            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-            Err(e) => Err(e.into()),
-        }
+        self.get_setting("default_template_id")
     }
 
     /// 记录搜索日志
@@ -5591,31 +5840,114 @@ impl Database {
     }
 
     /// 🔧 Phase 2: 卡片库统计数据（用于任务管理页面统计卡片）
+    /// 2026-08 扩展：新增任务/会话聚合与近期制卡趋势，避免前端用 limit=500 的会话列表做全量统计。
     pub fn enhanced_anki_get_stats(&self) -> Result<serde_json::Value> {
         let conn = self.get_conn_safe()?;
-        let total_cards: i64 =
-            conn.query_row("SELECT COUNT(*) FROM anki_cards", [], |r| r.get(0))?;
-        let total_tasks: i64 = conn.query_row(
-            "SELECT COUNT(DISTINCT document_id) FROM document_tasks",
-            [],
-            |r| r.get(0),
+
+        // 今日/本周起始时间（UTC 午夜，与数据库存储的 ISO/datetime 字符串做字典序比较）
+        let now = Utc::now();
+        let today_start = now
+            .date_naive()
+            .and_hms_opt(0, 0, 0)
+            .unwrap_or_else(|| now.naive_utc())
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string();
+        let week_start = (now.date_naive()
+            - chrono::TimeDelta::try_days(6).unwrap_or_else(|| chrono::TimeDelta::zero()))
+            .and_hms_opt(0, 0, 0)
+            .unwrap_or_else(|| now.naive_utc())
+            .format("%Y-%m-%d %H:%M:%S")
+            .to_string();
+
+        // 全局卡片、任务、会话状态聚合（基于全量 document_tasks，不受 list_document_sessions 的 limit 影响）
+        let mut stmt = conn.prepare(
+            r#"WITH session_agg AS (
+                 SELECT
+                   dt.document_id,
+                   dt.original_document_name,
+                   COUNT(DISTINCT dt.id) AS total_tasks,
+                   COUNT(DISTINCT CASE WHEN dt.status = 'Completed' THEN dt.id END) AS completed_tasks,
+                   COUNT(DISTINCT CASE WHEN dt.status IN ('Failed', 'Truncated', 'Cancelled') THEN dt.id END) AS failed_tasks,
+                   COUNT(DISTINCT CASE WHEN dt.status IN ('Processing', 'Streaming', 'Pending') THEN dt.id END) AS active_tasks,
+                   COUNT(DISTINCT CASE WHEN dt.status = 'Paused' THEN dt.id END) AS paused_tasks,
+                   MAX(dt.updated_at) AS last_updated,
+                   MIN(dt.created_at) AS created_at,
+                   COUNT(DISTINCT ac.id) AS total_cards
+                 FROM document_tasks dt
+                 LEFT JOIN anki_cards ac ON ac.task_id = dt.id
+                 GROUP BY dt.document_id
+               )
+               SELECT
+                 (SELECT COUNT(*) FROM anki_cards) AS total_cards,
+                 (SELECT COUNT(DISTINCT document_id) FROM document_tasks) AS total_documents,
+                 (SELECT COUNT(*) FROM anki_cards WHERE is_error_card = 1) AS error_cards,
+                 (SELECT COUNT(DISTINCT template_id) FROM anki_cards WHERE template_id IS NOT NULL AND template_id != '') AS template_count,
+                 (SELECT COUNT(DISTINCT id) FROM document_tasks) AS total_tasks,
+                 (SELECT COUNT(DISTINCT id) FROM document_tasks WHERE status IN ('Failed', 'Truncated', 'Cancelled')) AS failed_tasks,
+                 (SELECT COUNT(*) FROM session_agg WHERE active_tasks > 0) AS active_sessions,
+                 (SELECT COUNT(*) FROM session_agg WHERE failed_tasks > 0 AND active_tasks = 0 AND paused_tasks = 0) AS attention_sessions,
+                 (SELECT COUNT(*) FROM session_agg WHERE completed_tasks = total_tasks AND failed_tasks = 0 AND total_tasks > 0) AS completed_sessions,
+                 COALESCE((SELECT SUM(total_cards) FROM session_agg WHERE created_at >= ?1), 0) AS today_cards,
+                 COALESCE((SELECT SUM(total_cards) FROM session_agg WHERE created_at >= ?2), 0) AS week_cards"#,
         )?;
-        let error_cards: i64 = conn.query_row(
-            "SELECT COUNT(*) FROM anki_cards WHERE is_error_card = 1",
-            [],
-            |r| r.get(0),
+
+        let mut result = stmt.query_row(params![today_start, week_start], |r| {
+            let total_cards: i64 = r.get(0)?;
+            let total_documents: i64 = r.get(1)?;
+            let avg_cards: i64 = if total_documents > 0 {
+                ((total_cards as f64) / (total_documents as f64)).round() as i64
+            } else {
+                0
+            };
+            Ok(serde_json::json!({
+                "totalCards": total_cards,
+                "totalDocuments": total_documents,
+                "errorCards": r.get::<_, i64>(2)?,
+                "templateCount": r.get::<_, i64>(3)?,
+                "taskStats": {
+                    "totalTasks": r.get::<_, i64>(4)?,
+                    "failedTasks": r.get::<_, i64>(5)?,
+                    "activeSessions": r.get::<_, i64>(6)?,
+                    "attentionSessions": r.get::<_, i64>(7)?,
+                    "completedSessions": r.get::<_, i64>(8)?,
+                },
+                "cardTrends": {
+                    "todayCards": r.get::<_, i64>(9)?,
+                    "weekCards": r.get::<_, i64>(10)?,
+                    "avgCardsPerDoc": avg_cards,
+                },
+            }))
+        })?;
+
+        // 文档卡片排行（Top 20），供横向柱状图使用； limit 只影响展示数量，不影响聚合指标
+        let mut top_stmt = conn.prepare(
+            r#"SELECT
+                 dt.document_id,
+                 dt.original_document_name,
+                 COUNT(DISTINCT ac.id) AS total_cards
+               FROM document_tasks dt
+               LEFT JOIN anki_cards ac ON ac.task_id = dt.id
+               GROUP BY dt.document_id
+               HAVING total_cards > 0
+               ORDER BY total_cards DESC
+               LIMIT 20"#,
         )?;
-        let template_count: i64 = conn.query_row(
-            "SELECT COUNT(DISTINCT template_id) FROM anki_cards WHERE template_id IS NOT NULL AND template_id != ''",
-            [],
-            |r| r.get(0),
-        )?;
-        Ok(serde_json::json!({
-            "totalCards": total_cards,
-            "totalDocuments": total_tasks,
-            "errorCards": error_cards,
-            "templateCount": template_count,
-        }))
+
+        let top_docs = top_stmt
+            .query_map([], |r| {
+                Ok(serde_json::json!({
+                    "documentId": r.get::<_, String>(0)?,
+                    "documentName": r.get::<_, String>(1)?,
+                    "totalCards": r.get::<_, i64>(2)?,
+                }))
+            })?
+            .collect::<rusqlite::Result<Vec<serde_json::Value>>>()?;
+
+        if let Some(obj) = result.as_object_mut() {
+            obj.insert("topDocs".to_string(), serde_json::Value::Array(top_docs));
+        }
+
+        Ok(result)
     }
 
     /// 获取最近生成的Anki卡片（用于状态恢复）

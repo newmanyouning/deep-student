@@ -104,6 +104,24 @@ export const NoteIcon: React.FC<ResourceIconProps> = ({
 );
 
 // ============================================================================
+// OCR 识别笔记图标 - 粉色 (Scan Frame) ★ 2026-08-10 笔记三分域新增
+// ============================================================================
+export const OcrNoteIcon: React.FC<ResourceIconProps> = ({
+  className,
+  size = defaultSize,
+}) => (
+  <DocBase size={size} color="pink" className={className}>
+    {/* 扫描框四角 */}
+    <path d="M14 22V18C14 16.8954 14.8954 16 16 16H20" stroke={palette.pink.fg} strokeWidth="2" fill="none" strokeLinecap="round" />
+    <path d="M28 16H32C33.1046 16 34 16.8954 34 18V22" stroke={palette.pink.fg} strokeWidth="2" fill="none" strokeLinecap="round" />
+    <path d="M34 30V34C34 35.1046 33.1046 36 32 36H28" stroke={palette.pink.fg} strokeWidth="2" fill="none" strokeLinecap="round" />
+    <path d="M20 36H16C14.8954 36 14 35.1046 14 34V30" stroke={palette.pink.fg} strokeWidth="2" fill="none" strokeLinecap="round" />
+    {/* 扫描线 */}
+    <rect x="17" y="25" width="14" height="2" rx="1" fill={palette.pink.fg} opacity="0.7" />
+  </DocBase>
+);
+
+// ============================================================================
 // 教材图标 - 橙色 (Book) - v5 书本样式
 // ============================================================================
 export const TextbookIcon: React.FC<ResourceIconProps> = ({
@@ -726,16 +744,18 @@ export const DesktopIcon: React.FC<ResourceIconProps> = ({ className, size = 24,
 // ============================================================================
 // 图标类型映射
 // ============================================================================
-export type ResourceIconType = 
-  | 'note' 
-  | 'textbook' 
-  | 'exam' 
-  | 'essay' 
-  | 'translation' 
-  | 'mindmap' 
-  | 'folder' 
-  | 'image' 
+export type ResourceIconType =
+  | 'note'
+  | 'textbook'
+  | 'exam'
+  | 'essay'
+  | 'translation'
+  | 'mindmap'
+  | 'folder'
+  | 'image'
   | 'file'
+  | 'card'
+  | 'retrieval'
   | 'pdf'
   | 'docx'
   | 'pptx'
@@ -760,6 +780,8 @@ export const ResourceIconMap: Record<ResourceIconType, React.FC<ResourceIconProp
   folder: FolderIcon,
   image: ImageFileIcon,
   file: GenericFileIcon,
+  card: GenericFileIcon, // ★ 题目卡片快照（暂无专属图标，使用通用文件图标）
+  retrieval: GenericFileIcon, // ★ 检索结果（暂无专属图标，使用通用文件图标）
   pdf: PdfFileIcon,
   docx: DocxFileIcon,
   pptx: PptxFileIcon,

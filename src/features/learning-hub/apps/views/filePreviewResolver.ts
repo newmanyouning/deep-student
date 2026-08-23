@@ -3,7 +3,7 @@ import { inferFilePreviewTypeFromName, normalizePreviewType } from '../../types'
 
 export type FilePreviewMode = Extract<
   ResourceListItem['previewType'],
-  'pdf' | 'docx' | 'xlsx' | 'pptx' | 'text' | 'audio' | 'video' | 'none'
+  'pdf' | 'docx' | 'xlsx' | 'pptx' | 'text' | 'audio' | 'video' | 'none' | 'markdown'
 >;
 
 const FILE_PREVIEW_MODES: Set<FilePreviewMode> = new Set([
@@ -15,6 +15,7 @@ const FILE_PREVIEW_MODES: Set<FilePreviewMode> = new Set([
   'audio',
   'video',
   'none',
+  'markdown',
 ]);
 
 const asFilePreviewMode = (value?: string): FilePreviewMode | null => {
@@ -47,6 +48,13 @@ export function resolveFilePreviewMode(
   if (normalizedMime.includes('wordprocessingml')) return 'docx';
   if (normalizedMime.includes('spreadsheet') || normalizedMime.includes('excel')) return 'xlsx';
   if (normalizedMime.includes('presentationml') || normalizedMime.includes('powerpoint')) return 'pptx';
+
+  // Markdown MIME 检测（必须在通用 text/ 检查之前）
+  if (normalizedMime.includes('markdown')) return 'markdown';
+
+  // 扩展名检测：.md/.markdown 文件（即使 MIME 是 text/plain）
+  const fileExt = fileName.split('.').pop()?.toLowerCase() || '';
+  if (['md', 'markdown'].includes(fileExt)) return 'markdown';
 
   if (
     normalizedMime.startsWith('text/') ||

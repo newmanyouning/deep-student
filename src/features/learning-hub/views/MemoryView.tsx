@@ -190,7 +190,9 @@ export const MemoryView: React.FC<MemoryViewProps> = ({ className, onOpenApp }) 
 
     setIsLoading(true);
     try {
-      const items = await listMemory(undefined, 100);
+      // 🔧 修复：记忆管理/浏览视图需要完整列表，用于列表渲染、统计栏、全选及树状视图 noteTitleMap。
+      // 后端 memory_list 会对 limit 做上限保护，这里请求足够大的 limit 以获取全量记忆。
+      const items = await listMemory(undefined, 10000);
       setMemories(items);
       setLoadError(null);
     } catch (error: unknown) {

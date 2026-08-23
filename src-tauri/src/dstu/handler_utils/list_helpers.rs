@@ -17,6 +17,59 @@ use super::{
     note_to_dstu_node, session_to_dstu_node, textbook_to_dstu_node, translation_to_dstu_node,
 };
 
+/// 收集记忆根文件夹子树内的全部笔记 ID（md 三分规则的"记忆"判定）
+///
+/// 规则：记忆根文件夹由 `memory_config.memory_root_folder_id` 指定，
+/// 其递归子文件夹中 folder_items 挂载的 note 均为记忆笔记。
+/// 未配置/查询失败时返回空集（退化为不过滤，安全侧）。
+fn collect_memory_note_ids(vfs_db: &Arc<VfsDatabase>) -> Vec<String> {
+    let conn = match vfs_db.get_conn_safe() {
+        Ok(c) => c,
+        Err(e) => {
+            log::warn!("[DSTU::list_helpers] collect_memory_note_ids: no conn: {}", e);
+            return Vec::new();
+        }
+    };
+    let root_id: Option<String> = conn
+        .query_row(
+            "SELECT value FROM memory_config WHERE key = 'memory_root_folder_id'",
+            [],
+            |row| row.get(0),
+        )
+        .ok()
+        .filter(|s: &String| !s.trim().is_empty());
+    let Some(root_id) = root_id else {
+        return Vec::new();
+    };
+    let mut stmt = match conn.prepare(
+        r#"
+        WITH RECURSIVE sub(id) AS (
+            SELECT ?1
+            UNION
+            SELECT f.id FROM folders f JOIN sub s ON f.parent_id = s.id
+            WHERE f.deleted_at IS NULL
+        )
+        SELECT DISTINCT fi.item_id FROM folder_items fi
+        JOIN sub ON fi.folder_id = sub.id
+        WHERE fi.item_type = 'note' AND fi.deleted_at IS NULL
+        "#,
+    ) {
+        Ok(s) => s,
+        Err(e) => {
+            log::warn!("[DSTU::list_helpers] collect_memory_note_ids: prepare failed: {}", e);
+            return Vec::new();
+        }
+    };
+    let rows = stmt.query_map([root_id], |row| row.get::<_, String>(0));
+    match rows {
+        Ok(mapped) => mapped.filter_map(|r| r.ok()).collect(),
+        Err(e) => {
+            log::warn!("[DSTU::list_helpers] collect_memory_note_ids: query failed: {}", e);
+            Vec::new()
+        }
+    }
+}
+
 /// 按类型列出资源，但返回文件夹路径（智能文件夹模式）
 pub async fn list_resources_by_type_with_folder_path(
     vfs_db: &Arc<VfsDatabase>,
@@ -29,6 +82,14 @@ pub async fn list_resources_by_type_with_folder_path(
 
     match type_filter {
         DstuNodeType::Note => {
+            // ★ 2026-08-10 笔记三分域：normal(普通, 排除OCR+记忆) / ocr(OCR页笔记) / None(全部)
+            let note_scope = options.get_note_scope();
+            let memory_note_ids: Vec<String> = if note_scope == Some("normal") {
+                collect_memory_note_ids(vfs_db)
+            } else {
+                Vec::new()
+            };
+
             let required_tags: Vec<String> = options
                 .tags
                 .as_ref()
@@ -42,15 +103,17 @@ pub async fn list_resources_by_type_with_folder_path(
             let has_tag_filter = !required_tags.is_empty();
 
             if !has_tag_filter {
-                let notes = match VfsNoteRepo::list_notes(
+                let notes = match VfsNoteRepo::list_notes_scoped(
                     vfs_db,
                     options.search.as_deref(),
+                    note_scope,
+                    &memory_note_ids,
                     limit,
                     offset,
                 ) {
                     Ok(n) => n,
                     Err(e) => {
-                        log::error!("[DSTU::list_helpers] list_resources_by_type_with_folder_path: FAILED - list_notes error={}", e);
+                        log::error!("[DSTU::list_helpers] list_resources_by_type_with_folder_path: FAILED - list_notes_scoped error={}", e);
                         return Err(e.to_string());
                     }
                 };
@@ -69,15 +132,17 @@ pub async fn list_resources_by_type_with_folder_path(
             let mut page_offset = 0u32;
             let mut rounds = 0u32;
             loop {
-                let notes = match VfsNoteRepo::list_notes(
+                let notes = match VfsNoteRepo::list_notes_scoped(
                     vfs_db,
                     options.search.as_deref(),
+                    note_scope,
+                    &memory_note_ids,
                     page_size,
                     page_offset,
                 ) {
                     Ok(n) => n,
                     Err(e) => {
-                        log::error!("[DSTU::list_helpers] list_resources_by_type_with_folder_path: FAILED - list_notes error={}", e);
+                        log::error!("[DSTU::list_helpers] list_resources_by_type_with_folder_path: FAILED - list_notes_scoped error={}", e);
                         return Err(e.to_string());
                     }
                 };
@@ -118,6 +183,7 @@ pub async fn list_resources_by_type_with_folder_path(
             }
         }
         DstuNodeType::Textbook => {
+            // 1. 传统 tb_ 前缀教材
             let textbooks = match VfsTextbookRepo::list_textbooks(vfs_db, limit, offset) {
                 Ok(t) => t,
                 Err(e) => {
@@ -128,9 +194,19 @@ pub async fn list_resources_by_type_with_folder_path(
             for tb in textbooks {
                 let folder_path = get_resource_folder_path(vfs_db, &tb.id).await?;
                 let mut node = textbook_to_dstu_node(&tb);
-                // P1-10: 写回真实文件夹路径
                 node.path = folder_path;
                 results.push(node);
+            }
+            // ★★ 修复：同时列出 file_/att_ 前缀的 PDF 文档（file_to_dstu_node 对 PDF 返回 Textbook 类型）
+            if let Ok(doc_files) = VfsFileRepo::list_files_by_type(vfs_db, "document", limit, offset) {
+                for file in doc_files {
+                    let folder_path = get_resource_folder_path(vfs_db, &file.id).await?;
+                    let mut node = file_to_dstu_node(&file);
+                    node.path = folder_path;
+                    if node.node_type == DstuNodeType::Textbook {
+                        results.push(node);
+                    }
+                }
             }
         }
         DstuNodeType::Exam => {
@@ -239,6 +315,11 @@ pub async fn list_resources_by_type_with_folder_path(
         DstuNodeType::Retrieval => {
             // Retrieval 类型目前由 RAG 模块管理，不在 VFS 中列出
             log::debug!("[DSTU::list_helpers] Retrieval type is managed by RAG module, returning empty list");
+        }
+        // ★ 2026-08-07 迁移补充：DstuNodeType 收编为 ResourceKind 后新增 Card 变体。
+        // 卡片由卡组模块管理，不在 VFS 中列出（与 Folder/Retrieval 的旧行为一致：返回空）
+        DstuNodeType::Card => {
+            log::debug!("[DSTU::list_helpers] Card type is managed by card module, returning empty list");
         }
         DstuNodeType::MindMap => {
             let mindmaps = match VfsMindMapRepo::list_mindmaps(vfs_db) {
@@ -381,6 +462,64 @@ pub async fn list_unassigned_essays(
     for session in all_sessions {
         if !assigned_ids.contains(&session.id) {
             results.push(session_to_dstu_node(&session));
+        }
+    }
+
+    Ok(results)
+}
+
+/// 列出未分配到任何文件夹的文件（非 PDF 文档类型，如 DOCX/XLSX/PPTX）
+/// PDF 文件由 list_unassigned_textbooks 处理（通过 file_to_dstu_node 映射为 Textbook 类型）
+pub async fn list_unassigned_files(
+    vfs_db: &Arc<VfsDatabase>,
+    assigned_ids: &HashSet<String>,
+) -> Result<Vec<DstuNode>, String> {
+    let all_files = match VfsFileRepo::list_files_by_type(vfs_db, "document", 1000, 0) {
+        Ok(files) => files,
+        Err(e) => {
+            log::error!(
+                "[DSTU::list_helpers] list_unassigned_files: FAILED - list_files_by_type error={}",
+                e
+            );
+            return Err(e.to_string());
+        }
+    };
+
+    let mut results = Vec::new();
+    for file in all_files {
+        if !assigned_ids.contains(&file.id) {
+            let node = file_to_dstu_node(&file);
+            // ★★ 修复：排除 PDF（已映射为 Textbook 类型），避免与 list_unassigned_textbooks 重复
+            // PDF 文件由 list_unassigned_textbooks 负责列出
+            if node.node_type != DstuNodeType::Textbook {
+                results.push(node);
+            }
+        }
+    }
+
+    Ok(results)
+}
+
+/// 列出未分配到任何文件夹的图片
+pub async fn list_unassigned_images(
+    vfs_db: &Arc<VfsDatabase>,
+    assigned_ids: &HashSet<String>,
+) -> Result<Vec<DstuNode>, String> {
+    let all_images = match VfsFileRepo::list_files_by_type(vfs_db, "image", 1000, 0) {
+        Ok(images) => images,
+        Err(e) => {
+            log::error!(
+                "[DSTU::list_helpers] list_unassigned_images: FAILED - list_files_by_type error={}",
+                e
+            );
+            return Err(e.to_string());
+        }
+    };
+
+    let mut results = Vec::new();
+    for image in all_images {
+        if !assigned_ids.contains(&image.id) {
+            results.push(file_to_dstu_node(&image));
         }
     }
 

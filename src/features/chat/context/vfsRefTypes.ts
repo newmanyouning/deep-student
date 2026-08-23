@@ -17,6 +17,7 @@
 /**
  * VFS 支持的资源类型
  * ★ 2026-01 添加 mindmap 类型支持
+ * ★ 与 src/types/resourceKind.ts 的 ResourceKind（11 值）收敛，补齐 card/folder
  */
 export type VfsResourceType =
   | 'note'
@@ -27,7 +28,9 @@ export type VfsResourceType =
   | 'image'
   | 'file'
   | 'retrieval'   // ★ 检索结果
-  | 'mindmap';    // ★ 知识导图
+  | 'mindmap'     // ★ 知识导图
+  | 'card'        // ★ 题目卡片快照
+  | 'folder';     // ★ 文件夹（虚拟节点）
 
 // ============================================================================
 // 上下文引用数据结构
@@ -275,6 +278,7 @@ export const VFS_REF_ERRORS = {
  *
  * 后端对应：ref_handlers.rs 的 get_source_id_type() 函数
  * ★ 2026-01 添加 mindmap 类型支持
+ * ★ 与 src/types/resourceKind.ts 的 ResourceKind（11 值）收敛，补齐 card/retrieval
  */
 export const VFS_REF_TYPES = [
   'folder',       // fld_xxx - 文件夹（展开内部资源）
@@ -286,6 +290,8 @@ export const VFS_REF_TYPES = [
   'image',        // att_xxx (type=image) - 图片附件
   'file',         // att_xxx (type=file) - 文档附件
   'mindmap',      // mm_xxx - 知识导图
+  'card',         // card_xxx - 题目卡片快照
+  'retrieval',    // res_xxx - 检索结果（RAG，无专用前缀）
 ] as const;
 
 /**
@@ -329,7 +335,7 @@ export const VFS_MAX_PATH_DEPTH = 10;
  * ★ 2026-01 添加 mindmap 类型支持
  */
 export function isVfsResourceType(type: string): type is VfsResourceType {
-  return ['note', 'textbook', 'exam', 'translation', 'essay', 'image', 'file', 'retrieval', 'mindmap'].includes(type);
+  return ['note', 'textbook', 'exam', 'translation', 'essay', 'image', 'file', 'retrieval', 'mindmap', 'card', 'folder'].includes(type);
 }
 
 /**

@@ -192,6 +192,13 @@ impl VfsTextbookRepo {
 
         let result = (|| -> VfsResult<VfsTextbook> {
             // ★ 1. 先在 resources 表创建记录（用于向量化索引）
+            // ★ 口径说明 (2026-08-10 调研确认): 教材在 resources 层以 type='file' 存储。
+            //    files 表是 textbooks+attachments 合并表, 无教材标记列, 教材与普通文件的
+            //    区分仅靠 ID 前缀 (tb_ vs file_/att_)。indexing 的 File 臂通过
+            //    files.resource_id 回退查询完整覆盖教材 (extracted_text/ocr_text/ocr_pages_json),
+            //    index_handlers 的 'textbook' SQL 臂仅作旧数据容错保留。
+            //    若未来改为写入 'textbook', 需同步: ①迁移存量行 (source_id LIKE 'tb_%')
+            //    ②index_handlers 的 has_ocr/ocr_count 臂语义 ③indexing Textbook 臂的文本优先级差异。
             let resource_id = format!("res_{}", nanoid::nanoid!(10));
             conn.execute(
                 r#"

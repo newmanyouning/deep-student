@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::VfsResult;
@@ -224,9 +224,12 @@ fn parse_ocr_pages_for_display(ocr_pages_json: &Option<String>) -> Option<Vec<Oc
 /// 然后重置索引状态为 pending，下次索引时会重新触发 OCR
 #[tauri::command]
 pub async fn vfs_clear_resource_ocr(
+    app_handle: tauri::AppHandle,
     resource_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<bool> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_clear_resource_ocr: resource_id={}",
         resource_id

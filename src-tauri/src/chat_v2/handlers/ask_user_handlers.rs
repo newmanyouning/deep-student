@@ -6,6 +6,7 @@
 //! ## 设计参考
 //! - `approval_handlers.rs`: Tauri command 桥接审批响应模式
 
+use tauri::Manager;
 use crate::chat_v2::tools::ask_user_executor::{handle_ask_user_response, AskUserResponse};
 
 // ============================================================================
@@ -25,12 +26,15 @@ use crate::chat_v2::tools::ask_user_executor::{handle_ask_user_response, AskUser
 /// - `source`: 回答来源（"user_click" | "custom_input" | "mixed" | "timeout" | "channel_closed"）
 #[tauri::command]
 pub async fn chat_v2_ask_user_respond(
+    app: tauri::AppHandle,
     tool_call_id: String,
     selected_texts: Vec<String>,
     selected_indices: Vec<i32>,
     custom_text: Option<String>,
     source: String,
 ) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::info!(
         "[ChatV2::ask_user] Received response: tool_call_id={}, selected={:?}, indices={:?}, custom_text={:?}, source='{}'",
         tool_call_id,

@@ -8,6 +8,7 @@
 //! 3. 前端调用此命令返回编辑结果
 //! 4. 后端恢复工具执行流程
 
+use tauri::Manager;
 use crate::chat_v2::tools::canvas_executor::{handle_edit_result, CanvasAIEditResult};
 
 /// 处理前端返回的 Canvas 编辑结果
@@ -15,7 +16,12 @@ use crate::chat_v2::tools::canvas_executor::{handle_edit_result, CanvasAIEditRes
 /// 前端在执行完 AI 编辑请求后，调用此命令返回结果。
 /// 后端通过 request_id 匹配等待的回调，恢复工具执行流程。
 #[tauri::command]
-pub fn chat_v2_canvas_edit_result(result: CanvasAIEditResult) -> Result<(), String> {
+pub fn chat_v2_canvas_edit_result(
+    app: tauri::AppHandle,
+    result: CanvasAIEditResult,
+) -> Result<(), String> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::chat_v2::write_gate::check_chat_v2_write_gate(&app.state::<crate::commands::AppState>())?;
     log::debug!(
         "[canvas_handlers] Received edit result: request_id={}, success={}",
         result.request_id,

@@ -15,6 +15,8 @@
 use serde::{Deserialize, Serialize, Serializer};
 use serde_json::Value;
 
+use crate::vfs::resource_kind::ResourceKind;
+
 // ============================================================================
 // 序列化辅助函数
 // ============================================================================
@@ -82,80 +84,14 @@ impl StorageMode {
 // 资源类型
 // ============================================================================
 
-/// VFS 资源类型枚举
+/// VFS 资源类型（已迁移至 `ResourceKind`）
 ///
-/// 定义 VFS 支持的所有资源类型，序列化为小写字符串。
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum VfsResourceType {
-    /// 笔记
-    Note,
-    /// 教材
-    Textbook,
-    /// 题目集识别
-    Exam,
-    /// 翻译
-    Translation,
-    /// 作文批改
-    Essay,
-    /// 图片
-    Image,
-    /// 文件附件
-    File,
-    /// 检索结果
-    Retrieval,
-    /// 知识导图
-    MindMap,
-}
-
-impl std::fmt::Display for VfsResourceType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            VfsResourceType::Note => write!(f, "note"),
-            VfsResourceType::Textbook => write!(f, "textbook"),
-            VfsResourceType::Exam => write!(f, "exam"),
-            VfsResourceType::Translation => write!(f, "translation"),
-            VfsResourceType::Essay => write!(f, "essay"),
-            VfsResourceType::Image => write!(f, "image"),
-            VfsResourceType::File => write!(f, "file"),
-            VfsResourceType::Retrieval => write!(f, "retrieval"),
-            VfsResourceType::MindMap => write!(f, "mindmap"),
-        }
-    }
-}
-
-impl VfsResourceType {
-    /// 从字符串解析资源类型
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s.to_lowercase().as_str() {
-            "note" => Some(VfsResourceType::Note),
-            "textbook" => Some(VfsResourceType::Textbook),
-            "exam" => Some(VfsResourceType::Exam),
-            "translation" => Some(VfsResourceType::Translation),
-            "essay" => Some(VfsResourceType::Essay),
-            "image" => Some(VfsResourceType::Image),
-            "file" => Some(VfsResourceType::File),
-            "retrieval" => Some(VfsResourceType::Retrieval),
-            "mindmap" => Some(VfsResourceType::MindMap),
-            _ => None,
-        }
-    }
-
-    /// 获取所有资源类型
-    pub fn all() -> Vec<Self> {
-        vec![
-            VfsResourceType::Note,
-            VfsResourceType::Textbook,
-            VfsResourceType::Exam,
-            VfsResourceType::Translation,
-            VfsResourceType::Essay,
-            VfsResourceType::Image,
-            VfsResourceType::File,
-            VfsResourceType::Retrieval,
-            VfsResourceType::MindMap,
-        ]
-    }
-}
+/// ⚠️ 2026-08-07 迁移：「三个资源枚举统一」第二步，`VfsResourceType` 已收编为
+/// 统一枚举 `ResourceKind`（见 `vfs/resource_kind.rs`，11 个变体 = 原 9 变体 + Card/Folder）。
+/// - 序列化契约不变：原 9 个 lowercase 字符串（note/textbook/exam/.../mindmap）原样保留
+/// - `from_str` 为超集：原 9 值全部保留，额外接受复数/中文别名
+/// - 此处保留 `pub type` 别名作为过渡兼容层，新代码一律直接使用 `ResourceKind`
+pub type VfsResourceType = ResourceKind;
 
 // ============================================================================
 // 资源元数据
@@ -209,7 +145,7 @@ pub struct VfsResource {
 
     /// 资源类型
     #[serde(rename = "type")]
-    pub resource_type: VfsResourceType,
+    pub resource_type: ResourceKind,
 
     /// 原始数据 ID（note_id, textbook_id 等）
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -254,7 +190,7 @@ impl VfsResource {
 
     /// 创建新资源
     pub fn new(
-        resource_type: VfsResourceType,
+        resource_type: ResourceKind,
         hash: String,
         storage_mode: StorageMode,
         data: Option<String>,
@@ -2093,7 +2029,7 @@ pub struct VfsListItem {
 
     /// 资源类型
     #[serde(rename = "type")]
-    pub resource_type: VfsResourceType,
+    pub resource_type: ResourceKind,
 
     /// 标题
     pub title: String,
@@ -2185,7 +2121,7 @@ pub struct VfsCreateResourceParams {
 pub struct VfsListParams {
     /// 资源类型过滤（可选）
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
-    pub resource_type: Option<VfsResourceType>,
+    pub resource_type: Option<ResourceKind>,
 
     /// 搜索关键词（可选）
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -2445,7 +2381,7 @@ pub struct VfsResourceRef {
 
     /// 资源类型
     #[serde(rename = "type")]
-    pub resource_type: VfsResourceType,
+    pub resource_type: ResourceKind,
 
     /// 资源名称/标题
     pub name: String,
@@ -2505,7 +2441,7 @@ pub struct ResolvedResource {
 
     /// 资源类型
     #[serde(rename = "type")]
-    pub resource_type: VfsResourceType,
+    pub resource_type: ResourceKind,
 
     /// 资源名称/标题
     pub name: String,
@@ -2650,7 +2586,6 @@ pub struct ResourceLocation {
     pub resource_type: String,
 
     /// 所在文件夹 ID（None 表示根目录）
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub folder_id: Option<String>,
 
     /// 文件夹路径（如 "高考复习/函数"，根目录为 ""）
@@ -2660,7 +2595,6 @@ pub struct ResourceLocation {
     pub full_path: String,
 
     /// 内容哈希（如有，用于版本追踪）
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub hash: Option<String>,
 }
 
@@ -2823,32 +2757,26 @@ mod tests {
 
     #[test]
     fn test_vfs_resource_type_serialization() {
-        // 验证序列化为小写字符串
+        // 验证序列化为小写字符串（迁移后走 ResourceKind 的 serde 契约）
+        assert_eq!(serde_json::to_string(&ResourceKind::Note).unwrap(), "\"note\"");
         assert_eq!(
-            serde_json::to_string(&VfsResourceType::Note).unwrap(),
-            "\"note\""
-        );
-        assert_eq!(
-            serde_json::to_string(&VfsResourceType::Textbook).unwrap(),
+            serde_json::to_string(&ResourceKind::Textbook).unwrap(),
             "\"textbook\""
         );
         assert_eq!(
-            serde_json::to_string(&VfsResourceType::Translation).unwrap(),
+            serde_json::to_string(&ResourceKind::Translation).unwrap(),
             "\"translation\""
         );
     }
 
     #[test]
     fn test_vfs_resource_type_from_str() {
+        assert_eq!(ResourceKind::from_str("note"), Some(ResourceKind::Note));
         assert_eq!(
-            VfsResourceType::from_str("note"),
-            Some(VfsResourceType::Note)
+            ResourceKind::from_str("TEXTBOOK"),
+            Some(ResourceKind::Textbook)
         );
-        assert_eq!(
-            VfsResourceType::from_str("TEXTBOOK"),
-            Some(VfsResourceType::Textbook)
-        );
-        assert_eq!(VfsResourceType::from_str("invalid"), None);
+        assert_eq!(ResourceKind::from_str("invalid"), None);
     }
 
     #[test]
@@ -2868,7 +2796,7 @@ mod tests {
         let resource = VfsResource {
             id: "res_abc123".to_string(),
             hash: "sha256hash".to_string(),
-            resource_type: VfsResourceType::Note,
+            resource_type: ResourceKind::Note,
             source_id: Some("note_123".to_string()),
             source_table: Some("notes".to_string()),
             storage_mode: StorageMode::Inline,
@@ -2925,7 +2853,7 @@ mod tests {
         let resource = VfsResource {
             id: "res_abc123".to_string(),
             hash: "sha256hash".to_string(),
-            resource_type: VfsResourceType::Note,
+            resource_type: ResourceKind::Note,
             source_id: None,
             source_table: None,
             storage_mode: StorageMode::Inline,
@@ -2946,17 +2874,21 @@ mod tests {
 
     #[test]
     fn test_vfs_resource_type_all() {
-        let all_types = VfsResourceType::all();
-        assert_eq!(all_types.len(), 9);
-        assert!(all_types.contains(&VfsResourceType::Note));
-        assert!(all_types.contains(&VfsResourceType::Textbook));
-        assert!(all_types.contains(&VfsResourceType::Exam));
-        assert!(all_types.contains(&VfsResourceType::Translation));
-        assert!(all_types.contains(&VfsResourceType::Essay));
-        assert!(all_types.contains(&VfsResourceType::Image));
-        assert!(all_types.contains(&VfsResourceType::File));
-        assert!(all_types.contains(&VfsResourceType::Retrieval));
-        assert!(all_types.contains(&VfsResourceType::MindMap));
+        // 迁移后 all() 返回 11 个变体（超集：原 9 变体 + Card/Folder）
+        // 原 9 变体断言保持不变；完整 11 变体断言见 resource_kind.rs 的测试
+        let all_types = ResourceKind::all();
+        assert_eq!(all_types.len(), 11);
+        assert!(all_types.contains(&ResourceKind::Note));
+        assert!(all_types.contains(&ResourceKind::Textbook));
+        assert!(all_types.contains(&ResourceKind::Exam));
+        assert!(all_types.contains(&ResourceKind::Translation));
+        assert!(all_types.contains(&ResourceKind::Essay));
+        assert!(all_types.contains(&ResourceKind::Image));
+        assert!(all_types.contains(&ResourceKind::File));
+        assert!(all_types.contains(&ResourceKind::Retrieval));
+        assert!(all_types.contains(&ResourceKind::MindMap));
+        assert!(all_types.contains(&ResourceKind::Card));
+        assert!(all_types.contains(&ResourceKind::Folder));
     }
 
     #[test]
@@ -3064,7 +2996,7 @@ mod tests {
         let item = VfsListItem {
             id: "note_abc123".to_string(),
             resource_id: "res_xyz789".to_string(),
-            resource_type: VfsResourceType::Note,
+            resource_type: ResourceKind::Note,
             title: "Test Note".to_string(),
             preview_type: PreviewType::Markdown,
             created_at: 1234567890,

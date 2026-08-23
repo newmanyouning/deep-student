@@ -2,7 +2,7 @@ import i18n from 'i18next';
 import type { AttachmentMeta } from '../types/message';
 import type { ContextRef } from '../../resources/types';
 import type { EditMessageResult, RetryMessageResult } from '../../adapters/types';
-import type { ChatStore, BlockingInteraction } from '../types';
+import type { ChatStore, BlockingInteraction, LoadSessionResponseType } from '../types';
 import { COMPOSER_PANEL_KEYS, type ChatParams, type PanelStates } from '../types/common';
 import type { ChatStoreState, SetState, GetState } from './types';
 import { createDefaultChatParams, createDefaultPanelStates } from './types';
@@ -513,6 +513,50 @@ export function createSessionActions(
             '[ChatStore] UpdateSessionSettings callback',
             callback ? 'set' : 'cleared'
           );
+        },
+
+        // ========== 🆕 懒加载历史消息 Actions ==========
+
+        setLoadMoreMessagesCallback: (
+          callback: ((oldestMessageId: string) => Promise<LoadSessionResponseType>) | null
+        ): void => {
+          set({ _loadMoreMessagesCallback: callback } as Partial<ChatStoreState>);
+          console.log(
+            '[ChatStore] LoadMoreMessages callback',
+            callback ? 'set' : 'cleared'
+          );
+        },
+
+        loadMoreMessages: async (): Promise<void> => {
+          const state = getState();
+
+          // 守卫：正在加载或没有更多消息
+          if (state.isLoadingMore || !state.hasMoreMessages) return;
+
+          // 获取最早的消息 ID
+          const oldestMessageId = state.messageOrder[0];
+          if (!oldestMessageId) return;
+
+          set({ isLoadingMore: true });
+
+          try {
+            const callback = (getState() as ChatStoreState & {
+              _loadMoreMessagesCallback?: ((oldestMessageId: string) => Promise<LoadSessionResponseType>) | null;
+            })._loadMoreMessagesCallback;
+
+            if (callback) {
+              const response = await callback(oldestMessageId);
+              getState().appendOlderMessages(response);
+            } else {
+              console.warn(
+                '[ChatStore] loadMoreMessages: No loadMoreMessages callback set. Use setLoadMoreMessagesCallback() to inject load logic.'
+              );
+              set({ isLoadingMore: false });
+            }
+          } catch (error) {
+            console.error('[ChatStore] loadMoreMessages failed:', error);
+            set({ isLoadingMore: false });
+          }
         },
 
   };

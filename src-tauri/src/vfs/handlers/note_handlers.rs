@@ -13,7 +13,7 @@
 use std::sync::Arc;
 
 use serde::Deserialize;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
@@ -79,9 +79,12 @@ pub struct UpdateNoteInput {
 /// - `Err(String)`: 数据库错误
 #[tauri::command]
 pub async fn vfs_create_note(
+    app_handle: tauri::AppHandle,
     params: CreateNoteInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<VfsNote> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!("[VFS::handlers] vfs_create_note: title={}", params.title);
 
     // M-010: 校验内容长度，防止超大内容造成 DB 膨胀
@@ -133,10 +136,13 @@ pub async fn vfs_create_note(
 /// - `Err(String)`: 笔记不存在或数据库错误
 #[tauri::command]
 pub async fn vfs_update_note(
+    app_handle: tauri::AppHandle,
     id: String,
     params: UpdateNoteInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<VfsNote> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_update_note: id={}, content_len={}",
         id,
@@ -261,9 +267,12 @@ pub async fn vfs_list_notes(
 /// - `Err(String)`: 笔记不存在或数据库错误
 #[tauri::command]
 pub async fn vfs_delete_note(
+    app_handle: tauri::AppHandle,
     id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!("[VFS::handlers] vfs_delete_note: id={}", id);
 
     // 验证笔记 ID 格式

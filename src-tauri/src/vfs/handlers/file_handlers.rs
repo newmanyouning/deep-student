@@ -14,7 +14,7 @@ use std::sync::Arc;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::document_parser::DocumentParser;
 use crate::llm_manager::LLMManager;
@@ -169,12 +169,15 @@ pub struct VfsFileContentResult {
 
 #[tauri::command]
 pub async fn vfs_upload_file(
+    app_handle: tauri::AppHandle,
     params: VfsUploadFileParams,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     llm_manager: State<'_, Arc<LLMManager>>,
     database: State<'_, crate::database::Database>,
     pdf_processing_service: State<'_, Arc<PdfProcessingService>>,
 ) -> VfsResult<VfsUploadFileResult> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     // ★ 2026-02 重构：llm_manager 参数保留用于未来图片 OCR 支持
     // 当前 PDF OCR 由 Pipeline 异步处理，图片 OCR 暂不支持
     let _ = &llm_manager;
@@ -651,10 +654,13 @@ pub async fn vfs_list_files(
 /// 确保被删除的文件不会在 RAG 检索中被错误返回。
 #[tauri::command]
 pub async fn vfs_delete_file(
+    app_handle: tauri::AppHandle,
     file_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
     lance_store: State<'_, Arc<crate::vfs::lance_store::VfsLanceStore>>,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     use crate::vfs::index_service::VfsIndexService;
 
     if !file_id.starts_with("file_") {

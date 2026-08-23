@@ -120,6 +120,16 @@ pub enum DataGovernanceError {
     #[error("Sync error: {0}")]
     Sync(String),
 
+    /// 业务写被同步写门拦截 — 可重试, 前端提示"数据正在同步, 请稍后重试"
+    /// (`db` = 正在同步的数据库名, 即写门持有者)
+    #[error("数据正在同步 (db={db}), 业务写被写门拦截 — 可重试, 请稍后再试")]
+    SyncInProgress { db: String },
+
+    /// 同步写门获取失败 (被占/超时) — 可重试
+    /// (`db` = 请求获取写门的数据库名或资源名)
+    #[error("同步写门被占用 (db={db}) — 可重试")]
+    SyncBusy { db: String },
+
     #[error("Not implemented: {0}")]
     NotImplemented(String),
 }
@@ -133,6 +143,8 @@ impl serde::Serialize for DataGovernanceError {
             DataGovernanceError::SchemaRegistry(_) => "SCHEMA_REGISTRY_ERROR",
             DataGovernanceError::Backup(_) => "BACKUP_ERROR",
             DataGovernanceError::Sync(_) => "SYNC_ERROR",
+            DataGovernanceError::SyncInProgress { .. } => "SYNC_IN_PROGRESS",
+            DataGovernanceError::SyncBusy { .. } => "SYNC_BUSY",
             DataGovernanceError::NotImplemented(_) => "NOT_IMPLEMENTED",
         };
         s.serialize_field("code", code)?;
@@ -194,7 +206,13 @@ impl From<backup::BackupError> for DataGovernanceError {
 
 impl From<sync::SyncError> for DataGovernanceError {
     fn from(e: sync::SyncError) -> Self {
-        DataGovernanceError::Sync(e.to_string())
+        match e {
+            // 可重试权限错误: 保留独立变体与错误码 (SYNC_IN_PROGRESS / SYNC_BUSY),
+            // 前端据此提示"数据正在同步, 请稍后重试"
+            sync::SyncError::SyncInProgress { db } => DataGovernanceError::SyncInProgress { db },
+            sync::SyncError::SyncBusy { db } => DataGovernanceError::SyncBusy { db },
+            other => DataGovernanceError::Sync(other.to_string()),
+        }
     }
 }
 
@@ -211,6 +229,8 @@ impl From<DataGovernanceError> for String {
             DataGovernanceError::SchemaRegistry(_) => "SCHEMA_REGISTRY_ERROR",
             DataGovernanceError::Backup(_) => "BACKUP_ERROR",
             DataGovernanceError::Sync(_) => "SYNC_ERROR",
+            DataGovernanceError::SyncInProgress { .. } => "SYNC_IN_PROGRESS",
+            DataGovernanceError::SyncBusy { .. } => "SYNC_BUSY",
             DataGovernanceError::NotImplemented(_) => "NOT_IMPLEMENTED",
         };
         serde_json::json!({ "code": code, "message": e.to_string() }).to_string()

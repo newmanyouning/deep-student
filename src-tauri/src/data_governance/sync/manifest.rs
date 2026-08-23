@@ -237,6 +237,16 @@ pub enum SyncError {
     #[error("Manual resolution required: {count} conflicts")]
     ManualResolutionRequired { count: usize },
 
+    /// 业务写被同步写门拦截 — 可重试, 前端提示"数据正在同步, 请稍后重试"
+    /// (`db` = 正在同步的数据库名, 即写门持有者)
+    #[error("数据正在同步 (db={db}), 业务写被写门拦截 — 可重试, 请稍后再试")]
+    SyncInProgress { db: String },
+
+    /// 同步写门获取失败 (被占/超时) — 可重试, 由调用方决定重试
+    /// (`db` = 请求获取写门的数据库名或资源名)
+    #[error("同步写门被占用 (db={db}) — 可重试")]
+    SyncBusy { db: String },
+
     #[error("Not implemented: {0}")]
     NotImplemented(String),
 }
@@ -356,11 +366,28 @@ impl AssetSyncOutcome {
     }
 }
 
+/// 被隔离的违规记录（v3 SyncEnvelope 单条格式校验失败，跳过应用，非致命）
+///
+/// 与设计文档 §3.5 的 `QuarantineRow { table_name, record_id, reason }` 对齐，
+/// 后续可随 `SyncExecutionResponse.quarantined_records` 一并上报前端。
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct QuarantineRow {
+    /// 表名
+    pub table_name: String,
+    /// 记录 ID
+    pub record_id: String,
+    /// 隔离原因（validate_change_payload 的错误信息）
+    pub reason: String,
+}
+
 /// 下载变更结果（包含非致命解析告警）
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DownloadChangesResult {
     pub changes: Vec<SyncChangeWithData>,
     pub decode_failures: Vec<String>,
+    /// v3 SyncEnvelope 解析后单条格式校验失败的记录（隔离跳过，非致命）
+    #[serde(default)]
+    pub quarantined_records: Vec<QuarantineRow>,
 }
 
 /// 变更日志统计信息
@@ -830,6 +857,10 @@ pub struct SyncExecutionResult {
     pub duration_ms: u64,
     /// 错误信息（如果有）
     pub error_message: Option<String>,
+    /// 下载/应用过程中被隔离的违规记录（v3 单条格式校验失败，跳过应用，非致命）
+    /// 命令层据此聚合进 `SyncExecutionResponse.quarantined_records` 上报前端
+    #[serde(default)]
+    pub quarantined_records: Vec<QuarantineRow>,
 }
 
 impl SyncExecutionResult {
@@ -849,6 +880,7 @@ impl SyncExecutionResult {
             conflicts_detected: conflicts,
             duration_ms,
             error_message: None,
+            quarantined_records: vec![],
         }
     }
 
@@ -862,6 +894,7 @@ impl SyncExecutionResult {
             conflicts_detected: 0,
             duration_ms,
             error_message: Some(error),
+            quarantined_records: vec![],
         }
     }
 }

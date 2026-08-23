@@ -10,7 +10,7 @@
 //! - 全文检索索引
 //! - 向量索引元数据
 //!
-//! ## 表结构 (32 个表 + 1 视图 + 1 FTS5 虚拟表)
+//! ## 表结构 (36 个表 + 1 视图 + 1 FTS5 虚拟表)
 //!
 //! ### 核心资源表
 //! - `resources`: 统一资源存储（SSOT）
@@ -38,6 +38,7 @@
 //! - `vfs_indexing_config`: 索引配置
 //! - `vfs_index_units`, `vfs_index_segments`, `vfs_embedding_dims`: 向量索引
 //! - `todo_lists`, `todo_items`, `pomodoro_records`: 待办与番茄钟
+//! - `research_sessions`, `research_rounds`, `research_artifacts`: Research (HPIAS)
 //! - `memory_write_idempotency`, `__blob_deletion_queue`: 本地辅助表
 
 use super::definitions::{MigrationDef, MigrationSet};
@@ -528,6 +529,97 @@ pub const V20260525_REPAIR_LEGACY_QUESTIONS_CHANGE_LOG_RECORD_IDS: MigrationDef 
     ),
 );
 
+/// V20260604: 添加 PDF 扫描件检测字段
+///
+/// ★ 2026-08-10 补注册：该迁移文件早已存在且老构建曾应用过
+/// (老库 refinery_schema_history 含 20260604)，但此前遗漏注册进
+/// VFS_MIGRATIONS，导致全新安装的库缺 is_scanned/needs_ocr 列
+/// (textbook_repo 查询会报 no such column)。重新注册修复新装路径;
+/// 已应用过的老库按版本号跳过，不受影响。
+pub const V20260604_ADD_PDF_SCANNED_FIELDS: MigrationDef = MigrationDef::new(
+    20260604,
+    "add_pdf_scanned_fields",
+    include_str!("../../../migrations/vfs/V20260604__add_pdf_scanned_fields.sql"),
+)
+.with_expected_columns(&[
+    ("files", "is_scanned"),
+    ("files", "needs_ocr"),
+]);
+
+/// V20260807: Research 领域表（HPIAS 深度研究引擎）
+///
+/// 三张表: research_sessions（会话聚合根）/ research_rounds（轮次状态）/
+/// research_artifacts（可扩展制品）。放 vfs.db 与 resources 同库，
+/// 便于研究轮次/制品直接引用资源 ID；research_reports 报告表仍在主库。
+/// 设计文档: docs/plans/2026-08-06-type-unification-detailed-design.md §2.2
+pub const V20260807_ADD_RESEARCH_TABLES: MigrationDef = MigrationDef::new(
+    20260807,
+    "add_research_tables",
+    include_str!("../../../migrations/vfs/V20260807__add_research_tables.sql"),
+)
+.with_expected_tables(&["research_sessions", "research_rounds", "research_artifacts"])
+.with_expected_columns(&[
+    ("research_sessions", "id"),
+    ("research_sessions", "title"),
+    ("research_sessions", "status"),
+    ("research_sessions", "mode"),
+    ("research_sessions", "max_rounds"),
+    ("research_sessions", "min_selected"),
+    ("research_sessions", "options_json"),
+    ("research_sessions", "created_at"),
+    ("research_sessions", "updated_at"),
+    ("research_rounds", "id"),
+    ("research_rounds", "session_id"),
+    ("research_rounds", "round_no"),
+    ("research_rounds", "stage"),
+    ("research_rounds", "status"),
+    ("research_rounds", "plan_json"),
+    ("research_rounds", "queries_json"),
+    ("research_rounds", "retrieved_json"),
+    ("research_rounds", "dedupe_json"),
+    ("research_rounds", "selection_json"),
+    ("research_rounds", "synthesis_md"),
+    ("research_rounds", "citations_json"),
+    ("research_rounds", "metrics_json"),
+    ("research_rounds", "critic_json"),
+    ("research_rounds", "note"),
+    ("research_rounds", "tags_json"),
+    ("research_artifacts", "id"),
+    ("research_artifacts", "session_id"),
+    ("research_artifacts", "round_no"),
+    ("research_artifacts", "agent"),
+    ("research_artifacts", "artifact_type"),
+    ("research_artifacts", "payload_json"),
+    ("research_artifacts", "size"),
+    ("research_artifacts", "created_at"),
+])
+.with_expected_indexes(&[
+    "idx_research_sessions_updated",
+    "idx_research_rounds_status",
+    "idx_research_artifacts_session_round",
+])
+.idempotent();
+
+/// V20260810: 应用设置表（settings 单一存储迁移）
+///
+/// mistakes.db.settings → vfs.db.app_settings 的路由目标表。
+/// 数据迁移不由本 SQL 完成（跨库），由 `Database::set_settings_store`
+/// 启动时一次性复制 + 读写路由完成。详见
+/// docs/DATA_STORAGE_SINGLE_SOURCE_AUDIT.md 迁移 1。
+pub const V20260810_ADD_APP_SETTINGS: MigrationDef = MigrationDef::new(
+    20260810,
+    "add_app_settings",
+    include_str!("../../../migrations/vfs/V20260810__add_app_settings.sql"),
+)
+.with_expected_tables(&["app_settings"])
+.with_expected_columns(&[
+    ("app_settings", "key"),
+    ("app_settings", "value"),
+    ("app_settings", "updated_at"),
+])
+.with_expected_indexes(&["idx_app_settings_updated_at"])
+.idempotent();
+
 /// VFS 数据库所有迁移定义
 pub const VFS_MIGRATIONS: &[MigrationDef] = &[
     V20260130_INIT,
@@ -561,6 +653,9 @@ pub const VFS_MIGRATIONS: &[MigrationDef] = &[
     V20260523_ADD_MISSING_SYNC_COVERAGE,
     V20260524_ADD_CHANGE_LOG_FIELD_DELTAS,
     V20260525_REPAIR_LEGACY_QUESTIONS_CHANGE_LOG_RECORD_IDS,
+    V20260604_ADD_PDF_SCANNED_FIELDS,
+    V20260807_ADD_RESEARCH_TABLES,
+    V20260810_ADD_APP_SETTINGS,
 ];
 
 /// VFS 迁移集合
@@ -610,6 +705,10 @@ pub const VFS_ALL_TABLE_NAMES: &[&str] = &[
     "todo_lists",
     "todo_items",
     "pomodoro_records",
+    // Research (HPIAS 深度研究引擎)
+    "research_sessions",
+    "research_rounds",
+    "research_artifacts",
     // 本地辅助队列
     "__blob_deletion_queue",
     // FTS5 虚拟表
@@ -620,7 +719,7 @@ pub const VFS_ALL_TABLE_NAMES: &[&str] = &[
 pub const VFS_VIEW_NAMES: &[&str] = &["trash_view"];
 
 /// VFS 数据库当前保留表总数（不含视图、虚拟表、已废弃表）
-pub const VFS_TABLE_COUNT: usize = 33;
+pub const VFS_TABLE_COUNT: usize = 36;
 
 /// VFS 数据库视图总数
 pub const VFS_VIEW_COUNT: usize = 1;
@@ -657,7 +756,8 @@ mod tests {
         // + V20260311 (todo_constraints) + V20260312 (add_blob_deletion_queue)
         // + V20260523 (missing_sync_coverage) + V20260524 (field_deltas)
         // + V20260525 (repair_legacy_questions_change_log_record_ids)
-        assert_eq!(VFS_MIGRATION_SET.count(), 31);
+        // + V20260807 (add_research_tables)
+        assert_eq!(VFS_MIGRATION_SET.count(), 32);
     }
 
     #[test]
@@ -752,6 +852,6 @@ mod tests {
 
     #[test]
     fn test_latest_version() {
-        assert_eq!(VFS_MIGRATION_SET.latest_version(), 20260525);
+        assert_eq!(VFS_MIGRATION_SET.latest_version(), 20260807);
     }
 }

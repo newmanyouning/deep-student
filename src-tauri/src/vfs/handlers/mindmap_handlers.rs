@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use serde::Deserialize;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
@@ -92,9 +92,12 @@ pub struct UpdateMindMapInput {
 /// 创建知识导图
 #[tauri::command]
 pub async fn vfs_create_mindmap(
+    app_handle: tauri::AppHandle,
     params: CreateMindMapInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<VfsMindMap> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_create_mindmap: title={}, folder_id={:?}",
         params.title,
@@ -215,10 +218,13 @@ pub async fn vfs_get_mindmap_version(
 /// 更新知识导图
 #[tauri::command]
 pub async fn vfs_update_mindmap(
+    app_handle: tauri::AppHandle,
     mindmap_id: String,
     params: UpdateMindMapInput,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<VfsMindMap> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!("[VFS::handlers] vfs_update_mindmap: id={}", mindmap_id);
 
     if !mindmap_id.starts_with("mm_") {
@@ -245,9 +251,12 @@ pub async fn vfs_update_mindmap(
 /// 删除知识导图（软删除）
 #[tauri::command]
 pub async fn vfs_delete_mindmap(
+    app_handle: tauri::AppHandle,
     mindmap_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!("[VFS::handlers] vfs_delete_mindmap: id={}", mindmap_id);
 
     if !mindmap_id.starts_with("mm_") {
@@ -273,10 +282,13 @@ pub async fn vfs_list_mindmaps(
 /// 设置知识导图收藏状态
 #[tauri::command]
 pub async fn vfs_set_mindmap_favorite(
+    app_handle: tauri::AppHandle,
     mindmap_id: String,
     is_favorite: bool,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<()> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_set_mindmap_favorite: id={}, is_favorite={}",
         mindmap_id,

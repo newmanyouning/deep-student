@@ -25,6 +25,8 @@ pub async fn qbank_ai_grade(
     window: Window,
     state: State<'_, crate::commands::AppState>,
 ) -> Result<Option<QbankGradingResponse>, AppError> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::qbank_write_gate::check_qbank_write_gate(&state)?;
     log::info!(
         "[QbankGrading] 开始 AI 评判：question={}, mode={:?}",
         request.question_id,

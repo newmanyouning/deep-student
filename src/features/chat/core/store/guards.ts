@@ -82,7 +82,8 @@ export function createGuards(getState: () => ChatStoreState): Guards {
    */
   const canSend = (): boolean => {
     const state = getState();
-    return state.sessionStatus === 'idle';
+    // 允许 idle 和 aborting 状态下发送（aborting 会自动处理排队/打断）
+    return state.sessionStatus === 'idle' || state.sessionStatus === 'aborting';
   };
 
   /**

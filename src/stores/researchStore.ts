@@ -1,16 +1,27 @@
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import { t } from '../utils/i18n';
+// Research 共享类型（与后端 src-tauri/src/research/types.rs 一一对应，见 src/types/research.ts）
+import type { CitationRef, CriticReview, JsonValue, ResearchArtifact, ResearchPlan, RoundMetrics } from '../types/research';
 
+/**
+ * HpiasEvent — 前端事件联合（HPIAS 深度研究引擎 → store 事件流）。
+ * 与后端 ResearchEvent（src/types/research.ts）对齐：
+ * - 可映射的载荷改用共享类型（plan: ResearchPlan、metrics: RoundMetrics、
+ *   critic: CriticReview、artifact: ResearchArtifact、args/insight: JsonValue 等）；
+ * - 无法映射的细粒度事件（subagent_thought、round_executing 等前端专有）保留原内联形状；
+ * - 前端事件键（round、sub_id、summary_md 等）为历史契约，与后端 ResearchEvent 载荷键
+ *   （round_no、subagent、summary 等）不同，引擎接线时统一清理。
+ */
 export type HpiasEvent =
   | { type: 'session_started'; session_id: string; question: string; options_json?: string | null; ts?: string }
   | { type: 'round_started'; session_id: string; round: number; ts?: string }
   | { type: 'round_executing'; session_id: string; round: number; ts?: string }
-  | { type: 'plan_pending_approval'; session_id: string; round: number; plan: any; ts?: string }
-  | { type: 'plan_generated'; session_id: string; round: number; plan: any; ts?: string }
+  | { type: 'plan_pending_approval'; session_id: string; round: number; plan: ResearchPlan; ts?: string }
+  | { type: 'plan_generated'; session_id: string; round: number; plan: ResearchPlan; ts?: string }
   | { type: 'retrieval_completed'; session_id: string; round: number; fetched: number; ts?: string }
-  | { type: 'selection_completed'; session_id: string; round: number; selected: number; citations?: any; ts?: string }
-  | { type: 'round_metrics'; session_id: string; round: number; metrics: any; ts?: string }
+  | { type: 'selection_completed'; session_id: string; round: number; selected: number; citations?: { items?: CitationRef[] }; ts?: string }
+  | { type: 'round_metrics'; session_id: string; round: number; metrics: RoundMetrics; ts?: string }
   | { type: 'queries_prepared'; session_id: string; round: number; queries: string[]; ts?: string }
   | { type: 'candidate_ranking_started'; session_id: string; round: number; candidate_count: number; ts?: string }
   | { type: 'dedupe_completed'; session_id: string; round: number; before: number; after: number; removed: number; ts?: string }
@@ -18,23 +29,25 @@ export type HpiasEvent =
   | { type: 'keyword_filter_applied'; session_id: string; round: number; keywords: string[]; hits_needed: number; before: number; after: number; ts?: string }
   | { type: 'filter_short_text_applied'; session_id: string; round: number; min_len: number; before: number; after: number; removed: number; ts?: string }
   | { type: 'subagent_started'; session_id: string; round: number; sub_id: number; query: string; ts?: string }
-  | { type: 'subagent_thought'; session_id: string; round: number; sub_id: number; step: number; llm_json: any; display_text?: string; ts?: string; elapsed_ms?: number }
-  | { type: 'subagent_tool_call'; session_id: string; round: number; sub_id: number; tool: string; args: any; display_text?: string; ts?: string; elapsed_ms?: number }
-  | { type: 'subagent_tool_result'; session_id: string; round: number; sub_id: number; tool: string; info: any; summary?: string; ts?: string }
+  | { type: 'subagent_thought'; session_id: string; round: number; sub_id: number; step: number; llm_json: JsonValue; display_text?: string; ts?: string; elapsed_ms?: number }
+  | { type: 'subagent_tool_call'; session_id: string; round: number; sub_id: number; tool: string; args: JsonValue; display_text?: string; ts?: string; elapsed_ms?: number }
+  | { type: 'subagent_tool_result'; session_id: string; round: number; sub_id: number; tool: string; info: JsonValue; summary?: string; ts?: string }
   | { type: 'subagent_completed'; session_id: string; round: number; sub_id: number; steps: number; summary_md: string; citations: [string, number][], key_findings?: string[]; confidence?: number; uncertainties?: string[]; ts?: string }
   | { type: 'subagent_failed'; session_id: string; round: number; sub_id: number; error: string; ts?: string }
-  | { type: 'subagents_done'; session_id: string; round: number; metrics: any; sub_reports: any; ts?: string }
-  | { type: 'synthesis_updated'; session_id: string; round: number; synthesis: string; ts?: string }
-  | { type: 'critic_updated'; session_id: string; round: number; critic: any; ts?: string }
-  | { type: 'macro_insight_generated'; session_id: string; round: number; insight: any; ts?: string }
+  | { type: 'subagents_done'; session_id: string; round: number; metrics: RoundMetrics; sub_reports: JsonValue[]; ts?: string }
+  // synthesis_updated: 载荷键与后端 ResearchEvent 对齐改为 markdown（后端字段为 markdown）。
+  // store 内 switch 仍按旧键 (e as any).synthesis 读取（行为零改动），引擎接线时统一迁移。
+  | { type: 'synthesis_updated'; session_id: string; round: number; markdown: string; ts?: string }
+  | { type: 'critic_updated'; session_id: string; round: number; critic: CriticReview; ts?: string }
+  | { type: 'macro_insight_generated'; session_id: string; round: number; insight: JsonValue; ts?: string }
   | { type: 'ingestion_progress'; total: number; completed: number; percent: number }
   | { type: 'cancellation_requested'; session_id: string; ts?: string }
   | { type: 'session_cancelled'; session_id: string; at_round?: number; ts?: string }
   | { type: 'session_completed'; session_id: string; round: number; ts?: string }
   | { type: 'session_failed'; session_id?: string; round?: number; message: string; ts?: string }
-  | { type: 'artifact_created'; session_id: string; round: number; artifact: any; ts?: string }
-  | { type: 'agent_request'; session_id: string; round: number; agent: string; sub_id?: number; phase: string; payload: any; ts?: string }
-  | { type: 'agent_response'; session_id: string; round: number; agent: string; sub_id?: number; phase: string; payload: any; ts?: string }
+  | { type: 'artifact_created'; session_id: string; round: number; artifact: ResearchArtifact; ts?: string }
+  | { type: 'agent_request'; session_id: string; round: number; agent: string; sub_id?: number; phase: string; payload: JsonValue; ts?: string }
+  | { type: 'agent_response'; session_id: string; round: number; agent: string; sub_id?: number; phase: string; payload: JsonValue; ts?: string }
   | { type: 'error'; session_id?: string; message: string }
   | { type: 'macro_insight_progress'; session_id: string; round: number; total_chunks: number; completed_chunks: number; ts?: string };
 
@@ -51,15 +64,8 @@ type SubAgentState = {
   uncertainties?: string[];
 };
 
-export type ResearchArtifact = {
-  id: number;
-  round_no: number;
-  agent: string;
-  artifact_type: string;
-  payload_json: string;
-  size: number;
-  created_at: string;
-};
+// ResearchArtifact 已迁移至共享类型 src/types/research.ts（id 为 string，与后端 ra_{nanoid} 一致）。
+// 旧本地定义 id 为 number，已在 mergeArtifacts / artifact_created 消费处做兼容。
 
 interface HpiasStore {
   sessionId: string | null;
@@ -155,10 +161,12 @@ export const useHpiasStore = create<HpiasStore>()(
         setRound: (round) => set({ round }),
         mergeArtifacts: (round, items) => set(state => {
           const prev = state.artifactsByRound[round] || [];
-          const map = new Map<number, ResearchArtifact>();
+          // artifact.id 已随共享类型改为 string（后端 ra_{nanoid}），Map 键同步调整
+          const map = new Map<string, ResearchArtifact>();
           for (const it of prev) map.set(it.id, it);
           for (const it of items) map.set(it.id, it);
-          return { artifactsByRound: { ...state.artifactsByRound, [round]: Array.from(map.values()).sort((a,b)=> a.id - b.id) } } as any;
+          // 旧实现 a.id - b.id 为数字排序；id 改为 ra_ 字符串后改用字典序（行为等价于稳定排序）
+          return { artifactsByRound: { ...state.artifactsByRound, [round]: Array.from(map.values()).sort((a, b) => String(a.id).localeCompare(String(b.id))) } } as any;
         }),
         importRounds: (sessionId, rounds) => set(state => {
           const rv = { ...state.roundsView } as any;
@@ -461,8 +469,11 @@ export const useHpiasStore = create<HpiasStore>()(
               try {
                 const rn = (e as any).round as number;
                 const a = (e as any).artifact || {};
+                // id 兼容: 后端为 ra_{nanoid} 字符串（保留原值）; 空/缺失时回退为时间戳字符串
+                // （旧实现 Number(a.id) || Date.now() 为数字 id，数字运算语义已随类型迁移移除）
                 const item: ResearchArtifact = {
-                  id: Number(a.id) || Date.now(),
+                  id: String(a.id ?? '') || String(Date.now()),
+                  session_id: String(a.session_id || e.session_id || ''),
                   round_no: rn,
                   agent: String(a.agent || 'unknown'),
                   artifact_type: String(a.artifact_type || 'unknown'),

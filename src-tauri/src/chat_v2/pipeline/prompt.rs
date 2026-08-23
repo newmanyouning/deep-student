@@ -12,11 +12,16 @@ impl ChatV2Pipeline {
         // 读取用户画像摘要（如果 VFS 可用）
         let user_profile = self.load_user_profile(ctx).await;
 
+        // 🔧 L1/L4 增强：未完成承诺 + 会话上下文
+        let (pending_promises, current_topic) = self.load_pending_promises_and_context(ctx).await;
+
         prompt_builder::build_system_prompt_with_profile(
             &ctx.options,
             &ctx.retrieved_sources,
             canvas_note,
             user_profile,
+            pending_promises,
+            current_topic,
         )
     }
 
@@ -103,6 +108,50 @@ impl ChatV2Pipeline {
         } else {
             Some(combined)
         }
+    }
+
+    /// 🔧 L1/L4 增强：加载未完成的学习承诺 + 会话工作上下文
+    /// 受席恩 L1 (关系与约定) 和 L4 (工作上下文) 层启发：
+    /// - 未完成的 Promise 注入 system prompt，让 AI 主动提醒
+    /// - 会话上下文提供"继续上次讨论"的语义恢复能力
+    /// 全部读取自 vfs.db 记忆根文件夹（单一存储），无新增存储
+    async fn load_pending_promises_and_context(
+        &self,
+        ctx: &PipelineContext,
+    ) -> (Vec<String>, Option<String>) {
+        if ctx.options.memory_enabled == Some(false) {
+            return (vec![], None);
+        }
+        let Some(vfs_db) = self.vfs_db.as_ref() else {
+            return (vec![], None);
+        };
+        use crate::memory::{MemoryConfig, MemoryService, VfsMemoryStorage};
+        let Some(lance_store) = VfsLanceStore::new(vfs_db.clone())
+            .ok()
+            .map(std::sync::Arc::new) else {
+            return (vec![], None);
+        };
+        let storage = std::sync::Arc::new(VfsMemoryStorage::new(
+            vfs_db.clone(), lance_store, self.llm_manager.clone()));
+        let mem_cfg = MemoryConfig::new(storage.clone());
+        if mem_cfg.is_privacy_mode().ok().unwrap_or(false) {
+            return (vec![], None);
+        }
+        let svc = MemoryService::new_with_storage(storage.clone(), self.llm_manager.clone());
+
+        // 1. 未完成的学习承诺
+        let promises = match svc.get_pending_promises() {
+            Ok(list) => list.into_iter().map(|m| m.title).collect(),
+            Err(_) => vec![],
+        };
+
+        // 2. 会话工作上下文（当前主题）
+        let current_topic = match svc.get_session_context() {
+            Ok(c) => c.current_topic,
+            Err(_) => None,
+        };
+
+        (promises, current_topic)
     }
 
     /// 构建 Canvas 笔记信息

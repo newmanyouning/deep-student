@@ -9,7 +9,7 @@
 use std::sync::Arc;
 
 use rusqlite::OptionalExtension;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::vfs::database::VfsDatabase;
 use crate::vfs::error::{VfsError, VfsResult};
@@ -135,9 +135,12 @@ pub async fn vfs_get_resource_path(
 /// - 路径计算深度限制 10 层
 #[tauri::command]
 pub async fn vfs_update_path_cache(
+    app_handle: tauri::AppHandle,
     folder_id: String,
     vfs_db: State<'_, Arc<VfsDatabase>>,
 ) -> VfsResult<u32> {
+    // [写门-接线] 同步写门检查: 同步 apply 期间 (写门被占) → SyncInProgress (可重试)。
+    crate::vfs::write_gate::check_vfs_write_gate(&app_handle.state::<crate::commands::AppState>())?;
     log::info!(
         "[VFS::handlers] vfs_update_path_cache: folder_id={}",
         folder_id

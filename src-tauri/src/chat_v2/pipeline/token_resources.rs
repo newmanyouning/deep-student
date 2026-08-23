@@ -157,7 +157,8 @@ impl ChatV2Pipeline {
         &self,
         sources: &MessageSources,
     ) -> Vec<ContextRef> {
-        use crate::vfs::types::{VfsResourceMetadata, VfsResourceType};
+        use crate::vfs::resource_kind::ResourceKind;
+        use crate::vfs::types::VfsResourceMetadata;
 
         let mut refs = Vec::new();
 
@@ -203,7 +204,7 @@ impl ChatV2Pipeline {
                         // 🆕 调用 VfsResourceRepo 创建或复用资源（写入 vfs.db）
                         match VfsResourceRepo::create_or_reuse_with_conn(
                             &conn,
-                            VfsResourceType::Retrieval,
+                            ResourceKind::Retrieval,
                             &content,
                             source.url.as_deref(), // source_id: 使用 URL
                             None, // source_table

@@ -1086,9 +1086,17 @@ const AnkiCardsBlock: React.FC<BlockComponentProps> = React.memo(({
   }, [block.status, block.id, store]);
 
   // 展开态：新卡片到来时自动滚动到底部（仅在卡片数量增长时触发）
+  // 🔧 修复：阻止闪卡组件的 scrollIntoView 干扰虚拟滚动到底
+  // 闪卡组件使用 scrollIntoView 会与虚拟滚动的 getTotalSize 竞争，
+  // 导致"到底"按钮无法真正到底。用程序化滚动替代。
   useEffect(() => {
     if (isExpanded && cards.length > prevCardsCountRef.current && editingIndex < 0) {
-      cardsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // 用程序化滚动替代 scrollIntoView，避免与虚拟滚动竞争
+      const parent = cardsEndRef.current?.closest('[data-overlayscrollbars-viewport]') as HTMLElement | null;
+      if (parent) {
+        const scrollTop = parent.scrollHeight - parent.clientHeight;
+        parent.scrollTop = scrollTop;
+      }
     }
     prevCardsCountRef.current = cards.length;
   }, [isExpanded, cards.length, editingIndex]);

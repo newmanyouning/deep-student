@@ -15,6 +15,7 @@
 
 import type { ResolvedResource } from '../context/types';
 import type { ResourceInjectModes } from '../context/vfsRefTypes';
+import type { ResourceKind } from '@/types/resourceKind';
 
 // ============================================================================
 // 资源类型枚举
@@ -34,9 +35,13 @@ import type { ResourceInjectModes } from '../context/vfsRefTypes';
  * | image       | image        | 30     | 图片          |
  * | file        | file         | 30     | 文件附件      |
  * | retrieval   | retrieval    | 50     | 检索结果      |
+ * | mindmap     | mindmap      | -     | 知识导图      |
  * | folder      | folder       | 100    | 文件夹 ★     |
+ *
+ * ★ 2026-08-07 资源类型统一：改为引用共享类型 ResourceKind（11 值），
+ *   与后端 src-tauri/src/vfs/resource_kind.rs 持久化契约对齐。
  */
-export type ResourceType = 'image' | 'file' | 'note' | 'card' | 'exam' | 'essay' | 'translation' | 'textbook' | 'retrieval' | 'folder';
+export type ResourceType = ResourceKind;
 
 // ============================================================================
 // 内容块类型（兼容 OpenAI/Anthropic/Gemini）

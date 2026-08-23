@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { learningResourceSkill } from '../builtin-tools/learning-resource';
 import { knowledgeRetrievalSkill } from '../builtin-tools/knowledge-retrieval';
 import { BUILTIN_NAMESPACE, BUILTIN_TOOLS } from '@/mcp/builtinMcpServer';
+import { RESOURCE_KIND_VALUES } from '@/types/resourceKind';
 
-const REQUIRED_TYPES = ['note', 'textbook', 'file', 'image', 'exam', 'essay', 'translation', 'mindmap'] as const;
+// ★ 契约完整性：要求工具 Schema 暴露的枚举必须覆盖共享事实源的全部 11 个资源类型
+// （note/textbook/exam/translation/essay/image/file/retrieval/mindmap/card/folder）
+const REQUIRED_TYPES = RESOURCE_KIND_VALUES;
 
 function getBuiltinTool(name: string) {
   return BUILTIN_TOOLS.find(t => t.name === `${BUILTIN_NAMESPACE}${name}`);

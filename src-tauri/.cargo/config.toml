@@ -30,3 +30,8 @@ opt-level = 0
 # Android NDK 配置请通过环境变量注入（见 scripts/build_android.sh）
 # 注意：不要在此硬编码 Android target 的 linker 绝对路径——
 # 各开发机的 NDK 路径不同，build_android.sh 会按本机 NDK_HOME 自动写入。
+
+# Android NDK 配置（由 build_android.sh 自动添加）
+[target.aarch64-linux-android]
+linker = "C:/Users/1/AppData/Local/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android21-clang.cmd"
+ar = "C:/Users/1/AppData/Local/Android/Sdk/ndk/27.2.12479018/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-ar"

@@ -5,6 +5,7 @@
 export {
   // 资源类型图标
   NoteIcon,
+  OcrNoteIcon,
   TextbookIcon,
   ExamIcon,
   EssayIcon,

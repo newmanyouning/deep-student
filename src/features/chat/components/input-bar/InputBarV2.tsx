@@ -81,28 +81,30 @@ interface ModelProfileDisplayRecord {
 
 const THINKING_DEPTH_LABELS: Record<DeepSeekReasoningControlKind, Partial<Record<DeepSeekReasoningOptionValue, string>>> = {
   'openai-effort': {
-    low: 'Low',
-    medium: 'Medium',
-    high: 'High',
-    xhigh: 'XHigh',
+    low: '低',
+    medium: '中',
+    high: '高',
+    xhigh: '超高',
   },
   'v4-effort': {
-    high: 'High',
-    max: 'Max',
+    high: '高',
+    max: '最大',
   },
   'v32-budget-effort': {
-    low: 'Low',
-    medium: 'Medium',
-    high: 'High',
-    xhigh: 'XHigh',
-    max: 'Max',
+    low: '低',
+    medium: '中',
+    high: '高',
+    xhigh: '超高',
+    max: '最大',
   },
   'toggle-only': {},
 };
 
 function getThinkingDepthLabel(kind: DeepSeekReasoningControlKind, value: DeepSeekReasoningOptionValue | undefined): string {
-  if (!value) return '开启';
-  return THINKING_DEPTH_LABELS[kind][value] ?? value;
+  if (!value) return '推理: 开启';
+  const label = THINKING_DEPTH_LABELS[kind][value];
+  if (label) return `推理: ${label}`;
+  return `推理: ${value}`;
 }
 
 function normalizeModelIdentity(value: unknown): string {
@@ -522,8 +524,8 @@ export const InputBarV2: React.FC<InputBarV2Props> = memo(
     );
 
     const thinkingStateLabel = useMemo(() => {
-      if (!runtimeModelSupportsReasoning) return '不支持推理';
-      if (!effectiveEnableThinking) return '关闭';
+      if (!runtimeModelSupportsReasoning) return '推理: 不支持';
+      if (!effectiveEnableThinking) return '推理: 关闭';
       return getThinkingDepthLabel(
         thinkingControl.kind,
         normalizedThinkingSelection.reasoningEffort as DeepSeekReasoningOptionValue | undefined

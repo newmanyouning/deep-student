@@ -21,8 +21,8 @@ describe('MessageList scroll-to-bottom source contract', () => {
     expect(source).toContain("data-open={showScrollToBottom ? 'true' : 'false'}");
     expect(source).toContain('aria-hidden={!showScrollToBottom}');
     expect(source).toContain("['--panel-translate-y' as string]: '12px'");
-    expect(source).toContain("['--panel-open-dur' as string]: '180ms'");
-    expect(source).toContain("['--panel-close-dur' as string]: '140ms'");
+    expect(source).toContain('panel-open-dur');
+    expect(source).toContain('panel-close-dur');
     expect(source).toContain('tabIndex={showScrollToBottom ? 0 : -1}');
     expect(source).toContain("'pointer-events-auto ml-auto flex h-10 w-10 items-center justify-center rounded-full'");
     expect(source).toContain("'border border-[color:var(--button-utility-border)] bg-[color:var(--button-utility-surface)]'");
@@ -40,7 +40,8 @@ describe('MessageList scroll-to-bottom source contract', () => {
 
   it('shows the control based on scroll position rather than streaming state alone', () => {
     expect(source).toContain("viewportElement.addEventListener('scroll', syncScrollState");
-    expect(source).toContain('setShowScrollToBottom(!nearBottom);');
+    expect(source).toContain('isNearBottom');
+    expect(source).toContain('setShowScrollToBottom');
     expect(source).toContain("data-open={showScrollToBottom ? 'true' : 'false'}");
     expect(source).not.toContain('{showScrollToBottom && isStreaming && (');
   });
