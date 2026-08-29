@@ -31,6 +31,10 @@
 版本比较逻辑（`src/hooks/useAppUpdater.ts` 的 `isNewerVersion`）已支持 `-fork.N`
 段：fork.1 → fork.2 判定为更新；同版本号下上游正式版 > fork 前缀版。
 
+> ⚠️ **MSI 不兼容**：WiX/MSI 要求版本号纯数字，无法使用 `-fork.N` 前缀段。
+> 已在 `tauri.windows.conf.json` 固定 `"bundle": { "targets": ["nsis"] }`，
+> Windows 只出 NSIS 安装包（`.exe`）。若未来需要 MSI，须临时把版本号改为纯数字。
+
 ---
 
 ## 2. 断开点位清单
