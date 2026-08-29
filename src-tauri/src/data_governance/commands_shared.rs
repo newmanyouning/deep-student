@@ -449,7 +449,9 @@ pub(super) async fn execute_zip_import_with_progress_resumable(
     zip_file_path: PathBuf,
     backup_id: Option<String>,
 ) {
-    use super::backup::zip_export::{import_backup_from_zip_resumable, ZipImportPhase};
+    use super::backup::zip_export::{
+        import_backup_from_zip_resumable, ZipExportError, ZipImportPhase,
+    };
     use std::time::Instant;
 
     let start = Instant::now();
@@ -553,38 +555,54 @@ pub(super) async fn execute_zip_import_with_progress_resumable(
 
     // 断点续传：使用 import_backup_from_zip_resumable，
     // 自动跳过目标目录中已存在且大小匹配的文件
-    let result = import_backup_from_zip_resumable(
-        &zip_file_path,
-        &target_dir,
-        |progress| {
-            let phase = match progress.phase {
-                ZipImportPhase::Scan => BackupJobPhase::Scan,
-                ZipImportPhase::Extract => BackupJobPhase::Extract,
-                ZipImportPhase::Verify => BackupJobPhase::Verify,
-                ZipImportPhase::Completed => BackupJobPhase::Completed,
-            };
+    // ★ 包 spawn_blocking：ZIP 解压是同步阻塞 I/O，避免长时间霸占 tokio 工作线程
+    //   （安卓上工作线程少，会拖慢其他命令响应直至 UI 卡死）
+    let zip_for_task = zip_file_path.clone();
+    let target_for_task = target_dir.clone();
 
-            job_ctx_for_progress.mark_running(
-                phase,
-                progress.progress,
-                Some(
-                    if is_resuming && progress.phase == ZipImportPhase::Extract {
-                        format!("(断点续传) {}", progress.message)
-                    } else {
-                        progress.message
-                    },
-                ),
-                progress.processed_files as u64,
-                progress.total_files as u64,
-            );
+    let join_result = tauri::async_runtime::spawn_blocking(move || {
+        import_backup_from_zip_resumable(
+            &zip_for_task,
+            &target_for_task,
+            |progress| {
+                let phase = match progress.phase {
+                    ZipImportPhase::Scan => BackupJobPhase::Scan,
+                    ZipImportPhase::Extract => BackupJobPhase::Extract,
+                    ZipImportPhase::Verify => BackupJobPhase::Verify,
+                    ZipImportPhase::Completed => BackupJobPhase::Completed,
+                };
 
-            // 更新检查点
-            if let Some(ref file_name) = progress.current_file {
-                job_ctx_for_progress.update_checkpoint(file_name);
-            }
-        },
-        || job_ctx_for_cancel.is_cancelled(),
-    );
+                job_ctx_for_progress.mark_running(
+                    phase,
+                    progress.progress,
+                    Some(
+                        if is_resuming && progress.phase == ZipImportPhase::Extract {
+                            format!("(断点续传) {}", progress.message)
+                        } else {
+                            progress.message
+                        },
+                    ),
+                    progress.processed_files as u64,
+                    progress.total_files as u64,
+                );
+
+                // 更新检查点
+                if let Some(ref file_name) = progress.current_file {
+                    job_ctx_for_progress.update_checkpoint(file_name);
+                }
+            },
+            || job_ctx_for_cancel.is_cancelled(),
+        )
+    })
+    .await;
+
+    let result = match join_result {
+        Ok(r) => r,
+        Err(e) => Err(ZipExportError::Io(std::io::Error::other(format!(
+            "导入任务执行失败: {}",
+            e
+        )))),
+    };
 
     match result {
         Ok(file_count) => {

@@ -404,8 +404,42 @@ struct JobState {
     started_instant: Mutex<Option<Instant>>,
     finished_at: Mutex<Option<DateTime<Utc>>>,
     runtime: Mutex<JobRuntimeState>,
+    /// 进度事件节流状态（防止逐文件 emit 造成事件洪水，安卓 WebView 上会 ANR）
+    emit_throttle: Mutex<EmitThrottle>,
     /// 最大执行时间，超时后在 cleanup 中标记为失败
     max_duration: Mutex<Option<Duration>>,
+}
+
+/// 进度事件节流记录
+#[derive(Default)]
+struct EmitThrottle {
+    last_emit: Option<Instant>,
+    last_phase: Option<BackupJobPhase>,
+}
+
+/// Running 状态下进度事件的最小发射间隔。
+/// 完整备份 ZIP 含数万文件，逐文件 emit 会在安卓上打爆 WebView 主线程（ANR）。
+const PROGRESS_EMIT_MIN_INTERVAL: Duration = Duration::from_millis(150);
+
+/// 进度事件节流决策（纯函数，便于单测）。
+///
+/// - 终端状态（完成/失败/取消）必须发射
+/// - 阶段切换必须发射（用户需要看到阶段推进）
+/// - 首次进度必须发射
+/// - 其余 Running 进度按最小间隔限频
+pub(crate) fn should_emit_progress(
+    elapsed_since_last: Option<Duration>,
+    phase_changed: bool,
+    is_terminal: bool,
+    min_interval: Duration,
+) -> bool {
+    if is_terminal || phase_changed {
+        return true;
+    }
+    match elapsed_since_last {
+        None => true,
+        Some(elapsed) => elapsed >= min_interval,
+    }
 }
 
 impl JobState {
@@ -419,6 +453,7 @@ impl JobState {
             started_instant: Mutex::new(None),
             finished_at: Mutex::new(None),
             runtime: Mutex::new(JobRuntimeState::default()),
+            emit_throttle: Mutex::new(EmitThrottle::default()),
             max_duration: Mutex::new(Some(Duration::from_secs(DEFAULT_JOB_MAX_DURATION_SECS))),
         }
     }
@@ -911,15 +946,42 @@ impl BackupJobManager {
     }
 
     fn emit(&self, job_id: &str) {
-        if let Some(state) = self.jobs.get(job_id) {
-            let snapshot = state.snapshot();
-            if let Err(err) = self
-                .app_handle
-                .emit("backup-job-progress", snapshot.clone())
-            {
-                warn!("[BackupJob] 任务事件广播失败: {}", err);
+        let Some(state) = self.jobs.get(job_id) else {
+            return;
+        };
+
+        // ★ 节流判定：终端状态与阶段切换必发，Running 常态按最小间隔限频。
+        //   ZIP 导入逐文件 mark_running 时（数万文件），无节流会在安卓上造成
+        //   IPC 事件洪水 → WebView 主线程阻塞 → 应用卡死（ANR）。
+        let should_emit = {
+            let runtime = safe_lock(&state.runtime);
+            let mut throttle = safe_lock(&state.emit_throttle);
+            let now = Instant::now();
+            let elapsed = throttle.last_emit.map(|t| now.duration_since(t));
+            let phase_changed = throttle.last_phase != Some(runtime.phase);
+            if should_emit_progress(
+                elapsed,
+                phase_changed,
+                runtime.status.is_terminal(),
+                PROGRESS_EMIT_MIN_INTERVAL,
+            ) {
+                throttle.last_emit = Some(now);
+                throttle.last_phase = Some(runtime.phase);
+                true
+            } else {
+                false
             }
-            drop(state);
+        };
+        if !should_emit {
+            return;
+        }
+
+        let snapshot = state.snapshot();
+        if let Err(err) = self
+            .app_handle
+            .emit("backup-job-progress", snapshot.clone())
+        {
+            warn!("[BackupJob] 任务事件广播失败: {}", err);
         }
     }
 
@@ -1296,5 +1358,93 @@ impl BackupJobManager {
         let _ = self.delete_persisted_job(job_id);
         // 延迟从内存中移除（给前端时间获取最终状态）
         self.schedule_job_removal(job_id);
+    }
+}
+
+#[cfg(test)]
+mod throttle_tests {
+    use super::{should_emit_progress, Duration};
+    use std::time::Duration as StdDuration;
+
+    const MIN_INTERVAL: Duration = Duration::from_millis(150);
+
+    #[test]
+    fn 终端状态必须发射_无论间隔() {
+        // 完成/失败/取消的事件不允许被节流吞掉
+        assert!(should_emit_progress(None, false, true, MIN_INTERVAL));
+        assert!(should_emit_progress(Some(StdDuration::ZERO), false, true, MIN_INTERVAL));
+        assert!(should_emit_progress(
+            Some(StdDuration::from_millis(1)),
+            false,
+            true,
+            MIN_INTERVAL
+        ));
+    }
+
+    #[test]
+    fn 阶段切换必须发射() {
+        // Scan → Extract 等阶段推进不允许被节流吞掉
+        assert!(should_emit_progress(Some(StdDuration::from_millis(1)), true, false, MIN_INTERVAL));
+        assert!(should_emit_progress(Some(StdDuration::ZERO), true, false, MIN_INTERVAL));
+    }
+
+    #[test]
+    fn 首次进度必须发射() {
+        assert!(should_emit_progress(None, false, false, MIN_INTERVAL));
+    }
+
+    #[test]
+    fn 间隔内抑制_间隔外发射() {
+        // 150ms 内的 Running 进度被抑制
+        assert!(!should_emit_progress(
+            Some(StdDuration::from_millis(50)),
+            false,
+            false,
+            MIN_INTERVAL
+        ));
+        assert!(!should_emit_progress(
+            Some(StdDuration::from_millis(149)),
+            false,
+            false,
+            MIN_INTERVAL
+        ));
+        // 达到间隔后发射
+        assert!(should_emit_progress(
+            Some(StdDuration::from_millis(150)),
+            false,
+            false,
+            MIN_INTERVAL
+        ));
+        assert!(should_emit_progress(
+            Some(StdDuration::from_secs(10)),
+            false,
+            false,
+            MIN_INTERVAL
+        ));
+    }
+
+    #[test]
+    fn 数万文件场景_发射次数有上界() {
+        // 模拟 10000 个文件、每个文件间隔 1ms（纯解压节奏）：
+        // 无节流 = 10000 次发射；有节流 ≈ 时长/间隔 上界
+        let total_files = 10_000usize;
+        let per_file_work = StdDuration::from_millis(1);
+        let mut last_emit: Option<StdDuration> = None;
+        let mut emitted = 0usize;
+        for i in 0..total_files {
+            let now = per_file_work * (i as u32 + 1);
+            let elapsed = last_emit.map(|t| now - t);
+            if should_emit_progress(elapsed, false, false, MIN_INTERVAL) {
+                emitted += 1;
+                last_emit = Some(now);
+            }
+        }
+        // 10 秒的导入最多发 ~67 次（10000ms/150ms），而不是 10000 次
+        assert!(
+            emitted <= 70,
+            "期望 ≤70 次发射，实际 {} 次（未节流则为 10000 次）",
+            emitted
+        );
+        assert!(emitted >= 60, "发射过少，进度条会不更新: {}", emitted);
     }
 }

@@ -1147,16 +1147,33 @@ pub async fn data_governance_import_zip(
     let app_data_dir = get_app_data_dir(&app)?;
 
     // Android content:// 等虚拟 URI 需要先物化到本地临时文件（ZIP 需要随机访问）
+    // ★ 物化是同步阻塞 I/O（可能拷贝数 GB），包 spawn_blocking 避免霸占 tokio 工作线程
     let (zip_file_path, temp_cleanup_path) =
         if crate::unified_file_manager::is_virtual_uri(&zip_path) {
             let temp_dir = app_data_dir.join("temp_zip_import");
-            match crate::unified_file_manager::ensure_local_path(&window, &zip_path, &temp_dir) {
-                Ok(materialized) => {
+            let window_for_task = window.clone();
+            let zip_uri = zip_path.clone();
+            let materialize = tauri::async_runtime::spawn_blocking(move || {
+                crate::unified_file_manager::ensure_local_path(
+                    &window_for_task,
+                    &zip_uri,
+                    &temp_dir,
+                )
+            })
+            .await;
+            match materialize {
+                Ok(Ok(materialized)) => {
                     let (path, cleanup) = materialized.into_owned();
                     (path.clone(), cleanup.or(Some(path)))
                 }
-                Err(e) => {
+                Ok(Err(e)) => {
                     return Err(DataGovernanceError::from(format!("无法读取 ZIP 文件: {}", e)));
+                }
+                Err(e) => {
+                    return Err(DataGovernanceError::from(format!(
+                        "ZIP 文件读取任务失败: {}",
+                        e
+                    )));
                 }
             }
         } else {
@@ -1241,7 +1258,9 @@ async fn execute_zip_import_with_progress(
     zip_file_path: PathBuf,
     backup_id: Option<String>,
 ) {
-    use super::backup::zip_export::{import_backup_from_zip_with_progress, ZipImportPhase};
+    use super::backup::zip_export::{
+        import_backup_from_zip_with_progress, ZipExportError, ZipImportPhase,
+    };
     use std::time::Instant;
 
     let start = Instant::now();
@@ -1328,31 +1347,46 @@ async fn execute_zip_import_with_progress(
     }
 
     // 使用带进度的导入函数
+    // ★ 包 spawn_blocking：ZIP 解压是同步阻塞 I/O，直接在 async 任务里运行
+    //   会长时间霸占 tokio 工作线程（安卓上工作线程少，会拖垮其他命令响应）
     let job_ctx_for_progress = job_ctx.clone();
     let job_ctx_for_cancel = job_ctx.clone();
+    let zip_for_task = zip_file_path.clone();
+    let target_for_task = target_dir.clone();
 
-    let result = import_backup_from_zip_with_progress(
-        &zip_file_path,
-        &target_dir,
-        |progress| {
-            // 将 ZipImportPhase 转换为 BackupJobPhase
-            let phase = match progress.phase {
-                ZipImportPhase::Scan => BackupJobPhase::Scan,
-                ZipImportPhase::Extract => BackupJobPhase::Extract,
-                ZipImportPhase::Verify => BackupJobPhase::Verify,
-                ZipImportPhase::Completed => BackupJobPhase::Completed,
-            };
+    let join_result = tauri::async_runtime::spawn_blocking(move || {
+        import_backup_from_zip_with_progress(
+            &zip_for_task,
+            &target_for_task,
+            |progress| {
+                // 将 ZipImportPhase 转换为 BackupJobPhase
+                let phase = match progress.phase {
+                    ZipImportPhase::Scan => BackupJobPhase::Scan,
+                    ZipImportPhase::Extract => BackupJobPhase::Extract,
+                    ZipImportPhase::Verify => BackupJobPhase::Verify,
+                    ZipImportPhase::Completed => BackupJobPhase::Completed,
+                };
 
-            job_ctx_for_progress.mark_running(
-                phase,
-                progress.progress,
-                Some(progress.message),
-                progress.processed_files as u64,
-                progress.total_files as u64,
-            );
-        },
-        || job_ctx_for_cancel.is_cancelled(),
-    );
+                job_ctx_for_progress.mark_running(
+                    phase,
+                    progress.progress,
+                    Some(progress.message),
+                    progress.processed_files as u64,
+                    progress.total_files as u64,
+                );
+            },
+            || job_ctx_for_cancel.is_cancelled(),
+        )
+    })
+    .await;
+
+    let result = match join_result {
+        Ok(r) => r,
+        Err(e) => Err(ZipExportError::Io(std::io::Error::other(format!(
+            "导入任务执行失败: {}",
+            e
+        )))),
+    };
 
     match result {
         Ok(file_count) => {
