@@ -150,3 +150,42 @@ git merge upstream/main                 # 或 cherry-pick 需要的提交
 - merge 后检查本文件 §2 的各点位是否被上游改动覆盖（重点：tauri.conf.json updater、
   useAppUpdater.ts 开关、workflows/disabled）
 - fork 关系保留中，向上游提 PR：正常从 main 拉分支 push 到 origin 后开 PR（默认基准上游）
+
+---
+
+## 6. 包名统一：`com.lanxia.deepstudent`（2026-08-29）
+
+全平台（Windows/macOS/Android/iOS）统一使用 `com.lanxia.deepstudent`，
+源头是 `src-tauri/tauri.conf.json` 的 `identifier`。原上游包名 `com.deepstudent.app`
+在 iPad 上已被占用，故统一到本分支自己的包名。
+
+### 已替换的引用
+- `tauri.conf.json` identifier
+- `scripts/build_android.sh`（菜单文案）、`scripts/build_ios.sh`（fallback BUNDLE_ID）
+- `scripts/dev/check-templates.sh`、`test-templates.sh`、`debug-android-console.sh`
+- `renew-ipad.sh`（WS 地址临时文件名）
+- `docs/iPad-Installation-Guide.md`（itms-services 清单示例）
+- Rust 注释/测试字符串中的示例路径（`attachment_repo.rs`、`backup/mod.rs`）
+
+### 桌面端数据迁移（本机已做 ✅）
+identifier 变更后应用会读写新目录。已用 **目录联接（junction）零拷贝迁移**：
+
+```
+C:\Users\1\AppData\Roaming\com.lanxia.deepstudent  ──Junction──▶  ...\com.deepstudent.app (3.8 GB)
+C:\Users\1\AppData\Local\com.lanxia.deepstudent    ──Junction──▶  ...\com.deepstudent.app (360 MB)
+```
+
+- 旧数据原地不动，新版本直接通过联接读写，DB 中历史绝对路径也依然有效
+- 如日后想真正搬迁：把旧目录内容移入新目录、删除联接即可
+  （附件系统有 slot 相对路径重映射，搬迁后旧绝对路径引用也能自动回退解析）
+- 其他机器（如 Mac 构建机）：`ln -s "~/Library/Application Support/com.deepstudent.app"
+  "~/Library/Application Support/com.lanxia.deepstudent"`
+
+### 移动端
+- **Android**：包名变了 = 与旧安装互不覆盖（共存或卸载后重装）；
+  `src-tauri/gen/android` 不进 git，首次构建前需重新初始化：
+  `rm -rf src-tauri/gen/android && npx tauri android init`
+  （或直接跑 `npm run build:android`，若报包名不一致按脚本提示重 init）
+- **iOS/iPad**：Bundle ID 本就是 `com.lanxia.deepstudent`（2026-08 起），无需变动；
+  `gen/apple` 若为旧包名初始化的，重新 `tauri ios init` 一次
+- 设备本地数据：可通过应用内云同步（WebDAV）恢复，或接受全新开始

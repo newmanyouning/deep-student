@@ -92,9 +92,9 @@ iPad 应用**无法像桌面应用那样双击 IPA 安装**。iPadOS 限制所�
       <key>metadata</key>
       <dict>
         <key>bundle-identifier</key>
-        <string>com.deepstudent.app</string>
+        <string>com.lanxia.deepstudent</string>
         <key>bundle-version</key>
-        <string>0.9.40</string>
+        <string>0.9.40-fork.1</string>
         <key>kind</key>
         <string>software</string>
         <key>title</key>

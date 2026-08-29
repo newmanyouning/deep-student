@@ -499,8 +499,8 @@ impl VfsAttachmentRepo {
 
             // ★ 跨平台备份恢复支持：
             // original_path 可能来自另一个系统/用户目录，例如：
-            // macOS: /Users/alice/Library/Application Support/com.deepstudent.app/slots/slotA/textbooks/file.pptx
-            // Windows: C:\Users\bob\AppData\Local\com.deepstudent.app\slots\slotA\textbooks\file.pptx
+            // macOS: /Users/alice/Library/Application Support/com.lanxia.deepstudent/slots/slotA/textbooks/file.pptx
+            // Windows: C:\Users\bob\AppData\Local\com.lanxia.deepstudent\slots\slotA\textbooks\file.pptx
             // 提取 slots/slotX/ 之后的相对路径，映射到当前 slot root
             if let Some(slot_root) = blobs_dir.parent() {
                 if let Some(relative) = Self::extract_relative_from_slot_path(trimmed) {
@@ -2827,7 +2827,7 @@ mod tests {
     #[test]
     fn test_extract_relative_from_slot_path_macos() {
         let result = VfsAttachmentRepo::extract_relative_from_slot_path(
-            "/Users/alice/Library/Application Support/com.deepstudent.app/slots/slotA/textbooks/file.pptx",
+            "/Users/alice/Library/Application Support/com.lanxia.deepstudent/slots/slotA/textbooks/file.pptx",
         );
         assert_eq!(result.as_deref(), Some("textbooks/file.pptx"));
     }
@@ -2835,7 +2835,7 @@ mod tests {
     #[test]
     fn test_extract_relative_from_slot_path_windows() {
         let result = VfsAttachmentRepo::extract_relative_from_slot_path(
-            r"C:\Users\bob\AppData\Local\com.deepstudent.app\slots\slotB\images\abc.png",
+            r"C:\Users\bob\AppData\Local\com.lanxia.deepstudent\slots\slotB\images\abc.png",
         );
         assert_eq!(result.as_deref(), Some("images/abc.png"));
     }
@@ -2877,7 +2877,7 @@ mod tests {
         std::fs::create_dir_all(&blobs_dir).unwrap();
 
         // Simulate a macOS path from another machine
-        let foreign_path = "/Users/alice/Library/Application Support/com.deepstudent.app/slots/slotA/textbooks/test.pptx";
+        let foreign_path = "/Users/alice/Library/Application Support/com.lanxia.deepstudent/slots/slotA/textbooks/test.pptx";
         let candidates =
             VfsAttachmentRepo::build_original_path_candidates(&blobs_dir, foreign_path);
 

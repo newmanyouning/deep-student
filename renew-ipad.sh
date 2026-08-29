@@ -15,7 +15,7 @@ unset CI
 
 DEVICE_ID="00008112-0015295C0A99A01E"
 APP_PATH="$HOME/Library/Developer/Xcode/DerivedData/deep-student-cwjhdczzrfkpzseprfgjvtkrxqmf/Build/Products/debug-iphoneos/Deep Student.app"
-ADDR_FILE="$TMPDIR/com.deepstudent.app-server-addr"
+ADDR_FILE="$TMPDIR/com.lanxia.deepstudent-server-addr"
 
 echo "[1/4] 启动 Tauri 配置服务（约 2-3 分钟，请等待）..."
 nohup npx tauri ios build --target aarch64 --open >/tmp/tauri-open.log 2>&1 &

@@ -9,7 +9,7 @@ DB_PATH="${1:-}"
 
 if [[ -z "$DB_PATH" ]]; then
     echo "用法: bash scripts/dev/check-templates.sh <database_path>"
-    echo "示例: bash scripts/dev/check-templates.sh ~/Library/Application\\ Support/com.deepstudent.app/mistakes.db"
+    echo "示例: bash scripts/dev/check-templates.sh ~/Library/Application\\ Support/com.lanxia.deepstudent/mistakes.db"
     exit 1
 fi
 

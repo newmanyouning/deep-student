@@ -741,7 +741,7 @@ impl BackupManager {
 
     /// 获取数据库文件路径
     ///
-    /// 注意：`app_data_dir` 是 Tauri 根数据目录（如 `com.deepstudent.app`），
+    /// 注意：`app_data_dir` 是 Tauri 根数据目录（如 `com.lanxia.deepstudent`），
     /// 实际数据库存储在活动数据空间目录（如 `slots/slotA`）中。
     pub(crate) fn get_database_path(&self, id: &DatabaseId) -> PathBuf {
         let active_dir = crate::data_space::get_data_space_manager()
