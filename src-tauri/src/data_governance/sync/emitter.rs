@@ -358,9 +358,12 @@ impl From<SyncProgressEmitter> for OptionalEmitter {
 // 经 `report_file_sync_progress` 上报；同步结束（无论成败）必须
 // `clear_file_sync_sink`。同步本身有全局信号量串行化，不存在并发写冲突。
 //
-// percent 策略：总字节数事先未知（取决于云端清单与本地扫描的差集），
-// 采用"已完成文件数 + 当前文件字节比例"渐进推进，固定区间 65%–92%，
-// 单调不回退（put_file 重试时会从 0 重新汇报当前文件字节）。
+// percent 策略：传输循环开始前由 orchestrator 通过 `report_file_sync_totals`
+// 申报待传文件总数（各循环两遍化：先收集待传列表再逐个传输），此时进度按
+// 真实比例 (已完成 + 当前文件字节比例) / 总数 推进，区间 65%–92%，单调不回退
+// （put_file 重试时会从 0 重新汇报当前文件字节）。
+// 若总数未申报（旧路径/异常兜底），退回"已完成文件数 +1.5% + 当前文件 3%"的
+// 渐进估算——该公式在完成 18 个文件后即触顶 92%，故仅作兜底而非主路径。
 
 /// 文件同步进度区间下限
 const FILE_SYNC_BAND_MIN: f32 = 65.0;
@@ -373,6 +376,8 @@ struct FileSyncSink {
     emitter: SyncProgressEmitter,
     last_emit: Instant,
     files_done: u32,
+    /// 各传输循环申报的待传文件总数（0 = 未知，退回渐进估算）
+    files_total: u32,
     max_percent: f32,
 }
 
@@ -391,6 +396,7 @@ pub fn set_file_sync_sink(emitter: SyncProgressEmitter) {
             // 初始化为已过期，保证第一次回调立即发射
             last_emit: Instant::now() - FILE_SYNC_EMIT_INTERVAL,
             files_done: 0,
+            files_total: 0,
             // sink 在导出阶段（5%）之后挂载；状态提示显示的百分比从此起步、只增不减
             max_percent: 5.0,
         });
@@ -431,10 +437,17 @@ pub fn report_file_sync_progress(label: &str, name: &str, done: u64, total: u64)
     } else {
         0.0
     };
-    // 每完成一个文件 +1.5%，当前文件字节比例最多再 +3%，上限封顶
-    let pct = (FILE_SYNC_BAND_MIN + sink.files_done as f32 * 1.5 + frac * 3.0)
-        .min(FILE_SYNC_BAND_MAX)
-        .max(sink.max_percent);
+    // 总数已知：按真实比例推进（已完成文件 + 当前文件字节进度）/ 总数；
+    // 总数未知：退回旧的渐进估算（每文件 +1.5%，当前文件最多 +3%）
+    let pct = if sink.files_total > 0 {
+        let span = FILE_SYNC_BAND_MAX - FILE_SYNC_BAND_MIN;
+        FILE_SYNC_BAND_MIN
+            + (sink.files_done as f32 + frac) * span / sink.files_total as f32
+    } else {
+        FILE_SYNC_BAND_MIN + sink.files_done as f32 * 1.5 + frac * 3.0
+    }
+    .min(FILE_SYNC_BAND_MAX)
+    .max(sink.max_percent);
     sink.max_percent = pct;
 
     let item = if total > 0 {
@@ -449,16 +462,33 @@ pub fn report_file_sync_progress(label: &str, name: &str, done: u64, total: u64)
         format!("{} {}", label, name)
     };
 
+    // 总数已知时 current/total 上报文件计数（UI 显示 "n/m 项"），否则上报字节
+    let (report_current, report_total) = if sink.files_total > 0 {
+        (u64::from(sink.files_done), u64::from(sink.files_total))
+    } else {
+        (done, total)
+    };
+
     sink.emitter.emit_force(SyncProgress {
         phase: SyncPhase::Transfer,
         percent: pct,
-        current: done,
-        total,
+        current: report_current,
+        total: report_total,
         current_item: Some(item),
         speed_bytes_per_sec: None,
         eta_seconds: None,
         error: None,
     });
+}
+
+/// 申报待传输文件总数（各传输循环开始前调用，可多次累加）。
+/// 总数已知后进度按真实比例推进；从未调用则退回渐进估算。
+pub fn report_file_sync_totals(additional: u32) {
+    if let Ok(mut guard) = file_sync_sink_slot().write() {
+        if let Some(sink) = guard.as_mut() {
+            sink.files_total = sink.files_total.saturating_add(additional);
+        }
+    }
 }
 
 /// 标记一个文件传输完成（推进文件计数，从而推进进度区间）

@@ -1425,62 +1425,68 @@ impl SyncManager {
             }
         }
 
-        // 3. 上传本地新增或已修改的 ws_*.db
+        // 3. 上传本地新增或已修改的 ws_*.db（先收集待传列表，申报进度总数）
         let mut new_manifest = cloud_manifest.clone();
-        for (ws_id, (path, sha256, size)) in &local_entries {
-            let should_upload = match cloud_manifest.entries.get(ws_id) {
+        let pending_uploads: Vec<(&String, &(std::path::PathBuf, String, u64))> = local_entries
+            .iter()
+            .filter(|(ws_id, (_, sha256, _))| match cloud_manifest.entries.get(*ws_id) {
                 None => true,
                 Some(ce) => ce.sha256 != *sha256,
-            };
-            if should_upload {
-                let key = format!("{}/{}.db", Self::WORKSPACES_CLOUD_PREFIX, ws_id);
-                match storage
-                    .put_file(&key, path, file_progress_callback("上传工作区数据库", ws_id.clone()))
-                    .await
-                {
-                    Ok(_) => {
-                        super::emitter::report_file_sync_file_done();
-                        new_manifest.entries.insert(
-                            ws_id.clone(),
-                            WorkspaceEntry {
-                                sha256: sha256.clone(),
-                                size: *size,
-                                updated_at: chrono::Utc::now().to_rfc3339(),
-                            },
-                        );
-                        tracing::info!("[sync] 工作区数据库已上传: {}", ws_id);
-                    }
-                    Err(e) => {
-                        tracing::warn!("[sync] 工作区数据库上传失败（跳过）: {}: {}", ws_id, e);
-                    }
+            })
+            .collect();
+        super::emitter::report_file_sync_totals(pending_uploads.len() as u32);
+        for (ws_id, (path, sha256, size)) in pending_uploads {
+            let key = format!("{}/{}.db", Self::WORKSPACES_CLOUD_PREFIX, ws_id);
+            match storage
+                .put_file(&key, path, file_progress_callback("上传工作区数据库", ws_id.clone()))
+                .await
+            {
+                Ok(_) => {
+                    super::emitter::report_file_sync_file_done();
+                    new_manifest.entries.insert(
+                        ws_id.clone(),
+                        WorkspaceEntry {
+                            sha256: sha256.clone(),
+                            size: *size,
+                            updated_at: chrono::Utc::now().to_rfc3339(),
+                        },
+                    );
+                    tracing::info!("[sync] 工作区数据库已上传: {}", ws_id);
+                }
+                Err(e) => {
+                    tracing::warn!("[sync] 工作区数据库上传失败（跳过）: {}: {}", ws_id, e);
                 }
             }
         }
 
-        // 4. 下载云端有但本地没有的 ws_*.db
+        // 4. 下载云端有但本地没有的 ws_*.db（先收集待传列表）
         if !workspaces_dir.exists() {
             let _ = std::fs::create_dir_all(&workspaces_dir);
         }
-        for (ws_id, cloud_entry) in &cloud_manifest.entries {
-            if !local_entries.contains_key(ws_id) {
-                let dest = workspaces_dir.join(format!("{}.db", ws_id));
-                let key = format!("{}/{}.db", Self::WORKSPACES_CLOUD_PREFIX, ws_id);
-                match storage
-                    .get_file(
-                        &key,
-                        &dest,
-                        Some(&cloud_entry.sha256),
-                        file_progress_callback("下载工作区数据库", ws_id.clone()),
-                    )
-                    .await
-                {
-                    Ok(_) => {
-                        super::emitter::report_file_sync_file_done();
-                        tracing::info!("[sync] 工作区数据库已下载: {}", ws_id);
-                    }
-                    Err(e) => {
-                        tracing::warn!("[sync] 工作区数据库下载失败（跳过）: {}: {}", ws_id, e);
-                    }
+        let pending_downloads: Vec<(&String, &WorkspaceEntry)> = cloud_manifest
+            .entries
+            .iter()
+            .filter(|(ws_id, _)| !local_entries.contains_key(ws_id.as_str()))
+            .collect();
+        super::emitter::report_file_sync_totals(pending_downloads.len() as u32);
+        for (ws_id, cloud_entry) in pending_downloads {
+            let dest = workspaces_dir.join(format!("{}.db", ws_id));
+            let key = format!("{}/{}.db", Self::WORKSPACES_CLOUD_PREFIX, ws_id);
+            match storage
+                .get_file(
+                    &key,
+                    &dest,
+                    Some(&cloud_entry.sha256),
+                    file_progress_callback("下载工作区数据库", ws_id.clone()),
+                )
+                .await
+            {
+                Ok(_) => {
+                    super::emitter::report_file_sync_file_done();
+                    tracing::info!("[sync] 工作区数据库已下载: {}", ws_id);
+                }
+                Err(e) => {
+                    tracing::warn!("[sync] 工作区数据库下载失败（跳过）: {}: {}", ws_id, e);
                 }
             }
         }
@@ -1548,10 +1554,14 @@ impl SyncManager {
         let mut uploaded = 0usize;
         let mut upload_failures: Vec<String> = Vec::new();
 
-        for (hash, path) in &local_blobs {
-            if cloud_manifest.entries.contains_key(hash.as_str()) {
-                continue;
-            }
+        // 先收集待传列表，申报进度总数（进度按 真实比例 推进）
+        let pending_uploads: Vec<(&String, &std::path::PathBuf)> = local_blobs
+            .iter()
+            .filter(|(hash, _)| !cloud_manifest.entries.contains_key(hash.as_str()))
+            .collect();
+        super::emitter::report_file_sync_totals(pending_uploads.len() as u32);
+
+        for (hash, path) in pending_uploads {
             let relative = path
                 .strip_prefix(blobs_dir)
                 .unwrap_or(path)
@@ -1605,10 +1615,14 @@ impl SyncManager {
         let mut downloaded_count = 0usize;
         let mut download_failures: Vec<String> = Vec::new();
 
-        for (hash, cloud_entry) in &cloud_manifest.entries {
-            if local_blobs.contains_key(hash.as_str()) {
-                continue;
-            }
+        let pending_downloads: Vec<(&String, &BlobEntry)> = cloud_manifest
+            .entries
+            .iter()
+            .filter(|(hash, _)| !local_blobs.contains_key(hash.as_str()))
+            .collect();
+        super::emitter::report_file_sync_totals(pending_downloads.len() as u32);
+
+        for (hash, cloud_entry) in pending_downloads {
             let dest = blobs_dir.join(&cloud_entry.relative_path);
             if let Some(parent) = dest.parent() {
                 let _ = std::fs::create_dir_all(parent);
@@ -1758,14 +1772,17 @@ impl SyncManager {
         let mut uploaded = 0usize;
         let mut upload_failures = Vec::new();
 
-        for (key, (path, sha256, size)) in &local_files {
-            let should_upload = match cloud_manifest.entries.get(key) {
+        // 先收集待传列表，申报进度总数（进度按 真实比例 推进）
+        let pending_uploads: Vec<(&String, &(std::path::PathBuf, String, u64))> = local_files
+            .iter()
+            .filter(|(key, (_, sha256, size))| match cloud_manifest.entries.get(*key) {
                 None => true,
                 Some(entry) => entry.sha256 != *sha256 || entry.size != *size,
-            };
-            if !should_upload {
-                continue;
-            }
+            })
+            .collect();
+        super::emitter::report_file_sync_totals(pending_uploads.len() as u32);
+
+        for (key, (path, sha256, size)) in pending_uploads {
             let remote_key = format!("{}/{}", Self::ASSETS_CLOUD_PREFIX, key);
             match storage
                 .put_file(&remote_key, path, file_progress_callback("上传资产文件", key.clone()))
@@ -1791,10 +1808,14 @@ impl SyncManager {
 
         let mut downloaded = 0usize;
         let mut download_failures = Vec::new();
-        for (key, entry) in &cloud_manifest.entries {
-            if local_files.contains_key(key) {
-                continue;
-            }
+        let pending_downloads: Vec<(&String, &AssetFileEntry)> = cloud_manifest
+            .entries
+            .iter()
+            .filter(|(key, _)| !local_files.contains_key(key.as_str()))
+            .collect();
+        super::emitter::report_file_sync_totals(pending_downloads.len() as u32);
+
+        for (key, entry) in pending_downloads {
             let Some(dest) = Self::asset_local_path_from_key(active_dir, app_data_dir, key) else {
                 tracing::warn!("[sync] 非法资产键，跳过下载: {}", key);
                 continue;

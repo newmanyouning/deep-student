@@ -57,6 +57,10 @@ pub struct WebDavStorage {
     /// 逐文件上传时避免每个文件都重发整串 MKCOL——数千个小文件会多发上万次请求，
     /// 直接触发坚果云的 WebDAV 频率限制（503）。
     ensured_dirs: std::sync::Mutex<std::collections::HashSet<String>>,
+    /// 频率限制预算（每 30 分钟请求数；0 = 不限速，见 `resolve_rate_limit`）
+    rate_limit_per_30min: u32,
+    /// 最近 30 分钟已发请求的时间戳（滑窗节流，见 `acquire_request_slot`）
+    rate_window: std::sync::Mutex<std::collections::VecDeque<std::time::Instant>>,
 }
 
 impl WebDavStorage {
@@ -88,6 +92,8 @@ impl WebDavStorage {
             .build()
             .map_err(|e| AppError::internal(format!("构建 HTTP 客户端失败: {e}")))?;
 
+        let rate_limit_per_30min = Self::resolve_rate_limit(url.host_str().unwrap_or_default());
+
         Ok(Self {
             base_url: url,
             username: config.username,
@@ -95,6 +101,8 @@ impl WebDavStorage {
             root: root.trim_matches('/').to_string(),
             http,
             ensured_dirs: std::sync::Mutex::new(std::collections::HashSet::new()),
+            rate_limit_per_30min,
+            rate_window: std::sync::Mutex::new(std::collections::VecDeque::new()),
         })
     }
 
@@ -204,6 +212,7 @@ impl WebDavStorage {
                 tracing::debug!("WebDAV {} 重试 {}/{}", desc, attempt + 1, MAX_ATTEMPTS);
                 tokio::time::sleep(delay).await;
             }
+            self.acquire_request_slot(desc).await;
             match build().send().await {
                 Ok(resp) => {
                     if Self::is_rate_limited(resp.status()) && attempt + 1 < MAX_ATTEMPTS {
@@ -271,6 +280,66 @@ impl WebDavStorage {
             }
         }
         Duration::from_secs((2u64 << (attempt * 2).min(4)).min(60))
+    }
+
+    /// 滑窗时长：与坚果云官方限制口径一致（30 分钟）
+    const RATE_WINDOW: Duration = Duration::from_secs(30 * 60);
+
+    /// 解析频率限制预算（每 30 分钟请求数）。
+    ///
+    /// 坚果云官方限制：免费版 600 次/30 分钟、付费版 1500 次/30 分钟，超限后被
+    /// 拒绝服务约 1 小时。为避免撞墙，对坚果云域名默认按免费版 90% 预算（540）
+    /// 主动节流；其他 WebDAV 服务商不限速。可用环境变量
+    /// `DEEP_STUDENT_WEBDAV_RATE_LIMIT`（每 30 分钟请求数，0 = 关闭）覆盖。
+    fn resolve_rate_limit(host: &str) -> u32 {
+        let host = host.to_lowercase();
+        let is_nutstore = host.contains("jianguoyun") || host.contains("nutstore");
+        let default = if is_nutstore { 540 } else { 0 };
+        match std::env::var("DEEP_STUDENT_WEBDAV_RATE_LIMIT") {
+            Ok(v) => v.trim().parse::<u32>().unwrap_or(default),
+            Err(_) => default,
+        }
+    }
+
+    /// 滑窗节流：30 分钟窗口内发出的请求达到预算时，等待最早一条请求滑出窗口再放行。
+    ///
+    /// 等待可能长达数分钟，期间通过 `report_status` 向前端说明原因。
+    /// std Mutex 不跨 await 持有：占位/计算等待时长在锁内完成，休眠在锁外。
+    async fn acquire_request_slot(&self, desc: &str) {
+        if self.rate_limit_per_30min == 0 {
+            return;
+        }
+        loop {
+            let wait = {
+                let mut window = self.rate_window.lock().unwrap_or_else(|p| p.into_inner());
+                let now = std::time::Instant::now();
+                while let Some(front) = window.front() {
+                    if now.duration_since(*front) >= Self::RATE_WINDOW {
+                        window.pop_front();
+                    } else {
+                        break;
+                    }
+                }
+                if (window.len() as u32) < self.rate_limit_per_30min {
+                    window.push_back(now);
+                    return;
+                }
+                let oldest = *window.front().expect("窗口已满则必非空");
+                Self::RATE_WINDOW - now.duration_since(oldest) + Duration::from_secs(1)
+            };
+            tracing::warn!(
+                "WebDAV {} 触发限速保护（预算 {}/30min），{}s 后继续",
+                desc,
+                self.rate_limit_per_30min,
+                wait.as_secs()
+            );
+            super::traits::report_status(&format!(
+                "坚果云限速保护：每 30 分钟 {} 次的请求额度已用满，{} 秒后自动继续…",
+                self.rate_limit_per_30min,
+                wait.as_secs()
+            ));
+            tokio::time::sleep(wait).await;
+        }
     }
 
     /// 发送 HTTP 请求（带重试）
@@ -603,6 +672,7 @@ impl CloudStorage for WebDavStorage {
                 tracing::debug!("WebDAV PUT 流式上传重试 {}/{}", attempt + 1, MAX_ATTEMPTS);
                 tokio::time::sleep(delay).await;
             }
+            self.acquire_request_slot("PUT 流式上传").await;
 
             let file = match tokio::fs::File::open(local_path).await {
                 Ok(f) => f,
