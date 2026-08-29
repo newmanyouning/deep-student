@@ -1,7 +1,8 @@
 # Deep Student iPad 安装说明
 
-> Bundle ID: `com.deepstudent.app`
+> Bundle ID: `com.lanxia.deepstudent`（2026-08 起，原 `com.deepstudent.app` 已被占用）
 > 最低要求: iPadOS 16.0+
+> 📱 已用免费签名装机？看 [iPad-Weekly-Renewal-Guide.md](iPad-Weekly-Renewal-Guide.md)（每周续签）
 
 ---
 
