@@ -68,7 +68,7 @@
       "icons/icon.png"
     ],
     "iOS": {
-      "developmentTeam": ""
+      "developmentTeam": "PHHX9WCMB7"
     },
     "macOS": {
       "signingIdentity": "-",
@@ -87,7 +87,7 @@
       }
     },
     "android": {
-      "versionCode": 13987
+      "versionCode": 13485
     }
   },
   "plugins": {
