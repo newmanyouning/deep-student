@@ -1,8 +1,9 @@
 {
   "name": "deep-student",
-  "version": "0.9.40",
+  "version": "0.9.40-fork.1",
   "license": "AGPL-3.0-or-later",
   "type": "module",
+  "repository": "github:newmanyouning/deep-student",
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "analyze": "ANALYZE=1 npm run build",

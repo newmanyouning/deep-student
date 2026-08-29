@@ -301,7 +301,7 @@ export const AboutTab: React.FC = () => {
                         </a>
                       )}
                       <a
-                        href={`https://github.com/helixnow/deep-student/releases/latest`}
+                        href={`https://github.com/newmanyouning/deep-student/releases/latest`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary hover:underline"
@@ -364,12 +364,13 @@ export const AboutTab: React.FC = () => {
         </div>
 
         <div className="mt-8">
-          <GroupTitle title={t('acknowledgements.links.title', '官方链接')} />
+          <GroupTitle title={t('acknowledgements.links.title', '项目链接')} />
           <div className="space-y-px">
             {[
-              { icon: Globe, label: t('acknowledgements.links.website', '访问官网'), href: 'https://www.deepstudent.cn' },
-              { icon: GithubLogo, label: t('acknowledgements.links.github', 'GitHub'), href: 'https://github.com/helixnow/deep-student' },
-              { icon: Bug, label: t('acknowledgements.links.issues', 'Issue 反馈'), href: 'https://github.com/helixnow/deep-student/issues' },
+              { icon: GithubLogo, label: t('acknowledgements.links.github', 'GitHub（独立维护版）'), href: 'https://github.com/newmanyouning/deep-student' },
+              { icon: Bug, label: t('acknowledgements.links.issues', 'Issue 反馈'), href: 'https://github.com/newmanyouning/deep-student/issues' },
+              { icon: Globe, label: t('acknowledgements.links.website', '原项目官网'), href: 'https://www.deepstudent.cn' },
+              { icon: Globe, label: 'Fork 来源（上游项目）', href: 'https://github.com/helixnow/deep-student' },
             ].map((item) => (
               <AboutActionRow
                 key={item.href}

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Deep Student",
-  "version": "0.9.40",
+  "version": "0.9.40-fork.1",
   "identifier": "com.deepstudent.app",
   "build": {
     "frontendDist": "../dist",
@@ -87,7 +87,7 @@
       }
     },
     "android": {
-      "versionCode": 13485
+      "versionCode": 14858
     }
   },
   "plugins": {
@@ -96,10 +96,9 @@
     "http": null,
     "updater": {
       "endpoints": [
-        "https://download.deepstudent.cn/releases/latest.json",
-        "https://github.com/helixnow/deep-student/releases/latest/download/latest.json"
+        "https://github.com/newmanyouning/deep-student/releases/latest/download/latest.json"
       ],
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDkxREY0RkI0Qjk5NEQ5MjQKUldRazJaUzV0RS9ma2JqbmNwNGNKT1FGc1BWcjRXa2J6K0psVDZFT05YUkc3OTIxYXNPR3FMcEsK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDg0RTIzM0IxQUIyRTdGMEIKUldRTGZ5NnJzVFBpaERYQUJIcmhyVXd2bVpmZmNEd3R6aU5ON3B0bzFFcFk1K1JTQ0JTL1FxSysK"
     }
   }
 }

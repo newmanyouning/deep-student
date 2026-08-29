@@ -124,26 +124,47 @@ export function setUpdateChannel(channel: UpdateChannel) {
   try { localStorage.setItem(UPDATE_CHANNEL_KEY, channel); } catch {}
 }
 
+// ==================================================================
+// 更新源配置
+// 【独立维护版】fork 后已与上游更新通道断开（2026-08-29）：
+//   - UPSTREAM_UPDATES_ENABLED = false：启动/手动检查更新不发起任何网络请求，直接视为最新版
+//   - 上游 URL 原样保留，需重连上游时把开关改回 true 即可（详见 docs/FORK-MAINTENANCE.md）
+//   - 桌面端 Tauri updater 的 endpoint（src-tauri/tauri.conf.json）已指向本仓库 Releases，
+//     并换用本仓库自己的签名公钥；上游原 endpoint 亦记录在 FORK-MAINTENANCE.md
+// ==================================================================
+const UPSTREAM_UPDATES_ENABLED = false;
+
+// 【上游】原项目更新源（已断开，保留备查）
 const R2_LATEST_URL = 'https://download.deepstudent.cn/releases/latest.json';
 const GH_LATEST_URL = 'https://github.com/helixnow/deep-student/releases/latest/download/latest.json';
+// 【本仓库】独立维护版更新源
+const FORK_GH_LATEST_URL = 'https://github.com/newmanyouning/deep-student/releases/latest/download/latest.json';
+const FORK_RELEASES_URL = 'https://github.com/newmanyouning/deep-student/releases/latest';
+const FORK_REPO_API_URL = 'https://api.github.com/repos/newmanyouning/deep-student/releases/latest';
 
-/** semver 大于比较（不引入额外依赖） */
+/** semver 大于比较（不引入额外依赖）
+ *  ★ 支持独立维护版的 -fork.N 修订段：0.9.40-fork.1 → 0.9.40-fork.2 视为更新；
+ *    同版本号下正式版（无 -fork.N）> fork 前缀版（semver 语义），合并上游后可自然升级 */
 function isNewerVersion(latest: string, current: string): boolean {
-  // 仅比较 core semver（major.minor.patch），忽略 prerelease/build metadata
-  const normalize = (v: string): [number, number, number] => {
-    const core = v.trim().replace(/^v/i, '').split(/[+-]/, 1)[0] || '';
-    const [major, minor, patch] = core.split('.');
+  const normalize = (v: string): [number, number, number, number] => {
+    const m = v.trim().replace(/^v/i, '').match(/^(\d+)\.(\d+)\.(\d+)(?:-fork\.(\d+))?/i);
+    if (!m) return [0, 0, 0, 0];
     const toInt = (s?: string) => {
       const n = Number.parseInt(s ?? '0', 10);
       return Number.isFinite(n) ? n : 0;
     };
-    return [toInt(major), toInt(minor), toInt(patch)];
+    return [
+      toInt(m[1]),
+      toInt(m[2]),
+      toInt(m[3]),
+      m[4] !== undefined ? toInt(m[4]) : Number.MAX_SAFE_INTEGER,
+    ];
   };
 
   const l = normalize(latest);
   const c = normalize(current);
 
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 4; i++) {
     const lv = l[i];
     const cv = c[i];
     if (lv > cv) return true;
@@ -253,7 +274,12 @@ export function useAppUpdater(): AppUpdaterController {
 
   /** 检查更新 */
   const checkForUpdate = useCallback(async (silent = false, startup = false): Promise<boolean> => {
-    // 移动端：优先从 R2 检查最新版本，回退到 GitHub API
+    // 【独立维护版】上游更新通道已断开：跳过一切网络检查，直接视为最新版
+    if (!UPSTREAM_UPDATES_ENABLED) {
+      setState(prev => ({ ...prev, checking: false, available: false, upToDate: !silent, info: null, isStartupCheck: startup }));
+      return true;
+    }
+    // 移动端：优先从本仓库 Releases 检查最新版本，回退到 GitHub API
     if (mobile) {
       setState(prev => ({ ...prev, checking: true, error: null, upToDate: false, isStartupCheck: startup }));
       try {
@@ -287,26 +313,26 @@ export function useAppUpdater(): AppUpdaterController {
           // R2 失败，静默回退
         }
 
-        // R2 失败时回退到 GitHub API
+        // R2 失败时回退到 GitHub API（独立维护版：本仓库的 Releases）
         if (!latestVersion) {
           const ghController = new AbortController();
           const ghTimeout = setTimeout(() => ghController.abort(), 10000);
-          const resp = await safeFetch('https://api.github.com/repos/helixnow/deep-student/releases/latest', {
+          const resp = await safeFetch(FORK_REPO_API_URL, {
             headers: { Accept: 'application/vnd.github+json' },
             signal: ghController.signal,
           }).finally(() => clearTimeout(ghTimeout));
           if (!resp.ok) throw new Error(`GitHub API ${resp.status}`);
           const data = await resp.json();
-          // 兼容 'v0.9.9' 和 'deep-student-v0.9.9' 两种 tag 格式
+          // 兼容 'v0.9.9'、'deep-student-v0.9.9' 与 'v0.9.40-fork.1' 多种 tag 格式
           const tagName = data.tag_name ?? '';
-          latestVersion = tagName.match(/v?(\d+\.\d+\.\d+)/)?.[1] ?? tagName.replace(/^v/, '');
+          latestVersion = tagName.match(/v?(\d+\.\d+\.\d+(?:-fork\.\d+)?)/)?.[1] ?? tagName.replace(/^v/, '');
           releaseBody = data.body ?? undefined;
           publishedAt = data.published_at ?? undefined;
-          // 从 release assets 中查找 APK，构造 R2 镜像下载链接
+          // 从 release assets 中查找 APK（本仓库直接用 GitHub 下载直链，无 R2 镜像）
           if (!apkUrl && tagName) {
             const apkAsset = (data.assets as any[])?.find((a: any) => a.name?.endsWith('.apk'));
-            if (apkAsset) {
-              apkUrl = `https://download.deepstudent.cn/releases/${tagName}/${apkAsset.name}`;
+            if (apkAsset?.browser_download_url) {
+              apkUrl = apkAsset.browser_download_url;
             }
           }
           // GitHub API 不含 channel，从 GitHub Release 的 latest.json asset 补取
@@ -314,7 +340,7 @@ export function useAppUpdater(): AppUpdaterController {
             try {
               const ghLatestCtrl = new AbortController();
               const ghLatestTimeout = setTimeout(() => ghLatestCtrl.abort(), 5000);
-              const ghLatestResp = await safeFetch(GH_LATEST_URL, {
+              const ghLatestResp = await safeFetch(FORK_GH_LATEST_URL, {
                 signal: ghLatestCtrl.signal,
               }).finally(() => clearTimeout(ghLatestTimeout));
               if (ghLatestResp.ok) {
@@ -531,8 +557,7 @@ export function useAppUpdater(): AppUpdaterController {
     if (!state.available || !state.info) return;
 
     if (mobile) {
-      const fallbackUrl = 'https://github.com/helixnow/deep-student/releases/latest';
-      await openLink(state.info.apkUrl || fallbackUrl);
+      await openLink(state.info.apkUrl || FORK_RELEASES_URL);
       return;
     }
 

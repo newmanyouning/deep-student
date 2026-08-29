@@ -14,16 +14,21 @@ Study materials, note-taking, mind maps, quizzes, translation, and flashcard rev
 > Think of it as: **NotebookLM + Notion + XMind + Quizlet + DeepL**
 > but they all share the same learning data and workflow.
 
-[![Release](https://img.shields.io/github/v/release/helixnow/deep-student?color=blue&label=release)](https://github.com/helixnow/deep-student/releases/latest)
+[![Release](https://img.shields.io/github/v/release/newmanyouning/deep-student?color=blue&label=release)](https://github.com/newmanyouning/deep-student/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/helixnow/deep-student?style=social)](https://github.com/helixnow/deep-student)
+[![Stars](https://img.shields.io/github/stars/newmanyouning/deep-student?style=social)](https://github.com/newmanyouning/deep-student)
 
-[Website](https://deepstudent.cn) ·
+> **English** | [简体中文](./README_CN.md)
+
 [**Download**](#installation) ·
-[Quick Start](https://deepstudent.cn/docs/) ·
-[User Guide](https://deepstudent.cn/docs/) ·
-[Report Issues](https://github.com/helixnow/deep-student/issues) ·
-[Contributing](./.github/CONTRIBUTING.md)
+[Report Issues](https://github.com/newmanyouning/deep-student/issues) ·
+[Upstream Project](https://github.com/helixnow/deep-student)
+
+> [!NOTE]
+> **Independent maintenance fork** — this repository is an independently maintained fork of
+> [helixnow/deep-student](https://github.com/helixnow/deep-student), based on upstream `v0.9.40`
+> with full git history and contributor attribution preserved. Versioned as `0.9.40-fork.N`.
+> See [NOTICE.md](NOTICE.md) for attribution. Licensed under AGPL-3.0-or-later.
 
 </div>
 
@@ -329,7 +334,7 @@ Your learning data stays under your control.
 [![Linux](https://img.shields.io/badge/-Linux-orange?style=flat-square&logo=linux&logoColor=white)](#installation)
 [![Android](https://img.shields.io/badge/-Android-green?style=flat-square&logo=android&logoColor=white)](#installation)
 
-Download the latest version from [GitHub Releases](https://github.com/helixnow/deep-student/releases/latest):
+Download the latest version from [GitHub Releases](https://github.com/newmanyouning/deep-student/releases/latest):
 
 | Platform | Package | Architecture |
 |:---:|---|---|
@@ -456,7 +461,7 @@ DeepStudent
 ### Local Development
 
 ```bash
-git clone https://github.com/helixnow/deep-student.git
+git clone https://github.com/newmanyouning/deep-student.git
 cd deep-student
 
 npm ci
@@ -518,7 +523,7 @@ Help make DeepStudent better.
 
 1. Read [CONTRIBUTING.md](./.github/CONTRIBUTING.md) for development workflow
 2. Ensure `npm run lint` and type checks pass before submitting a PR
-3. Bugs & suggestions via [Issues](https://github.com/helixnow/deep-student/issues)
+3. Bugs & suggestions via [Issues](https://github.com/newmanyouning/deep-student/issues)
 
 ---
 

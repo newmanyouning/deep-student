@@ -14,16 +14,18 @@
 > 可以把它理解成：**NotebookLM + Notion + XMind + Quizlet + DeepL**
 > 但它们共享同一套学习数据与工作流。
 
-[![Release](https://img.shields.io/github/v/release/helixnow/deep-student?color=blue&label=release)](https://github.com/helixnow/deep-student/releases/latest)
+[![Release](https://img.shields.io/github/v/release/newmanyouning/deep-student?color=blue&label=release)](https://github.com/newmanyouning/deep-student/releases/latest)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
-[![Stars](https://img.shields.io/github/stars/helixnow/deep-student?style=social)](https://github.com/helixnow/deep-student)
+[![Stars](https://img.shields.io/github/stars/newmanyouning/deep-student?style=social)](https://github.com/newmanyouning/deep-student)
 
-[官网](https://deepstudent.cn) ·
 [**下载安装**](#下载安装) ·
-[快速入门](https://deepstudent.cn/docs/) ·
-[用户手册](https://deepstudent.cn/docs/) ·
-[反馈问题](https://github.com/helixnow/deep-student/issues) ·
-[参与贡献](./.github/CONTRIBUTING.md)
+[反馈问题](https://github.com/newmanyouning/deep-student/issues) ·
+[上游项目](https://github.com/helixnow/deep-student)
+
+> [!NOTE]
+> **独立维护版** — 本仓库是 [helixnow/deep-student](https://github.com/helixnow/deep-student)
+> 的独立维护分支，基于上游 `v0.9.40`，完整保留 git 历史与原贡献者署名。
+> 版本号格式 `0.9.40-fork.N`。归属声明见 [NOTICE.md](NOTICE.md)，许可证 AGPL-3.0-or-later。
 
 </div>
 
@@ -329,7 +331,7 @@ DeepStudent 要解决的就是这件事：**让 AI 原生具备读写你全部�
 [![Linux](https://img.shields.io/badge/-Linux-orange?style=flat-square&logo=linux&logoColor=white)](#下载安装)
 [![Android](https://img.shields.io/badge/-Android-green?style=flat-square&logo=android&logoColor=white)](#下载安装)
 
-前往 [GitHub Releases](https://github.com/helixnow/deep-student/releases/latest) 下载最新版：
+前往 [GitHub Releases](https://github.com/newmanyouning/deep-student/releases/latest) 下载最新版：
 
 | 平台 | 安装包 | 架构 |
 |:---:|---|---|
@@ -456,7 +458,7 @@ DeepStudent
 ### 本地开发
 
 ```bash
-git clone https://github.com/helixnow/deep-student.git
+git clone https://github.com/newmanyouning/deep-student.git
 cd deep-student
 
 npm ci
@@ -518,7 +520,7 @@ DeepStudent 起源于 2025 年 3 月的一个 Python demo，经过近一年持�
 
 1. 阅读 [CONTRIBUTING.md](./.github/CONTRIBUTING.md) 了解开发流程
 2. 提交 PR 前请通过 `npm run lint` 与类型检查
-3. Bug 与建议请提交 [Issue](https://github.com/helixnow/deep-student/issues)
+3. Bug 与建议请提交 [Issue](https://github.com/newmanyouning/deep-student/issues)
 
 ---
 

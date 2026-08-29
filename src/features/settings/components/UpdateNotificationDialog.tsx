@@ -172,7 +172,7 @@ export const UpdateNotificationDialog: React.FC<UpdateNotificationDialogProps> =
                 </a>
               )}
               <a
-                href="https://github.com/helixnow/deep-student/releases/latest"
+                href="https://github.com/newmanyouning/deep-student/releases/latest"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary hover:underline"

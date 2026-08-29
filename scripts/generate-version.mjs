@@ -14,6 +14,9 @@ const projectRoot = join(__dirname, '..');
 const packageJsonPath = join(projectRoot, 'package.json');
 const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const appVersion = packageJson.version;
+// 【独立维护版】版本号规则：上游段完整保留 + 末段本分支修订号（semver 前缀式）
+// 例：0.9.40-fork.1 → 0.9.40-fork.2 → 合并上游 0.9.41 后 → 0.9.41-fork.1
+// 全链路（构建、显示、发布 tag）统一使用此形式，不做转换
 
 function writeIfChanged(filePath, content) {
   if (existsSync(filePath)) {
@@ -49,7 +52,7 @@ try {
 // 生成版本信息TypeScript文件
 const versionTsContent = `// 此文件由 scripts/generate-version.mjs 自动生成，请勿手动修改
 export const VERSION_INFO = {
-  APP_VERSION: '${appVersion}', // 应用主版本号
+  APP_VERSION: '${appVersion}', // 应用主版本号（如 0.9.40-fork.1）
   BUILD_NUMBER: '${buildNumber}', // 内部版本号（git提交次数）
   GIT_HASH: '${gitHash}', // Git commit short hash
   FULL_VERSION: '${appVersion} (${buildNumber})', // 完整版本号
